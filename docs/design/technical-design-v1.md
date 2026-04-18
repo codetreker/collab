@@ -168,6 +168,17 @@ Body: { content: string, content_type?: "text"|"image", reply_to_id?: string, me
 Response: { message: { id, ... } }
 ```
 
+##### 图片上传
+
+```
+POST /api/v1/upload
+Content-Type: multipart/form-data
+Body: file (image/*)
+Response: { url: "/uploads/{uuid}.{ext}", content_type: "image/png" }
+```
+
+约束：单文件 ≤10MB，只允许 image/* MIME type。存储在本地磁盘 `/opt/collab/data/uploads/`，通过 Collab Server 静态 serve。前端支持粘贴（Ctrl+V）和拖拽上传。
+
 ##### 用户
 
 ```
@@ -214,12 +225,6 @@ Response: { cursor: number, events: [{ cursor, kind, channel_id, payload }] }
 // 新消息
 { "type": "new_message", "message": { id, channel_id, sender_id, sender_name, content, content_type, created_at, mentions } }
 
-// 消息编辑
-{ "type": "message_edited", "message": { id, channel_id, content, edited_at } }
-
-// 用户上线/离线（v1 可选）
-{ "type": "presence", "user_id": "xxx", "status": "online"|"offline" }
-
 // 心跳响应
 { "type": "pong" }
 
@@ -259,6 +264,11 @@ src/
 │   └── markdown.ts            # Markdown 渲染
 └── types.ts                   # 共享类型定义
 ```
+
+**UI 细节**：
+- @mention 高亮：`@用户名` 渲染为蓝色背景 + 白色文字（类 Discord 风格）
+- 加载状态：消息列表用 skeleton loading，频道切换用 spinner
+- 图片上传：支持粘贴（Ctrl+V）和拖拽，上传中显示进度条
 
 **状态管理**：React Context + useReducer，不上 Redux（项目规模不需要）。
 
@@ -439,6 +449,7 @@ WantedBy=multi-user.target
 | COL-T02 | 数据库 schema + 基础 CRUD | T01 | 3h | SQLite 初始化、迁移、channels/messages/users 表操作封装 |
 | COL-T03 | REST API — 频道 | T02 | 2h | GET/POST /channels，认证中间件 |
 | COL-T04 | REST API — 消息 | T02 | 3h | GET/POST /messages，分页查询，mention 解析 |
+| COL-T04b | 图片上传 API + 前端 | T02 | 3h | POST /upload，本地存储，粘贴/拖拽上传 UI |
 | COL-T05 | REST API — 用户 + 认证 | T02 | 2h | CF Access JWT 解析、API key 认证、/users/me |
 | COL-T06 | WebSocket 服务 | T02 | 4h | 连接管理、subscribe/unsubscribe、消息广播、心跳 |
 | COL-T07 | 长轮询 API | T02 | 3h | events 表、cursor 机制、hold-until-new-event |
@@ -454,6 +465,11 @@ WantedBy=multi-user.target
 | COL-T17 | E2E 测试 + 修复 | T16 | 4h | 全链路验证 + bug 修复 |
 
 **关键路径**：T01 → T02 → T04/T06 → T09/T11 → T16 → T17
+
+**v1 前端不做的 UI**（数据库字段保留，前端不实现）：
+- 消息引用（reply_to_id）
+- 消息编辑/删除
+- 在线状态（presence）
 
 ## 风险与开放问题
 
