@@ -52,8 +52,9 @@ function AppInner() {
     }
   }, [state.initialized, state.currentChannelId, state.channels, actions]);
 
-  // Auto-set dev user if not set
+  // Auto-set dev user if not set (dev mode only)
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     if (state.initialized && state.users.length > 0 && !state.currentUser) {
       const admin = state.users.find(u => u.role === 'admin');
       if (admin) {
@@ -108,8 +109,8 @@ function AppInner() {
         )}
       </div>
 
-      {/* Dev mode user picker */}
-      <UserPicker />
+      {/* Dev mode user picker — only visible in development */}
+      {import.meta.env.DEV && <UserPicker />}
     </div>
   );
 }
