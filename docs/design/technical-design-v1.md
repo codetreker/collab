@@ -447,6 +447,8 @@ WantedBy=multi-user.target
 |----|------|------|------|------|
 | COL-T01 | 项目脚手架 | — | 2h | Node.js + Fastify + Vite + React 初始化，monorepo 结构（server + client + plugin） |
 | COL-T02 | 数据库 schema + 基础 CRUD | T01 | 3h | SQLite 初始化、迁移、channels/messages/users 表操作封装 |
+| COL-T02b | 初始 seed 脚本 | T02 | 1h | 创建 #general 频道、管理员用户、agent 用户（含 API key） |
+| COL-T02c | 骨架部署验证 | T01 | 2h | 先部署最小服务到 oc-apps，CF Tunnel + Access，让建军从中国测 HTTPS + WebSocket 连通性 |
 | COL-T03 | REST API — 频道 | T02 | 2h | GET/POST /channels，认证中间件 |
 | COL-T04 | REST API — 消息 | T02 | 3h | GET/POST /messages，分页查询，mention 解析 |
 | COL-T04b | 图片上传 API + 前端 | T02 | 3h | POST /upload，本地存储，粘贴/拖拽上传 UI |
@@ -454,7 +456,7 @@ WantedBy=multi-user.target
 | COL-T06 | WebSocket 服务 | T02 | 4h | 连接管理、subscribe/unsubscribe、消息广播、心跳 |
 | COL-T07 | 长轮询 API | T02 | 3h | events 表、cursor 机制、hold-until-new-event |
 | COL-T08 | 前端 — 频道侧边栏 | T03 | 3h | 频道列表、切换、创建频道 UI |
-| COL-T09 | 前端 — 消息列表 | T04, T06 | 5h | 消息渲染（Markdown + 图片）、虚拟滚动、分页加载历史 |
+| COL-T09 | 前端 — 消息列表 | T04, T06 | 3h | 消息渲染（Markdown + 图片）、overflow-y:auto 滚动、分页加载历史（不做虚拟滚动） |
 | COL-T10 | 前端 — 消息输入 + @mention | T04, T05 | 4h | 输入框、@mention picker、发送逻辑 |
 | COL-T11 | 前端 — WebSocket 集成 | T06 | 3h | 连接管理、重连、状态 banner、消息实时更新 |
 | COL-T12 | 前端 — 响应式布局 | T08, T09 | 3h | 移动端适配、频道列表折叠、触摸优化 |
@@ -464,7 +466,7 @@ WantedBy=multi-user.target
 | COL-T16 | 部署 | T01-T15 | 4h | systemd service、Caddy 配置、Cloudflare Tunnel + Access |
 | COL-T17 | E2E 测试 + 修复 | T16 | 4h | 全链路验证 + bug 修复 |
 
-**关键路径**：T01 → T02 → T04/T06 → T09/T11 → T16 → T17
+**关键路径**：T01 → T02 → **T02c（骨架部署验证，确认中国可访问）** → T04/T06 → T09/T11 → T16 → T17
 
 **v1 前端不做的 UI**（数据库字段保留，前端不实现）：
 - 消息引用（reply_to_id）
