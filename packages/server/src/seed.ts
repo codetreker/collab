@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { getDb } from './db.js';
 import {
   createChannel,
@@ -23,18 +24,19 @@ export function seed(): void {
     console.log('[seed] Created admin user: 建军');
   }
 
-  // Agent users
+  // Agent users — API keys come from env vars or are auto-generated
   const agents = [
-    { id: 'agent-pegasus', name: '飞马', key: 'col_pegasus_key_001' },
-    { id: 'agent-mustang', name: '野马', key: 'col_mustang_key_001' },
-    { id: 'agent-warhorse', name: '战马', key: 'col_warhorse_key_001' },
-    { id: 'agent-firehorse', name: '烈马', key: 'col_firehorse_key_001' },
+    { id: 'agent-pegasus', name: '飞马', envKey: 'AGENT_PEGASUS_API_KEY' },
+    { id: 'agent-mustang', name: '野马', envKey: 'AGENT_MUSTANG_API_KEY' },
+    { id: 'agent-warhorse', name: '战马', envKey: 'AGENT_WARHORSE_API_KEY' },
+    { id: 'agent-firehorse', name: '烈马', envKey: 'AGENT_FIREHORSE_API_KEY' },
   ];
 
   for (const a of agents) {
     if (!getUserById(db, a.id)) {
-      createUser(db, a.id, a.name, 'agent', a.key);
-      console.log(`[seed] Created agent user: ${a.name}`);
+      const key = process.env[a.envKey] || `col_${crypto.randomBytes(24).toString('hex')}`;
+      createUser(db, a.id, a.name, 'agent', key);
+      console.log(`[seed] Created agent user: ${a.name} (API key: ${key})`);
     }
   }
 
