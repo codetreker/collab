@@ -30,18 +30,18 @@
 
 | ID | 任务 | 状态 | Owner | PR |
 |----|------|------|-------|----|
-| COL-T08 | 前端 — 频道侧边栏 | In Progress | 战马 | — |
-| COL-T09 | 前端 — 消息列表 | In Progress | 战马 | — |
-| COL-T10 | 前端 — 消息输入 + @mention | In Progress | 战马 | — |
-| COL-T11 | 前端 — WebSocket 集成 | In Progress | 战马 | — |
-| COL-T12 | 前端 — 响应式布局 | In Progress | 战马 | — |
+| COL-T08 | 前端 — 频道侧边栏 | Done | 战马 | — |
+| COL-T09 | 前端 — 消息列表 | Done | 战马 | — |
+| COL-T10 | 前端 — 消息输入 + @mention | Done | 战马 | — |
+| COL-T11 | 前端 — WebSocket 集成 | Done | 战马 | — |
+| COL-T12 | 前端 — 响应式布局 | Done | 战马 | — |
 
 ## Phase 4：Plugin + 部署 + E2E
 
 | ID | 任务 | 状态 | Owner | PR |
 |----|------|------|-------|----|
-| COL-T13 | OpenClaw Plugin 骨架 | Backlog | 战马 | — |
-| COL-T14 | Plugin — Gateway + Inbound | Backlog | 战马 | — |
-| COL-T15 | Plugin — Outbound | Backlog | 战马 | — |
-| COL-T16 | 正式部署 | Backlog | 战马 | — |
+| COL-T13 | OpenClaw Plugin 骨架 | In Progress | 战马 | — |
+| COL-T14 | Plugin — Gateway + Inbound | In Progress | 战马 | — |
+| COL-T15 | Plugin — Outbound | In Progress | 战马 | — |
+| COL-T16 | 正式部署 | In Progress | 战马 | — |
 | COL-T17 | E2E 测试 + 修复 | Backlog | 烈马 | — |
