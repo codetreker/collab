@@ -251,7 +251,7 @@ export function createMessage(
   const now = Date.now();
 
   // Auto-parse @mentions from content
-  const parsedMentionNames = [...content.matchAll(/@(\w+)/g)].map((m) => m[1]!);
+  const parsedMentionNames = [...content.matchAll(/@([\p{L}\p{N}_]+)/gu)].map((m) => m[1]!);
   const parsedMentionIds: string[] = [];
   for (const name of parsedMentionNames) {
     const user = getUserByDisplayName(db, name);
