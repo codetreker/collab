@@ -336,31 +336,41 @@ channels:
 
 ### 部署架构
 
-和 RFR 完全一致的模式：
+和 RFR 一致，用 docker-compose 部署：
 
-1. **Collab Server** 在 oc-apps 上跑 Node.js 进程（systemd service），端口 4900
+1. **Collab Server** Docker 容器，端口 4900
 2. **Caddy** 反代 localhost:4900 → collab.codetrek.work
 3. **Cloudflare Tunnel** 暴露服务
 4. **Cloudflare Access** 保护访问（OTP 认证）
 5. **域名**：`collab.codetrek.work`
 
+```yaml
+# docker-compose.yml
+version: "3.8"
+services:
+  collab:
+    build: .
+    restart: always
+    ports:
+      - "4900:4900"
+    volumes:
+      - ./data:/app/data    # SQLite DB + uploads 持久化
+    environment:
+      - PORT=4900
+      - DATABASE_PATH=/app/data/collab.db
+      - UPLOAD_DIR=/app/data/uploads
 ```
-# /etc/systemd/system/collab.service
-[Unit]
-Description=Collab Chat Server
-After=network.target
 
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/opt/collab
-ExecStart=/usr/bin/node dist/server.js
-Restart=always
-Environment=PORT=4900
-Environment=DATABASE_PATH=/opt/collab/data/collab.db
-
-[Install]
-WantedBy=multi-user.target
+```dockerfile
+# Dockerfile
+FROM node:22-slim
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY dist/ ./dist/
+COPY public/ ./public/
+EXPOSE 4900
+CMD ["node", "dist/server.js"]
 ```
 
 ### 错误处理与重连
