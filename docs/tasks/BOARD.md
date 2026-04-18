@@ -19,22 +19,22 @@
 
 | ID | 任务 | 状态 | Owner | PR |
 |----|------|------|-------|----|
-| COL-T03 | REST API — 频道 | In Progress | 战马 | — |
-| COL-T04 | REST API — 消息 | In Progress | 战马 | — |
-| COL-T04b | 图片上传 API + 前端 | In Progress | 战马 | — |
-| COL-T05 | REST API — 用户 + 认证 | In Progress | 战马 | — |
-| COL-T06 | WebSocket 服务 | In Progress | 战马 | — |
-| COL-T07 | 长轮询 API（Plugin 用） | In Progress | 战马 | — |
+| COL-T03 | REST API — 频道 | Done | 战马 | — |
+| COL-T04 | REST API — 消息 | Done | 战马 | — |
+| COL-T04b | 图片上传 API + 前端 | Done | 战马 | — |
+| COL-T05 | REST API — 用户 + 认证 | Done | 战马 | — |
+| COL-T06 | WebSocket 服务 | Done | 战马 | — |
+| COL-T07 | 长轮询 API（Plugin 用） | Done | 战马 | — |
 
 ## Phase 3：前端
 
 | ID | 任务 | 状态 | Owner | PR |
 |----|------|------|-------|----|
-| COL-T08 | 前端 — 频道侧边栏 | Backlog | 战马 | — |
-| COL-T09 | 前端 — 消息列表 | Backlog | 战马 | — |
-| COL-T10 | 前端 — 消息输入 + @mention | Backlog | 战马 | — |
-| COL-T11 | 前端 — WebSocket 集成 | Backlog | 战马 | — |
-| COL-T12 | 前端 — 响应式布局 | Backlog | 战马 | — |
+| COL-T08 | 前端 — 频道侧边栏 | In Progress | 战马 | — |
+| COL-T09 | 前端 — 消息列表 | In Progress | 战马 | — |
+| COL-T10 | 前端 — 消息输入 + @mention | In Progress | 战马 | — |
+| COL-T11 | 前端 — WebSocket 集成 | In Progress | 战马 | — |
+| COL-T12 | 前端 — 响应式布局 | In Progress | 战马 | — |
 
 ## Phase 4：Plugin + 部署 + E2E
 
