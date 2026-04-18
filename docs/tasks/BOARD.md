@@ -40,8 +40,8 @@
 
 | ID | 任务 | 状态 | Owner | PR |
 |----|------|------|-------|----|
-| COL-T13 | OpenClaw Plugin 骨架 | In Progress | 战马 | — |
-| COL-T14 | Plugin — Gateway + Inbound | In Progress | 战马 | — |
-| COL-T15 | Plugin — Outbound | In Progress | 战马 | — |
-| COL-T16 | 正式部署 | In Progress | 战马 | — |
-| COL-T17 | E2E 测试 + 修复 | Backlog | 烈马 | — |
+| COL-T13 | OpenClaw Plugin 骨架 | Done | 战马 | — |
+| COL-T14 | Plugin — Gateway + Inbound | Done | 战马 | — |
+| COL-T15 | Plugin — Outbound | Done | 战马 | — |
+| COL-T16 | 正式部署 | Done | 战马 | — |
+| COL-T17 | E2E 测试 + 修复 | In Review | 烈马 | — |
