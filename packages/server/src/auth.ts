@@ -76,8 +76,8 @@ export async function authMiddleware(
     }
   }
 
-  // Dev mode bypass
-  if (process.env.NODE_ENV !== 'production') {
+  // Dev mode bypass (only when NODE_ENV is explicitly 'development')
+  if (process.env.NODE_ENV === 'development') {
     const devUserId = request.headers['x-dev-user-id'] as string | undefined;
     if (devUserId) {
       const user = getUserById(db, devUserId);
