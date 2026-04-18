@@ -186,7 +186,7 @@ Body: { api_key: string, cursor: number, timeout_ms?: number }
 Response: { cursor: number, events: [{ cursor, kind, channel_id, payload }] }
 ```
 
-轮询机制：服务端收到请求后，如果没有新事件，hold 住连接最多 `timeout_ms`（默认 30000ms），有新事件立即返回。
+轮询机制：服务端收到请求后，如果没有新事件，hold 住连接最多 `timeout_ms`（默认 30000ms），有新事件立即返回。超时无事件时返回 `200` + 空 events 数组 + 当前 cursor（不返回 4xx）。
 
 #### WebSocket 协议
 
@@ -234,7 +234,7 @@ Response: { cursor: number, events: [{ cursor, kind, channel_id, payload }] }
 **关键约束**：
 - 所有依赖必须打包，不使用外部 CDN
 - 不引入 Google Fonts，使用系统字体栈
-- Markdown 渲染用 `marked` + `highlight.js`（和 RFR 一致）
+- Markdown 渲染用 `marked` + `highlight.js`（和 RFR 一致）+ `DOMPurify`（XSS 防护）
 
 ```
 src/
@@ -322,6 +322,8 @@ channels:
 - 频道消息：`channel:<channel_id>`
 - DM（v2）：`dm:<user_id>`
 
+**Cursor 持久化**：Plugin 将最新 cursor 写入本地文件（`~/.openclaw/collab-cursor.json`），进程重启后从上次 cursor 恢复。即使 cursor 丢失，OpenClaw 的 `dispatchInboundReplyWithBase` 通过 MessageSid 去重，不会重复处理。
+
 ### 部署架构
 
 和 RFR 完全一致的模式：
@@ -388,6 +390,12 @@ WantedBy=multi-user.target
 
 ## 测试策略
 
+**覆盖率目标**：新代码 ≥85%，关键路径（DB 操作、消息广播、认证）100%。
+
+**图片消息约束**：v1 只支持 URL 引用（不做上传）。图片加载失败显示 broken image placeholder + 原始 URL 文本 fallback。
+
+**分页实现**：`has_more` 用 `fetch limit+1` 策略判断，避免 off-by-one。单测覆盖恰好整数倍和边界场景。
+
 ### 单元测试
 
 | 模块 | 测试重点 |
@@ -395,7 +403,7 @@ WantedBy=multi-user.target
 | API 路由 | 参数校验、权限检查、错误响应 |
 | WebSocket 消息处理 | 消息格式解析、广播逻辑 |
 | 数据库操作 | CRUD、分页、索引命中 |
-| Markdown 渲染 | XSS 过滤、格式正确性 |
+| Markdown 渲染 | XSS 过滤（DOMPurify）、`<script>` 标签转义为纯文本、格式正确性 |
 | Plugin API client | 请求构造、错误处理 |
 
 ### 集成测试
@@ -416,7 +424,10 @@ WantedBy=multi-user.target
 4. 手机浏览器打开同一页面，功能一致
 5. 断网 → 显示断连状态 → 恢复网络 → 自动重连 → 补齐消息
 6. Agent 通过 Plugin 发消息，浏览器实时显示
-7. 建军从中国网络验证可访问性
+7. 无/错 API key 访问 → 401 拒绝；CF Access JWT 过期 → 跳转重认证（不白屏）
+8. 发送 `<script>alert(1)</script>` 消息 → 转义为纯文本显示，不执行
+9. 图片 URL 消息内联显示；图片加载失败 → 显示 broken image placeholder + 原始 URL
+10. 建军从中国网络验证可访问性（由建军手动确认，非自动化，QA 报告中注明）
 
 ## Task Breakdown
 
@@ -439,7 +450,7 @@ WantedBy=multi-user.target
 | COL-T13 | OpenClaw Plugin 骨架 | T07 | 3h | plugin.json、channel.ts、accounts.ts、config-schema.ts |
 | COL-T14 | Plugin — Gateway + Inbound | T07, T13 | 4h | 长轮询、消息派发到 agent session |
 | COL-T15 | Plugin — Outbound | T04, T13 | 2h | agent 回复发送到 Collab |
-| COL-T16 | 部署 | T01-T15 | 3h | systemd service、Caddy 配置、Cloudflare Tunnel + Access |
+| COL-T16 | 部署 | T01-T15 | 4h | systemd service、Caddy 配置、Cloudflare Tunnel + Access |
 | COL-T17 | E2E 测试 + 修复 | T16 | 4h | 全链路验证 + bug 修复 |
 
 **关键路径**：T01 → T02 → T04/T06 → T09/T11 → T16 → T17
