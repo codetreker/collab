@@ -83,7 +83,7 @@ export function registerWebSocket(app: FastifyInstance): void {
       user = Q.getUserByApiKey(db, token);
     }
 
-    if (!user && process.env.NODE_ENV !== 'production') {
+    if (!user && process.env.NODE_ENV === 'development') {
       const devUserId = url.searchParams.get('user_id');
       if (devUserId) {
         user = Q.getUserById(db, devUserId);
@@ -158,6 +158,11 @@ export function registerWebSocket(app: FastifyInstance): void {
               break;
             }
 
+            if (!Q.isChannelMember(db, msg.channel_id, userId)) {
+              socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
+              break;
+            }
+
             const ct = msg.content_type ?? 'text';
             if (ct !== 'text' && ct !== 'image') {
               socket.send(JSON.stringify({ type: 'error', message: "content_type must be 'text' or 'image'" }));
@@ -217,6 +222,20 @@ export function registerWebSocket(app: FastifyInstance): void {
       }
     }, 30_000);
   }
+
+  // Clean up heartbeat interval on server close
+  app.addHook('onClose', async () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
+    // Close all client connections
+    for (const [ws, client] of clients.entries()) {
+      ws.close(1001, 'Server shutting down');
+      clients.delete(ws);
+      removeOnlineUser(client.userId, ws);
+    }
+  });
 }
 
 export function getConnectedClientCount(): number {
