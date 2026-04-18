@@ -27,9 +27,9 @@ export function renderMarkdown(text: string, mentionedUserIds?: string[], userMa
     }
   }
 
-  // Also highlight any @word patterns that look like mentions
+  // Also highlight any @word patterns that look like mentions (supports CJK and Unicode)
   processed = processed.replace(
-    /@(\w+)/g,
+    /@([\p{L}\p{N}_]+)/gu,
     (match, name) => {
       // Check if already wrapped
       if (processed.includes(`<span class="mention">${match}</span>`)) {

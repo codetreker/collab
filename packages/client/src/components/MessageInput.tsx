@@ -41,7 +41,7 @@ export default function MessageInput({ channelId }: Props) {
 
     // Extract mention user IDs from content
     const mentionIds: string[] = [];
-    const mentionRegex = /@(\w+)/g;
+    const mentionRegex = /@([\p{L}\p{N}_]+)/gu;
     let match;
     while ((match = mentionRegex.exec(content)) !== null) {
       const name = match[1]!;
