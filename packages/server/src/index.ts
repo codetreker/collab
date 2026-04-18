@@ -58,6 +58,7 @@ async function main(): Promise<void> {
       url.startsWith('/assets/') ||
       url.startsWith('/uploads/') ||
       url === '/ws' ||
+      url.startsWith('/ws?') ||
       url === '/' ||
       url === '/favicon.ico' ||
       (!url.startsWith('/api/') && !url.startsWith('/ws'))
