@@ -1,0 +1,50 @@
+export interface Channel {
+  id: string;
+  name: string;
+  topic: string;
+  created_at: number;
+  created_by: string;
+}
+
+export interface User {
+  id: string;
+  display_name: string;
+  role: 'admin' | 'member' | 'agent';
+  avatar_url: string | null;
+  api_key: string | null;
+  created_at: number;
+}
+
+export interface Message {
+  id: string;
+  channel_id: string;
+  sender_id: string;
+  sender_name?: string;
+  content: string;
+  content_type: 'text' | 'image';
+  reply_to_id: string | null;
+  created_at: number;
+  edited_at: number | null;
+  mentions?: string[];
+}
+
+export interface EventRow {
+  cursor: number;
+  kind: 'message' | 'message_edited' | 'message_deleted';
+  channel_id: string;
+  payload: string;
+  created_at: number;
+}
+
+export interface ChannelMember {
+  channel_id: string;
+  user_id: string;
+  joined_at: number;
+}
+
+export interface Mention {
+  id: string;
+  message_id: string;
+  user_id: string;
+  channel_id: string;
+}
