@@ -1,0 +1,13 @@
+services:
+  collab:
+    build: .
+    restart: always
+    ports:
+      - "4900:4900"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=4900
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/collab.db
+      - UPLOAD_DIR=/app/data/uploads

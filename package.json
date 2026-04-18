@@ -1,0 +1,28 @@
+{
+  "name": "collab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Collab — lightweight team chat platform",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @collab/server dev\" \"pnpm --filter @collab/client dev\"",
+    "build": "pnpm --filter @collab/client build && pnpm --filter @collab/server build",
+    "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
+    "format": "prettier --write 'packages/*/src/**/*.{ts,tsx}'",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "concurrently": "^9.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.7.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3", "esbuild"]
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  }
+}
