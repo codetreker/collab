@@ -10,6 +10,28 @@
   "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "openclaw": "file:/home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.4.16"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "collab",
+      "label": "Collab",
+      "selectionLabel": "Collab (Team Chat)",
+      "detailLabel": "Collab Team Chat",
+      "docsPath": "/channels/collab",
+      "docsLabel": "collab"
+    }
   }
 }

@@ -1,0 +1,139 @@
+import type { OpenClawConfig } from "openclaw/plugin-sdk/config-runtime";
+import { dispatchInboundReplyWithBase } from "openclaw/plugin-sdk/inbound-reply-dispatch";
+import { sendCollabMessage } from "./api-client.js";
+import { getCollabRuntime } from "./runtime.js";
+import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
+
+/**
+ * Target format for Collab:
+ *   channel:<channel_id>
+ */
+function buildCollabTarget(channelId: string): string {
+  return `channel:${channelId}`;
+}
+
+export function parseCollabTarget(raw: string): {
+  chatType: "channel";
+  channelId: string;
+} {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("channel:")) {
+    return { chatType: "channel", channelId: trimmed.slice("channel:".length) };
+  }
+  // Default: treat raw value as channel id
+  return { chatType: "channel", channelId: trimmed };
+}
+
+export async function handleCollabInbound(params: {
+  channelId: string;
+  channelLabel: string;
+  account: ResolvedCollabAccount;
+  config: CoreConfig;
+  event: CollabEvent;
+  message: {
+    id: string;
+    channel_id: string;
+    sender_id: string;
+    sender_name?: string;
+    content: string;
+    content_type: string;
+    created_at: number;
+    mentions?: string[];
+    reply_to_id?: string | null;
+  };
+}): Promise<void> {
+  const runtime = getCollabRuntime();
+  const msg = params.message;
+  const target = buildCollabTarget(msg.channel_id);
+
+  const route = runtime.channel.routing.resolveAgentRoute({
+    cfg: params.config as OpenClawConfig,
+    channel: params.channelId,
+    accountId: params.account.accountId,
+    peer: {
+      kind: "channel",
+      id: target,
+    },
+  });
+
+  const storePath = runtime.channel.session.resolveStorePath(params.config.session?.store, {
+    agentId: route.agentId,
+  });
+
+  const previousTimestamp = runtime.channel.session.readSessionUpdatedAt({
+    storePath,
+    sessionKey: route.sessionKey,
+  });
+
+  // Format @mentions for the agent envelope
+  const body = runtime.channel.reply.formatAgentEnvelope({
+    channel: params.channelLabel,
+    from: msg.sender_name || msg.sender_id,
+    timestamp: msg.created_at,
+    previousTimestamp,
+    envelope: runtime.channel.reply.resolveEnvelopeFormatOptions(params.config as OpenClawConfig),
+    body: msg.content,
+  });
+
+  const ctxPayload = runtime.channel.reply.finalizeInboundContext({
+    Body: body,
+    BodyForAgent: msg.content,
+    RawBody: msg.content,
+    CommandBody: msg.content,
+    From: buildCollabTarget(msg.sender_id),
+    To: target,
+    SessionKey: route.sessionKey,
+    AccountId: route.accountId ?? params.account.accountId,
+    ChatType: "group",
+    ConversationLabel: msg.channel_id,
+    GroupSubject: msg.channel_id,
+    GroupChannel: msg.channel_id,
+    NativeChannelId: msg.channel_id,
+    SenderName: msg.sender_name,
+    SenderId: msg.sender_id,
+    Provider: params.channelId,
+    Surface: params.channelId,
+    MessageSid: msg.id,
+    MessageSidFull: msg.id,
+    ReplyToId: msg.reply_to_id ?? undefined,
+    Timestamp: msg.created_at,
+    OriginatingChannel: params.channelId,
+    OriginatingTo: target,
+    CommandAuthorized: true,
+  });
+
+  await dispatchInboundReplyWithBase({
+    cfg: params.config as OpenClawConfig,
+    channel: params.channelId,
+    accountId: params.account.accountId,
+    route,
+    storePath,
+    ctxPayload,
+    core: runtime,
+    deliver: async (payload) => {
+      const text =
+        payload && typeof payload === "object" && "text" in payload
+          ? ((payload as { text?: string }).text ?? "")
+          : "";
+      if (!text.trim()) return;
+
+      await sendCollabMessage({
+        baseUrl: params.account.baseUrl,
+        apiKey: params.account.apiKey,
+        channelId: msg.channel_id,
+        content: text,
+        replyToId: msg.id,
+      });
+    },
+    onRecordError: (error) => {
+      throw error instanceof Error
+        ? error
+        : new Error(`collab session record failed: ${String(error)}`);
+    },
+    onDispatchError: (error) => {
+      throw error instanceof Error
+        ? error
+        : new Error(`collab dispatch failed: ${String(error)}`);
+    },
+  });
+}

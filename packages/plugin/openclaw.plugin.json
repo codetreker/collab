@@ -1,0 +1,9 @@
+{
+  "id": "collab",
+  "channels": ["collab"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

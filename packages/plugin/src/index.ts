@@ -1,25 +1,16 @@
-/**
- * Collab Channel Plugin for OpenClaw
- *
- * Skeleton for Phase 1. Full implementation in Phase 3 (COL-T13/T14/T15).
- * This file documents the planned architecture.
- */
+import { defineBundledChannelEntry } from "openclaw/plugin-sdk/channel-entry-contract";
 
-export interface CollabPluginConfig {
-  baseUrl: string;
-  apiKey: string;
-  botUserId: string;
-  botDisplayName: string;
-}
-
-export interface CollabEvent {
-  cursor: number;
-  kind: 'message' | 'message_edited' | 'message_deleted';
-  channel_id: string;
-  payload: string;
-}
-
-// Plugin entry point — will be implemented in Phase 3
-export function createCollabPlugin(_config: CollabPluginConfig): void {
-  console.log('[collab-plugin] Plugin skeleton loaded. Full implementation pending.');
-}
+export default defineBundledChannelEntry({
+  id: "collab",
+  name: "Collab",
+  description: "Collab team chat channel plugin",
+  importMetaUrl: import.meta.url,
+  plugin: {
+    specifier: "./channel.js",
+    exportName: "collabPlugin",
+  },
+  runtime: {
+    specifier: "./runtime.js",
+    exportName: "setCollabRuntime",
+  },
+});
