@@ -33,7 +33,11 @@ async function main(): Promise<void> {
   });
 
   // Plugins
-  await app.register(fastifyCors, { origin: true });
+  // CORS — restrict origin in production, allow all in dev
+  const corsOrigin = process.env.NODE_ENV === 'development'
+    ? true
+    : (process.env.CORS_ORIGIN ?? 'https://collab.codetrek.work');
+  await app.register(fastifyCors, { origin: corsOrigin });
   await app.register(fastifyWebsocket);
   await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 } });
 
