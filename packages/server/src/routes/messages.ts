@@ -6,10 +6,11 @@ export function registerMessageRoutes(app: FastifyInstance): void {
   // Get messages for a channel
   app.get<{
     Params: { channelId: string };
-    Querystring: { before?: string; limit?: string };
+    Querystring: { before?: string; limit?: string; after?: string };
   }>('/api/v1/channels/:channelId/messages', async (request, reply) => {
     const { channelId } = request.params;
     const before = request.query.before ? parseInt(request.query.before, 10) : undefined;
+    const after = request.query.after ? parseInt(request.query.after, 10) : undefined;
     const limit = request.query.limit ? Math.min(parseInt(request.query.limit, 10), 100) : 50;
 
     const db = getDb();
@@ -18,8 +19,30 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       return reply.status(404).send({ error: 'Channel not found' });
     }
 
-    const result = Q.getMessages(db, channelId, before, limit);
+    const result = Q.getMessages(db, channelId, before, limit, after);
     return result;
+  });
+
+  // Search messages in a channel
+  app.get<{
+    Params: { channelId: string };
+    Querystring: { q?: string };
+  }>('/api/v1/channels/:channelId/messages/search', async (request, reply) => {
+    const { channelId } = request.params;
+    const q = request.query.q;
+
+    if (!q || typeof q !== 'string' || q.trim().length === 0) {
+      return reply.status(400).send({ error: 'Search query (q) is required' });
+    }
+
+    const db = getDb();
+    const channel = Q.getChannel(db, channelId);
+    if (!channel) {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    const messages = Q.searchMessages(db, channelId, q.trim(), 50);
+    return { messages };
   });
 
   // Create message
@@ -27,7 +50,7 @@ export function registerMessageRoutes(app: FastifyInstance): void {
     Params: { channelId: string };
     Body: {
       content: string;
-      content_type?: 'text' | 'image';
+      content_type?: string;
       reply_to_id?: string;
       mentions?: string[];
     };
@@ -37,6 +60,11 @@ export function registerMessageRoutes(app: FastifyInstance): void {
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return reply.status(400).send({ error: 'Message content is required' });
+    }
+
+    const ct = content_type ?? 'text';
+    if (ct !== 'text' && ct !== 'image') {
+      return reply.status(400).send({ error: "content_type must be 'text' or 'image'" });
     }
 
     const db = getDb();
@@ -55,12 +83,11 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       channelId,
       senderId,
       content.trim(),
-      content_type ?? 'text',
+      ct,
       reply_to_id ?? null,
       mentions ?? [],
     );
 
-    // Broadcast via WebSocket (imported lazily to avoid circular deps)
     const { broadcastToChannel } = await import('../ws.js');
     broadcastToChannel(channelId, {
       type: 'new_message',

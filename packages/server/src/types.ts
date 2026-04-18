@@ -28,9 +28,18 @@ export interface Message {
   mentions?: string[];
 }
 
+export type EventKind =
+  | 'message'
+  | 'message_edited'
+  | 'message_deleted'
+  | 'mention'
+  | 'channel_created'
+  | 'member_joined'
+  | 'member_left';
+
 export interface EventRow {
   cursor: number;
-  kind: 'message' | 'message_edited' | 'message_deleted';
+  kind: EventKind;
   channel_id: string;
   payload: string;
   created_at: number;
@@ -40,6 +49,7 @@ export interface ChannelMember {
   channel_id: string;
   user_id: string;
   joined_at: number;
+  last_read_at: number | null;
 }
 
 export interface Mention {

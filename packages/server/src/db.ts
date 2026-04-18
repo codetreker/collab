@@ -57,9 +57,10 @@ function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
 
     CREATE TABLE IF NOT EXISTS channel_members (
-      channel_id  TEXT NOT NULL REFERENCES channels(id),
-      user_id     TEXT NOT NULL REFERENCES users(id),
-      joined_at   INTEGER NOT NULL,
+      channel_id    TEXT NOT NULL REFERENCES channels(id),
+      user_id       TEXT NOT NULL REFERENCES users(id),
+      joined_at     INTEGER NOT NULL,
+      last_read_at  INTEGER,
       PRIMARY KEY (channel_id, user_id)
     );
 
@@ -80,6 +81,12 @@ function initSchema(db: Database.Database): void {
       created_at  INTEGER NOT NULL
     );
   `);
+
+  // Migration: add last_read_at if missing
+  const cols = db.prepare("PRAGMA table_info(channel_members)").all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'last_read_at')) {
+    db.exec('ALTER TABLE channel_members ADD COLUMN last_read_at INTEGER');
+  }
 }
 
 export function closeDb(): void {
