@@ -22,7 +22,12 @@ const CHANNEL_ID = "collab" as const;
 const meta = { ...getChatChannelMeta(CHANNEL_ID) };
 
 function buildCollabTarget(params: { channelId: string }): string {
-  return `channel:${params.channelId}`;
+  return `channel:${stripChannelPrefix(params.channelId)}`;
+}
+
+function stripChannelPrefix(id: string): string {
+  const trimmed = id.trim();
+  return trimmed.startsWith("channel:") ? trimmed.slice("channel:".length) : trimmed;
 }
 
 function normalizeCollabTarget(raw: string): string | undefined {
@@ -82,7 +87,7 @@ export const collabPlugin: ChannelPlugin<ResolvedCollabAccount> = createChatChan
           accountId,
           peer: {
             kind: "channel",
-            id: buildCollabTarget({ channelId: parsed.channelId }),
+            id: parsed.channelId,
           },
           chatType: "group",
           from: `collab:${accountId ?? DEFAULT_ACCOUNT_ID}`,

@@ -7,9 +7,22 @@ import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js"
 /**
  * Target format for Collab:
  *   channel:<channel_id>
+ *
+ * Note: the SDK's routing layer prepends `channel:` from peer.kind when
+ * building session keys.  We must pass the *raw* UUID as `peer.id` so the
+ * key becomes `agent:<id>:collab:channel:<uuid>` — not the double-prefixed
+ * `agent:<id>:collab:channel:channel:<uuid>`.
  */
 function buildCollabTarget(channelId: string): string {
-  return `channel:${channelId}`;
+  return `channel:${stripChannelPrefix(channelId)}`;
+}
+
+/**
+ * Strip leading "channel:" prefix if present so we never double-prefix.
+ */
+function stripChannelPrefix(id: string): string {
+  const trimmed = id.trim();
+  return trimmed.startsWith("channel:") ? trimmed.slice("channel:".length) : trimmed;
 }
 
 export function parseCollabTarget(raw: string): {
@@ -44,7 +57,8 @@ export async function handleCollabInbound(params: {
 }): Promise<void> {
   const runtime = getCollabRuntime();
   const msg = params.message;
-  const target = buildCollabTarget(msg.channel_id);
+  const rawChannelId = stripChannelPrefix(msg.channel_id);
+  const target = buildCollabTarget(rawChannelId);
 
   const route = runtime.channel.routing.resolveAgentRoute({
     cfg: params.config as OpenClawConfig,
@@ -52,7 +66,7 @@ export async function handleCollabInbound(params: {
     accountId: params.account.accountId,
     peer: {
       kind: "channel",
-      id: target,
+      id: rawChannelId,
     },
   });
 
@@ -80,7 +94,7 @@ export async function handleCollabInbound(params: {
     BodyForAgent: msg.content,
     RawBody: msg.content,
     CommandBody: msg.content,
-    From: buildCollabTarget(msg.sender_id),
+    From: buildCollabTarget(stripChannelPrefix(msg.sender_id)),
     To: target,
     SessionKey: route.sessionKey,
     AccountId: route.accountId ?? params.account.accountId,
