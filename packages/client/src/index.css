@@ -1031,8 +1031,62 @@ body {
   .sidebar {
     padding-top: env(safe-area-inset-top);
   }
-  
+
   .message-input-container {
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
+}
+
+/* ─── Login Page ─────────────────────────────────────── */
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-sidebar);
+}
+
+.login-card {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  padding: 40px;
+  width: 360px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.login-title {
+  text-align: center;
+  margin: 0 0 24px;
+  font-size: 24px;
+  color: var(--text-primary);
+}
+
+.login-input {
+  width: 100%;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.login-error {
+  color: var(--bg-badge);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+}
+
+.logout-btn {
+  margin-left: auto;
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+.logout-btn:hover {
+  opacity: 1;
 }

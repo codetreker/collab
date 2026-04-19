@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import { getDb } from './db.js';
 import {
   createChannel,
@@ -6,25 +7,33 @@ import {
   addChannelMember,
   getChannelByName,
   getUserById,
+  getUserByEmail,
 } from './queries.js';
 
-/**
- * Seeds the database with initial data on first run:
- * - #general channel
- * - Admin user (建军)
- * - Agent users with API keys
- */
 export function seed(): void {
   const db = getDb();
 
-  // Admin user
+  // Admin user (legacy seed)
   const adminId = 'admin-jianjun';
   if (!getUserById(db, adminId)) {
     createUser(db, adminId, '建军', 'admin', null);
     console.log('[seed] Created admin user: 建军');
   }
 
-  // Agent users — API keys come from env vars or are auto-generated
+  // Bootstrap admin from env vars
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    const existing = getUserByEmail(db, adminEmail);
+    if (!existing) {
+      const id = `admin-${adminEmail}`;
+      const passwordHash = bcrypt.hashSync(adminPassword, 10);
+      createUser(db, id, adminEmail.split('@')[0]!, 'admin', null, adminEmail, passwordHash);
+      console.log(`[seed] Created admin user from env: ${adminEmail}`);
+    }
+  }
+
+  // Agent users
   const agents = [
     { id: 'agent-pegasus', name: '飞马', envKey: 'AGENT_PEGASUS_API_KEY' },
     { id: 'agent-mustang', name: '野马', envKey: 'AGENT_MUSTANG_API_KEY' },
@@ -43,7 +52,6 @@ export function seed(): void {
   // #general channel
   if (!getChannelByName(db, 'general')) {
     const ch = createChannel(db, 'general', 'General discussion', adminId);
-    // Add all users to #general
     addChannelMember(db, ch.id, adminId);
     for (const a of agents) {
       addChannelMember(db, ch.id, a.id);

@@ -12,6 +12,8 @@ export interface User {
   role: 'admin' | 'member' | 'agent';
   avatar_url: string | null;
   api_key: string | null;
+  email: string | null;
+  password_hash: string | null;
   created_at: number;
 }
 

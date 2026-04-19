@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
+import { logout } from '../lib/api';
 import type { Channel } from '../types';
 
 interface Props {
-  onClose?: () => void;  // For mobile: close sidebar after selecting
+  onClose?: () => void;
+  onLogout?: () => void;
 }
 
-export default function Sidebar({ onClose }: Props) {
+export default function Sidebar({ onClose, onLogout }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const [showCreate, setShowCreate] = useState(false);
@@ -118,6 +120,20 @@ export default function Sidebar({ onClose }: Props) {
               {state.currentUser.display_name[0]?.toUpperCase()}
             </div>
             <span className="user-name-small">{state.currentUser.display_name}</span>
+            <button
+              className="icon-btn logout-btn"
+              title="Logout"
+              onClick={async () => {
+                try {
+                  await logout();
+                  onLogout?.();
+                } catch {
+                  window.location.reload();
+                }
+              }}
+            >
+              ⏻
+            </button>
           </div>
         </div>
       )}

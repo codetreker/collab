@@ -1,0 +1,61 @@
+import React, { useState } from 'react';
+import { login } from '../lib/api';
+
+interface Props {
+  onLogin: () => void;
+}
+
+export default function LoginPage({ onLogin }: Props) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || loading) return;
+    setLoading(true);
+    setError('');
+    try {
+      await login(email, password);
+      onLogin();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <h1 className="login-title">Collab</h1>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="input-field login-input"
+            autoFocus
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className="input-field login-input"
+          />
+          {error && <div className="login-error">{error}</div>}
+          <button
+            type="submit"
+            disabled={loading || !email || !password}
+            className="btn btn-primary login-btn"
+          >
+            {loading ? 'Logging in...' : 'Log in'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

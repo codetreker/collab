@@ -11,5 +11,6 @@ services:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/collab.db
       - UPLOAD_DIR=/app/data/uploads
-      - CF_ACCESS_TEAM_DOMAIN=codetreker
-      - CF_ACCESS_AUD=1b13cf4309028f17780a652ff4209e709cbe3ccaa7a3644f3a975781f0438c9e
+      - JWT_SECRET=change-me-in-production
+      - ADMIN_EMAIL=admin@codetrek.work
+      - ADMIN_PASSWORD=admin123

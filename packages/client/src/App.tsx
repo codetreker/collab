@@ -3,14 +3,17 @@ import { AppProvider, useAppContext } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Sidebar from './components/Sidebar';
 import ChannelView from './components/ChannelView';
+import LoginPage from './components/LoginPage';
 import UserPicker from './components/UserPicker';
-import { setDevUserId } from './lib/api';
+import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
 
 function AppInner() {
   const { state, actions, dispatch } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
 
   // Responsive check
   useEffect(() => {
@@ -23,27 +26,40 @@ function AppInner() {
     return () => window.removeEventListener('resize', handler);
   }, []);
 
-  // Initialize app data
+  // Auth check
   useEffect(() => {
+    fetchMe()
+      .then(() => {
+        setAuthenticated(true);
+        setAuthChecked(true);
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401) {
+          setAuthenticated(false);
+        } else {
+          setAuthenticated(false);
+        }
+        setAuthChecked(true);
+      });
+  }, []);
+
+  // Initialize app data after auth
+  useEffect(() => {
+    if (!authenticated) return;
     const init = async () => {
-      // Load users first (needed for user picker and mentions)
       await actions.loadUsers();
-      // Set default dev user (first admin)
       await actions.loadCurrentUser();
-      // Load channels
       await actions.loadChannels();
-      // Load online users
       await actions.loadOnlineUsers();
       dispatch({ type: 'SET_INITIALIZED' });
     };
     init();
 
-    // Poll online users periodically
     const interval = setInterval(() => {
       actions.loadOnlineUsers();
     }, 30_000);
     return () => clearInterval(interval);
-  }, [actions, dispatch]);
+  }, [authenticated, actions, dispatch]);
 
   // Auto-select first channel if none selected
   useEffect(() => {
@@ -72,6 +88,27 @@ function AppInner() {
     setSidebarOpen(false);
   }, []);
 
+  const handleLogin = useCallback(() => {
+    setAuthenticated(true);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setAuthenticated(false);
+    dispatch({ type: 'SET_CURRENT_USER', user: null });
+  }, [dispatch]);
+
+  if (!authChecked) {
+    return (
+      <div className="app-loading">
+        <div className="loading-spinner-large" />
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   if (!state.initialized) {
     return (
       <div className="app-loading">
@@ -83,22 +120,19 @@ function AppInner() {
 
   return (
     <div className="app">
-      {/* Mobile hamburger */}
       {isMobile && (
         <button className="hamburger-btn" onClick={toggleSidebar}>
           ☰
         </button>
       )}
 
-      {/* Sidebar */}
       <div className={`sidebar-wrapper ${isMobile ? (sidebarOpen ? 'sidebar-open' : 'sidebar-closed') : ''}`}>
         {isMobile && sidebarOpen && (
           <div className="sidebar-overlay" onClick={closeSidebar} />
         )}
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} />
       </div>
 
-      {/* Main content */}
       <div className="main-content">
         {state.currentChannelId ? (
           <ChannelView channelId={state.currentChannelId} />
@@ -109,7 +143,6 @@ function AppInner() {
         )}
       </div>
 
-      {/* Dev mode user picker — only visible in development */}
       {import.meta.env.DEV && <UserPicker />}
     </div>
   );

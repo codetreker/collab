@@ -131,7 +131,7 @@ export function getUserByDisplayName(db: Database.Database, displayName: string)
 }
 
 export function getUserByEmail(db: Database.Database, email: string): User | undefined {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(`cf-${email}`) as User | undefined;
+  return db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
 }
 
 export function createUser(
@@ -140,12 +140,14 @@ export function createUser(
   displayName: string,
   role: string,
   apiKey: string | null = null,
+  email: string | null = null,
+  passwordHash: string | null = null,
 ): User {
   const now = Date.now();
   db.prepare(
-    'INSERT OR IGNORE INTO users (id, display_name, role, api_key, created_at) VALUES (?, ?, ?, ?, ?)',
-  ).run(id, displayName, role, apiKey, now);
-  return { id, display_name: displayName, role: role as User['role'], avatar_url: null, api_key: apiKey, created_at: now };
+    'INSERT OR IGNORE INTO users (id, display_name, role, api_key, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, displayName, role, apiKey, email, passwordHash, now);
+  return { id, display_name: displayName, role: role as User['role'], avatar_url: null, api_key: apiKey, email, password_hash: passwordHash, created_at: now };
 }
 
 // ─── Messages ───────────────────────────────────────────

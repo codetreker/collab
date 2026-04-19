@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { getDb } from './db.js';
-import { getUserByApiKey, getUserById, createUser, addUserToAllChannels } from './queries.js';
+import { getUserByApiKey, getUserById, getUserByEmail } from './queries.js';
 import type { User } from './types.js';
 
 declare module 'fastify' {
@@ -10,78 +11,37 @@ declare module 'fastify' {
   }
 }
 
-const CF_ACCESS_TEAM_DOMAIN = process.env.CF_ACCESS_TEAM_DOMAIN ?? '';
-const CF_ACCESS_AUD = process.env.CF_ACCESS_AUD ?? '';
+const JWT_SECRET = process.env.JWT_SECRET ?? '';
 
-// Log CF Access config status at startup
-if (!CF_ACCESS_TEAM_DOMAIN || !CF_ACCESS_AUD) {
-  console.warn('[auth] CF_ACCESS_TEAM_DOMAIN or CF_ACCESS_AUD not configured — CF Access JWT verification disabled');
-} else {
-  console.log(`[auth] CF Access configured: team=${CF_ACCESS_TEAM_DOMAIN}`);
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET environment variable is required in production');
 }
 
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+const COOKIE_NAME = 'collab_token';
 
-function getCfJwks(): ReturnType<typeof createRemoteJWKSet> {
-  if (!jwks) {
-    const certsUrl = new URL(`https://${CF_ACCESS_TEAM_DOMAIN}.cloudflareaccess.com/cdn-cgi/access/certs`);
-    jwks = createRemoteJWKSet(certsUrl);
-  }
-  return jwks;
+interface JwtPayload {
+  userId: string;
+  email: string;
 }
 
-/**
- * Extract CF Access JWT from request — checks both header and cookie.
- * CF proxy sets the header; browser sends the cookie on same-origin requests.
- */
-function extractCfJwt(request: FastifyRequest): string | undefined {
-  // 1. cf-access-jwt-assertion header (set by CF proxy on every proxied request)
-  const headerJwt = request.headers['cf-access-jwt-assertion'] as string | undefined;
-  if (headerJwt) return headerJwt;
-
-  // 2. CF_Authorization cookie (set by CF in browser, sent on same-origin fetch/XHR)
+function extractCookie(request: FastifyRequest): string | undefined {
   const cookieHeader = request.headers.cookie;
   if (!cookieHeader) return undefined;
-  const match = cookieHeader.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
+  const match = cookieHeader.match(/(?:^|;\s*)collab_token=([^;]+)/);
   return match?.[1];
 }
 
-/**
- * Verify CF Access JWT → return existing or newly-created user.
- * New users are auto-joined to all existing channels.
- */
-async function authenticateCfAccess(cfJwt: string): Promise<User | 'invalid' | 'no-config'> {
-  if (!CF_ACCESS_TEAM_DOMAIN || !CF_ACCESS_AUD) {
-    return 'no-config';
-  }
-
+function verifyJwt(token: string): JwtPayload | null {
   try {
-    const { payload } = await jwtVerify(cfJwt, getCfJwks(), {
-      audience: CF_ACCESS_AUD,
-    });
-
-    const email = payload.email as string | undefined;
-    if (!email) {
-      console.warn('[auth] CF Access JWT valid but missing email claim');
-      return 'invalid';
-    }
-
-    const db = getDb();
-    const userId = `cf-${email}`;
-    let user = getUserById(db, userId);
-
-    if (!user) {
-      const displayName = email.split('@')[0]!;
-      user = createUser(db, userId, displayName, 'member');
-      const channelCount = addUserToAllChannels(db, userId);
-      console.log(`[auth] Created CF Access user: ${userId} (${displayName}), auto-joined ${channelCount} channels`);
-    }
-
-    return user;
-  } catch (err) {
-    console.warn('[auth] CF Access JWT verification failed:', err instanceof Error ? err.message : String(err));
-    return 'invalid';
+    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  } catch {
+    return null;
   }
+}
+
+function isSecureCookie(): boolean {
+  const host = process.env.HOST ?? '';
+  return host !== 'localhost' && host !== '127.0.0.1' && process.env.NODE_ENV !== 'development';
 }
 
 export async function authMiddleware(
@@ -90,7 +50,21 @@ export async function authMiddleware(
 ): Promise<void> {
   const db = getDb();
 
-  // 1. Bearer token → API key auth (agents)
+  // 1. JWT cookie → browser auth
+  const token = extractCookie(request);
+  if (token) {
+    const payload = verifyJwt(token);
+    if (payload) {
+      const user = getUserById(db, payload.userId);
+      if (user) {
+        request.currentUser = user;
+        return;
+      }
+    }
+    return reply.status(401).send({ error: 'Invalid or expired token' });
+  }
+
+  // 2. Bearer token → API key auth (agents)
   const authHeader = request.headers.authorization;
   if (authHeader?.startsWith('Bearer ')) {
     const apiKey = authHeader.slice(7);
@@ -102,30 +76,7 @@ export async function authMiddleware(
     return reply.status(401).send({ error: 'Invalid API key' });
   }
 
-  // 2. CF Access JWT → browser auth (header or cookie)
-  const cfJwt = extractCfJwt(request);
-  if (cfJwt) {
-    const result = await authenticateCfAccess(cfJwt);
-
-    if (typeof result === 'object') {
-      // Successfully authenticated
-      request.currentUser = result;
-      return;
-    }
-
-    if (result === 'invalid') {
-      return reply.status(401).send({ error: 'Invalid CF Access JWT' });
-    }
-
-    // result === 'no-config'
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[auth] CF Access JWT present but CF_ACCESS_TEAM_DOMAIN/CF_ACCESS_AUD not configured in production');
-      return reply.status(500).send({ error: 'Authentication misconfigured' });
-    }
-    // In dev mode with no CF config: fall through to dev bypass below
-  }
-
-  // 3. Dev mode bypass (only when NODE_ENV is explicitly 'development')
+  // 3. Dev mode bypass
   if (process.env.NODE_ENV === 'development') {
     const devUserId = request.headers['x-dev-user-id'] as string | undefined;
     if (devUserId) {
@@ -137,7 +88,6 @@ export async function authMiddleware(
       return reply.status(401).send({ error: 'Invalid dev user ID' });
     }
 
-    // Fallback: auto-login as first admin in dev
     const adminUser = db
       .prepare("SELECT * FROM users WHERE role = 'admin' LIMIT 1")
       .get() as User | undefined;
@@ -155,7 +105,46 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     if (!request.currentUser) {
       return reply.status(401).send({ error: 'Not authenticated' });
     }
-    const { api_key, ...user } = request.currentUser;
+    const { api_key, password_hash, ...user } = request.currentUser;
     return { user };
+  });
+
+  app.post('/api/v1/auth/login', async (request, reply) => {
+    const { email, password } = request.body as { email?: string; password?: string };
+    if (!email || !password) {
+      return reply.status(400).send({ error: 'Email and password are required' });
+    }
+
+    const db = getDb();
+    const user = getUserByEmail(db, email);
+    if (!user || !user.password_hash) {
+      return reply.status(401).send({ error: 'Invalid email or password' });
+    }
+
+    const valid = bcrypt.compareSync(password, user.password_hash);
+    if (!valid) {
+      return reply.status(401).send({ error: 'Invalid email or password' });
+    }
+
+    const tokenPayload: JwtPayload = { userId: user.id, email };
+    const signed = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+
+    const secure = isSecureCookie();
+    reply.header(
+      'Set-Cookie',
+      `${COOKIE_NAME}=${signed}; HttpOnly; Path=/; SameSite=Lax${secure ? '; Secure' : ''}; Max-Age=${7 * 24 * 60 * 60}`,
+    );
+
+    const { api_key, password_hash, ...safeUser } = user;
+    return { user: safeUser };
+  });
+
+  app.post('/api/v1/auth/logout', async (_request, reply) => {
+    const secure = isSecureCookie();
+    reply.header(
+      'Set-Cookie',
+      `${COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax${secure ? '; Secure' : ''}; Max-Age=0`,
+    );
+    return { ok: true };
   });
 }

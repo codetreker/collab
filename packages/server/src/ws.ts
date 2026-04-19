@@ -1,21 +1,21 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import jwt from 'jsonwebtoken';
 import { getDb } from './db.js';
 import * as Q from './queries.js';
 import type { User } from './types.js';
 
-const CF_ACCESS_TEAM_DOMAIN = process.env.CF_ACCESS_TEAM_DOMAIN ?? '';
-const CF_ACCESS_AUD = process.env.CF_ACCESS_AUD ?? '';
+const JWT_SECRET = process.env.JWT_SECRET ?? '';
 
-let wsJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+interface JwtPayload {
+  userId: string;
+  email: string;
+}
 
-function getWsCfJwks(): ReturnType<typeof createRemoteJWKSet> {
-  if (!wsJwks) {
-    const certsUrl = new URL(`https://${CF_ACCESS_TEAM_DOMAIN}.cloudflareaccess.com/cdn-cgi/access/certs`);
-    wsJwks = createRemoteJWKSet(certsUrl);
-  }
-  return wsJwks;
+function extractCollabCookie(cookieHeader: string | undefined): string | undefined {
+  if (!cookieHeader) return undefined;
+  const match = cookieHeader.match(/(?:^|;\s*)collab_token=([^;]+)/);
+  return match?.[1];
 }
 
 async function authenticateWsRequest(request: { headers: Record<string, string | string[] | undefined>; url: string }): Promise<User | undefined> {
@@ -32,39 +32,19 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
     }
   }
 
-  // 2. Check CF Access JWT (header or cookie) — browser auth
-  const cfJwt = (request.headers['cf-access-jwt-assertion'] as string | undefined)
-    ?? extractCfCookie(request.headers.cookie as string | undefined);
-  if (cfJwt && CF_ACCESS_TEAM_DOMAIN && CF_ACCESS_AUD) {
+  // 2. JWT cookie auth (browser)
+  const jwtToken = extractCollabCookie(request.headers.cookie as string | undefined);
+  if (jwtToken && JWT_SECRET) {
     try {
-      const { payload } = await jwtVerify(cfJwt, getWsCfJwks(), {
-        audience: CF_ACCESS_AUD,
-      });
-      const email = payload.email as string | undefined;
-      if (email) {
-        const userId = `cf-${email}`;
-        let user = Q.getUserById(db, userId);
-        if (!user) {
-          const displayName = email.split('@')[0]!;
-          user = Q.createUser(db, userId, displayName, 'member');
-          const channelCount = Q.addUserToAllChannels(db, userId);
-          console.log(`[ws] Created CF Access user: ${userId} (${displayName}), auto-joined ${channelCount} channels`);
-        } else {
-          console.log(`[ws] Authenticated CF Access user: ${userId}`);
-        }
+      const payload = jwt.verify(jwtToken, JWT_SECRET) as JwtPayload;
+      const user = Q.getUserById(db, payload.userId);
+      if (user) {
+        console.log(`[ws] Authenticated via JWT cookie: ${user.id}`);
         return user;
       }
     } catch (err) {
-      console.warn('[ws] CF Access JWT verification failed:', err instanceof Error ? err.message : String(err));
-      // Invalid JWT — fall through
+      console.warn('[ws] JWT verification failed:', err instanceof Error ? err.message : String(err));
     }
-  } else if (cfJwt && (!CF_ACCESS_TEAM_DOMAIN || !CF_ACCESS_AUD)) {
-    // CF JWT present but config missing
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[ws] CF Access JWT present but CF config not configured in production');
-      return undefined;
-    }
-    // Dev mode: fall through to dev bypass
   }
 
   // 3. Dev mode bypass
@@ -74,17 +54,10 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
       const user = Q.getUserById(db, devUserId);
       if (user) return user;
     }
-    // Fallback to first admin in dev
     return db.prepare("SELECT * FROM users WHERE role = 'admin' LIMIT 1").get() as User | undefined;
   }
 
   return undefined;
-}
-
-function extractCfCookie(cookieHeader: string | undefined): string | undefined {
-  if (!cookieHeader) return undefined;
-  const match = cookieHeader.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
-  return match?.[1];
 }
 
 interface WsClient {
@@ -154,7 +127,6 @@ let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
 export function registerWebSocket(app: FastifyInstance): void {
   app.get('/ws', { websocket: true }, (socket, request) => {
-    // Auth is async (JWT verification), so we wrap in an IIFE
     (async () => {
       const user = await authenticateWsRequest(request);
 
@@ -187,7 +159,6 @@ export function registerWebSocket(app: FastifyInstance): void {
               socket.send(JSON.stringify({ type: 'error', message: 'Channel not found' }));
               break;
             }
-            // Auto-join authenticated users who aren't yet members
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
               Q.addChannelMember(db, msg.channel_id, userId);
               console.log(`[ws] Auto-joined user ${userId} to channel ${channel.name}`);
@@ -225,7 +196,6 @@ export function registerWebSocket(app: FastifyInstance): void {
               break;
             }
 
-            // Auto-join channel if not a member (consistent with subscribe behavior)
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
               Q.addChannelMember(db, msg.channel_id, userId);
               console.log(`[ws] Auto-joined user ${userId} to channel ${channel.name} on send_message`);
@@ -274,14 +244,12 @@ export function registerWebSocket(app: FastifyInstance): void {
       removeOnlineUser(userId, socket);
     });
     })().catch(() => {
-      // Auth failed or unexpected error — close the socket
       if (socket.readyState === 1) {
         socket.close(4001, 'Authentication failed');
       }
     });
   });
 
-  // Heartbeat: ping every 30s, close if no pong within 10s
   if (!heartbeatInterval) {
     heartbeatInterval = setInterval(() => {
       for (const [ws, client] of clients.entries()) {
@@ -297,13 +265,11 @@ export function registerWebSocket(app: FastifyInstance): void {
     }, 30_000);
   }
 
-  // Clean up heartbeat interval on server close
   app.addHook('onClose', async () => {
     if (heartbeatInterval) {
       clearInterval(heartbeatInterval);
       heartbeatInterval = null;
     }
-    // Close all client connections
     for (const [ws, client] of clients.entries()) {
       ws.close(1001, 'Server shutting down');
       clients.delete(ws);

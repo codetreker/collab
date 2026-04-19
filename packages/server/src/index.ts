@@ -59,6 +59,7 @@ async function main(): Promise<void> {
     if (
       url === '/health' ||
       url === '/api/v1/poll' ||
+      url.startsWith('/api/v1/auth/') ||
       url.startsWith('/assets/') ||
       url.startsWith('/uploads/') ||
       url === '/ws' ||

@@ -19,7 +19,7 @@ async function request<T>(url: string, opts: RequestInit = {}): Promise<T> {
     ...(opts.headers as Record<string, string> ?? {}),
   };
 
-  if (currentUserId) {
+  if (import.meta.env.DEV && currentUserId) {
     headers['X-Dev-User-Id'] = currentUserId;
   }
 
@@ -32,6 +32,7 @@ async function request<T>(url: string, opts: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
     ...opts,
     headers,
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -47,6 +48,22 @@ export class ApiError extends Error {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+// ─── Auth ──────────────────────────────────────────────
+
+export async function login(email: string, password: string): Promise<User> {
+  const data = await request<{ user: User }>('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  return data.user;
+}
+
+export async function logout(): Promise<void> {
+  await request<{ ok: boolean }>('/api/v1/auth/logout', {
+    method: 'POST',
+  });
 }
 
 // ─── Channels ───────────────────────────────────────────

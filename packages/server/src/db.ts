@@ -87,6 +87,15 @@ function initSchema(db: Database.Database): void {
   if (!cols.some((c) => c.name === 'last_read_at')) {
     db.exec('ALTER TABLE channel_members ADD COLUMN last_read_at INTEGER');
   }
+
+  // Migration: add email and password_hash to users if missing
+  const userCols = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!userCols.some((c) => c.name === 'email')) {
+    db.exec('ALTER TABLE users ADD COLUMN email TEXT');
+  }
+  if (!userCols.some((c) => c.name === 'password_hash')) {
+    db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+  }
 }
 
 export function closeDb(): void {
