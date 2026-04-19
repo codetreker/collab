@@ -60,6 +60,8 @@ export function registerPollRoutes(app: FastifyInstance): void {
 
     db.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").run(Date.now(), user.id);
 
+    const userChannelIds = (db.prepare("SELECT channel_id FROM channel_members WHERE user_id = ?").all(user.id) as { channel_id: string }[]).map(r => r.channel_id);
+
     let currentCursor: number;
 
     if (since_id && typeof since_id === 'string') {
@@ -75,9 +77,11 @@ export function registerPollRoutes(app: FastifyInstance): void {
       currentCursor = cursor ?? 0;
     }
 
-    const filteredChannelIds = channel_ids && Array.isArray(channel_ids) && channel_ids.length > 0
-      ? channel_ids
-      : undefined;
+    const effectiveChannelIds = channel_ids && Array.isArray(channel_ids) && channel_ids.length > 0
+      ? channel_ids.filter(id => userChannelIds.includes(id))
+      : userChannelIds;
+
+    const filteredChannelIds = effectiveChannelIds.length > 0 ? effectiveChannelIds : undefined;
 
     const events = Q.getEventsSince(db, currentCursor, 100, filteredChannelIds);
     if (events.length > 0) {
