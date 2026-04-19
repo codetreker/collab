@@ -130,6 +130,22 @@ function initSchema(db: Database.Database): void {
       db.prepare("DELETE FROM channels WHERE id = ?").run(id);
     }
   }
+
+  // Migration: clean up DM channels with >2 members (keep only the pair from the channel name)
+  const dmChannels = db.prepare(
+    `SELECT c.id, c.name FROM channels c
+     WHERE c.type = 'dm'
+       AND (SELECT COUNT(*) FROM channel_members WHERE channel_id = c.id) > 2`,
+  ).all() as { id: string; name: string }[];
+  for (const { id, name } of dmChannels) {
+    const match = name.match(/^dm:(.+)_(.+)$/);
+    if (match) {
+      const [, uid1, uid2] = match;
+      db.prepare(
+        "DELETE FROM channel_members WHERE channel_id = ? AND user_id NOT IN (?, ?)",
+      ).run(id, uid1, uid2);
+    }
+  }
 }
 
 export function closeDb(): void {

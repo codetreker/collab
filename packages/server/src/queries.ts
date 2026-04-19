@@ -539,6 +539,7 @@ export function listDmChannelsForUser(
      JOIN channel_members cm2 ON cm2.channel_id = c.id AND cm2.user_id != ?
      JOIN users u ON u.id = cm2.user_id
      WHERE c.type = 'dm'
+     GROUP BY c.id
      ORDER BY c.created_at DESC`,
   ).all(userId, userId) as {
     id: string; name: string; type: 'dm'; created_at: number;
