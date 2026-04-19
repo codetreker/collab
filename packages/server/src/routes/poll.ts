@@ -58,7 +58,9 @@ export function registerPollRoutes(app: FastifyInstance): void {
       return reply.status(401).send({ error: 'Invalid API key' });
     }
 
-    db.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").run(Date.now(), user.id);
+    const now = Date.now();
+    db.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").run(now, user.id);
+    console.log(`[poll] user=${user.id} last_seen_at=${now}`);
 
     const userChannelIds = (db.prepare("SELECT channel_id FROM channel_members WHERE user_id = ?").all(user.id) as { channel_id: string }[]).map(r => r.channel_id);
 
