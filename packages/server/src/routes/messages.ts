@@ -78,6 +78,11 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       return reply.status(401).send({ error: 'Authentication required' });
     }
 
+    // Auto-join channel if not a member
+    if (!Q.isChannelMember(db, channelId, senderId)) {
+      Q.addChannelMember(db, channelId, senderId);
+    }
+
     const message = Q.createMessage(
       db,
       channelId,

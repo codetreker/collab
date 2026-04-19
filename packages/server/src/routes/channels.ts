@@ -199,8 +199,9 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(401).send({ error: 'Authentication required' });
     }
 
+    // Auto-join if not yet a member (e.g., CF Access user accessing a channel for the first time)
     if (!Q.isChannelMember(db, channelId, userId)) {
-      return reply.status(403).send({ error: 'Not a member of this channel' });
+      Q.addChannelMember(db, channelId, userId);
     }
 
     Q.markChannelRead(db, channelId, userId);

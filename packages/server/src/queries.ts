@@ -367,6 +367,26 @@ export function addChannelMember(
   ).run(channelId, userId, Date.now());
 }
 
+/**
+ * Auto-join a user to ALL existing channels.
+ * Sets last_read_at = now so the user starts with 0 unread.
+ * Used when creating new CF Access users.
+ */
+export function addUserToAllChannels(
+  db: Database.Database,
+  userId: string,
+): number {
+  const channels = db.prepare('SELECT id FROM channels').all() as { id: string }[];
+  const now = Date.now();
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+  );
+  for (const ch of channels) {
+    stmt.run(ch.id, userId, now, now);
+  }
+  return channels.length;
+}
+
 export function removeChannelMember(
   db: Database.Database,
   channelId: string,

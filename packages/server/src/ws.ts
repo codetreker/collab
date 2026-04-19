@@ -26,10 +26,13 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
   const token = url.searchParams.get('token');
   if (token) {
     const user = Q.getUserByApiKey(db, token);
-    if (user) return user;
+    if (user) {
+      console.log(`[ws] Authenticated via API key: ${user.id}`);
+      return user;
+    }
   }
 
-  // 2. Check CF Access JWT (header or cookie) — production browser auth
+  // 2. Check CF Access JWT (header or cookie) — browser auth
   const cfJwt = (request.headers['cf-access-jwt-assertion'] as string | undefined)
     ?? extractCfCookie(request.headers.cookie as string | undefined);
   if (cfJwt && CF_ACCESS_TEAM_DOMAIN && CF_ACCESS_AUD) {
@@ -42,13 +45,26 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
         const userId = `cf-${email}`;
         let user = Q.getUserById(db, userId);
         if (!user) {
-          user = Q.createUser(db, userId, email.split('@')[0]!, 'member');
+          const displayName = email.split('@')[0]!;
+          user = Q.createUser(db, userId, displayName, 'member');
+          const channelCount = Q.addUserToAllChannels(db, userId);
+          console.log(`[ws] Created CF Access user: ${userId} (${displayName}), auto-joined ${channelCount} channels`);
+        } else {
+          console.log(`[ws] Authenticated CF Access user: ${userId}`);
         }
         return user;
       }
-    } catch {
+    } catch (err) {
+      console.warn('[ws] CF Access JWT verification failed:', err instanceof Error ? err.message : String(err));
       // Invalid JWT — fall through
     }
+  } else if (cfJwt && (!CF_ACCESS_TEAM_DOMAIN || !CF_ACCESS_AUD)) {
+    // CF JWT present but config missing
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[ws] CF Access JWT present but CF config not configured in production');
+      return undefined;
+    }
+    // Dev mode: fall through to dev bypass
   }
 
   // 3. Dev mode bypass
@@ -174,6 +190,7 @@ export function registerWebSocket(app: FastifyInstance): void {
             // Auto-join authenticated users who aren't yet members
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
               Q.addChannelMember(db, msg.channel_id, userId);
+              console.log(`[ws] Auto-joined user ${userId} to channel ${channel.name}`);
             }
             client.subscribedChannels.add(msg.channel_id);
             socket.send(JSON.stringify({ type: 'subscribed', channel_id: msg.channel_id }));
@@ -208,9 +225,10 @@ export function registerWebSocket(app: FastifyInstance): void {
               break;
             }
 
+            // Auto-join channel if not a member (consistent with subscribe behavior)
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
-              socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
-              break;
+              Q.addChannelMember(db, msg.channel_id, userId);
+              console.log(`[ws] Auto-joined user ${userId} to channel ${channel.name} on send_message`);
             }
 
             const ct = msg.content_type ?? 'text';

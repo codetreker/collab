@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { Channel, Message, User, ConnectionState } from '../types';
 import * as api from '../lib/api';
 
@@ -272,7 +272,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return channel;
   }, []);
 
-  const actions = {
+  const actions = useMemo(() => ({
     loadChannels,
     loadMessages,
     loadOlderMessages,
@@ -282,7 +282,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     selectChannel,
     sendMessage: sendMessageAction,
     createChannel: createChannelAction,
-  };
+  }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, actions }}>
