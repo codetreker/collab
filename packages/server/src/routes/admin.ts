@@ -36,7 +36,8 @@ export function registerAdminRoutes(app: FastifyInstance): void {
   });
 
   app.post('/api/v1/admin/users', async (request, reply) => {
-    const { email, password, display_name, role } = request.body as {
+    const { id: customId, email, password, display_name, role } = request.body as {
+      id?: string;
       email?: string;
       password?: string;
       display_name?: string;
@@ -57,7 +58,11 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       return reply.status(409).send({ error: 'Email already in use' });
     }
 
-    const id = uuidv4();
+    const id = customId?.trim() || uuidv4();
+
+    if (customId?.trim() && Q.getUserById(db, id)) {
+      return reply.status(409).send({ error: 'User ID already in use' });
+    }
     const passwordHash = bcrypt.hashSync(password, 10);
     Q.createUser(db, id, display_name, role, null, email, passwordHash);
     Q.addUserToAllChannels(db, id);

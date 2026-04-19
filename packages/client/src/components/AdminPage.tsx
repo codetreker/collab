@@ -104,6 +104,7 @@ export default function AdminPage({ onBack }: Props) {
         <table className="admin-table">
           <thead>
             <tr>
+              <th>User ID</th>
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
@@ -115,6 +116,7 @@ export default function AdminPage({ onBack }: Props) {
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
+                <td><code style={{ fontFamily: 'monospace' }}>{user.id}</code></td>
                 <td>{user.display_name}</td>
                 <td>{user.email ?? '—'}</td>
                 <td><span className={`role-badge role-${user.role}`}>{user.role}</span></td>
@@ -185,6 +187,7 @@ function CreateUserModal({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [customId, setCustomId] = useState('');
   const [role, setRole] = useState('member');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -194,7 +197,7 @@ function CreateUserModal({
     setSaving(true);
     setError('');
     try {
-      const user = await createAdminUser({ email, password, display_name: displayName, role });
+      const user = await createAdminUser({ id: customId || undefined, email, password, display_name: displayName, role });
       onCreated(user);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create user');
@@ -208,6 +211,10 @@ function CreateUserModal({
       <div className="admin-modal-content" onClick={(e) => e.stopPropagation()}>
         <h3>Create User</h3>
         <form onSubmit={handleSubmit}>
+          <label>
+            User ID (leave blank to auto-generate)
+            <input className="input-field" value={customId} onChange={(e) => setCustomId(e.target.value)} placeholder="e.g. agent-mybot" style={{ fontFamily: 'monospace' }} />
+          </label>
           <label>
             Display Name
             <input className="input-field" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
@@ -281,6 +288,10 @@ function EditUserModal({
       <div className="admin-modal-content" onClick={(e) => e.stopPropagation()}>
         <h3>Edit User</h3>
         <form onSubmit={handleSubmit}>
+          <label>
+            User ID
+            <input className="input-field" value={user.id} readOnly style={{ fontFamily: 'monospace', opacity: 0.7 }} />
+          </label>
           <label>
             Display Name
             <input className="input-field" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
