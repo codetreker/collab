@@ -1,8 +1,75 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { getDb } from './db.js';
 import * as Q from './queries.js';
 import type { User } from './types.js';
+
+const CF_ACCESS_TEAM_DOMAIN = process.env.CF_ACCESS_TEAM_DOMAIN ?? '';
+const CF_ACCESS_AUD = process.env.CF_ACCESS_AUD ?? '';
+
+let wsJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+function getWsCfJwks(): ReturnType<typeof createRemoteJWKSet> {
+  if (!wsJwks) {
+    const certsUrl = new URL(`https://${CF_ACCESS_TEAM_DOMAIN}.cloudflareaccess.com/cdn-cgi/access/certs`);
+    wsJwks = createRemoteJWKSet(certsUrl);
+  }
+  return wsJwks;
+}
+
+async function authenticateWsRequest(request: { headers: Record<string, string | string[] | undefined>; url: string }): Promise<User | undefined> {
+  const db = getDb();
+
+  // 1. Check token query param (agent/API key auth)
+  const url = new URL(request.url, `http://${(request.headers.host as string) ?? 'localhost'}`);
+  const token = url.searchParams.get('token');
+  if (token) {
+    const user = Q.getUserByApiKey(db, token);
+    if (user) return user;
+  }
+
+  // 2. Check CF Access JWT (header or cookie) — production browser auth
+  const cfJwt = (request.headers['cf-access-jwt-assertion'] as string | undefined)
+    ?? extractCfCookie(request.headers.cookie as string | undefined);
+  if (cfJwt && CF_ACCESS_TEAM_DOMAIN && CF_ACCESS_AUD) {
+    try {
+      const { payload } = await jwtVerify(cfJwt, getWsCfJwks(), {
+        audience: CF_ACCESS_AUD,
+      });
+      const email = payload.email as string | undefined;
+      if (email) {
+        const userId = `cf-${email}`;
+        let user = Q.getUserById(db, userId);
+        if (!user) {
+          user = Q.createUser(db, userId, email.split('@')[0]!, 'member');
+        }
+        return user;
+      }
+    } catch {
+      // Invalid JWT — fall through
+    }
+  }
+
+  // 3. Dev mode bypass
+  if (process.env.NODE_ENV === 'development') {
+    const devUserId = url.searchParams.get('user_id');
+    if (devUserId) {
+      const user = Q.getUserById(db, devUserId);
+      if (user) return user;
+    }
+    // Fallback to first admin in dev
+    return db.prepare("SELECT * FROM users WHERE role = 'admin' LIMIT 1").get() as User | undefined;
+  }
+
+  return undefined;
+}
+
+function extractCfCookie(cookieHeader: string | undefined): string | undefined {
+  if (!cookieHeader) return undefined;
+  const match = cookieHeader.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
+  return match?.[1];
+}
 
 interface WsClient {
   ws: WebSocket;
@@ -71,34 +138,17 @@ let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
 export function registerWebSocket(app: FastifyInstance): void {
   app.get('/ws', { websocket: true }, (socket, request) => {
-    const db = getDb();
+    // Auth is async (JWT verification), so we wrap in an IIFE
+    (async () => {
+      const user = await authenticateWsRequest(request);
 
-    let user: User | undefined;
-
-    // Auth from query params
-    const url = new URL(request.url, `http://${request.headers.host ?? 'localhost'}`);
-    const token = url.searchParams.get('token');
-
-    if (token) {
-      user = Q.getUserByApiKey(db, token);
-    }
-
-    if (!user && process.env.NODE_ENV === 'development') {
-      const devUserId = url.searchParams.get('user_id');
-      if (devUserId) {
-        user = Q.getUserById(db, devUserId);
-      }
       if (!user) {
-        user = db.prepare("SELECT * FROM users WHERE role = 'admin' LIMIT 1").get() as User | undefined;
+        socket.close(4001, 'Authentication required');
+        return;
       }
-    }
 
-    if (!user) {
-      socket.close(4001, 'Authentication required');
-      return;
-    }
-
-    const userId = user.id;
+      const db = getDb();
+      const userId = user.id;
 
     const client: WsClient = {
       ws: socket,
@@ -121,9 +171,9 @@ export function registerWebSocket(app: FastifyInstance): void {
               socket.send(JSON.stringify({ type: 'error', message: 'Channel not found' }));
               break;
             }
+            // Auto-join authenticated users who aren't yet members
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
-              socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
-              break;
+              Q.addChannelMember(db, msg.channel_id, userId);
             }
             client.subscribedChannels.add(msg.channel_id);
             socket.send(JSON.stringify({ type: 'subscribed', channel_id: msg.channel_id }));
@@ -204,6 +254,12 @@ export function registerWebSocket(app: FastifyInstance): void {
     socket.on('error', () => {
       clients.delete(socket);
       removeOnlineUser(userId, socket);
+    });
+    })().catch(() => {
+      // Auth failed or unexpected error — close the socket
+      if (socket.readyState === 1) {
+        socket.close(4001, 'Authentication failed');
+      }
     });
   });
 
