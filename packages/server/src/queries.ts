@@ -254,16 +254,24 @@ export function createMessage(
   const id = uuidv4();
   const now = Date.now();
 
-  // Auto-parse @mentions from content
-  const parsedMentionNames = [...content.matchAll(/@([\p{L}\p{N}_]+)/gu)].map((m) => m[1]!);
-  const parsedMentionIds: string[] = [];
-  for (const name of parsedMentionNames) {
-    const user = getUserByDisplayName(db, name);
+  // Parse <@user_id> tokens from content
+  const parsedIds: string[] = [];
+  for (const m of content.matchAll(/<@([^>]+)>/g)) {
+    const uid = m[1]!;
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(uid) as { id: string } | undefined;
     if (user && !mentionUserIds.includes(user.id)) {
-      parsedMentionIds.push(user.id);
+      parsedIds.push(user.id);
     }
   }
-  const allMentionIds = [...new Set([...mentionUserIds, ...parsedMentionIds])];
+  // Fallback: parse @displayName for backward compat with old clients
+  for (const m of content.matchAll(/@([\p{L}\p{N}_]+)/gu)) {
+    const name = m[1]!;
+    const user = getUserByDisplayName(db, name);
+    if (user && !mentionUserIds.includes(user.id) && !parsedIds.includes(user.id)) {
+      parsedIds.push(user.id);
+    }
+  }
+  const allMentionIds = [...new Set([...mentionUserIds, ...parsedIds])];
 
   const insertMsg = db.prepare(
     `INSERT INTO messages (id, channel_id, sender_id, content, content_type, reply_to_id, created_at)

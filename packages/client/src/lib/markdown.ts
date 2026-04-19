@@ -14,30 +14,27 @@ marked.setOptions({
  * Mentions like @username are highlighted.
  */
 export function renderMarkdown(text: string, mentionedUserIds?: string[], userMap?: Map<string, string>): string {
-  // Replace @mentions with highlighted spans before markdown parsing
   let processed = text;
+
+  // Replace <@user_id> tokens with highlighted display names
+  if (userMap) {
+    processed = processed.replace(/<@([^>]+)>/g, (_match, userId: string) => {
+      const displayName = userMap.get(userId);
+      if (displayName) return `<span class="mention">@${escapeHtml(displayName)}</span>`;
+      return `@${escapeHtml(userId)}`;
+    });
+  }
+
+  // Backward compat: highlight @displayName for old messages with known mentioned user IDs
   if (mentionedUserIds && mentionedUserIds.length > 0 && userMap) {
     for (const userId of mentionedUserIds) {
       const displayName = userMap.get(userId);
       if (displayName) {
-        // Replace @displayName with a span
-        const regex = new RegExp(`@${escapeRegex(displayName)}`, 'g');
+        const regex = new RegExp(`@${escapeRegex(displayName)}(?![^<]*<\\/span>)`, 'g');
         processed = processed.replace(regex, `<span class="mention">@${displayName}</span>`);
       }
     }
   }
-
-  // Also highlight any @word patterns that look like mentions (supports CJK and Unicode)
-  processed = processed.replace(
-    /@([\p{L}\p{N}_]+)/gu,
-    (match, name) => {
-      // Check if already wrapped
-      if (processed.includes(`<span class="mention">${match}</span>`)) {
-        return match;
-      }
-      return `<span class="mention">${match}</span>`;
-    },
-  );
 
   const rawHtml = marked.parse(processed) as string;
   
@@ -58,4 +55,8 @@ export function renderMarkdown(text: string, mentionedUserIds?: string[], userMa
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

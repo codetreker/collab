@@ -39,14 +39,13 @@ export default function MessageInput({ channelId }: Props) {
     const content = text.trim();
     if (!content || sendStatus === 'sending') return;
 
-    // Extract mention user IDs from content
+    // Extract mention user IDs from <@user_id> tokens in content
     const mentionIds: string[] = [];
-    const mentionRegex = /@([\p{L}\p{N}_]+)/gu;
+    const mentionRegex = /<@([^>]+)>/g;
     let match;
     while ((match = mentionRegex.exec(content)) !== null) {
-      const name = match[1]!;
-      const user = state.users.find(u => u.display_name === name);
-      if (user) mentionIds.push(user.id);
+      const userId = match[1]!;
+      if (state.users.some(u => u.id === userId)) mentionIds.push(userId);
     }
 
     setSendStatus('sending');
@@ -96,15 +95,15 @@ export default function MessageInput({ channelId }: Props) {
   const insertMention = (user: User) => {
     const before = text.slice(0, mentionStart);
     const after = text.slice(textareaRef.current?.selectionStart ?? text.length);
-    const newText = `${before}@${user.display_name} ${after}`;
+    const mentionToken = `<@${user.id}>`;
+    const newText = `${before}${mentionToken} ${after}`;
     setText(newText);
     setMentionVisible(false);
     setMentionQuery('');
     setMentionIndex(0);
 
-    // Set cursor position after mention
     setTimeout(() => {
-      const pos = before.length + user.display_name.length + 2;
+      const pos = before.length + mentionToken.length + 1;
       textareaRef.current?.setSelectionRange(pos, pos);
       textareaRef.current?.focus();
     }, 0);
