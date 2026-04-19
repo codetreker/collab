@@ -10,8 +10,8 @@ export default function ConnectionStatus({ state }: Props) {
 
   const config: Record<string, { text: string; className: string }> = {
     connecting: { text: '连接中...', className: 'conn-banner conn-connecting' },
-    reconnecting: { text: '重连中...', className: 'conn-banner conn-reconnecting' },
-    disconnected: { text: '已断开连接', className: 'conn-banner conn-disconnected' },
+    reconnecting: { text: '连接断开，正在重连...', className: 'conn-banner conn-reconnecting' },
+    disconnected: { text: '连接已断开', className: 'conn-banner conn-disconnected' },
   };
 
   const c = config[state] ?? config['disconnected']!;

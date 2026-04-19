@@ -1,11 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { getDevUserId } from '../lib/api';
+import { getDevUserId, fetchMessages } from '../lib/api';
 import type { ConnectionState, Message } from '../types';
 
 const PING_INTERVAL = 25_000;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
-const AUTH_ERROR_CODES = [4001, 4003]; // Don't auto-reconnect on auth failures
+const AUTH_FAILURE_CODES = new Set([4001, 4003]);
 
 export function useWebSocket() {
   const { state, dispatch } = useAppContext();
@@ -15,13 +15,22 @@ export function useWebSocket() {
   const pingTimer = useRef<ReturnType<typeof setInterval>>();
   const subscribedChannels = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
+  const lastMessageTimestamp = useRef<Map<string, number>>(new Map());
+  const scheduleReconnectRef = useRef<() => void>();
 
   const setConnectionState = useCallback((cs: ConnectionState) => {
     dispatch({ type: 'SET_CONNECTION_STATE', state: cs });
   }, [dispatch]);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (wsRef.current) {
+      const rs = wsRef.current.readyState;
+      if (rs === WebSocket.OPEN || rs === WebSocket.CONNECTING) return;
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
@@ -37,12 +46,29 @@ export function useWebSocket() {
 
     ws.onopen = () => {
       if (!mountedRef.current) return;
+      const wasReconnect = reconnectAttempt.current > 0;
       reconnectAttempt.current = 0;
       setConnectionState('connected');
 
       // Re-subscribe to all channels
       for (const channelId of subscribedChannels.current) {
         ws.send(JSON.stringify({ type: 'subscribe', channel_id: channelId }));
+      }
+
+      // Fetch missed messages on reconnect
+      if (wasReconnect) {
+        for (const channelId of subscribedChannels.current) {
+          const lastTs = lastMessageTimestamp.current.get(channelId);
+          if (lastTs) {
+            fetchMessages(channelId, { after: lastTs, limit: 50 })
+              .then(({ messages }) => {
+                for (const msg of messages) {
+                  dispatch({ type: 'ADD_MESSAGE', channelId: msg.channel_id, message: msg });
+                }
+              })
+              .catch((err: unknown) => console.warn('[ws] Failed to fetch missed messages:', err));
+          }
+        }
       }
 
       // Start heartbeat
@@ -67,19 +93,21 @@ export function useWebSocket() {
     ws.onclose = (event) => {
       if (!mountedRef.current) return;
       cleanup();
-      // Don't reconnect on auth errors — retrying won't help
-      if (AUTH_ERROR_CODES.includes(event.code)) {
+
+      if (AUTH_FAILURE_CODES.has(event.code)) {
         setConnectionState('disconnected');
-        console.warn('[ws] Auth error, not reconnecting:', event.code, event.reason);
+        console.warn('[ws] Auth failure (code %d), not reconnecting:', event.code, event.reason);
         return;
       }
-      scheduleReconnect();
+
+      console.info('[ws] Closed (code %d), scheduling reconnect', event.code);
+      scheduleReconnectRef.current?.();
     };
 
     ws.onerror = () => {
       // onclose will fire after onerror
     };
-  }, [setConnectionState]);
+  }, [setConnectionState, dispatch]);
 
   const cleanup = useCallback(() => {
     if (pingTimer.current) {
@@ -98,11 +126,17 @@ export function useWebSocket() {
     }, delay);
   }, [connect, setConnectionState]);
 
+  scheduleReconnectRef.current = scheduleReconnect;
+
   const handleMessage = useCallback((data: { type: string; [key: string]: unknown }) => {
     switch (data.type) {
       case 'new_message': {
         const message = data.message as Message;
         dispatch({ type: 'ADD_MESSAGE', channelId: message.channel_id, message });
+        const prev = lastMessageTimestamp.current.get(message.channel_id) ?? 0;
+        if (message.created_at > prev) {
+          lastMessageTimestamp.current.set(message.channel_id, message.created_at);
+        }
         break;
       }
       case 'presence': {
