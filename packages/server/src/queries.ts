@@ -38,7 +38,7 @@ export function listChannelsWithUnread(
                 0
               ) AS unread_count
        FROM channels c
-       LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+       INNER JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
        LEFT JOIN channel_members cm2 ON cm2.channel_id = c.id
        WHERE (c.type = 'channel' OR c.type IS NULL)
        GROUP BY c.id
@@ -383,24 +383,17 @@ export function addChannelMember(
   ).run(channelId, userId, Date.now());
 }
 
-/**
- * Auto-join a user to ALL existing channels.
- * Sets last_read_at = now so the user starts with 0 unread.
- * Used when creating new CF Access users.
- */
-export function addUserToAllChannels(
+export function addUserToDefaultChannel(
   db: Database.Database,
   userId: string,
-): number {
-  const channels = db.prepare("SELECT id FROM channels WHERE type = 'channel' OR type IS NULL").all() as { id: string }[];
-  const now = Date.now();
-  const stmt = db.prepare(
-    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
-  );
-  for (const ch of channels) {
-    stmt.run(ch.id, userId, now, now);
+): void {
+  const general = db.prepare("SELECT id FROM channels WHERE name = 'general' AND (type = 'channel' OR type IS NULL)").get() as { id: string } | undefined;
+  if (general) {
+    const now = Date.now();
+    db.prepare(
+      'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+    ).run(general.id, userId, now, now);
   }
-  return channels.length;
 }
 
 export function removeChannelMember(

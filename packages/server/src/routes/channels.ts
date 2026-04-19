@@ -17,9 +17,9 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
   // Create channel
   app.post<{
-    Body: { name: string; topic?: string };
+    Body: { name: string; topic?: string; member_ids?: string[] };
   }>('/api/v1/channels', async (request, reply) => {
-    const { name, topic } = request.body ?? {};
+    const { name, topic, member_ids } = request.body ?? {};
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return reply.status(400).send({ error: 'Channel name is required' });
@@ -35,6 +35,16 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     const userId = request.currentUser?.id ?? 'system';
     const channel = Q.createChannel(db, cleanName, topic?.trim() ?? '', userId);
+
+    Q.addChannelMember(db, channel.id, userId);
+
+    if (Array.isArray(member_ids)) {
+      for (const memberId of member_ids) {
+        if (typeof memberId === 'string' && memberId !== userId) {
+          Q.addChannelMember(db, channel.id, memberId);
+        }
+      }
+    }
 
     broadcastToChannel(channel.id, {
       type: 'channel_created',
@@ -100,7 +110,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     return { channel: updated };
   });
 
-  // Join channel
+  // Join channel / add member
   app.post<{
     Params: { channelId: string };
     Body: { user_id: string };
@@ -120,6 +130,16 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     if ((channel as { type?: string }).type === 'dm') {
       return reply.status(403).send({ error: 'Cannot join DM channels' });
+    }
+
+    const requesterId = request.currentUser?.id;
+    if (!requesterId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const requester = Q.getUserById(db, requesterId);
+    if (channel.created_by !== requesterId && requester?.role !== 'admin') {
+      return reply.status(403).send({ error: 'Only channel creator or admin can add members' });
     }
 
     const user = Q.getUserById(db, user_id);
@@ -150,6 +170,22 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     const channel = Q.getChannel(db, channelId);
     if (!channel) {
       return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.name === 'general') {
+      return reply.status(403).send({ error: 'Cannot remove members from #general' });
+    }
+
+    const requesterId = request.currentUser?.id;
+    if (!requesterId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const requester = Q.getUserById(db, requesterId);
+    const isSelf = requesterId === userId;
+    const isCreatorOrAdmin = channel.created_by === requesterId || requester?.role === 'admin';
+    if (!isSelf && !isCreatorOrAdmin) {
+      return reply.status(403).send({ error: 'Only channel creator, admin, or the user themselves can remove members' });
     }
 
     const removed = Q.removeChannelMember(db, channelId, userId);
@@ -203,9 +239,8 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(401).send({ error: 'Authentication required' });
     }
 
-    // Auto-join if not yet a member (e.g., CF Access user accessing a channel for the first time)
     if (!Q.isChannelMember(db, channelId, userId)) {
-      Q.addChannelMember(db, channelId, userId);
+      return reply.status(403).send({ error: 'Not a member of this channel' });
     }
 
     Q.markChannelRead(db, channelId, userId);

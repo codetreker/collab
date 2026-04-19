@@ -160,8 +160,8 @@ export function registerWebSocket(app: FastifyInstance): void {
               break;
             }
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
-              Q.addChannelMember(db, msg.channel_id, userId);
-              console.log(`[ws] Auto-joined user ${userId} to channel ${channel.name}`);
+              socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
+              break;
             }
             client.subscribedChannels.add(msg.channel_id);
             socket.send(JSON.stringify({ type: 'subscribed', channel_id: msg.channel_id }));
@@ -197,8 +197,8 @@ export function registerWebSocket(app: FastifyInstance): void {
             }
 
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
-              Q.addChannelMember(db, msg.channel_id, userId);
-              console.log(`[ws] Auto-joined user ${userId} to channel ${channel.name} on send_message`);
+              socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
+              break;
             }
 
             const ct = msg.content_type ?? 'text';
