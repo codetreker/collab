@@ -114,6 +114,8 @@ function removeOnlineUser(userId: string, ws: WebSocket): void {
     sockets.delete(ws);
     if (sockets.size === 0) {
       onlineUsers.delete(userId);
+      const db = getDb();
+      db.prepare("UPDATE users SET last_seen_at = NULL WHERE id = ?").run(userId);
       broadcastPresence(userId, 'offline');
     }
   }
