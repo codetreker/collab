@@ -121,6 +121,10 @@ async function main(): Promise<void> {
       if (request.url.startsWith('/api/') || request.url.startsWith('/ws')) {
         return reply.status(404).send({ error: 'Not found' });
       }
+      const urlPath = request.url.split('?')[0];
+      if (path.extname(urlPath)) {
+        return reply.status(404).send({ error: 'Not found' });
+      }
       return reply.sendFile('index.html');
     });
   }
