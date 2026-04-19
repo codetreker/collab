@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { pollCollabEvents } from "./api-client.js";
+import { fetchBotIdentity, pollCollabEvents } from "./api-client.js";
 import { handleCollabInbound } from "./inbound.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
 import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
@@ -71,6 +71,29 @@ export async function startCollabGateway(
   const account = ctx.account;
   if (!account.configured) {
     throw new Error(`Collab channel is not configured for account "${account.accountId}"`);
+  }
+
+  // Auto-fetch bot identity from server unless explicitly overridden in config
+  if (!account.config.botUserId || !account.config.botDisplayName) {
+    try {
+      const identity = await fetchBotIdentity({
+        baseUrl: account.baseUrl,
+        apiKey: account.apiKey,
+      });
+      if (!account.config.botUserId) {
+        account.botUserId = identity.userId;
+      }
+      if (!account.config.botDisplayName) {
+        account.botDisplayName = identity.displayName;
+      }
+      console.log(
+        `[collab-plugin] Bot identity: ${account.botDisplayName} (${account.botUserId})`,
+      );
+    } catch (error) {
+      throw new Error(
+        `[collab-plugin] Failed to fetch bot identity from ${account.baseUrl}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   ctx.setStatus({

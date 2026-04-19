@@ -189,6 +189,23 @@ export class CollabApiClient {
 
 // ─── Standalone helpers (used by gateway/outbound without class) ──
 
+export async function fetchBotIdentity(params: {
+  baseUrl: string;
+  apiKey: string;
+}): Promise<{ userId: string; displayName: string }> {
+  const result = await request<{ user: CollabUser }>(
+    params.baseUrl,
+    "GET",
+    "/api/v1/users/me",
+    undefined,
+    params.apiKey,
+  );
+  return {
+    userId: result.user.id,
+    displayName: result.user.display_name,
+  };
+}
+
 export async function pollCollabEvents(params: {
   baseUrl: string;
   apiKey: string;
