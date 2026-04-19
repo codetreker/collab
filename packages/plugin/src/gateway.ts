@@ -29,8 +29,8 @@ function readPersistedCursor(accountId: string): number {
   } catch {
     // Corrupt or unreadable — fall through to default
   }
-  // No persisted cursor: use current timestamp (seconds) so we don't replay history
-  return Math.floor(Date.now() / 1000);
+  // No persisted cursor — caller must bootstrap from the server
+  return -1;
 }
 
 function persistCursor(accountId: string, cursor: number): void {
@@ -107,6 +107,27 @@ export async function startCollabGateway(
 
   let cursor = readPersistedCursor(account.accountId);
   let consecutiveErrors = 0;
+
+  // Bootstrap: if no persisted cursor, do a single poll to discover the latest cursor
+  // without processing events (avoids replaying all history on first start)
+  if (cursor < 0) {
+    try {
+      const bootstrap = await pollCollabEvents({
+        baseUrl: account.baseUrl,
+        apiKey: account.apiKey,
+        cursor: 0,
+        timeoutMs: 1000,
+        signal: ctx.abortSignal,
+      });
+      cursor = bootstrap.cursor;
+      persistCursor(account.accountId, cursor);
+      console.log(`[collab-plugin] Bootstrapped cursor: ${cursor}`);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      cursor = 0;
+      console.warn("[collab-plugin] Bootstrap poll failed, starting from cursor 0:", error instanceof Error ? error.message : error);
+    }
+  }
 
   try {
     while (!ctx.abortSignal.aborted) {
