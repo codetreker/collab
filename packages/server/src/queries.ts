@@ -457,7 +457,7 @@ export function getUnreadCount(
   return row.cnt;
 }
 
-export function getRecentlySeenUserIds(db: Database.Database, withinMs = 60000): string[] {
+export function getRecentlySeenUserIds(db: Database.Database, withinMs = 120000): string[] {
   const cutoff = Date.now() - withinMs;
   const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ?").all(cutoff) as { id: string }[];
   return rows.map((r) => r.id);
