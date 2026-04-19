@@ -1,3 +1,5 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { pollCollabEvents } from "./api-client.js";
 import { handleCollabInbound } from "./inbound.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
@@ -5,6 +7,46 @@ import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js"
 
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 30_000;
+
+// ─── Cursor persistence ──────────────────────────────────
+
+function cursorFilePath(accountId: string): string {
+  // Store under OpenClaw data dir; fall back to cwd
+  const base = process.env.OPENCLAW_DATA_DIR || process.env.HOME || ".";
+  return join(base, "data", `collab-cursor-${accountId}.json`);
+}
+
+function readPersistedCursor(accountId: string): number {
+  const fp = cursorFilePath(accountId);
+  try {
+    if (existsSync(fp)) {
+      const raw = readFileSync(fp, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (typeof parsed.cursor === "number" && parsed.cursor > 0) {
+        return parsed.cursor;
+      }
+    }
+  } catch {
+    // Corrupt or unreadable — fall through to default
+  }
+  // No persisted cursor: use current timestamp (seconds) so we don't replay history
+  return Math.floor(Date.now() / 1000);
+}
+
+function persistCursor(accountId: string, cursor: number): void {
+  const fp = cursorFilePath(accountId);
+  try {
+    const dir = dirname(fp);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(fp, JSON.stringify({ cursor, updatedAt: Date.now() }), "utf-8");
+  } catch {
+    // Best-effort — don't crash the gateway over a write failure
+  }
+}
+
+// ─── Gateway ─────────────────────────────────────────────
 
 async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -39,7 +81,7 @@ export async function startCollabGateway(
     baseUrl: account.baseUrl,
   });
 
-  let cursor = 0;
+  let cursor = readPersistedCursor(account.accountId);
   let consecutiveErrors = 0;
 
   try {
@@ -54,6 +96,7 @@ export async function startCollabGateway(
         });
 
         cursor = result.cursor;
+        persistCursor(account.accountId, cursor);
         consecutiveErrors = 0;
 
         for (const event of result.events) {
