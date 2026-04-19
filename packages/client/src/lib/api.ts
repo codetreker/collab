@@ -24,7 +24,8 @@ async function request<T>(url: string, opts: RequestInit = {}): Promise<T> {
   }
 
   // Don't set Content-Type for FormData (browser sets boundary automatically)
-  if (!(opts.body instanceof FormData) && !headers['Content-Type']) {
+  // Only set JSON content-type when there's actually a body to send
+  if (opts.body && !(opts.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
