@@ -218,7 +218,7 @@ interface AppContextValue {
     loadOnlineUsers: () => Promise<void>;
     selectChannel: (channelId: string) => void;
     sendMessage: (channelId: string, content: string, contentType?: 'text' | 'image', mentions?: string[]) => Promise<Message>;
-    createChannel: (name: string, topic?: string) => Promise<Channel>;
+    createChannel: (name: string, topic?: string, memberIds?: string[]) => Promise<Channel>;
     loadDmChannels: () => Promise<void>;
     openDm: (userId: string) => Promise<void>;
   };
@@ -304,8 +304,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return api.sendMessage(channelId, content, contentType, mentions);
   }, []);
 
-  const createChannelAction = useCallback(async (name: string, topic?: string): Promise<Channel> => {
-    const channel = await api.createChannel(name, topic);
+  const createChannelAction = useCallback(async (name: string, topic?: string, memberIds?: string[]): Promise<Channel> => {
+    const channel = await api.createChannel(name, topic, memberIds);
     dispatch({ type: 'ADD_CHANNEL', channel });
     return channel;
   }, []);

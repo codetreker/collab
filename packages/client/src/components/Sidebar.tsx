@@ -17,6 +17,7 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
   const [newName, setNewName] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [creating, setCreating] = useState(false);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     actions.loadDmChannels();
@@ -27,15 +28,29 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
     onClose?.();
   };
 
+  const toggleMember = (userId: string) => {
+    setSelectedMemberIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || creating) return;
     setCreating(true);
     try {
-      const channel = await actions.createChannel(newName.trim(), newTopic.trim() || undefined);
+      const channel = await actions.createChannel(
+        newName.trim(),
+        newTopic.trim() || undefined,
+        selectedMemberIds.size > 0 ? [...selectedMemberIds] : undefined,
+      );
       actions.selectChannel(channel.id);
       setNewName('');
       setNewTopic('');
+      setSelectedMemberIds(new Set());
       setShowCreate(false);
       onClose?.();
     } catch (err) {
@@ -98,11 +113,27 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
             onChange={e => setNewTopic(e.target.value)}
             className="input-field"
           />
+          <div className="member-select-list">
+            <div className="member-select-label">选择成员（可选）</div>
+            {state.users
+              .filter(u => u.id !== state.currentUser?.id)
+              .map(u => (
+                <label key={u.id} className="member-select-item">
+                  <input
+                    type="checkbox"
+                    checked={selectedMemberIds.has(u.id)}
+                    onChange={() => toggleMember(u.id)}
+                  />
+                  <span>{u.display_name}</span>
+                  {u.role === 'agent' && <span className="user-badge">Bot</span>}
+                </label>
+              ))}
+          </div>
           <div className="form-actions">
             <button type="submit" disabled={creating || !newName.trim()} className="btn btn-primary btn-sm">
               {creating ? '创建中...' : '创建'}
             </button>
-            <button type="button" onClick={() => setShowCreate(false)} className="btn btn-sm">
+            <button type="button" onClick={() => { setShowCreate(false); setSelectedMemberIds(new Set()); }} className="btn btn-sm">
               取消
             </button>
           </div>

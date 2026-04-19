@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConnectionStatus from './ConnectionStatus';
+import ChannelMembersModal from './ChannelMembersModal';
 
 interface Props {
   channelId: string;
@@ -12,6 +13,7 @@ interface Props {
 export default function ChannelView({ channelId }: Props) {
   const { state, actions } = useAppContext();
   const { subscribe, unsubscribe, connectionState } = useWebSocket();
+  const [showMembers, setShowMembers] = useState(false);
 
   const channel = state.channels.find(c => c.id === channelId);
   const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
@@ -27,6 +29,10 @@ export default function ChannelView({ channelId }: Props) {
     subscribe(channelId);
     return () => unsubscribe(channelId);
   }, [channelId, subscribe, unsubscribe]);
+
+  useEffect(() => {
+    setShowMembers(false);
+  }, [channelId]);
 
   if (!channel && !dmChannel) {
     return (
@@ -48,10 +54,27 @@ export default function ChannelView({ channelId }: Props) {
           <h2 className="channel-title">{headerTitle}</h2>
           {headerTopic && <span className="channel-topic">{headerTopic}</span>}
         </div>
+        {!isDm && channel && (
+          <button
+            className="icon-btn"
+            title="成员管理"
+            onClick={() => setShowMembers(true)}
+          >
+            👥
+          </button>
+        )}
       </div>
       <ConnectionStatus state={connectionState} />
       <MessageList channelId={channelId} />
       <MessageInput channelId={channelId} />
+      {showMembers && channel && (
+        <ChannelMembersModal
+          channelId={channel.id}
+          channelName={channel.name}
+          channelCreatedBy={channel.created_by}
+          onClose={() => setShowMembers(false)}
+        />
+      )}
     </div>
   );
 }

@@ -73,12 +73,39 @@ export async function fetchChannels(): Promise<Channel[]> {
   return data.channels;
 }
 
-export async function createChannel(name: string, topic?: string): Promise<Channel> {
+export async function createChannel(name: string, topic?: string, memberIds?: string[]): Promise<Channel> {
   const data = await request<{ channel: Channel }>('/api/v1/channels', {
     method: 'POST',
-    body: JSON.stringify({ name, topic }),
+    body: JSON.stringify({ name, topic, member_ids: memberIds }),
   });
   return data.channel;
+}
+
+// ─── Channel Members ────────────────────────────────────
+
+export interface ChannelMember {
+  user_id: string;
+  display_name: string;
+  role: string;
+  joined_at: number;
+}
+
+export async function fetchChannelMembers(channelId: string): Promise<ChannelMember[]> {
+  const data = await request<{ members: ChannelMember[] }>(`/api/v1/channels/${channelId}/members`);
+  return data.members;
+}
+
+export async function addChannelMember(channelId: string, userId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/members`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
+}
+
+export async function removeChannelMember(channelId: string, userId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/members/${userId}`, {
+    method: 'DELETE',
+  });
 }
 
 // ─── Messages ───────────────────────────────────────────
