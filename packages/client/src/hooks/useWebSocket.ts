@@ -5,6 +5,7 @@ import type { ConnectionState, Message } from '../types';
 
 const PING_INTERVAL = 25_000;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
+const AUTH_ERROR_CODES = [4001, 4003]; // Don't auto-reconnect on auth failures
 
 export function useWebSocket() {
   const { state, dispatch } = useAppContext();
@@ -63,9 +64,15 @@ export function useWebSocket() {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       if (!mountedRef.current) return;
       cleanup();
+      // Don't reconnect on auth errors — retrying won't help
+      if (AUTH_ERROR_CODES.includes(event.code)) {
+        setConnectionState('disconnected');
+        console.warn('[ws] Auth error, not reconnecting:', event.code, event.reason);
+        return;
+      }
       scheduleReconnect();
     };
 
