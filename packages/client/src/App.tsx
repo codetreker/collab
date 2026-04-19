@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import ChannelView from './components/ChannelView';
 import LoginPage from './components/LoginPage';
 import UserPicker from './components/UserPicker';
+import AdminPage from './components/AdminPage';
 import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
 
@@ -14,6 +15,7 @@ function AppInner() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   // Responsive check
   useEffect(() => {
@@ -130,11 +132,13 @@ function AppInner() {
         {isMobile && sidebarOpen && (
           <div className="sidebar-overlay" onClick={closeSidebar} />
         )}
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} />
       </div>
 
       <div className="main-content">
-        {state.currentChannelId ? (
+        {showAdmin ? (
+          <AdminPage onBack={() => setShowAdmin(false)} />
+        ) : state.currentChannelId ? (
           <ChannelView channelId={state.currentChannelId} />
         ) : (
           <div className="no-channel">

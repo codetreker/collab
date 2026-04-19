@@ -7,9 +7,10 @@ import type { Channel } from '../types';
 interface Props {
   onClose?: () => void;
   onLogout?: () => void;
+  onAdminOpen?: () => void;
 }
 
-export default function Sidebar({ onClose, onLogout }: Props) {
+export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const [showCreate, setShowCreate] = useState(false);
@@ -134,6 +135,15 @@ export default function Sidebar({ onClose, onLogout }: Props) {
             >
               ⏻
             </button>
+            {state.currentUser.role === 'admin' && onAdminOpen && (
+              <button
+                className="icon-btn"
+                title="Admin"
+                onClick={onAdminOpen}
+              >
+                ⚙
+              </button>
+            )}
           </div>
         </div>
       )}

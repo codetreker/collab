@@ -15,6 +15,7 @@ import { registerMessageRoutes } from './routes/messages.js';
 import { registerUserRoutes } from './routes/users.js';
 import { registerPollRoutes } from './routes/poll.js';
 import { registerUploadRoutes } from './routes/upload.js';
+import { registerAdminRoutes } from './routes/admin.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -95,6 +96,7 @@ async function main(): Promise<void> {
   registerUserRoutes(app);
   registerPollRoutes(app);
   registerUploadRoutes(app);
+  registerAdminRoutes(app);
 
   // WebSocket
   registerWebSocket(app);

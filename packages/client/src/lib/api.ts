@@ -1,6 +1,6 @@
 // ─── REST API client ─────────────────────────────────────
 
-import type { Channel, Message, User } from '../types';
+import type { Channel, Message, User, AdminUser } from '../types';
 
 const BASE = '';  // Same origin via Vite proxy in dev, or same server in prod
 
@@ -148,5 +148,54 @@ export async function uploadImage(file: File): Promise<{ url: string; content_ty
 export async function markChannelRead(channelId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/read`, {
     method: 'PUT',
+  });
+}
+
+// ─── Admin ──────────────────────────────────────────────
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  const data = await request<{ users: AdminUser[] }>('/api/v1/admin/users');
+  return data.users;
+}
+
+export async function createAdminUser(data: {
+  email: string;
+  password: string;
+  display_name: string;
+  role: string;
+}): Promise<AdminUser> {
+  const res = await request<{ user: AdminUser }>('/api/v1/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return res.user;
+}
+
+export async function updateAdminUser(
+  id: string,
+  data: { display_name?: string; password?: string; role?: string },
+): Promise<AdminUser> {
+  const res = await request<{ user: AdminUser }>(`/api/v1/admin/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  return res.user;
+}
+
+export async function deleteAdminUser(id: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/admin/users/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function generateApiKey(userId: string): Promise<{ api_key: string }> {
+  return request<{ api_key: string }>(`/api/v1/admin/users/${userId}/api-key`, {
+    method: 'POST',
+  });
+}
+
+export async function deleteApiKey(userId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/admin/users/${userId}/api-key`, {
+    method: 'DELETE',
   });
 }

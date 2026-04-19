@@ -40,3 +40,12 @@ export interface WsMessage {
 }
 
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
+
+export interface AdminUser {
+  id: string;
+  display_name: string;
+  email: string | null;
+  role: 'admin' | 'member' | 'agent';
+  api_key: string | null;
+  created_at: number;
+}
