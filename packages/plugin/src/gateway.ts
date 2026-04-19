@@ -138,6 +138,7 @@ export async function startCollabGateway(
             created_at: number;
             mentions?: string[];
             reply_to_id?: string | null;
+            channel_type?: string;
           };
           try {
             payload = JSON.parse(event.payload);
@@ -148,8 +149,10 @@ export async function startCollabGateway(
           // Skip messages sent by the bot itself to avoid loops
           if (payload.sender_id === account.botUserId) continue;
 
-          // requireMention filtering: skip messages not mentioning this bot
-          if (account.requireMention) {
+          const isDmChannel = payload.channel_type === 'dm';
+
+          // requireMention filtering: skip messages not mentioning this bot (DMs always pass)
+          if (!isDmChannel && account.requireMention) {
             const mentions: string[] = payload.mentions ?? [];
             if (!mentions.includes(account.botUserId)) {
               continue;
@@ -162,6 +165,7 @@ export async function startCollabGateway(
             account,
             config: ctx.cfg as CoreConfig,
             event,
+            channelType: isDmChannel ? 'dm' : 'channel',
             message: payload,
           });
         }

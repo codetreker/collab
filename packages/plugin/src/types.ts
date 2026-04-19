@@ -46,6 +46,7 @@ export type CollabChannel = {
   id: string;
   name: string;
   topic: string;
+  type?: 'channel' | 'dm';
   created_at: number;
   member_count?: number;
 };

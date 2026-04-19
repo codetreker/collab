@@ -26,14 +26,18 @@ function stripChannelPrefix(id: string): string {
 }
 
 export function parseCollabTarget(raw: string): {
-  chatType: "channel";
+  chatType: "channel" | "dm";
   channelId: string;
+  userId?: string;
 } {
   const trimmed = raw.trim();
+  if (trimmed.startsWith("dm:")) {
+    const value = trimmed.slice("dm:".length);
+    return { chatType: "dm", channelId: value, userId: value };
+  }
   if (trimmed.startsWith("channel:")) {
     return { chatType: "channel", channelId: trimmed.slice("channel:".length) };
   }
-  // Default: treat raw value as channel id
   return { chatType: "channel", channelId: trimmed };
 }
 
@@ -43,6 +47,7 @@ export async function handleCollabInbound(params: {
   account: ResolvedCollabAccount;
   config: CoreConfig;
   event: CollabEvent;
+  channelType?: 'channel' | 'dm';
   message: {
     id: string;
     channel_id: string;
@@ -58,14 +63,15 @@ export async function handleCollabInbound(params: {
   const runtime = getCollabRuntime();
   const msg = params.message;
   const rawChannelId = stripChannelPrefix(msg.channel_id);
-  const target = buildCollabTarget(rawChannelId);
+  const isDm = params.channelType === 'dm';
+  const target = isDm ? `dm:${rawChannelId}` : buildCollabTarget(rawChannelId);
 
   const route = runtime.channel.routing.resolveAgentRoute({
     cfg: params.config as OpenClawConfig,
     channel: params.channelId,
     accountId: params.account.accountId,
     peer: {
-      kind: "channel",
+      kind: isDm ? "direct" : "channel",
       id: rawChannelId,
     },
   });
@@ -98,7 +104,7 @@ export async function handleCollabInbound(params: {
     To: target,
     SessionKey: route.sessionKey,
     AccountId: route.accountId ?? params.account.accountId,
-    ChatType: "group",
+    ChatType: isDm ? "direct" : "group",
     ConversationLabel: msg.channel_id,
     GroupSubject: msg.channel_id,
     GroupChannel: msg.channel_id,

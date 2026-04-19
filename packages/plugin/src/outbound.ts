@@ -1,5 +1,5 @@
 import { resolveCollabAccount } from "./accounts.js";
-import { sendCollabMessage } from "./api-client.js";
+import { sendCollabMessage, createOrGetCollabDm } from "./api-client.js";
 import { parseCollabTarget } from "./inbound.js";
 import type { CoreConfig } from "./types.js";
 
@@ -13,10 +13,21 @@ export async function sendCollabText(params: {
   const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
   const parsed = parseCollabTarget(params.to);
 
+  let channelId = parsed.channelId;
+
+  if (parsed.chatType === 'dm' && parsed.userId) {
+    const { channel } = await createOrGetCollabDm({
+      baseUrl: account.baseUrl,
+      apiKey: account.apiKey,
+      userId: parsed.userId,
+    });
+    channelId = channel.id;
+  }
+
   const { message } = await sendCollabMessage({
     baseUrl: account.baseUrl,
     apiKey: account.apiKey,
-    channelId: parsed.channelId,
+    channelId,
     content: params.text,
     replyToId: params.replyToId == null ? undefined : String(params.replyToId),
   });

@@ -252,3 +252,17 @@ export async function sendCollabMessage(params: {
     params.apiKey,
   );
 }
+
+export async function createOrGetCollabDm(params: {
+  baseUrl: string;
+  apiKey: string;
+  userId: string;
+}): Promise<{ channel: CollabChannel; peer: CollabUser }> {
+  return await request<{ channel: CollabChannel; peer: CollabUser }>(
+    params.baseUrl,
+    "POST",
+    `/api/v1/dm/${encodeURIComponent(params.userId)}`,
+    undefined,
+    params.apiKey,
+  );
+}

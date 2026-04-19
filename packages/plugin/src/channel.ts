@@ -41,7 +41,7 @@ export const collabPlugin: ChannelPlugin<ResolvedCollabAccount> = createChatChan
     id: CHANNEL_ID,
     meta,
     capabilities: {
-      chatTypes: ["group"],
+      chatTypes: ["group", "direct"],
     },
     reload: { configPrefixes: ["channels.collab"] },
     configSchema: collabPluginConfigSchema,
@@ -68,30 +68,39 @@ export const collabPlugin: ChannelPlugin<ResolvedCollabAccount> = createChatChan
       normalizeTarget: normalizeCollabTarget,
       parseExplicitTarget: ({ raw }) => {
         const parsed = parseCollabTarget(raw);
+        if (parsed.chatType === 'dm') {
+          return {
+            to: `dm:${parsed.userId ?? parsed.channelId}`,
+            chatType: "direct",
+          };
+        }
         return {
           to: buildCollabTarget({ channelId: parsed.channelId }),
           chatType: "group",
         };
       },
-      inferTargetChatType: () => "group",
+      inferTargetChatType: ({ to }) => {
+        return to.startsWith("dm:") ? "direct" : "group";
+      },
       targetResolver: {
-        looksLikeId: (raw) => /^channel:/i.test(raw.trim()) || raw.trim().length > 0,
-        hint: "<channel:channel_id>",
+        looksLikeId: (raw) => /^(channel:|dm:)/i.test(raw.trim()) || raw.trim().length > 0,
+        hint: "<channel:channel_id> or <dm:user_id>",
       },
       resolveOutboundSessionRoute: ({ cfg, agentId, accountId, target }) => {
         const parsed = parseCollabTarget(target);
+        const isDm = parsed.chatType === 'dm';
         return buildChannelOutboundSessionRoute({
           cfg,
           agentId,
           channel: CHANNEL_ID,
           accountId,
           peer: {
-            kind: "channel",
+            kind: isDm ? "direct" : "channel",
             id: parsed.channelId,
           },
-          chatType: "group",
+          chatType: isDm ? "direct" : "group",
           from: `collab:${accountId ?? DEFAULT_ACCOUNT_ID}`,
-          to: buildCollabTarget({ channelId: parsed.channelId }),
+          to: isDm ? `dm:${parsed.userId ?? parsed.channelId}` : buildCollabTarget({ channelId: parsed.channelId }),
         });
       },
     },
