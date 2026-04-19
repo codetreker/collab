@@ -11,6 +11,5 @@ services:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/collab.db
       - UPLOAD_DIR=/app/data/uploads
-      - JWT_SECRET=change-me-in-production
-      - ADMIN_EMAIL=admin@codetrek.work
-      - ADMIN_PASSWORD=admin123
+    env_file:
+      - .env

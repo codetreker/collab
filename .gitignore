@@ -9,3 +9,4 @@ data/
 .env.local
 .DS_Store
 *.tsbuildinfo
+.env
