@@ -81,7 +81,16 @@ export function registerPollRoutes(app: FastifyInstance): void {
       ? channel_ids.filter(id => userChannelIds.includes(id))
       : userChannelIds;
 
-    const filteredChannelIds = effectiveChannelIds.length > 0 ? effectiveChannelIds : undefined;
+    if (effectiveChannelIds.length === 0) {
+      const timeoutDuration = Math.min(Math.max(timeout_ms, 1000), 60000);
+      return new Promise<{ cursor: number; events: EventRows }>((resolve) => {
+        setTimeout(() => {
+          resolve({ cursor: Q.getLatestCursor(db), events: [] });
+        }, timeoutDuration);
+      });
+    }
+
+    const filteredChannelIds = effectiveChannelIds;
 
     const events = Q.getEventsSince(db, currentCursor, 100, filteredChannelIds);
     if (events.length > 0) {
