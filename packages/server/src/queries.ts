@@ -12,6 +12,7 @@ export function listChannels(db: Database.Database): (Channel & { member_count: 
               (SELECT MAX(m.created_at) FROM messages m WHERE m.channel_id = c.id) AS last_message_at
        FROM channels c
        LEFT JOIN channel_members cm ON cm.channel_id = c.id
+       WHERE (c.type = 'channel' OR c.type IS NULL)
        GROUP BY c.id
        ORDER BY
          CASE WHEN (SELECT MAX(m2.created_at) FROM messages m2 WHERE m2.channel_id = c.id) IS NULL THEN 1 ELSE 0 END,
@@ -39,6 +40,7 @@ export function listChannelsWithUnread(
        FROM channels c
        LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
        LEFT JOIN channel_members cm2 ON cm2.channel_id = c.id
+       WHERE (c.type = 'channel' OR c.type IS NULL)
        GROUP BY c.id
        ORDER BY
          CASE WHEN (SELECT MAX(m3.created_at) FROM messages m3 WHERE m3.channel_id = c.id) IS NULL THEN 1 ELSE 0 END,
@@ -280,6 +282,10 @@ export function createMessage(
     .prepare('SELECT display_name FROM users WHERE id = ?')
     .get(senderId) as { display_name: string } | undefined;
 
+  const channelRow = db
+    .prepare('SELECT type FROM channels WHERE id = ?')
+    .get(channelId) as { type: string | null } | undefined;
+
   const message: Message = {
     id,
     channel_id: channelId,
@@ -300,7 +306,7 @@ export function createMessage(
       insertMention.run(uuidv4(), id, userId, channelId);
     }
 
-    insertEventStmt.run('message', channelId, JSON.stringify(message), now);
+    insertEventStmt.run('message', channelId, JSON.stringify({ ...message, channel_type: channelRow?.type ?? 'channel' }), now);
 
     for (const userId of allMentionIds) {
       insertEventStmt.run('mention', channelId, JSON.stringify({ message, mentioned_user_id: userId }), now);
@@ -378,7 +384,7 @@ export function addUserToAllChannels(
   db: Database.Database,
   userId: string,
 ): number {
-  const channels = db.prepare('SELECT id FROM channels').all() as { id: string }[];
+  const channels = db.prepare("SELECT id FROM channels WHERE type = 'channel' OR type IS NULL").all() as { id: string }[];
   const now = Date.now();
   const stmt = db.prepare(
     'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
@@ -455,4 +461,98 @@ export function getRecentlySeenUserIds(db: Database.Database, withinMs = 60000):
   const cutoff = Date.now() - withinMs;
   const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ?").all(cutoff) as { id: string }[];
   return rows.map((r) => r.id);
+}
+
+// ─── DM Channels ───────────────────────────────────────
+
+function dmChannelName(userId1: string, userId2: string): string {
+  const sorted = [userId1, userId2].sort();
+  return `dm:${sorted[0]}_${sorted[1]}`;
+}
+
+export function createDmChannel(
+  db: Database.Database,
+  userId1: string,
+  userId2: string,
+): Channel {
+  const name = dmChannelName(userId1, userId2);
+  const existing = db.prepare("SELECT * FROM channels WHERE name = ?").get(name) as Channel | undefined;
+  if (existing) return existing;
+
+  const id = uuidv4();
+  const now = Date.now();
+  db.prepare(
+    "INSERT INTO channels (id, name, topic, type, created_at, created_by) VALUES (?, ?, '', 'dm', ?, ?)",
+  ).run(id, name, now, userId1);
+
+  const channel: Channel = { id, name, topic: '', type: 'dm', created_at: now, created_by: userId1 };
+
+  const memberStmt = db.prepare(
+    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+  );
+  memberStmt.run(id, userId1, now, now);
+  memberStmt.run(id, userId2, now, now);
+
+  return channel;
+}
+
+export function getDmChannel(
+  db: Database.Database,
+  userId1: string,
+  userId2: string,
+): Channel | undefined {
+  const name = dmChannelName(userId1, userId2);
+  return db.prepare("SELECT * FROM channels WHERE name = ?").get(name) as Channel | undefined;
+}
+
+export interface DmChannelInfo {
+  id: string;
+  name: string;
+  type: 'dm';
+  created_at: number;
+  peer: { id: string; display_name: string; avatar_url: string | null; role: string };
+  unread_count: number;
+  last_message: { content: string; created_at: number } | null;
+}
+
+export function listDmChannelsForUser(
+  db: Database.Database,
+  userId: string,
+): DmChannelInfo[] {
+  const rows = db.prepare(
+    `SELECT c.id, c.name, c.type, c.created_at,
+            u.id AS peer_id, u.display_name AS peer_display_name, u.avatar_url AS peer_avatar_url, u.role AS peer_role,
+            COALESCE(
+              (SELECT COUNT(*) FROM messages m2
+               WHERE m2.channel_id = c.id
+                 AND m2.created_at > COALESCE(cm.last_read_at, 0)),
+              0
+            ) AS unread_count
+     FROM channels c
+     JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+     JOIN channel_members cm2 ON cm2.channel_id = c.id AND cm2.user_id != ?
+     JOIN users u ON u.id = cm2.user_id
+     WHERE c.type = 'dm'
+     ORDER BY c.created_at DESC`,
+  ).all(userId, userId) as {
+    id: string; name: string; type: 'dm'; created_at: number;
+    peer_id: string; peer_display_name: string; peer_avatar_url: string | null; peer_role: string;
+    unread_count: number;
+  }[];
+
+  return rows.map((r) => {
+    const lastMsg = db.prepare(
+      `SELECT content, created_at FROM messages WHERE channel_id = ? ORDER BY created_at DESC LIMIT 1`,
+    ).get(r.id) as { content: string; created_at: number } | undefined;
+
+    return {
+      id: r.id,
+      name: r.name,
+      type: 'dm' as const,
+      created_at: r.created_at,
+      peer: { id: r.peer_id, display_name: r.peer_display_name, avatar_url: r.peer_avatar_url, role: r.peer_role },
+      unread_count: r.unread_count,
+      last_message: lastMsg ?? null,
+    };
+  });
 }

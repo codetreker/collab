@@ -118,6 +118,10 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(404).send({ error: 'Channel not found' });
     }
 
+    if ((channel as { type?: string }).type === 'dm') {
+      return reply.status(403).send({ error: 'Cannot join DM channels' });
+    }
+
     const user = Q.getUserById(db, user_id);
     if (!user) {
       return reply.status(404).send({ error: 'User not found' });

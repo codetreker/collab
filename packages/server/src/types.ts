@@ -2,6 +2,7 @@ export interface Channel {
   id: string;
   name: string;
   topic: string;
+  type?: 'channel' | 'dm';
   created_at: number;
   created_by: string;
 }

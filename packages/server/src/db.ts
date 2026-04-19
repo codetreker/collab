@@ -102,6 +102,12 @@ function initSchema(db: Database.Database): void {
   if (!userCols.some((c) => c.name === 'require_mention')) {
     db.exec('ALTER TABLE users ADD COLUMN require_mention INTEGER DEFAULT 1');
   }
+
+  // Migration: add type column to channels
+  const channelCols = db.prepare("PRAGMA table_info(channels)").all() as { name: string }[];
+  if (!channelCols.some((c) => c.name === 'type')) {
+    db.exec("ALTER TABLE channels ADD COLUMN type TEXT DEFAULT 'channel'");
+  }
 }
 
 export function closeDb(): void {
