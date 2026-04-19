@@ -253,6 +253,7 @@ function EditUserModal({
   const [displayName, setDisplayName] = useState(user.display_name);
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(user.role);
+  const [requireMention, setRequireMention] = useState(Boolean(user.require_mention));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -261,10 +262,11 @@ function EditUserModal({
     setSaving(true);
     setError('');
     try {
-      const data: { display_name?: string; password?: string; role?: string } = {};
+      const data: { display_name?: string; password?: string; role?: string; require_mention?: boolean } = {};
       if (displayName !== user.display_name) data.display_name = displayName;
       if (password) data.password = password;
       if (role !== user.role) data.role = role;
+      if (requireMention !== Boolean(user.require_mention)) data.require_mention = requireMention;
       const updated = await updateAdminUser(user.id, data);
       onUpdated(updated);
     } catch (err) {
@@ -295,6 +297,16 @@ function EditUserModal({
               <option value="agent">agent</option>
             </select>
           </label>
+          {role === 'agent' && (
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={requireMention}
+                onChange={(e) => setRequireMention(e.target.checked)}
+              />
+              仅 @mention 时响应
+            </label>
+          )}
           {error && <div className="admin-form-error">{error}</div>}
           <div className="form-actions">
             <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>

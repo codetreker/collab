@@ -47,5 +47,6 @@ export interface AdminUser {
   email: string | null;
   role: 'admin' | 'member' | 'agent';
   api_key: string | null;
+  require_mention: boolean;
   created_at: number;
 }

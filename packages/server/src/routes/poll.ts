@@ -6,6 +6,22 @@ import type { EventRow } from '../types.js';
 
 type EventRows = EventRow[];
 
+function filterEventsForUser(events: EventRows, user: { id: string; require_mention?: number | boolean }): EventRows {
+  if (!user.require_mention) return events;
+
+  return events.filter((event) => {
+    if (event.kind !== 'message') return true;
+
+    try {
+      const payload = JSON.parse(event.payload);
+      const mentions: string[] = payload.mentions ?? [];
+      return mentions.includes(user.id);
+    } catch {
+      return true;
+    }
+  });
+}
+
 const waiters: Array<{
   cursor: number;
   channelIds?: string[];
@@ -58,6 +74,8 @@ export function registerPollRoutes(app: FastifyInstance): void {
       return reply.status(401).send({ error: 'Invalid API key' });
     }
 
+    db.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").run(Date.now(), user.id);
+
     let currentCursor: number;
 
     if (since_id && typeof since_id === 'string') {
@@ -80,7 +98,11 @@ export function registerPollRoutes(app: FastifyInstance): void {
     const events = Q.getEventsSince(db, currentCursor, 100, filteredChannelIds);
     if (events.length > 0) {
       const latestCursor = events[events.length - 1]!.cursor;
-      return { cursor: latestCursor, events };
+      const filtered = filterEventsForUser(events, user);
+      if (filtered.length > 0) {
+        return { cursor: latestCursor, events: filtered };
+      }
+      currentCursor = latestCursor;
     }
 
     const timeoutDuration = Math.min(Math.max(timeout_ms, 1000), 60000);
@@ -96,8 +118,9 @@ export function registerPollRoutes(app: FastifyInstance): void {
         cursor: currentCursor,
         channelIds: filteredChannelIds,
         resolve: (events: EventRows) => {
+          const filtered = filterEventsForUser(events, user);
           const latestCursor = events.length > 0 ? events[events.length - 1]!.cursor : Q.getLatestCursor(db);
-          resolve({ cursor: latestCursor, events });
+          resolve({ cursor: latestCursor, events: filtered });
         },
         timer,
       });

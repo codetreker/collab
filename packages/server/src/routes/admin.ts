@@ -11,12 +11,13 @@ interface AdminUser {
   email: string | null;
   role: string;
   api_key: string | null;
+  require_mention: number;
   created_at: number;
 }
 
 function listAdminUsers(db: import('better-sqlite3').Database): AdminUser[] {
   return db
-    .prepare('SELECT id, display_name, email, role, api_key, created_at FROM users ORDER BY created_at ASC')
+    .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at FROM users ORDER BY created_at ASC')
     .all() as AdminUser[];
 }
 
@@ -62,7 +63,7 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     Q.addUserToAllChannels(db, id);
 
     const user = db
-      .prepare('SELECT id, display_name, email, role, api_key, created_at FROM users WHERE id = ?')
+      .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at FROM users WHERE id = ?')
       .get(id) as AdminUser;
 
     return reply.status(201).send({ user });
@@ -70,10 +71,11 @@ export function registerAdminRoutes(app: FastifyInstance): void {
 
   app.put('/api/v1/admin/users/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { display_name, password, role } = request.body as {
+    const { display_name, password, role, require_mention } = request.body as {
       display_name?: string;
       password?: string;
       role?: string;
+      require_mention?: boolean;
     };
 
     const db = getDb();
@@ -105,6 +107,10 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       updates.push('role = ?');
       params.push(role);
     }
+    if (require_mention !== undefined) {
+      updates.push('require_mention = ?');
+      params.push(require_mention ? '1' : '0');
+    }
 
     if (updates.length === 0) {
       return reply.status(400).send({ error: 'No fields to update' });
@@ -114,7 +120,7 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
     const user = db
-      .prepare('SELECT id, display_name, email, role, api_key, created_at FROM users WHERE id = ?')
+      .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at FROM users WHERE id = ?')
       .get(id) as AdminUser;
 
     return { user };

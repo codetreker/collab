@@ -14,6 +14,8 @@ export interface User {
   api_key: string | null;
   email: string | null;
   password_hash: string | null;
+  last_seen_at: number | null;
+  require_mention: boolean;
   created_at: number;
 }
 

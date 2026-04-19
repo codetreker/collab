@@ -96,6 +96,12 @@ function initSchema(db: Database.Database): void {
   if (!userCols.some((c) => c.name === 'password_hash')) {
     db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
   }
+  if (!userCols.some((c) => c.name === 'last_seen_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN last_seen_at INTEGER');
+  }
+  if (!userCols.some((c) => c.name === 'require_mention')) {
+    db.exec('ALTER TABLE users ADD COLUMN require_mention INTEGER DEFAULT 1');
+  }
 }
 
 export function closeDb(): void {

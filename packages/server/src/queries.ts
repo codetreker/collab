@@ -114,7 +114,7 @@ export function updateChannel(
 
 export function listUsers(db: Database.Database): User[] {
   return db
-    .prepare('SELECT id, display_name, role, avatar_url, created_at FROM users ORDER BY created_at ASC')
+    .prepare('SELECT id, display_name, role, avatar_url, require_mention, created_at FROM users ORDER BY created_at ASC')
     .all() as User[];
 }
 
@@ -147,7 +147,7 @@ export function createUser(
   db.prepare(
     'INSERT OR IGNORE INTO users (id, display_name, role, api_key, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   ).run(id, displayName, role, apiKey, email, passwordHash, now);
-  return { id, display_name: displayName, role: role as User['role'], avatar_url: null, api_key: apiKey, email, password_hash: passwordHash, created_at: now };
+  return { id, display_name: displayName, role: role as User['role'], avatar_url: null, api_key: apiKey, email, password_hash: passwordHash, last_seen_at: null, require_mention: true, created_at: now };
 }
 
 // ─── Messages ───────────────────────────────────────────
@@ -449,4 +449,10 @@ export function getUnreadCount(
     )
     .get(userId, channelId) as { cnt: number };
   return row.cnt;
+}
+
+export function getRecentlySeenUserIds(db: Database.Database, withinMs = 60000): string[] {
+  const cutoff = Date.now() - withinMs;
+  const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ?").all(cutoff) as { id: string }[];
+  return rows.map((r) => r.id);
 }

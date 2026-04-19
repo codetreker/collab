@@ -17,6 +17,7 @@ import { registerPollRoutes } from './routes/poll.js';
 import { registerUploadRoutes } from './routes/upload.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
+import * as Q from './queries.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -86,7 +87,10 @@ async function main(): Promise<void> {
 
   // Online users endpoint
   app.get('/api/v1/online', async () => {
-    return { user_ids: getOnlineUserIds() };
+    const wsOnline = getOnlineUserIds();
+    const pollOnline = Q.getRecentlySeenUserIds(getDb());
+    const merged = [...new Set([...wsOnline, ...pollOnline])];
+    return { user_ids: merged };
   });
 
   // API Routes
