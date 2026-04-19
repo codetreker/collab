@@ -192,12 +192,20 @@ function CreateUserModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const isAgent = role === 'agent';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError('');
     try {
-      const user = await createAdminUser({ id: customId || undefined, email, password, display_name: displayName, role });
+      const user = await createAdminUser({
+        id: customId || undefined,
+        email: isAgent ? undefined : email,
+        password: isAgent ? undefined : password,
+        display_name: displayName,
+        role,
+      });
       onCreated(user);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create user');
@@ -219,14 +227,18 @@ function CreateUserModal({
             Display Name
             <input className="input-field" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
           </label>
-          <label>
-            Email
-            <input className="input-field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </label>
-          <label>
-            Password
-            <input className="input-field" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </label>
+          {!isAgent && (
+            <>
+              <label>
+                Email
+                <input className="input-field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </label>
+              <label>
+                Password
+                <input className="input-field" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              </label>
+            </>
+          )}
           <label>
             Role
             <select className="input-field" value={role} onChange={(e) => setRole(e.target.value)}>

@@ -44,17 +44,21 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       role?: string;
     };
 
-    if (!email || !password || !display_name || !role) {
-      return reply.status(400).send({ error: 'email, password, display_name, and role are required' });
+    if (!display_name || !role) {
+      return reply.status(400).send({ error: 'display_name and role are required' });
     }
 
     if (!['admin', 'member', 'agent'].includes(role)) {
       return reply.status(400).send({ error: 'role must be admin, member, or agent' });
     }
 
+    if (role !== 'agent' && (!email || !password)) {
+      return reply.status(400).send({ error: 'email and password are required for non-agent users' });
+    }
+
     const db = getDb();
 
-    if (Q.getUserByEmail(db, email)) {
+    if (email && Q.getUserByEmail(db, email)) {
       return reply.status(409).send({ error: 'Email already in use' });
     }
 
@@ -63,8 +67,8 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     if (customId?.trim() && Q.getUserById(db, id)) {
       return reply.status(409).send({ error: 'User ID already in use' });
     }
-    const passwordHash = bcrypt.hashSync(password, 10);
-    Q.createUser(db, id, display_name, role, null, email, passwordHash);
+    const passwordHash = password ? bcrypt.hashSync(password, 10) : null;
+    Q.createUser(db, id, display_name, role, null, email ?? null, passwordHash);
     Q.addUserToAllChannels(db, id);
 
     const user = db

@@ -183,8 +183,8 @@ export async function fetchAdminUsers(): Promise<AdminUser[]> {
 
 export async function createAdminUser(data: {
   id?: string;
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
   display_name: string;
   role: string;
 }): Promise<AdminUser> {
