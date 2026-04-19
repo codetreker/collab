@@ -192,7 +192,7 @@ export class CollabApiClient {
 export async function fetchBotIdentity(params: {
   baseUrl: string;
   apiKey: string;
-}): Promise<{ userId: string; displayName: string }> {
+}): Promise<{ userId: string; displayName: string; requireMention: boolean }> {
   const result = await request<{ user: CollabUser }>(
     params.baseUrl,
     "GET",
@@ -203,6 +203,7 @@ export async function fetchBotIdentity(params: {
   return {
     userId: result.user.id,
     displayName: result.user.display_name,
+    requireMention: !!result.user.require_mention,
   };
 }
 

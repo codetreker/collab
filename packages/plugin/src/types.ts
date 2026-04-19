@@ -35,6 +35,7 @@ export type ResolvedCollabAccount = {
   apiKey: string;
   botUserId: string;
   botDisplayName: string;
+  requireMention: boolean;
   pollTimeoutMs: number;
   config: CollabAccountConfig;
 };
@@ -54,6 +55,7 @@ export type CollabUser = {
   display_name: string;
   role: 'admin' | 'member' | 'agent';
   avatar_url: string | null;
+  require_mention?: boolean;
 };
 
 export type CollabMessage = {

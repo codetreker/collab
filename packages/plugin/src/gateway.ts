@@ -86,6 +86,7 @@ export async function startCollabGateway(
       if (!account.config.botDisplayName) {
         account.botDisplayName = identity.displayName;
       }
+      account.requireMention = identity.requireMention;
       console.log(
         `[collab-plugin] Bot identity: ${account.botDisplayName} (${account.botUserId})`,
       );
@@ -146,6 +147,14 @@ export async function startCollabGateway(
 
           // Skip messages sent by the bot itself to avoid loops
           if (payload.sender_id === account.botUserId) continue;
+
+          // requireMention filtering: skip messages not mentioning this bot
+          if (account.requireMention) {
+            const mentions: string[] = payload.mentions ?? [];
+            if (!mentions.includes(account.botUserId)) {
+              continue;
+            }
+          }
 
           await handleCollabInbound({
             channelId,

@@ -47,6 +47,7 @@ export function resolveCollabAccount(params: {
     apiKey,
     botUserId,
     botDisplayName,
+    requireMention: false,
     pollTimeoutMs: merged.pollTimeoutMs ?? DEFAULT_POLL_TIMEOUT_MS,
     config: {
       ...merged,

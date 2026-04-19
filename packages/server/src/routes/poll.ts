@@ -6,22 +6,6 @@ import type { EventRow } from '../types.js';
 
 type EventRows = EventRow[];
 
-function filterEventsForUser(events: EventRows, user: { id: string; require_mention?: number | boolean }): EventRows {
-  if (!user.require_mention) return events;
-
-  return events.filter((event) => {
-    if (event.kind !== 'message') return true;
-
-    try {
-      const payload = JSON.parse(event.payload);
-      const mentions: string[] = payload.mentions ?? [];
-      return mentions.includes(user.id);
-    } catch {
-      return true;
-    }
-  });
-}
-
 const waiters: Array<{
   cursor: number;
   channelIds?: string[];
@@ -98,11 +82,7 @@ export function registerPollRoutes(app: FastifyInstance): void {
     const events = Q.getEventsSince(db, currentCursor, 100, filteredChannelIds);
     if (events.length > 0) {
       const latestCursor = events[events.length - 1]!.cursor;
-      const filtered = filterEventsForUser(events, user);
-      if (filtered.length > 0) {
-        return { cursor: latestCursor, events: filtered };
-      }
-      currentCursor = latestCursor;
+      return { cursor: latestCursor, events };
     }
 
     const timeoutDuration = Math.min(Math.max(timeout_ms, 1000), 60000);
@@ -118,9 +98,8 @@ export function registerPollRoutes(app: FastifyInstance): void {
         cursor: currentCursor,
         channelIds: filteredChannelIds,
         resolve: (events: EventRows) => {
-          const filtered = filterEventsForUser(events, user);
           const latestCursor = events.length > 0 ? events[events.length - 1]!.cursor : Q.getLatestCursor(db);
-          resolve({ cursor: latestCursor, events: filtered });
+          resolve({ cursor: latestCursor, events });
         },
         timer,
       });
