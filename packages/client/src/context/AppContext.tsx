@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { Channel, Message, User, ConnectionState } from '../types';
+import type { Channel, Message, User, ConnectionState, DmChannel } from '../types';
 import * as api from '../lib/api';
 
 // ─── State ──────────────────────────────────────────────
 
 interface AppState {
   channels: Channel[];
+  dmChannels: DmChannel[];
   currentChannelId: string | null;
   messages: Map<string, Message[]>;     // channelId -> messages
   hasMore: Map<string, boolean>;        // channelId -> has_more
@@ -20,6 +21,7 @@ interface AppState {
 
 const initialState: AppState = {
   channels: [],
+  dmChannels: [],
   currentChannelId: null,
   messages: new Map(),
   hasMore: new Map(),
@@ -50,7 +52,10 @@ type Action =
   | { type: 'SET_CONNECTION_STATE'; state: ConnectionState }
   | { type: 'SET_INITIALIZED' }
   | { type: 'UPDATE_UNREAD'; channelId: string; count: number }
-  | { type: 'CLEAR_UNREAD'; channelId: string };
+  | { type: 'CLEAR_UNREAD'; channelId: string }
+  | { type: 'SET_DM_CHANNELS'; channels: DmChannel[] }
+  | { type: 'ADD_DM_CHANNEL'; channel: DmChannel }
+  | { type: 'UPDATE_DM_CHANNEL'; channelId: string; updates: Partial<DmChannel> };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -107,7 +112,20 @@ function reducer(state: AppState, action: Action): AppState {
         return c;
       });
 
-      return { ...state, messages: msgs, channels: updatedChannels };
+      // Update DM channels too
+      const dmChannels = state.dmChannels.map(dm => {
+        if (dm.id !== action.channelId) return dm;
+        const updated = {
+          ...dm,
+          last_message: { content: action.message.content, created_at: action.message.created_at },
+        };
+        if (dm.id !== state.currentChannelId) {
+          updated.unread_count = (dm.unread_count ?? 0) + 1;
+        }
+        return updated;
+      });
+
+      return { ...state, messages: msgs, channels: updatedChannels, dmChannels };
     }
 
     case 'SET_LOADING_MESSAGES': {
@@ -160,7 +178,25 @@ function reducer(state: AppState, action: Action): AppState {
       const channels = state.channels.map(c =>
         c.id === action.channelId ? { ...c, unread_count: 0 } : c,
       );
-      return { ...state, channels };
+      const dmChannels = state.dmChannels.map(dm =>
+        dm.id === action.channelId ? { ...dm, unread_count: 0 } : dm,
+      );
+      return { ...state, channels, dmChannels };
+    }
+
+    case 'SET_DM_CHANNELS':
+      return { ...state, dmChannels: action.channels };
+
+    case 'ADD_DM_CHANNEL': {
+      if (state.dmChannels.some(dm => dm.id === action.channel.id)) return state;
+      return { ...state, dmChannels: [...state.dmChannels, action.channel] };
+    }
+
+    case 'UPDATE_DM_CHANNEL': {
+      const dmChannels = state.dmChannels.map(dm =>
+        dm.id === action.channelId ? { ...dm, ...action.updates } : dm,
+      );
+      return { ...state, dmChannels };
     }
 
     default:
@@ -183,6 +219,8 @@ interface AppContextValue {
     selectChannel: (channelId: string) => void;
     sendMessage: (channelId: string, content: string, contentType?: 'text' | 'image', mentions?: string[]) => Promise<Message>;
     createChannel: (name: string, topic?: string) => Promise<Channel>;
+    loadDmChannels: () => Promise<void>;
+    openDm: (userId: string) => Promise<void>;
   };
 }
 
@@ -272,6 +310,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return channel;
   }, []);
 
+  const loadDmChannels = useCallback(async () => {
+    try {
+      const channels = await api.fetchDmChannels();
+      dispatch({ type: 'SET_DM_CHANNELS', channels });
+    } catch {
+      // Ignore errors
+    }
+  }, []);
+
+  const openDm = useCallback(async (userId: string) => {
+    const dm = await api.createOrGetDm(userId);
+    dispatch({ type: 'ADD_DM_CHANNEL', channel: dm });
+    dispatch({ type: 'SET_CURRENT_CHANNEL', channelId: dm.id });
+    dispatch({ type: 'CLEAR_UNREAD', channelId: dm.id });
+    api.markChannelRead(dm.id).catch(() => {});
+  }, []);
+
   const actions = useMemo(() => ({
     loadChannels,
     loadMessages,
@@ -282,7 +337,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     selectChannel,
     sendMessage: sendMessageAction,
     createChannel: createChannelAction,
-  }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction]);
+    loadDmChannels,
+    openDm,
+  }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction, loadDmChannels, openDm]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, actions }}>

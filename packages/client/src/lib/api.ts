@@ -1,6 +1,6 @@
 // ─── REST API client ─────────────────────────────────────
 
-import type { Channel, Message, User, AdminUser } from '../types';
+import type { Channel, Message, User, AdminUser, DmChannel } from '../types';
 
 const BASE = '';  // Same origin via Vite proxy in dev, or same server in prod
 
@@ -149,6 +149,29 @@ export async function markChannelRead(channelId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/read`, {
     method: 'PUT',
   });
+}
+
+// ─── DM ─────────────────────────────────────────────────
+
+export async function createOrGetDm(userId: string): Promise<DmChannel> {
+  const data = await request<{ channel: DmChannel['id'] extends string ? { id: string; name: string; type: 'dm'; created_at: number; created_by: string } : never; peer: DmChannel['peer'] }>(
+    `/api/v1/dm/${userId}`,
+    { method: 'POST' },
+  );
+  return {
+    id: data.channel.id,
+    name: data.channel.name,
+    type: 'dm',
+    created_at: data.channel.created_at,
+    peer: data.peer,
+    unread_count: 0,
+    last_message: null,
+  };
+}
+
+export async function fetchDmChannels(): Promise<DmChannel[]> {
+  const data = await request<{ channels: DmChannel[] }>('/api/v1/dm');
+  return data.channels;
 }
 
 // ─── Admin ──────────────────────────────────────────────

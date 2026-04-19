@@ -4,6 +4,7 @@ export interface Channel {
   id: string;
   name: string;
   topic: string;
+  type?: 'channel' | 'dm';
   created_at: number;
   created_by: string;
   member_count?: number;
@@ -17,6 +18,16 @@ export interface User {
   role: 'admin' | 'member' | 'agent';
   avatar_url: string | null;
   created_at: number;
+}
+
+export interface DmChannel {
+  id: string;
+  name: string;
+  type: 'dm';
+  created_at: number;
+  peer: { id: string; display_name: string; avatar_url: string | null; role: string };
+  unread_count: number;
+  last_message: { content: string; created_at: number } | null;
 }
 
 export interface Message {

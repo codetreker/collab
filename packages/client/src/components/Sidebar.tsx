@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { logout } from '../lib/api';
-import type { Channel } from '../types';
+import type { Channel, DmChannel } from '../types';
 
 interface Props {
   onClose?: () => void;
@@ -17,6 +17,10 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
   const [newName, setNewName] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    actions.loadDmChannels();
+  }, [actions]);
 
   const handleSelect = (channelId: string) => {
     actions.selectChannel(channelId);
@@ -41,10 +45,17 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
     }
   };
 
-  // Sort: channels with recent activity first
-  const sortedChannels = [...state.channels].sort((a, b) => {
+  // Sort: channels with recent activity first (exclude DMs)
+  const sortedChannels = [...state.channels].filter(c => c.type !== 'dm').sort((a, b) => {
     const aTime = a.last_message_at ?? a.created_at;
     const bTime = b.last_message_at ?? b.created_at;
+    return bTime - aTime;
+  });
+
+  // Sort DMs by last message time
+  const sortedDms = [...state.dmChannels].sort((a, b) => {
+    const aTime = a.last_message?.created_at ?? a.created_at;
+    const bTime = b.last_message?.created_at ?? b.created_at;
     return bTime - aTime;
   });
 
@@ -112,6 +123,20 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
         )}
       </div>
 
+      {sortedDms.length > 0 && (
+        <div className="dm-list">
+          <div className="online-header">私信</div>
+          {sortedDms.map(dm => (
+            <DmItem
+              key={dm.id}
+              dm={dm}
+              active={dm.id === state.currentChannelId}
+              onClick={() => handleSelect(dm.id)}
+            />
+          ))}
+        </div>
+      )}
+
       <OnlineUsers />
 
       {state.currentUser && (
@@ -167,9 +192,26 @@ function ChannelItem({ channel, active, onClick }: { channel: Channel; active: b
   );
 }
 
+function DmItem({ dm, active, onClick }: { dm: DmChannel; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      className={`channel-item ${active ? 'channel-item-active' : ''}`}
+      onClick={onClick}
+    >
+      <span className="user-avatar-small dm-avatar">
+        {dm.peer.display_name[0]?.toUpperCase()}
+      </span>
+      <span className="channel-name">{dm.peer.display_name}</span>
+      {dm.unread_count > 0 && (
+        <span className="unread-badge">{dm.unread_count > 99 ? '99+' : dm.unread_count}</span>
+      )}
+    </button>
+  );
+}
+
 function OnlineUsers() {
-  const { state } = useAppContext();
-  const onlineUsers = state.users.filter(u => state.onlineUserIds.has(u.id));
+  const { state, actions } = useAppContext();
+  const onlineUsers = state.users.filter(u => state.onlineUserIds.has(u.id) && u.id !== state.currentUser?.id);
 
   if (onlineUsers.length === 0) return null;
 
@@ -179,11 +221,16 @@ function OnlineUsers() {
         在线 — {onlineUsers.length}
       </div>
       {onlineUsers.map(user => (
-        <div key={user.id} className="online-user-item">
+        <button
+          key={user.id}
+          className="online-user-item"
+          onClick={() => actions.openDm(user.id)}
+          title={`私信 ${user.display_name}`}
+        >
           <span className="online-dot" />
           <span className="online-user-name">{user.display_name}</span>
           {user.role === 'agent' && <span className="user-badge">Bot</span>}
-        </div>
+        </button>
       ))}
     </div>
   );

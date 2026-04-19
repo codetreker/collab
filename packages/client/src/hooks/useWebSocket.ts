@@ -193,6 +193,15 @@ export function useWebSocket() {
     };
   }, [connect, cleanup]);
 
+  // Auto-subscribe to DM channels
+  useEffect(() => {
+    for (const dm of state.dmChannels) {
+      if (!subscribedChannels.current.has(dm.id)) {
+        subscribe(dm.id);
+      }
+    }
+  }, [state.dmChannels, subscribe]);
+
   return {
     subscribe,
     unsubscribe,

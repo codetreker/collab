@@ -14,6 +14,8 @@ export default function ChannelView({ channelId }: Props) {
   const { subscribe, unsubscribe, connectionState } = useWebSocket();
 
   const channel = state.channels.find(c => c.id === channelId);
+  const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
+  const isDm = !!dmChannel;
 
   // Load messages when channel changes
   useEffect(() => {
@@ -26,7 +28,7 @@ export default function ChannelView({ channelId }: Props) {
     return () => unsubscribe(channelId);
   }, [channelId, subscribe, unsubscribe]);
 
-  if (!channel) {
+  if (!channel && !dmChannel) {
     return (
       <div className="channel-view">
         <div className="channel-empty">
@@ -36,12 +38,15 @@ export default function ChannelView({ channelId }: Props) {
     );
   }
 
+  const headerTitle = isDm ? dmChannel.peer.display_name : `#${channel!.name}`;
+  const headerTopic = isDm ? undefined : channel!.topic;
+
   return (
     <div className="channel-view">
       <div className="channel-header">
         <div className="channel-header-info">
-          <h2 className="channel-title">#{channel.name}</h2>
-          {channel.topic && <span className="channel-topic">{channel.topic}</span>}
+          <h2 className="channel-title">{headerTitle}</h2>
+          {headerTopic && <span className="channel-topic">{headerTopic}</span>}
         </div>
       </div>
       <ConnectionStatus state={connectionState} />
