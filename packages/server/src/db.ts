@@ -108,6 +108,28 @@ function initSchema(db: Database.Database): void {
   if (!channelCols.some((c) => c.name === 'type')) {
     db.exec("ALTER TABLE channels ADD COLUMN type TEXT DEFAULT 'channel'");
   }
+
+  // Migration: clean up duplicate DM channels (keep the oldest per name)
+  const dupes = db.prepare(
+    `SELECT name, MIN(created_at) AS keep_created_at
+     FROM channels WHERE type = 'dm'
+     GROUP BY name HAVING COUNT(*) > 1`,
+  ).all() as { name: string; keep_created_at: number }[];
+  for (const { name, keep_created_at } of dupes) {
+    const keep = db.prepare(
+      "SELECT id FROM channels WHERE name = ? AND created_at = ? LIMIT 1",
+    ).get(name, keep_created_at) as { id: string };
+    const extras = db.prepare(
+      "SELECT id FROM channels WHERE name = ? AND id != ?",
+    ).all(name, keep.id) as { id: string }[];
+    for (const { id } of extras) {
+      db.prepare("DELETE FROM mentions WHERE channel_id = ?").run(id);
+      db.prepare("DELETE FROM messages WHERE channel_id = ?").run(id);
+      db.prepare("DELETE FROM channel_members WHERE channel_id = ?").run(id);
+      db.prepare("DELETE FROM events WHERE channel_id = ?").run(id);
+      db.prepare("DELETE FROM channels WHERE id = ?").run(id);
+    }
+  }
 }
 
 export function closeDb(): void {

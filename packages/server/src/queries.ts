@@ -476,24 +476,30 @@ export function createDmChannel(
   userId2: string,
 ): Channel {
   const name = dmChannelName(userId1, userId2);
-  const existing = db.prepare("SELECT * FROM channels WHERE name = ?").get(name) as Channel | undefined;
-  if (existing) return existing;
 
-  const id = uuidv4();
-  const now = Date.now();
-  db.prepare(
-    "INSERT INTO channels (id, name, topic, type, created_at, created_by) VALUES (?, ?, '', 'dm', ?, ?)",
-  ).run(id, name, now, userId1);
+  const txn = db.transaction(() => {
+    const existing = db.prepare("SELECT * FROM channels WHERE name = ?").get(name) as Channel | undefined;
+    if (existing) return existing;
 
-  const channel: Channel = { id, name, topic: '', type: 'dm', created_at: now, created_by: userId1 };
+    const id = uuidv4();
+    const now = Date.now();
+    db.prepare(
+      "INSERT OR IGNORE INTO channels (id, name, topic, type, created_at, created_by) VALUES (?, ?, '', 'dm', ?, ?)",
+    ).run(id, name, now, userId1);
 
-  const memberStmt = db.prepare(
-    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
-  );
-  memberStmt.run(id, userId1, now, now);
-  memberStmt.run(id, userId2, now, now);
+    // Re-fetch in case INSERT OR IGNORE hit the UNIQUE constraint
+    const channel = db.prepare("SELECT * FROM channels WHERE name = ?").get(name) as Channel;
 
-  return channel;
+    const memberStmt = db.prepare(
+      'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+    );
+    memberStmt.run(channel.id, userId1, now, now);
+    memberStmt.run(channel.id, userId2, now, now);
+
+    return channel;
+  });
+
+  return txn();
 }
 
 export function getDmChannel(
