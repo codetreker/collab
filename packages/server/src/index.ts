@@ -18,6 +18,7 @@ import { registerStreamRoutes } from './routes/stream.js';
 import { registerUploadRoutes } from './routes/upload.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerDmRoutes } from './routes/dm.js';
+import { registerAgentRoutes } from './routes/agents.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
 import * as Q from './queries.js';
 
@@ -106,6 +107,7 @@ async function main(): Promise<void> {
   registerStreamRoutes(app);
   registerUploadRoutes(app);
   registerAdminRoutes(app);
+  registerAgentRoutes(app);
   registerDmRoutes(app);
 
   // WebSocket
