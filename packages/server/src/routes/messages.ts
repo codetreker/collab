@@ -19,6 +19,13 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       return reply.status(404).send({ error: 'Channel not found' });
     }
 
+    if (channel.visibility === 'private') {
+      const userId = request.currentUser?.id;
+      if (!userId || !Q.canAccessChannel(db, channelId, userId)) {
+        return reply.status(404).send({ error: 'Channel not found' });
+      }
+    }
+
     const result = Q.getMessages(db, channelId, before, limit, after);
     return result;
   });
@@ -39,6 +46,13 @@ export function registerMessageRoutes(app: FastifyInstance): void {
     const channel = Q.getChannel(db, channelId);
     if (!channel) {
       return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.visibility === 'private') {
+      const userId = request.currentUser?.id;
+      if (!userId || !Q.canAccessChannel(db, channelId, userId)) {
+        return reply.status(404).send({ error: 'Channel not found' });
+      }
     }
 
     const messages = Q.searchMessages(db, channelId, q.trim(), 50);
