@@ -13,6 +13,7 @@ export function listChannels(db: Database.Database): (Channel & { member_count: 
        FROM channels c
        LEFT JOIN channel_members cm ON cm.channel_id = c.id
        WHERE (c.type = 'channel' OR c.type IS NULL)
+         AND (c.visibility = 'public' OR c.visibility IS NULL)
        GROUP BY c.id
        ORDER BY
          CASE WHEN (SELECT MAX(m2.created_at) FROM messages m2 WHERE m2.channel_id = c.id) IS NULL THEN 1 ELSE 0 END,
@@ -50,6 +51,35 @@ export function listChannelsWithUnread(
     .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number })[];
 }
 
+export function listAllChannelsForAdmin(
+  db: Database.Database,
+  userId: string,
+): (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[] {
+  return db
+    .prepare(
+      `SELECT c.*,
+              COUNT(DISTINCT cm2.user_id) AS member_count,
+              (SELECT MAX(m.created_at) FROM messages m WHERE m.channel_id = c.id) AS last_message_at,
+              COALESCE(
+                (SELECT COUNT(*) FROM messages m2
+                 WHERE m2.channel_id = c.id
+                   AND m2.created_at > COALESCE(cm.last_read_at, 0)),
+                0
+              ) AS unread_count,
+              CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
+       FROM channels c
+       LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+       LEFT JOIN channel_members cm2 ON cm2.channel_id = c.id
+       WHERE (c.type = 'channel' OR c.type IS NULL)
+       GROUP BY c.id
+       ORDER BY
+         CASE WHEN (SELECT MAX(m3.created_at) FROM messages m3 WHERE m3.channel_id = c.id) IS NULL THEN 1 ELSE 0 END,
+         (SELECT MAX(m4.created_at) FROM messages m4 WHERE m4.channel_id = c.id) DESC,
+         c.created_at DESC`,
+    )
+    .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[];
+}
+
 export function getChannel(db: Database.Database, id: string): Channel | undefined {
   return db.prepare('SELECT * FROM channels WHERE id = ?').get(id) as Channel | undefined;
 }
@@ -83,14 +113,15 @@ export function createChannel(
   name: string,
   topic: string,
   createdBy: string,
+  visibility: 'public' | 'private' = 'public',
 ): Channel {
   const id = uuidv4();
   const now = Date.now();
   db.prepare(
-    'INSERT INTO channels (id, name, topic, created_at, created_by) VALUES (?, ?, ?, ?, ?)',
-  ).run(id, name, topic, now, createdBy);
+    'INSERT INTO channels (id, name, topic, visibility, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(id, name, topic, visibility, now, createdBy);
 
-  const channel: Channel = { id, name, topic, created_at: now, created_by: createdBy };
+  const channel: Channel = { id, name, topic, visibility, created_at: now, created_by: createdBy };
 
   insertEvent(db, 'channel_created', id, { channel });
 
@@ -100,16 +131,17 @@ export function createChannel(
 export function updateChannel(
   db: Database.Database,
   id: string,
-  updates: { name?: string; topic?: string },
+  updates: { name?: string; topic?: string; visibility?: 'public' | 'private' },
 ): Channel | undefined {
   const channel = getChannel(db, id);
   if (!channel) return undefined;
 
   const name = updates.name ?? channel.name;
   const topic = updates.topic ?? channel.topic;
+  const visibility = updates.visibility ?? channel.visibility ?? 'public';
 
-  db.prepare('UPDATE channels SET name = ?, topic = ? WHERE id = ?').run(name, topic, id);
-  return { ...channel, name, topic };
+  db.prepare('UPDATE channels SET name = ?, topic = ?, visibility = ? WHERE id = ?').run(name, topic, visibility, id);
+  return { ...channel, name, topic, visibility };
 }
 
 // ─── Users ──────────────────────────────────────────────
@@ -394,6 +426,57 @@ export function addUserToDefaultChannel(
       'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
     ).run(general.id, userId, now, now);
   }
+}
+
+export function addUserToPublicChannels(
+  db: Database.Database,
+  userId: string,
+): void {
+  const now = Date.now();
+  const publicChannels = db.prepare(
+    "SELECT id FROM channels WHERE (type = 'channel' OR type IS NULL) AND (visibility = 'public' OR visibility IS NULL)",
+  ).all() as { id: string }[];
+
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+  );
+  for (const ch of publicChannels) {
+    stmt.run(ch.id, userId, now, now);
+  }
+}
+
+export function addAllUsersToChannel(
+  db: Database.Database,
+  channelId: string,
+): void {
+  const now = Date.now();
+  const users = db.prepare('SELECT id FROM users').all() as { id: string }[];
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+  );
+  for (const u of users) {
+    stmt.run(channelId, u.id, now, now);
+  }
+}
+
+export function canAccessChannel(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): boolean {
+  const row = db.prepare(
+    `SELECT
+       c.visibility,
+       EXISTS(SELECT 1 FROM channel_members WHERE channel_id = ? AND user_id = ?) AS is_member,
+       (SELECT role FROM users WHERE id = ?) AS user_role
+     FROM channels c
+     WHERE c.id = ?`,
+  ).get(channelId, userId, userId, channelId) as { visibility: string | null; is_member: number; user_role: string | null } | undefined;
+
+  if (!row) return false;
+  if (row.visibility !== 'private') return true;
+  if (row.is_member) return true;
+  return row.user_role === 'admin';
 }
 
 export function removeChannelMember(
