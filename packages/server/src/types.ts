@@ -20,6 +20,28 @@ export interface User {
   last_seen_at: number | null;
   require_mention: boolean;
   created_at: number;
+  owner_id: string | null;
+  deleted_at: number | null;
+  disabled: number;
+}
+
+export interface UserPermission {
+  id: number;
+  user_id: string;
+  permission: string;
+  scope: string;
+  granted_by: string | null;
+  granted_at: number;
+}
+
+export interface InviteCode {
+  code: string;
+  created_by: string;
+  created_at: number;
+  expires_at: number | null;
+  used_by: string | null;
+  used_at: number | null;
+  note: string | null;
 }
 
 export interface Message {

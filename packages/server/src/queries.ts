@@ -216,12 +216,13 @@ export function createUser(
   apiKey: string | null = null,
   email: string | null = null,
   passwordHash: string | null = null,
+  ownerId: string | null = null,
 ): User {
   const now = Date.now();
   db.prepare(
-    'INSERT OR IGNORE INTO users (id, display_name, role, api_key, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, displayName, role, apiKey, email, passwordHash, now);
-  return { id, display_name: displayName, role: role as User['role'], avatar_url: null, api_key: apiKey, email, password_hash: passwordHash, last_seen_at: null, require_mention: true, created_at: now };
+    'INSERT OR IGNORE INTO users (id, display_name, role, api_key, email, password_hash, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, displayName, role, apiKey, email, passwordHash, ownerId, now);
+  return { id, display_name: displayName, role: role as User['role'], avatar_url: null, api_key: apiKey, email, password_hash: passwordHash, last_seen_at: null, require_mention: true, created_at: now, owner_id: ownerId, deleted_at: null, disabled: 0 };
 }
 
 // ─── Messages ───────────────────────────────────────────

@@ -120,6 +120,94 @@ function initSchema(db: Database.Database): void {
     db.exec('ALTER TABLE channels ADD COLUMN deleted_at INTEGER');
   }
 
+  // Migration: P1 — users.owner_id, deleted_at, disabled
+  const userColsP1 = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!userColsP1.some((c) => c.name === 'owner_id')) {
+    db.exec('ALTER TABLE users ADD COLUMN owner_id TEXT REFERENCES users(id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_users_owner_id ON users(owner_id)');
+  }
+  if (!userColsP1.some((c) => c.name === 'deleted_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN deleted_at INTEGER');
+  }
+  if (!userColsP1.some((c) => c.name === 'disabled')) {
+    db.exec('ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0');
+  }
+
+  // Migration: P1 — user_permissions table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_permissions (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      permission  TEXT NOT NULL,
+      scope       TEXT NOT NULL DEFAULT '*',
+      granted_by  TEXT REFERENCES users(id),
+      granted_at  INTEGER NOT NULL,
+      UNIQUE(user_id, permission, scope)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_permissions_lookup ON user_permissions(user_id, permission, scope);
+  `);
+
+  // Migration: P1 — invite_codes table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS invite_codes (
+      code        TEXT PRIMARY KEY,
+      created_by  TEXT NOT NULL REFERENCES users(id),
+      created_at  INTEGER NOT NULL,
+      expires_at  INTEGER,
+      used_by     TEXT REFERENCES users(id),
+      used_at     INTEGER,
+      note        TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_invite_codes_used ON invite_codes(used_by);
+  `);
+
+  // Migration: P1 — backfill default permissions for existing users
+  {
+    const now = Date.now();
+    const members = db.prepare("SELECT id FROM users WHERE role = 'member'").all() as { id: string }[];
+    const agents = db.prepare("SELECT id FROM users WHERE role = 'agent'").all() as { id: string }[];
+    const insertPerm = db.prepare(
+      'INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, \'*\', NULL, ?)'
+    );
+
+    for (const u of members) {
+      insertPerm.run(u.id, 'channel.create', now);
+      insertPerm.run(u.id, 'message.send', now);
+      insertPerm.run(u.id, 'agent.manage', now);
+    }
+    for (const u of agents) {
+      insertPerm.run(u.id, 'message.send', now);
+    }
+  }
+
+  // Migration: P1 — backfill Creator permissions for existing channels
+  {
+    const now = Date.now();
+    const creatorChannels = db.prepare(
+      `SELECT c.id, c.created_by FROM channels c
+       JOIN users u ON u.id = c.created_by
+       WHERE u.role = 'member' AND c.deleted_at IS NULL AND c.name != 'general'`
+    ).all() as { id: string; created_by: string }[];
+    const insertPerm = db.prepare(
+      'INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, ?, NULL, ?)'
+    );
+    for (const ch of creatorChannels) {
+      const scope = `channel:${ch.id}`;
+      insertPerm.run(ch.created_by, 'channel.delete', scope, now);
+      insertPerm.run(ch.created_by, 'channel.manage_members', scope, now);
+      insertPerm.run(ch.created_by, 'channel.manage_visibility', scope, now);
+    }
+  }
+
+  // Migration: P1 — backfill agent owner_id (assign to first admin)
+  {
+    const firstAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1").get() as { id: string } | undefined;
+    if (firstAdmin) {
+      db.prepare("UPDATE users SET owner_id = ? WHERE role = 'agent' AND owner_id IS NULL").run(firstAdmin.id);
+    }
+  }
+
   // Migration: clean up duplicate DM channels (keep the oldest per name)
   const dupes = db.prepare(
     `SELECT name, MIN(created_at) AS keep_created_at
