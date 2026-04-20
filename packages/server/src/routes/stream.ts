@@ -166,6 +166,116 @@ export function registerStreamRoutes(app: FastifyInstance): void {
 
     writeSafe(client, `:connected\n\n`);
 
+    void backfillAndReady(client, lastEventId !== null);
+
     return reply;
   });
+}
+
+async function backfillAndReady(client: SSEClient, hasLastEventId: boolean): Promise<void> {
+  if (hasLastEventId) {
+    backfillLoop(client);
+  }
+
+  client.ready = true;
+
+  // drain-until-stable: catch events that slipped in between backfill end and ready=true
+  while (true) {
+    const drained = drainPending(client);
+    if (drained === 0) break;
+  }
+}
+
+function backfillLoop(client: SSEClient): void {
+  const db = getDb();
+  const LIMIT = 100;
+  const changeKinds = Array.from(CHANNEL_CHANGE_KINDS);
+
+  while (true) {
+    const events = Q.getEventsSinceWithChanges(
+      db,
+      client.lastCursor,
+      LIMIT,
+      client.cachedChannelIds,
+      changeKinds,
+    );
+    if (events.length === 0) return;
+
+    for (const ev of events) {
+      processEvent(client, ev);
+    }
+
+    if (events.length < LIMIT) return;
+  }
+}
+
+function drainPending(client: SSEClient): number {
+  const db = getDb();
+  const LIMIT = 100;
+  const changeKinds = Array.from(CHANNEL_CHANGE_KINDS);
+  let total = 0;
+
+  while (true) {
+    const events = Q.getEventsSinceWithChanges(
+      db,
+      client.lastCursor,
+      LIMIT,
+      client.cachedChannelIds,
+      changeKinds,
+    );
+    if (events.length === 0) return total;
+
+    for (const ev of events) {
+      processEvent(client, ev);
+    }
+    total += events.length;
+
+    if (events.length < LIMIT) return total;
+  }
+}
+
+export function processEvent(
+  client: SSEClient,
+  event: { cursor: number; kind: string; channel_id: string; payload: string },
+): void {
+  const db = getDb();
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(event.payload) as Record<string, unknown>;
+  } catch {
+    client.lastCursor = event.cursor;
+    return;
+  }
+
+  if (CHANNEL_CHANGE_KINDS.has(event.kind)) {
+    const ch = payload['channel'] as { created_by?: string } | undefined;
+    const payloadUserId = payload['user_id'] as string | undefined;
+    const isRelevant =
+      payloadUserId === client.userId ||
+      ch?.created_by === client.userId ||
+      client.cachedChannelIds.includes(event.channel_id) ||
+      Q.getUserChannelIds(db, client.userId).includes(event.channel_id);
+
+    if (isRelevant) {
+      client.cachedChannelIds = Q.getUserChannelIds(db, client.userId);
+      writeSafe(
+        client,
+        `event: ${event.kind}\nid: ${event.cursor}\ndata: ${event.payload}\n\n`,
+      );
+    }
+    client.lastCursor = event.cursor;
+    return;
+  }
+
+  const senderId = payload['sender_id'] as string | undefined;
+  if (senderId === client.userId) {
+    client.lastCursor = event.cursor;
+    return;
+  }
+
+  writeSafe(
+    client,
+    `event: ${event.kind}\nid: ${event.cursor}\ndata: ${event.payload}\n\n`,
+  );
+  client.lastCursor = event.cursor;
 }
