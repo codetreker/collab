@@ -168,6 +168,15 @@ export function useWebSocket() {
         }
         break;
       }
+      case 'channel_deleted': {
+        const deletedChannelId = data.channel_id as string;
+        dispatch({ type: 'REMOVE_CHANNEL', channelId: deletedChannelId });
+        subscribedChannels.current.delete(deletedChannelId);
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'unsubscribe', channel_id: deletedChannelId }));
+        }
+        break;
+      }
       case 'visibility_changed': {
         const chId = data.channel_id as string;
         const vis = data.visibility as 'public' | 'private';

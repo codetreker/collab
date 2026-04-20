@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel } from '../lib/api';
+import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel, deleteChannel } from '../lib/api';
 import type { ChannelMember } from '../lib/api';
 
 export default function ChannelMembersModal({ channelId, onClose }: { channelId: string; onClose: () => void }) {
@@ -12,12 +12,16 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
   const [showAddList, setShowAddList] = useState(false);
   const [confirmVisibility, setConfirmVisibility] = useState<'public' | 'private' | null>(null);
   const [switching, setSwitching] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const channelName = channel?.name ?? '';
   const channelCreatedBy = channel?.created_by ?? '';
   const isGeneral = channelName === 'general';
+  const isDm = channel?.type === 'dm';
   const currentUser = state.currentUser;
   const canManage = currentUser?.role === 'admin' || currentUser?.id === channelCreatedBy;
+  const canDelete = canManage && !isGeneral && !isDm;
   const visibility = channel?.visibility ?? 'public';
 
   const load = useCallback(async () => {
@@ -72,6 +76,22 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
   };
 
   const targetVisibility = visibility === 'public' ? 'private' : 'public';
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteChannel(channelId);
+      const general = state.channels.find(c => c.name === 'general');
+      dispatch({ type: 'REMOVE_CHANNEL', channelId });
+      if (general && state.currentChannelId === channelId) {
+        dispatch({ type: 'SET_CURRENT_CHANNEL', channelId: general.id });
+      }
+      onClose();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '删除失败');
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -164,6 +184,39 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {canDelete && (
+              <div className="danger-section">
+                {!confirmingDelete ? (
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    删除频道
+                  </button>
+                ) : (
+                  <div className="confirm-dialog">
+                    <p>确定删除 #{channelName}？此操作不可撤销。</p>
+                    <div className="form-actions">
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                      >
+                        {deleting ? '删除中...' : '确认删除'}
+                      </button>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => setConfirmingDelete(false)}
+                        disabled={deleting}
+                      >
+                        取消
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

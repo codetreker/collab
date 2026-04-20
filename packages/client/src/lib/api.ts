@@ -109,6 +109,12 @@ export async function leaveChannel(channelId: string): Promise<void> {
   });
 }
 
+export async function deleteChannel(channelId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/channels/${channelId}`, {
+    method: 'DELETE',
+  });
+}
+
 // ─── Channel Members ────────────────────────────────────
 
 export interface ChannelMember {
