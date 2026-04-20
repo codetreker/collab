@@ -3,16 +3,9 @@ import { useAppContext } from '../context/AppContext';
 import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel } from '../lib/api';
 import type { ChannelMember } from '../lib/api';
 
-interface Props {
-  channelId: string;
-  channelName: string;
-  channelCreatedBy: string;
-  channelVisibility?: 'public' | 'private';
-  onClose: () => void;
-}
-
-export default function ChannelMembersModal({ channelId, channelName, channelCreatedBy, channelVisibility, onClose }: Props) {
+export default function ChannelMembersModal({ channelId, onClose }: { channelId: string; onClose: () => void }) {
   const { state, actions } = useAppContext();
+  const channel = state.channels.find(c => c.id === channelId);
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -20,10 +13,12 @@ export default function ChannelMembersModal({ channelId, channelName, channelCre
   const [confirmVisibility, setConfirmVisibility] = useState<'public' | 'private' | null>(null);
   const [switching, setSwitching] = useState(false);
 
+  const channelName = channel?.name ?? '';
+  const channelCreatedBy = channel?.created_by ?? '';
   const isGeneral = channelName === 'general';
   const currentUser = state.currentUser;
   const canManage = currentUser?.role === 'admin' || currentUser?.id === channelCreatedBy;
-  const visibility = channelVisibility ?? 'public';
+  const visibility = channel?.visibility ?? 'public';
 
   const load = useCallback(async () => {
     try {

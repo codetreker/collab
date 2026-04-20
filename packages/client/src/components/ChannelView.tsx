@@ -99,9 +99,6 @@ export default function ChannelView({ channelId }: Props) {
       {showMembers && channel && (
         <ChannelMembersModal
           channelId={channel.id}
-          channelName={channel.name}
-          channelCreatedBy={channel.created_by}
-          channelVisibility={channel.visibility}
           onClose={() => setShowMembers(false)}
         />
       )}
