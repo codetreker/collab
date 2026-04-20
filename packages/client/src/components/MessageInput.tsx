@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import MentionPicker from './MentionPicker';
 import * as api from '../lib/api';
+import { fetchChannelMembers } from '../lib/api';
 import type { User, SendStatus } from '../types';
 
 interface Props {
@@ -24,7 +25,29 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   const [mentionIndex, setMentionIndex] = useState(0);
   const [mentionStart, setMentionStart] = useState(-1);
 
-  const filteredUsers = state.users.filter(u =>
+  const channel = state.channels.find(c => c.id === channelId);
+  const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
+  const isPrivate = !dmChannel && channel?.visibility === 'private';
+
+  const [channelMemberIds, setChannelMemberIds] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!isPrivate) {
+      setChannelMemberIds(null);
+      return;
+    }
+    let cancelled = false;
+    fetchChannelMembers(channelId).then(members => {
+      if (!cancelled) setChannelMemberIds(new Set(members.map(m => m.user_id)));
+    });
+    return () => { cancelled = true; };
+  }, [channelId, isPrivate]);
+
+  const mentionUsers = isPrivate && channelMemberIds
+    ? state.users.filter(u => channelMemberIds.has(u.id))
+    : state.users;
+
+  const filteredUsers = mentionUsers.filter(u =>
     u.display_name.toLowerCase().includes(mentionQuery.toLowerCase()),
   );
 
@@ -213,7 +236,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   return (
     <div className="message-input-container" onDrop={handleDrop} onDragOver={handleDragOver}>
       <MentionPicker
-        users={state.users}
+        users={mentionUsers}
         query={mentionQuery}
         onSelect={insertMention}
         position={{ top: 8, left: 16 }}
