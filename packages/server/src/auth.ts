@@ -145,7 +145,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     };
   });
 
-  app.post('/api/v1/auth/register', async (request, reply) => {
+  app.post('/api/v1/auth/register', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { invite_code, email, password, display_name } = request.body as {
       invite_code?: string; email?: string; password?: string; display_name?: string;
     };
@@ -177,10 +177,20 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     const txn = db.transaction(() => {
       Q.createUser(db, userId, display_name.trim(), 'member', null, email, passwordHash);
       Q.grantDefaultPermissions(db, userId, 'member');
-      Q.consumeInviteCode(db, invite_code, userId);
+      const consumed = Q.consumeInviteCode(db, invite_code, userId);
+      if (!consumed) {
+        throw new Error('INVITE_ALREADY_USED');
+      }
       Q.addUserToPublicChannels(db, userId);
     });
-    txn();
+    try {
+      txn();
+    } catch (err) {
+      if (err instanceof Error && err.message === 'INVITE_ALREADY_USED') {
+        return reply.status(409).send({ error: 'Invite code already used' });
+      }
+      throw err;
+    }
 
     const tokenPayload: JwtPayload = { userId, email };
     const signed = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
