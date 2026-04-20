@@ -31,6 +31,8 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
   const [channelMemberIds, setChannelMemberIds] = useState<Set<string> | null>(null);
 
+  const membersVersion = state.channelMembersVersion.get(channelId) ?? 0;
+
   useEffect(() => {
     if (!isPrivate) {
       setChannelMemberIds(null);
@@ -41,7 +43,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       if (!cancelled) setChannelMemberIds(new Set(members.map(m => m.user_id)));
     });
     return () => { cancelled = true; };
-  }, [channelId, isPrivate]);
+  }, [channelId, isPrivate, membersVersion]);
 
   const mentionUsers = isPrivate && channelMemberIds
     ? state.users.filter(u => channelMemberIds.has(u.id))
@@ -239,7 +241,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         users={mentionUsers}
         query={mentionQuery}
         onSelect={insertMention}
-        position={{ top: 8, left: 16 }}
         visible={mentionVisible}
         selectedIndex={mentionIndex}
       />
