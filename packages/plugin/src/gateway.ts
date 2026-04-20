@@ -140,8 +140,10 @@ export async function startCollabGateway(
           signal: ctx.abortSignal,
         });
 
-        cursor = result.cursor;
-        persistCursor(account.accountId, cursor);
+        if (result.events.length > 0) {
+          cursor = result.cursor;
+          persistCursor(account.accountId, cursor);
+        }
         consecutiveErrors = 0;
 
         for (const event of result.events) {
