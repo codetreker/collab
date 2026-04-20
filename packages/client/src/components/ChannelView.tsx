@@ -91,12 +91,17 @@ export default function ChannelView({ channelId }: Props) {
       </div>
       <ConnectionStatus state={connectionState} />
       <MessageList channelId={channelId} />
-      <MessageInput channelId={channelId} />
+      {!isDm && channel?.visibility === 'private' && state.currentUser?.role === 'admin' && !isMember ? (
+        <MessageInput channelId={channelId} disabled disabledHint="你不是此频道成员，无法发送消息。请先将自己添加为成员。" />
+      ) : (
+        <MessageInput channelId={channelId} />
+      )}
       {showMembers && channel && (
         <ChannelMembersModal
           channelId={channel.id}
           channelName={channel.name}
           channelCreatedBy={channel.created_by}
+          channelVisibility={channel.visibility}
           onClose={() => setShowMembers(false)}
         />
       )}
