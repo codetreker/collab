@@ -440,19 +440,6 @@ export function addChannelMember(
   ).run(channelId, userId, Date.now());
 }
 
-export function addUserToDefaultChannel(
-  db: Database.Database,
-  userId: string,
-): void {
-  const general = db.prepare("SELECT id FROM channels WHERE name = 'general' AND (type = 'channel' OR type IS NULL)").get() as { id: string } | undefined;
-  if (general) {
-    const now = Date.now();
-    db.prepare(
-      'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
-    ).run(general.id, userId, now, now);
-  }
-}
-
 export function addUserToPublicChannels(
   db: Database.Database,
   userId: string,
