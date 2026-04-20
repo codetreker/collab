@@ -5,6 +5,7 @@ import { ToastProvider } from './components/Toast';
 import Sidebar from './components/Sidebar';
 import ChannelView from './components/ChannelView';
 import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage';
 import UserPicker from './components/UserPicker';
 import AdminPage from './components/AdminPage';
 import { setDevUserId, fetchMe, ApiError } from './lib/api';
@@ -17,6 +18,7 @@ function AppInner() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   // Responsive check
   useEffect(() => {
@@ -110,7 +112,10 @@ function AppInner() {
   }
 
   if (!authenticated) {
-    return <LoginPage onLogin={handleLogin} />;
+    if (showRegister) {
+      return <RegisterPage onLogin={handleLogin} onBack={() => setShowRegister(false)} />;
+    }
+    return <LoginPage onLogin={handleLogin} onRegister={() => setShowRegister(true)} />;
   }
 
   if (!state.initialized) {
