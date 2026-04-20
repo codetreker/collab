@@ -69,7 +69,7 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     }
     const passwordHash = password ? bcrypt.hashSync(password, 10) : null;
     Q.createUser(db, id, display_name, role, null, email ?? null, passwordHash);
-    Q.addUserToDefaultChannel(db, id);
+    Q.addUserToPublicChannels(db, id);
 
     const user = db
       .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at FROM users WHERE id = ?')

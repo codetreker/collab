@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
-import { logout } from '../lib/api';
+import { logout, joinChannel } from '../lib/api';
 import type { Channel, DmChannel } from '../types';
 
 interface Props {
@@ -18,6 +18,7 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
   const [newTopic, setNewTopic] = useState('');
   const [creating, setCreating] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
 
   useEffect(() => {
     actions.loadDmChannels();
@@ -45,12 +46,14 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
       const channel = await actions.createChannel(
         newName.trim(),
         newTopic.trim() || undefined,
-        selectedMemberIds.size > 0 ? [...selectedMemberIds] : undefined,
+        visibility === 'private' && selectedMemberIds.size > 0 ? [...selectedMemberIds] : undefined,
+        visibility,
       );
       actions.selectChannel(channel.id);
       setNewName('');
       setNewTopic('');
       setSelectedMemberIds(new Set());
+      setVisibility('public');
       setShowCreate(false);
       onClose?.();
     } catch (err) {
@@ -113,6 +116,29 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
             onChange={e => setNewTopic(e.target.value)}
             className="input-field"
           />
+          <div className="visibility-toggle">
+            <label className="visibility-option">
+              <input
+                type="radio"
+                name="visibility"
+                value="public"
+                checked={visibility === 'public'}
+                onChange={() => setVisibility('public')}
+              />
+              <span>🌐 公开 — 所有人可见</span>
+            </label>
+            <label className="visibility-option">
+              <input
+                type="radio"
+                name="visibility"
+                value="private"
+                checked={visibility === 'private'}
+                onChange={() => setVisibility('private')}
+              />
+              <span>🔒 私有 — 仅邀请成员可见</span>
+            </label>
+          </div>
+          {visibility === 'private' && (
           <div className="member-select-list">
             <div className="member-select-label">选择成员（可选）</div>
             {state.users
@@ -129,11 +155,12 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
                 </label>
               ))}
           </div>
+          )}
           <div className="form-actions">
             <button type="submit" disabled={creating || !newName.trim()} className="btn btn-primary btn-sm">
               {creating ? '创建中...' : '创建'}
             </button>
-            <button type="button" onClick={() => { setShowCreate(false); setSelectedMemberIds(new Set()); }} className="btn btn-sm">
+            <button type="button" onClick={() => { setShowCreate(false); setSelectedMemberIds(new Set()); setVisibility('public'); }} className="btn btn-sm">
               取消
             </button>
           </div>
@@ -208,14 +235,31 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
 }
 
 function ChannelItem({ channel, active, onClick }: { channel: Channel; active: boolean; onClick: () => void }) {
+  const { actions } = useAppContext();
   const unread = channel.unread_count ?? 0;
+  const isPrivate = channel.visibility === 'private';
+  const isMember = channel.is_member !== false;
+
+  const handleJoin = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await joinChannel(channel.id);
+      await actions.loadChannels();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '加入失败');
+    }
+  };
+
   return (
     <button
       className={`channel-item ${active ? 'channel-item-active' : ''}`}
       onClick={onClick}
     >
-      <span className="channel-hash">#</span>
+      <span className="channel-hash">{isPrivate ? '🔒' : '#'}</span>
       <span className="channel-name">{channel.name}</span>
+      {!isMember && !isPrivate && (
+        <span className="btn btn-sm join-btn" onClick={handleJoin}>加入</span>
+      )}
       {unread > 0 && (
         <span className="unread-badge">{unread > 99 ? '99+' : unread}</span>
       )}

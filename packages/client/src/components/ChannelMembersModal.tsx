@@ -1,25 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { fetchChannelMembers, addChannelMember, removeChannelMember } from '../lib/api';
+import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel } from '../lib/api';
 import type { ChannelMember } from '../lib/api';
 
-interface Props {
-  channelId: string;
-  channelName: string;
-  channelCreatedBy: string;
-  onClose: () => void;
-}
-
-export default function ChannelMembersModal({ channelId, channelName, channelCreatedBy, onClose }: Props) {
-  const { state } = useAppContext();
+export default function ChannelMembersModal({ channelId, onClose }: { channelId: string; onClose: () => void }) {
+  const { state, actions } = useAppContext();
+  const channel = state.channels.find(c => c.id === channelId);
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [showAddList, setShowAddList] = useState(false);
+  const [confirmVisibility, setConfirmVisibility] = useState<'public' | 'private' | null>(null);
+  const [switching, setSwitching] = useState(false);
 
+  const channelName = channel?.name ?? '';
+  const channelCreatedBy = channel?.created_by ?? '';
   const isGeneral = channelName === 'general';
   const currentUser = state.currentUser;
   const canManage = currentUser?.role === 'admin' || currentUser?.id === channelCreatedBy;
+  const visibility = channel?.visibility ?? 'public';
 
   const load = useCallback(async () => {
     try {
@@ -56,11 +55,27 @@ export default function ChannelMembersModal({ channelId, channelName, channelCre
     }
   };
 
+  const handleVisibilitySwitch = async () => {
+    if (!confirmVisibility) return;
+    setSwitching(true);
+    try {
+      await updateChannel(channelId, { visibility: confirmVisibility });
+      await actions.loadChannels();
+      setConfirmVisibility(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '切换失败');
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const targetVisibility = visibility === 'public' ? 'private' : 'public';
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>#{channelName} 成员</h3>
+          <h3>{visibility === 'private' ? '🔒' : '#'}{channelName} 成员</h3>
           <button className="icon-btn" onClick={onClose}>✕</button>
         </div>
 
@@ -68,6 +83,42 @@ export default function ChannelMembersModal({ channelId, channelName, channelCre
           <div className="modal-body"><p>加载中...</p></div>
         ) : (
           <div className="modal-body">
+            {canManage && (
+              <div className="visibility-section">
+                <div className="visibility-current">
+                  频道可见性：{visibility === 'public' ? '🌐 公开' : '🔒 私有'}
+                </div>
+                <button
+                  className="btn btn-sm"
+                  disabled={isGeneral || switching}
+                  onClick={() => setConfirmVisibility(targetVisibility)}
+                  title={isGeneral ? '#general 不可设为私有' : undefined}
+                >
+                  切换为{targetVisibility === 'public' ? '公开' : '私有'}
+                </button>
+              </div>
+            )}
+
+            {confirmVisibility && (
+              <div className="confirm-dialog">
+                <p>
+                  {confirmVisibility === 'private'
+                    ? '将频道设为私有？已有成员将保留，新用户不会自动加入。'
+                    : '将频道设为公开？所有用户将自动加入此频道。'}
+                </p>
+                <div className="form-actions">
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={handleVisibilitySwitch}
+                    disabled={switching}
+                  >
+                    {switching ? '切换中...' : '确认'}
+                  </button>
+                  <button className="btn btn-sm" onClick={() => setConfirmVisibility(null)}>取消</button>
+                </div>
+              </div>
+            )}
+
             <div className="member-list">
               {members.map(m => (
                 <div key={m.user_id} className="member-row">

@@ -352,7 +352,7 @@ export interface Channel {
 </div>
 ```
 
-当选择 `private` 时，成员选择列表变为必选（至少选一人）。
+当选择 `private` 时，显示成员选择列表（可选，不选则只有创建者自己）。
 `createChannel` API 调用传递 `visibility` 参数。
 
 #### 3. 侧边栏频道列表（`Sidebar.tsx`）

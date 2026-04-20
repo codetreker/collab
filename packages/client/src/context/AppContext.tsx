@@ -55,7 +55,9 @@ type Action =
   | { type: 'CLEAR_UNREAD'; channelId: string }
   | { type: 'SET_DM_CHANNELS'; channels: DmChannel[] }
   | { type: 'ADD_DM_CHANNEL'; channel: DmChannel }
-  | { type: 'UPDATE_DM_CHANNEL'; channelId: string; updates: Partial<DmChannel> };
+  | { type: 'UPDATE_DM_CHANNEL'; channelId: string; updates: Partial<DmChannel> }
+  | { type: 'REMOVE_CHANNEL'; channelId: string }
+  | { type: 'UPDATE_CHANNEL'; channelId: string; updates: Partial<Channel> };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -199,6 +201,21 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, dmChannels };
     }
 
+    case 'REMOVE_CHANNEL': {
+      const channels = state.channels.filter(c => c.id !== action.channelId);
+      const currentChannelId = state.currentChannelId === action.channelId
+        ? (state.channels.find(c => c.name === 'general')?.id ?? null)
+        : state.currentChannelId;
+      return { ...state, channels, currentChannelId };
+    }
+
+    case 'UPDATE_CHANNEL': {
+      const channels = state.channels.map(c =>
+        c.id === action.channelId ? { ...c, ...action.updates } : c,
+      );
+      return { ...state, channels };
+    }
+
     default:
       return state;
   }
@@ -218,7 +235,7 @@ interface AppContextValue {
     loadOnlineUsers: () => Promise<void>;
     selectChannel: (channelId: string) => void;
     sendMessage: (channelId: string, content: string, contentType?: 'text' | 'image', mentions?: string[]) => Promise<Message>;
-    createChannel: (name: string, topic?: string, memberIds?: string[]) => Promise<Channel>;
+    createChannel: (name: string, topic?: string, memberIds?: string[], visibility?: 'public' | 'private') => Promise<Channel>;
     loadDmChannels: () => Promise<void>;
     openDm: (userId: string) => Promise<void>;
   };
@@ -304,8 +321,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return api.sendMessage(channelId, content, contentType, mentions);
   }, []);
 
-  const createChannelAction = useCallback(async (name: string, topic?: string, memberIds?: string[]): Promise<Channel> => {
-    const channel = await api.createChannel(name, topic, memberIds);
+  const createChannelAction = useCallback(async (
+    name: string, topic?: string, memberIds?: string[], visibility?: 'public' | 'private',
+  ): Promise<Channel> => {
+    const channel = await api.createChannel(name, topic, memberIds, visibility);
     dispatch({ type: 'ADD_CHANNEL', channel });
     return channel;
   }, []);

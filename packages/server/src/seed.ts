@@ -4,7 +4,7 @@ import { getDb } from './db.js';
 import {
   createChannel,
   createUser,
-  addChannelMember,
+  addUserToPublicChannels,
   getChannelByName,
   getUserById,
   getUserByEmail,
@@ -50,12 +50,17 @@ export function seed(): void {
   }
 
   // #general channel
-  if (!getChannelByName(db, 'general')) {
-    const ch = createChannel(db, 'general', 'General discussion', adminId);
-    addChannelMember(db, ch.id, adminId);
-    for (const a of agents) {
-      addChannelMember(db, ch.id, a.id);
+  const generalCreated = !getChannelByName(db, 'general');
+  if (generalCreated) {
+    createChannel(db, 'general', 'General discussion', adminId);
+    console.log('[seed] Created #general channel');
+  }
+
+  // Only add users to public channels on first run (when #general was just created)
+  if (generalCreated) {
+    const allUsers = db.prepare('SELECT id FROM users').all() as { id: string }[];
+    for (const u of allUsers) {
+      addUserToPublicChannels(db, u.id);
     }
-    console.log('[seed] Created #general channel with all members');
   }
 }

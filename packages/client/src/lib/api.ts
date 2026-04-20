@@ -73,12 +73,40 @@ export async function fetchChannels(): Promise<Channel[]> {
   return data.channels;
 }
 
-export async function createChannel(name: string, topic?: string, memberIds?: string[]): Promise<Channel> {
+export async function createChannel(
+  name: string,
+  topic?: string,
+  memberIds?: string[],
+  visibility?: 'public' | 'private',
+): Promise<Channel> {
   const data = await request<{ channel: Channel }>('/api/v1/channels', {
     method: 'POST',
-    body: JSON.stringify({ name, topic, member_ids: memberIds }),
+    body: JSON.stringify({ name, topic, member_ids: memberIds, visibility }),
   });
   return data.channel;
+}
+
+export async function updateChannel(
+  channelId: string,
+  updates: { name?: string; topic?: string; visibility?: 'public' | 'private' },
+): Promise<Channel> {
+  const data = await request<{ channel: Channel }>(`/api/v1/channels/${channelId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  });
+  return data.channel;
+}
+
+export async function joinChannel(channelId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/join`, {
+    method: 'POST',
+  });
+}
+
+export async function leaveChannel(channelId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/leave`, {
+    method: 'POST',
+  });
 }
 
 // ─── Channel Members ────────────────────────────────────

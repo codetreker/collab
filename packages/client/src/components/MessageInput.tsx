@@ -6,9 +6,11 @@ import type { User, SendStatus } from '../types';
 
 interface Props {
   channelId: string;
+  disabled?: boolean;
+  disabledHint?: string;
 }
 
-export default function MessageInput({ channelId }: Props) {
+export default function MessageInput({ channelId, disabled, disabledHint }: Props) {
   const { state, actions } = useAppContext();
   const [text, setText] = useState('');
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
@@ -197,6 +199,16 @@ export default function MessageInput({ channelId }: Props) {
       default: return null;
     }
   };
+
+  if (disabled) {
+    return (
+      <div className="message-input-container">
+        <div className="message-input-disabled">
+          {disabledHint ?? '无法发送消息'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="message-input-container" onDrop={handleDrop} onDragOver={handleDragOver}>

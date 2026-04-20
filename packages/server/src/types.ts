@@ -3,6 +3,7 @@ export interface Channel {
   name: string;
   topic: string;
   type?: 'channel' | 'dm';
+  visibility?: 'public' | 'private';
   created_at: number;
   created_by: string;
 }
@@ -40,7 +41,10 @@ export type EventKind =
   | 'mention'
   | 'channel_created'
   | 'member_joined'
-  | 'member_left';
+  | 'member_left'
+  | 'visibility_changed'
+  | 'user_joined'
+  | 'user_left';
 
 export interface EventRow {
   cursor: number;

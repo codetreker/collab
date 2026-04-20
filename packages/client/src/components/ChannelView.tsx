@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { leaveChannel } from '../lib/api';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConnectionStatus from './ConnectionStatus';
@@ -44,8 +45,21 @@ export default function ChannelView({ channelId }: Props) {
     );
   }
 
-  const headerTitle = isDm ? dmChannel.peer.display_name : `#${channel!.name}`;
+  const headerTitle = isDm
+    ? dmChannel.peer.display_name
+    : `${channel!.visibility === 'private' ? '🔒 ' : '#'}${channel!.name}`;
   const headerTopic = isDm ? undefined : channel!.topic;
+  const isGeneral = channel?.name === 'general';
+  const isMember = !!channel?.is_member;
+
+  const handleLeave = async () => {
+    try {
+      await leaveChannel(channelId);
+      await actions.loadChannels();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '离开失败');
+    }
+  };
 
   return (
     <div className="channel-view">
@@ -55,23 +69,36 @@ export default function ChannelView({ channelId }: Props) {
           {headerTopic && <span className="channel-topic">{headerTopic}</span>}
         </div>
         {!isDm && channel && (
-          <button
-            className="icon-btn"
-            title="成员管理"
-            onClick={() => setShowMembers(true)}
-          >
-            👥
-          </button>
+          <>
+            {isMember && !isGeneral && (
+              <button
+                className="btn btn-sm leave-btn"
+                title="离开频道"
+                onClick={handleLeave}
+              >
+                离开频道
+              </button>
+            )}
+            <button
+              className="icon-btn"
+              title="成员管理"
+              onClick={() => setShowMembers(true)}
+            >
+              👥{channel.member_count != null ? ` ${channel.member_count}` : ''}
+            </button>
+          </>
         )}
       </div>
       <ConnectionStatus state={connectionState} />
       <MessageList channelId={channelId} />
-      <MessageInput channelId={channelId} />
+      {!isDm && channel?.visibility === 'private' && state.currentUser?.role === 'admin' && !isMember ? (
+        <MessageInput channelId={channelId} disabled disabledHint="你不是此频道成员，无法发送消息。请先将自己添加为成员。" />
+      ) : (
+        <MessageInput channelId={channelId} />
+      )}
       {showMembers && channel && (
         <ChannelMembersModal
           channelId={channel.id}
-          channelName={channel.name}
-          channelCreatedBy={channel.created_by}
           onClose={() => setShowMembers(false)}
         />
       )}

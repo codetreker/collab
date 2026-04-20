@@ -79,6 +79,15 @@ export function broadcastToChannel(channelId: string, payload: unknown): void {
   }
 }
 
+export function broadcastToUser(userId: string, payload: unknown): void {
+  const data = JSON.stringify(payload);
+  for (const client of clients.values()) {
+    if (client.userId === userId && client.ws.readyState === 1) {
+      client.ws.send(data);
+    }
+  }
+}
+
 function broadcastPresence(userId: string, status: 'online' | 'offline'): void {
   const db = getDb();
   const user = Q.getUserById(db, userId);
@@ -159,7 +168,9 @@ export function registerWebSocket(app: FastifyInstance): void {
               socket.send(JSON.stringify({ type: 'error', message: 'Channel not found' }));
               break;
             }
-            if (!Q.isChannelMember(db, msg.channel_id, userId)) {
+            const isMember = Q.isChannelMember(db, msg.channel_id, userId);
+            const isAdmin = user.role === 'admin';
+            if (!isMember && !isAdmin) {
               socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
               break;
             }
