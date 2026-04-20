@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
+import { requirePermission } from '../middleware/permissions.js';
 
 export function registerMessageRoutes(app: FastifyInstance): void {
   // Get messages for a channel
@@ -68,7 +69,7 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       reply_to_id?: string;
       mentions?: string[];
     };
-  }>('/api/v1/channels/:channelId/messages', async (request, reply) => {
+  }>('/api/v1/channels/:channelId/messages', { preHandler: [requirePermission('message.send')] }, async (request, reply) => {
     const { channelId } = request.params;
     const { content, content_type, reply_to_id, mentions } = request.body ?? {};
 

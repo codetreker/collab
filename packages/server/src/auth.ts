@@ -57,6 +57,8 @@ export async function authMiddleware(
     if (payload) {
       const user = getUserById(db, payload.userId);
       if (user) {
+        if (user.deleted_at) return reply.status(401).send({ error: 'account_deleted' });
+        if (user.disabled) return reply.status(401).send({ error: 'account_disabled' });
         request.currentUser = user;
         return;
       }
@@ -70,6 +72,8 @@ export async function authMiddleware(
     const apiKey = authHeader.slice(7);
     const user = getUserByApiKey(db, apiKey);
     if (user) {
+      if (user.deleted_at) return reply.status(401).send({ error: 'account_deleted' });
+      if (user.disabled) return reply.status(401).send({ error: 'account_disabled' });
       request.currentUser = user;
       return;
     }
