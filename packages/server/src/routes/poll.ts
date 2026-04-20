@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
+import { notifySSEClients } from './stream.js';
 
 import type { EventRow } from '../types.js';
 
@@ -34,6 +35,7 @@ function notifyWaiters(): void {
 
 export function signalNewEvents(): void {
   notifyWaiters();
+  notifySSEClients();
 }
 
 export function registerPollRoutes(app: FastifyInstance): void {

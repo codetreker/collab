@@ -279,3 +279,27 @@ export function processEvent(
   );
   client.lastCursor = event.cursor;
 }
+
+export function notifySSEClients(): void {
+  const db = getDb();
+  const changeKinds = Array.from(CHANNEL_CHANGE_KINDS);
+
+  for (const client of [...sseClients]) {
+    if (!client.ready) continue;
+
+    try {
+      const events = Q.getEventsSinceWithChanges(
+        db,
+        client.lastCursor,
+        100,
+        client.cachedChannelIds,
+        changeKinds,
+      );
+      for (const ev of events) {
+        processEvent(client, ev);
+      }
+    } catch {
+      removeSSEClient(client);
+    }
+  }
+}
