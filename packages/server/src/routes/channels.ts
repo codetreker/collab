@@ -361,10 +361,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     return reply.status(201).send({ ok: true });
   });
 
-  // Remove member from channel
+  // Remove member from channel (self-leave bypasses permission check)
   app.delete<{
     Params: { channelId: string; userId: string };
-  }>('/api/v1/channels/:channelId/members/:userId', { preHandler: [requirePermission('channel.manage_members', (req) => `channel:${(req.params as { channelId: string }).channelId}`)] }, async (request, reply) => {
+  }>('/api/v1/channels/:channelId/members/:userId', { preHandler: [async (request, reply) => {
+    const { userId } = request.params as { userId: string };
+    if (request.currentUser?.id === userId) return;
+    return requirePermission('channel.manage_members', (req) => `channel:${(req.params as { channelId: string }).channelId}`)(request, reply);
+  }] }, async (request, reply) => {
     const { channelId, userId } = request.params;
     const db = getDb();
 
