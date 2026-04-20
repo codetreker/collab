@@ -10,6 +10,7 @@ export const CollabAccountConfigSchema = z
     botUserId: z.string().optional(),
     botDisplayName: z.string().optional(),
     pollTimeoutMs: z.number().int().min(1000).max(60_000).optional(),
+    transport: z.enum(["auto", "sse", "poll"]).optional(),
     allowFrom: z.array(z.union([z.string(), z.number()])).optional(),
     defaultTo: z.string().optional(),
   })

@@ -1,5 +1,7 @@
 // ─── Plugin Config Types ─────────────────────────────────
 
+export type CollabTransport = "auto" | "sse" | "poll";
+
 export type CollabAccountConfig = {
   name?: string;
   enabled?: boolean;
@@ -8,6 +10,7 @@ export type CollabAccountConfig = {
   botUserId?: string;
   botDisplayName?: string;
   pollTimeoutMs?: number;
+  transport?: CollabTransport;
   allowFrom?: Array<string | number>;
   defaultTo?: string;
 };
@@ -37,6 +40,7 @@ export type ResolvedCollabAccount = {
   botDisplayName: string;
   requireMention: boolean;
   pollTimeoutMs: number;
+  transport: CollabTransport;
   config: CollabAccountConfig;
 };
 

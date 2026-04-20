@@ -49,6 +49,7 @@ export function resolveCollabAccount(params: {
     botDisplayName,
     requireMention: false,
     pollTimeoutMs: merged.pollTimeoutMs ?? DEFAULT_POLL_TIMEOUT_MS,
+    transport: merged.transport ?? "auto",
     config: {
       ...merged,
       allowFrom: merged.allowFrom ?? ["*"],
