@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
-import { logout } from '../lib/api';
+import { logout, joinChannel } from '../lib/api';
 import type { Channel, DmChannel } from '../types';
 
 interface Props {
@@ -235,14 +235,31 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
 }
 
 function ChannelItem({ channel, active, onClick }: { channel: Channel; active: boolean; onClick: () => void }) {
+  const { actions } = useAppContext();
   const unread = channel.unread_count ?? 0;
+  const isPrivate = channel.visibility === 'private';
+  const isMember = channel.is_member !== false;
+
+  const handleJoin = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await joinChannel(channel.id);
+      await actions.loadChannels();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '加入失败');
+    }
+  };
+
   return (
     <button
       className={`channel-item ${active ? 'channel-item-active' : ''}`}
       onClick={onClick}
     >
-      <span className="channel-hash">#</span>
+      <span className="channel-hash">{isPrivate ? '🔒' : '#'}</span>
       <span className="channel-name">{channel.name}</span>
+      {!isMember && !isPrivate && (
+        <span className="btn btn-sm join-btn" onClick={handleJoin}>加入</span>
+      )}
       {unread > 0 && (
         <span className="unread-badge">{unread > 99 ? '99+' : unread}</span>
       )}

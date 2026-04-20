@@ -9,6 +9,7 @@ export interface Channel {
   created_at: number;
   created_by: string;
   member_count?: number;
+  is_member?: boolean;
   last_message_at?: number | null;
   unread_count?: number;
 }
