@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { getDevUserId, fetchMessages } from '../lib/api';
-import type { ConnectionState, Message } from '../types';
+import type { ConnectionState, Message, Channel } from '../types';
 
 const PING_INTERVAL = 25_000;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
@@ -150,8 +150,42 @@ export function useWebSocket() {
         break;
       }
       case 'channel_created': {
-        const channel = data.channel as { id: string; name: string; topic: string; created_at: number; created_by: string };
+        const channel = data.channel as Channel;
         dispatch({ type: 'ADD_CHANNEL', channel });
+        break;
+      }
+      case 'channel_added': {
+        const channel = data.channel as Channel;
+        dispatch({ type: 'ADD_CHANNEL', channel });
+        break;
+      }
+      case 'channel_removed': {
+        const removedChannelId = data.channel_id as string;
+        dispatch({ type: 'REMOVE_CHANNEL', channelId: removedChannelId });
+        break;
+      }
+      case 'visibility_changed': {
+        const chId = data.channel_id as string;
+        const vis = data.visibility as 'public' | 'private';
+        dispatch({ type: 'UPDATE_CHANNEL', channelId: chId, updates: { visibility: vis } });
+        break;
+      }
+      case 'user_joined': {
+        const joinedChannelId = data.channelId as string;
+        const joinedUserId = data.userId as string;
+        if (joinedUserId) {
+          dispatch({ type: 'USER_ONLINE', userId: joinedUserId });
+        }
+        if (joinedChannelId) {
+          dispatch({ type: 'UPDATE_CHANNEL', channelId: joinedChannelId, updates: {} });
+        }
+        break;
+      }
+      case 'user_left': {
+        const leftChannelId = data.channelId as string;
+        if (leftChannelId) {
+          dispatch({ type: 'UPDATE_CHANNEL', channelId: leftChannelId, updates: {} });
+        }
         break;
       }
       case 'pong':
