@@ -4,6 +4,26 @@ I've read both design docs and explored the codebase. Here's the full task break
 
 ## P1 Task List — Agent 归属与权限系统
 
+> **Review Fix Log**
+>
+> - **CC-C1**：角色命名统一为 `member`（与 DB `role` 列一致），全文不再使用 `user` 指代普通人类用户角色
+> - **CC-H1**：T9 新增 `channel_deleted` WS 事件前端处理（从 store 移除、切到 #general、Toast 提示）
+> - **CC-H2**：T2 验证项显式列出每个端点的权限挂载
+> - **CC-H3**：T8 新增 owner 删除/禁用时 agent 级联软删逻辑
+> - **CC-H4**：公开频道预览（24h 消息）显式标注为 P2 defer
+> - **Codex-H1**：T1 新增现有 agent 回填 `owner_id`（归属首个 admin）
+> - **Codex-H2**：T8 新增 `owner_id`/`role` 不变式校验（role 变更时）
+> - **Codex-H3**：T2 新增 `message.send` 权限挂载到 `POST /channels/:id/messages`
+> - **Codex-H4**：新增 T2.5 权限读取 API（`GET /api/v1/me/permissions` + `GET /api/v1/admin/users/:id/permissions`），解除 T9/T10 的后端依赖
+
+---
+
+### P2 Deferred Items
+
+- **公开频道预览（24h 消息）**：`product-direction.md` 要求"公开频道未加入时可预览最近 24 小时消息，不能发言，需申请加入"。此功能不在 P1 范围内，显式 defer 到 P2。（CC-H4）
+
+---
+
 ### T1 — 数据库迁移：P1 schema 扩展
 
 - **文件**：`packages/server/src/db.ts`
@@ -11,10 +31,11 @@ I've read both design docs and explored the codebase. Here's the full task break
   - `users` 表加 `owner_id` 列 + 索引
   - 新建 `user_permissions` 表 + 索引
   - 新建 `invite_codes` 表 + 索引
-  - 回填现有用户默认权限（`INSERT OR IGNORE`）
+  - 回填现有 member 默认权限（`INSERT OR IGNORE`）
   - 回填现有频道 Creator 权限
-- **预估行数**：~120 行（SQL + 幂等检查逻辑）
-- **验证**：启动 server，`PRAGMA table_info(users)` 确认 `owner_id`；查 `user_permissions` 表确认回填数据；重复启动不报错（幂等）
+  - **回填现有 agent 的 `owner_id`**：将所有 `role='agent'` 且 `owner_id IS NULL` 的行归属到首个 `role='admin'` 用户（Codex-H1）
+- **预估行数**：~140 行（SQL + 幂等检查逻辑 + agent 回填）
+- **验证**：启动 server，`PRAGMA table_info(users)` 确认 `owner_id`；查 `user_permissions` 表确认回填数据；确认所有 `role='agent'` 行均有非 NULL `owner_id`；重复启动不报错（幂等）
 - **依赖**：无
 
 ---
@@ -27,9 +48,38 @@ I've read both design docs and explored the codebase. Here's the full task break
 - **改动**：
   - 实现 `requirePermission(permission, scopeResolver?)` Fastify preHandler
   - admin 短路通过；其余查 `user_permissions` 表
-  - 在 channel create/delete/update/manage_members 路由挂载
-- **预估行数**：~60 行（中间件）+ ~30 行（路由改造）
-- **验证**：单测覆盖 admin 短路 / member 有权 / member 无权 / scope 通配 vs 精确匹配；无权限用户请求返回 403
+  - 挂载到以下路由：
+    - `POST /channels` — `channel.create`
+    - `DELETE /channels/:id` — `channel.delete`（scope: channelId）
+    - `PATCH /channels/:id` (visibility) — `channel.manage_visibility`（scope: channelId）
+    - `POST /channels/:id/members` — `channel.manage_members`（scope: channelId）
+    - `DELETE /channels/:id/members/:uid` — `channel.manage_members`（scope: channelId）
+    - `POST /channels/:id/messages` — `message.send`（scope: channelId）（Codex-H3）
+- **预估行数**：~60 行（中间件）+ ~40 行（路由改造）
+- **验证**：
+  - 单测覆盖 admin 短路 / member 有权 / member 无权 / scope 通配 vs 精确匹配；无权限用户请求返回 403
+  - **逐端点验证**（CC-H2）：
+    - `POST /channels`：无 `channel.create` 权限 → 403
+    - `DELETE /channels/:id`：无 `channel.delete` 权限 → 403
+    - `PATCH /channels/:id`：无 `channel.manage_visibility` 权限 → 403
+    - `POST /channels/:id/members`：无 `channel.manage_members` 权限 → 403
+    - `DELETE /channels/:id/members/:uid`：无 `channel.manage_members` 权限 → 403
+    - `POST /channels/:id/messages`：无 `message.send` 权限 → 403；撤销 agent 的 `message.send` 后该 agent 无法发消息
+- **依赖**：T1
+
+---
+
+### T2.5 — 权限读取 API（Codex-H4）
+
+- **文件**：
+  - `packages/server/src/routes/channels.ts` 或新建 `packages/server/src/routes/permissions.ts`
+  - `packages/server/src/routes/admin.ts`
+  - `packages/server/src/queries.ts`
+- **改动**：
+  - `GET /api/v1/me/permissions` — 返回当前登录用户的完整权限列表（T9 前端 `useCan` hook 依赖此接口）
+  - `GET /api/v1/admin/users/:id/permissions` — admin 查看指定用户的权限列表（T10 权限管理页依赖此接口）
+- **预估行数**：~50 行
+- **验证**：member 调 `/me/permissions` 返回自身权限列表；非 admin 调 `/admin/users/:id/permissions` 返回 403；admin 可查任意用户权限
 - **依赖**：T1
 
 ---
@@ -93,7 +143,7 @@ I've read both design docs and explored the codebase. Here's the full task break
   - `packages/server/src/queries.ts`（`validateAgentMembership` helper）
 - **改动**：
   - 抽取 `validateAgentMembership(caller, agentUser, channelId, memberIds)`
-  - `POST /channels` 创建时：遍历 `member_ids`，对 `role=agent` 用户校验
+  - `POST /channels` 创建时：遍历 `member_ids`，对 `role=agent` 的 member 校验
   - `POST /channels/:id/members` 添加时：同样校验
   - 校验规则：caller 必须是 agent 的 owner（或 admin）；owner 必须已在频道内或同批加入
 - **预估行数**：~60 行
@@ -127,27 +177,31 @@ I've read both design docs and explored the codebase. Here's the full task break
   - `POST /api/v1/admin/permissions` — 授予权限
   - `DELETE /api/v1/admin/permissions/:id` — 撤销权限
   - `PATCH /api/v1/admin/users/:id` — 改 role（现有 PUT 改为支持 role 变更）
-- **预估行数**：~150 行
-- **验证**：admin 可列全部频道（含已删）；非 admin 403；权限增删立即生效
+  - **`owner_id`/`role` 不变式校验**（Codex-H2）：role 变更时检查——将 member 改为 agent 必须提供 `owner_id`；将 agent 改为 member/admin 必须清除 `owner_id`；admin/member 的 `owner_id` 必须为 NULL
+  - **Owner 删除/禁用时 agent 级联处理**（CC-H3）：`DELETE /api/v1/admin/users/:id` 或禁用 member 时，级联软删（`deleted_at = NOW()`）其名下所有 `role='agent'` 的用户，并清理相关权限
+- **预估行数**：~200 行
+- **验证**：admin 可列全部频道（含已删）；非 admin 403；权限增删立即生效；将 member 改 agent 不提供 owner_id → 400；删除拥有 agent 的 member → 其 agent 全部软删
 - **依赖**：T2（可与 T5/T7 并行）
 
 ---
 
-### T9 — 前端权限 hook `useCan`
+### T9 — 前端权限 hook `useCan` + WS 事件处理
 
 - **文件**：
   - 新建 `packages/client/src/hooks/usePermissions.ts`
-  - `packages/client/src/lib/api.ts`（新增获取当前用户权限 API 调用）
+  - `packages/client/src/lib/api.ts`（调用 `GET /api/v1/me/permissions`）
   - `packages/client/src/context/AppContext.tsx`（state 加 `permissions`）
   - `packages/client/src/components/ChannelMembersModal.tsx`（按钮条件渲染）
   - `packages/client/src/components/Sidebar.tsx`（按钮条件渲染）
+  - `packages/client/src/hooks/useWebSocket.ts` 或相关 WS handler
 - **改动**：
-  - 登录后拉取当前用户权限列表缓存到 context
+  - 登录后调用 `GET /api/v1/me/permissions` 拉取当前用户权限列表缓存到 context
   - `useCan(permission, scope?)` hook：admin 恒 true，其余查本地权限
   - 删除按钮、管理成员按钮等根据 `useCan` 显示/隐藏
-- **预估行数**：~100 行
-- **验证**：member 无 `channel.delete` 权限时看不到删除按钮；creator 能看到；admin 恒看到；点击后端 403 时优雅提示
-- **依赖**：T2（API 稳定后）
+  - **`channel_deleted` WS 事件处理**（CC-H1）：收到 `channel_deleted` 事件后，从 channel store 中移除该频道；若当前选中频道被删，自动切换到 #general；Toast 提示"频道已被删除"
+- **预估行数**：~130 行
+- **验证**：member 无 `channel.delete` 权限时看不到删除按钮；creator 能看到；admin 恒看到；点击后端 403 时优雅提示；另一用户删除当前频道 → 自动跳转 #general + Toast
+- **依赖**：T2.5, T7（WS 事件依赖后端频道删除广播）
 
 ---
 
@@ -161,7 +215,7 @@ I've read both design docs and explored the codebase. Here's the full task break
   - 新建 `packages/client/src/components/admin/ChannelsPage.tsx`
   - 新建 `packages/client/src/components/admin/PermissionsPage.tsx`
   - `packages/client/src/App.tsx`（路由切换逻辑）
-  - `packages/client/src/lib/api.ts`（admin API 调用）
+  - `packages/client/src/lib/api.ts`（admin API 调用，含 `GET /api/v1/admin/users/:id/permissions`）
 - **改动**：
   - AdminLayout 带侧边 tab 导航（Users / Invites / Channels / Permissions）
   - 非 admin 访问重定向回主页
@@ -169,10 +223,10 @@ I've read both design docs and explored the codebase. Here's the full task break
   - 用户页：列表、改 role、禁用
   - 邀请码页：生成、列表、作废
   - 频道页：全部频道（含已删）、强制删除
-  - 权限页：按用户查看/授予/撤销
+  - 权限页：按用户查看/授予/撤销（调用 `GET /api/v1/admin/users/:id/permissions` 获取权限列表）
 - **预估行数**：~500 行
 - **验证**：浏览器中 admin 登录 → 进入 /admin → 四个 tab 均可操作；非 admin 看不到入口
-- **依赖**：T8（可与 T9 并行）
+- **依赖**：T8, T2.5（可与 T9 并行）
 
 ---
 
@@ -200,7 +254,7 @@ I've read both design docs and explored the codebase. Here's the full task break
   - `packages/client/src/components/Sidebar.tsx`（入口）
   - `packages/client/src/lib/api.ts`（agent API 调用）
 - **改动**：
-  - Agent 列表（当前用户拥有的）
+  - Agent 列表（当前 member 拥有的）
   - 创建 Agent（display_name, avatar_url）→ 显示一次性 api_key
   - 删除 Agent
   - 轮换 API key
@@ -219,7 +273,9 @@ I've read both design docs and explored the codebase. Here's the full task break
 - **改动**：
   - 集成测试：完整注册流、Agent 完整流、频道删除流、迁移幂等性
   - 手动冒烟：Agent API key 流、#general 删除 409、DM 删除 409
-- **预估行数**：~300 行
+  - **新增**：`owner_id`/`role` 不变式测试——admin role 变更不产生非法 `owner_id` 组合；owner 删除后其 agent 均已软删
+  - **新增**：`message.send` 权限测试——撤销后 agent 发消息 → 403
+- **预估行数**：~350 行
 - **验证**：`npm test` 全部通过
 - **依赖**：T1-T12 全部
 
@@ -228,20 +284,21 @@ I've read both design docs and explored the codebase. Here's the full task break
 ## 依赖关系图
 
 ```
-T1 (DB migration)
-├── T2 (permission middleware)
+T1 (DB migration + agent owner backfill)
+├── T2 (permission middleware + message.send)
 │   ├── T5 (Agent CRUD) ←── T3
 │   │   └── T6 (Agent channel validation)
 │   ├── T7 (channel delete + filter) ── 可与 T5 并行
-│   ├── T8 (Admin API) ── 可与 T5/T7 并行
-│   └── T9 (frontend useCan)
+│   ├── T8 (Admin API + cascade + invariants) ── 可与 T5/T7 并行
+│   └── T9 (frontend useCan + channel_deleted WS) ←── T2.5, T7
+├── T2.5 (permission read APIs) ←── T1
 ├── T3 (default + creator permissions)
 │   └── T4 (invite codes + register) ── T1+T3
 └──────────────────────────────────────────
-    T10 (admin UI) ← T8       ┐
-    T11 (register UI) ← T4    ├─ 可并行
-    T12 (agent mgmt UI) ← T5  ┘
-                                 └── T13 (E2E tests) ← all
+    T10 (admin UI) ← T8, T2.5  ┐
+    T11 (register UI) ← T4     ├─ 可并行
+    T12 (agent mgmt UI) ← T5   ┘
+                                  └── T13 (E2E tests) ← all
 ```
 
-**关键路径**：T1 → T2 → T5 → T6 → T13（~12h）。双人协作可将 T7/T8/T9 和 T10/T11/T12 分两条线并行推进，总工期压到 2-3 天。
+**关键路径**：T1 → T2 → T5 → T6 → T13（~12h）。T2.5 可与 T2 并行开发。双人协作可将 T7/T8/T9 和 T10/T11/T12 分两条线并行推进，总工期压到 2-3 天。
