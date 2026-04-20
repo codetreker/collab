@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
-import { broadcastToChannel, broadcastToUser } from '../ws.js';
+import { broadcastToChannel, broadcastToUser, getOnlineUserIds } from '../ws.js';
 
 export function registerChannelRoutes(app: FastifyInstance): void {
   // List channels
@@ -63,10 +63,19 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     const channel = txn();
 
-    broadcastToChannel(channel.id, {
-      type: 'channel_created',
-      channel,
-    });
+    if (vis === 'public') {
+      const allUsers = Q.listUsers(db);
+      for (const u of allUsers) {
+        if (u.id === userId) continue;
+        const ch = Q.getChannelWithCounts(db, channel.id, u.id);
+        broadcastToUser(u.id, { type: 'channel_added', channel: ch ?? channel });
+      }
+    } else {
+      broadcastToChannel(channel.id, {
+        type: 'channel_created',
+        channel,
+      });
+    }
 
     return reply.status(201).send({ channel });
   });
