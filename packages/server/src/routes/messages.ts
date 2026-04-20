@@ -69,7 +69,7 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       reply_to_id?: string;
       mentions?: string[];
     };
-  }>('/api/v1/channels/:channelId/messages', { preHandler: [requirePermission('message.send')] }, async (request, reply) => {
+  }>('/api/v1/channels/:channelId/messages', { preHandler: [requirePermission('message.send', (req) => `channel:${(req.params as { channelId: string }).channelId}`)] }, async (request, reply) => {
     const { channelId } = request.params;
     const { content, content_type, reply_to_id, mentions } = request.body ?? {};
 
