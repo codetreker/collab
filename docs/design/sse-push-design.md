@@ -57,7 +57,7 @@ packages/server/src/routes/stream.ts  (新文件)
 1. 验证 API key → 获取 user
 2. 查询 user 的 channel_members → 获取 channelIds
 3. 读取 Last-Event-ID header → 作为起始 cursor
-   - 无 Last-Event-ID → cursor = 0（只推新事件）
+   - 无 Last-Event-ID → cursor = getLatestCursor()（从当前最新位置开始，只推新事件；和 poll gateway 的 bootstrap 语义一致）
    - 有 Last-Event-ID → 补发 cursor 之后的所有事件
 4. 发送 HTTP 200，headers:
    Content-Type: text/event-stream
@@ -68,15 +68,29 @@ packages/server/src/routes/stream.ts  (新文件)
 6. **循环补发历史事件**（如果有 Last-Event-ID）：
    ```
    while (true):
+     // 消息事件用 channelIds 过滤
      events = getEventsSince(cursor, 100, channelIds)
-     推送 events
-     if events.length < 100: break  // 追上了
-     cursor = events.last.cursor
+     // 频道变更事件不过滤（同实时路径的 mergeAndDedup 逻辑）
+     changeEvents = getEventsSince(cursor, 100).filter(CHANNEL_CHANGE_KINDS)
+     allEvents = mergeAndDedup(events, changeEvents)
+     for event in allEvents:
+       推送 event（同 notifySSEClients 的 isRelevant/自身过滤逻辑）
+       client.lastCursor = event.cursor  // 每条都推进，包括最后一批
+     if allEvents.length < 100: break  // 追上了
+     cursor = allEvents.last.cursor
+     // 频道变更事件可能刷新了 channelIds，用最新的
+     channelIds = getUserChannelIds(db, client.userId)
    ```
-7. **标记 `ready=true`**，开始接收实时推送
+7. **原子收尾**：标记 `ready=true` 后立即 drain 一次——
+   ```
+   client.ready = true;
+   // 立即追尾：补发完成到 ready=true 之间可能漏掉的事件
+   drainPendingEvents(client);  // 内部就是 notifySSEClients 对单个 client 的逻辑
+   ```
+   这样即使在补发最后一批和 ready 切换之间有新事件插入，也会被 drain 捞到。
 8. 启动心跳定时器（15 秒）
 
-**关键：补发完成前 `ready=false`，`notifySSEClients()` 跳过该客户端，避免补发和实时推送并发导致乱序。**
+**关键：补发完成前 `ready=false`，`notifySSEClients()` 跳过该客户端；切换 ready 后立即 drain，消除窗口。**
 ```
 
 **事件格式**：
@@ -115,8 +129,12 @@ interface SSEClient {
 const sseClients: SSEClient[] = [];
 
 // 频道变更事件类型（不走 channelIds 过滤）
+// 所有会改变用户可见频道集合的事件类型
 const CHANNEL_CHANGE_KINDS = new Set([
-  'member_joined', 'member_left', 'channel_created', 'channel_deleted'
+  'member_joined', 'member_left',
+  'channel_created', 'channel_deleted',
+  'visibility_changed',  // 私有→公开，新用户可见
+  'user_joined', 'user_left',  // 自助加入/离开公开频道
 ]);
 
 export function notifySSEClients(): void {
@@ -125,15 +143,14 @@ export function notifySSEClients(): void {
     if (!client.ready) continue;
     
     try {
-      // 用缓存的 channelIds 查询消息事件
-      const events = Q.getEventsSince(db, client.lastCursor, 100, client.cachedChannelIds);
-      
-      // 频道变更事件不受 channelIds 过滤（单独查）
-      const changeEvents = Q.getEventsSince(db, client.lastCursor, 100)
-        .filter(e => CHANNEL_CHANGE_KINDS.has(e.kind));
-      
-      // 合并去重，按 cursor 排序
-      const allEvents = mergeAndDedup(events, changeEvents);
+      // 单次 SQL 合并查询：channelIds 过滤的消息 + 不过滤的频道变更事件
+      // SQL: WHERE cursor > ? AND (channel_id IN (...) OR kind IN (...))
+      // 避免两次查询 + LIMIT 截断导致变更事件丢失
+      const allEvents = Q.getEventsSinceWithChanges(
+        db, client.lastCursor, 100, 
+        client.cachedChannelIds, 
+        Array.from(CHANNEL_CHANGE_KINDS)
+      );
       
       for (const event of allEvents) {
         const payload = JSON.parse(event.payload);
@@ -145,8 +162,9 @@ export function notifySSEClients(): void {
         //   channel_deleted: { channel_id }
         if (CHANNEL_CHANGE_KINDS.has(event.kind)) {
           const isRelevant = 
-            payload.user_id === client.userId ||                    // member_joined/left
+            payload.user_id === client.userId ||                    // member_joined/left/user_joined/user_left
             payload.channel?.created_by === client.userId ||        // channel_created (creator)
+            client.cachedChannelIds.includes(event.channel_id) ||   // channel_deleted: 之前是成员（用缓存，因为 DB 里可能已删）
             getUserChannelIds(db, client.userId).includes(event.channel_id);  // fallback: am I now a member?
           
           if (isRelevant) {
