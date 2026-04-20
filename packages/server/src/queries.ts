@@ -417,6 +417,36 @@ export function getEventsSince(
     .all(cursor, limit) as EventRow[];
 }
 
+export function getEventsSinceWithChanges(
+  db: Database.Database,
+  cursor: number,
+  limit: number,
+  channelIds: string[],
+  changeKinds: string[],
+): EventRow[] {
+  if (channelIds.length === 0 && changeKinds.length === 0) return [];
+
+  const parts: string[] = [];
+  const args: unknown[] = [cursor];
+
+  if (channelIds.length > 0) {
+    const ph = channelIds.map(() => '?').join(',');
+    parts.push(`channel_id IN (${ph})`);
+    args.push(...channelIds);
+  }
+  if (changeKinds.length > 0) {
+    const ph = changeKinds.map(() => '?').join(',');
+    parts.push(`kind IN (${ph})`);
+    args.push(...changeKinds);
+  }
+
+  args.push(limit);
+  const where = parts.join(' OR ');
+  return db
+    .prepare(`SELECT * FROM events WHERE cursor > ? AND (${where}) ORDER BY cursor ASC LIMIT ?`)
+    .all(...args) as EventRow[];
+}
+
 export function getLatestCursor(db: Database.Database): number {
   const row = db.prepare('SELECT MAX(cursor) AS max_cursor FROM events').get() as {
     max_cursor: number | null;
@@ -526,6 +556,13 @@ export function isChannelMember(
     .prepare('SELECT 1 FROM channel_members WHERE channel_id = ? AND user_id = ?')
     .get(channelId, userId);
   return row !== undefined;
+}
+
+export function getUserChannelIds(db: Database.Database, userId: string): string[] {
+  const rows = db
+    .prepare('SELECT channel_id FROM channel_members WHERE user_id = ?')
+    .all(userId) as { channel_id: string }[];
+  return rows.map((r) => r.channel_id);
 }
 
 export function markChannelRead(

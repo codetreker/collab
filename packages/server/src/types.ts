@@ -40,6 +40,7 @@ export type EventKind =
   | 'message_deleted'
   | 'mention'
   | 'channel_created'
+  | 'channel_deleted'
   | 'member_joined'
   | 'member_left'
   | 'visibility_changed'
