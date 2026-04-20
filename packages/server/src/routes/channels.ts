@@ -170,7 +170,8 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       Q.insertEvent(db, 'visibility_changed', channelId, { channel_id: channelId, visibility: newVisibility });
 
       for (const uid of newMemberUserIds) {
-        broadcastToUser(uid, { type: 'channel_added', channel: updated });
+        const fullChannel = Q.getChannelWithCounts(db, channelId, uid);
+        broadcastToUser(uid, { type: 'channel_added', channel: fullChannel ?? updated });
       }
     }
 
@@ -318,7 +319,8 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       member_count: addCount,
     });
 
-    broadcastToUser(user_id, { type: 'channel_added', channel });
+    const fullChannel = Q.getChannelWithCounts(db, channelId, user_id);
+    broadcastToUser(user_id, { type: 'channel_added', channel: fullChannel ?? channel });
 
     return reply.status(201).send({ ok: true });
   });

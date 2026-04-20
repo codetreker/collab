@@ -80,6 +80,31 @@ export function listAllChannelsForAdmin(
     .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[];
 }
 
+export function getChannelWithCounts(
+  db: Database.Database,
+  channelId: string,
+  userId?: string,
+): (Channel & { member_count: number; unread_count: number; last_message_at: number | null; is_member: number }) | undefined {
+  const row = db.prepare(
+    `SELECT c.*,
+            COUNT(DISTINCT cm2.user_id) AS member_count,
+            (SELECT MAX(m.created_at) FROM messages m WHERE m.channel_id = c.id) AS last_message_at,
+            COALESCE(
+              (SELECT COUNT(*) FROM messages m2
+               WHERE m2.channel_id = c.id
+                 AND m2.created_at > COALESCE(cm.last_read_at, 0)),
+              0
+            ) AS unread_count,
+            CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
+     FROM channels c
+     LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+     LEFT JOIN channel_members cm2 ON cm2.channel_id = c.id
+     WHERE c.id = ?
+     GROUP BY c.id`,
+  ).get(userId ?? '', channelId) as (Channel & { member_count: number; unread_count: number; last_message_at: number | null; is_member: number }) | undefined;
+  return row;
+}
+
 export function getChannel(db: Database.Database, id: string): Channel | undefined {
   return db.prepare('SELECT * FROM channels WHERE id = ?').get(id) as Channel | undefined;
 }
