@@ -168,7 +168,9 @@ export function registerWebSocket(app: FastifyInstance): void {
               socket.send(JSON.stringify({ type: 'error', message: 'Channel not found' }));
               break;
             }
-            if (!Q.isChannelMember(db, msg.channel_id, userId)) {
+            const isMember = Q.isChannelMember(db, msg.channel_id, userId);
+            const isAdmin = user.role === 'admin';
+            if (!isMember && !isAdmin) {
               socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
               break;
             }
