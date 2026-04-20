@@ -138,9 +138,18 @@ export function notifySSEClients(): void {
       for (const event of allEvents) {
         const payload = JSON.parse(event.payload);
         
-        // 频道变更事件：只推送给目标用户，同时刷新缓存
+        // 频道变更事件：检查是否与当前用户相关，同时刷新缓存
+        // 注意：不同事件的 payload 结构不同：
+        //   member_joined/member_left: { channel_id, user_id, display_name }
+        //   channel_created: { channel: { id, name, created_by, ... } }
+        //   channel_deleted: { channel_id }
         if (CHANNEL_CHANGE_KINDS.has(event.kind)) {
-          if (payload.user_id === client.userId) {
+          const isRelevant = 
+            payload.user_id === client.userId ||                    // member_joined/left
+            payload.channel?.created_by === client.userId ||        // channel_created (creator)
+            getUserChannelIds(db, client.userId).includes(event.channel_id);  // fallback: am I now a member?
+          
+          if (isRelevant) {
             client.cachedChannelIds = getUserChannelIds(db, client.userId);
             client.res.raw.write(`event: ${event.kind}\nid: ${event.cursor}\ndata: ${event.payload}\n\n`);
           }
