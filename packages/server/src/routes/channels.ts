@@ -208,11 +208,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     Q.insertEvent(db, 'user_joined', channelId, { channel_id: channelId, user_id: userId, display_name: user?.display_name });
 
+    const memberCount = Q.getChannelMembers(db, channelId).length;
+
     broadcastToChannel(channelId, {
       type: 'user_joined',
       channel_id: channelId,
       user_id: userId,
       display_name: user?.display_name,
+      member_count: memberCount,
     });
 
     return { ok: true };
@@ -252,11 +255,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     Q.insertEvent(db, 'user_left', channelId, { channel_id: channelId, user_id: userId, display_name: user?.display_name });
 
+    const leaveCount = Q.getChannelMembers(db, channelId).length;
+
     broadcastToChannel(channelId, {
       type: 'user_left',
       channel_id: channelId,
       user_id: userId,
       display_name: user?.display_name,
+      member_count: leaveCount,
     });
 
     return { ok: true };
@@ -302,11 +308,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     Q.addChannelMember(db, channelId, user_id);
     Q.insertEvent(db, 'member_joined', channelId, { channel_id: channelId, user_id, display_name: user.display_name });
 
+    const addCount = Q.getChannelMembers(db, channelId).length;
+
     broadcastToChannel(channelId, {
       type: 'user_joined',
       channel_id: channelId,
       user_id,
       display_name: user.display_name,
+      member_count: addCount,
     });
 
     broadcastToUser(user_id, { type: 'channel_added', channel });
@@ -350,11 +359,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     const user = Q.getUserById(db, userId);
     Q.insertEvent(db, 'member_left', channelId, { channel_id: channelId, user_id: userId, display_name: user?.display_name });
 
+    const removeCount = Q.getChannelMembers(db, channelId).length;
+
     broadcastToChannel(channelId, {
       type: 'user_left',
       channel_id: channelId,
       user_id: userId,
       display_name: user?.display_name,
+      member_count: removeCount,
     });
 
     broadcastToUser(userId, { type: 'channel_removed', channel_id: channelId });

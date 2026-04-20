@@ -171,20 +171,20 @@ export function useWebSocket() {
         break;
       }
       case 'user_joined': {
-        const joinedChannelId = data.channelId as string;
-        const joinedUserId = data.userId as string;
+        const joinedChannelId = data.channel_id as string;
+        const joinedUserId = data.user_id as string;
         if (joinedUserId) {
           dispatch({ type: 'USER_ONLINE', userId: joinedUserId });
         }
-        if (joinedChannelId) {
-          dispatch({ type: 'UPDATE_CHANNEL', channelId: joinedChannelId, updates: {} });
+        if (joinedChannelId && typeof data.member_count === 'number') {
+          dispatch({ type: 'UPDATE_CHANNEL', channelId: joinedChannelId, updates: { member_count: data.member_count as number } });
         }
         break;
       }
       case 'user_left': {
-        const leftChannelId = data.channelId as string;
-        if (leftChannelId) {
-          dispatch({ type: 'UPDATE_CHANNEL', channelId: leftChannelId, updates: {} });
+        const leftChannelId = data.channel_id as string;
+        if (leftChannelId && typeof data.member_count === 'number') {
+          dispatch({ type: 'UPDATE_CHANNEL', channelId: leftChannelId, updates: { member_count: data.member_count as number } });
         }
         break;
       }
