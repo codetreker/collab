@@ -18,6 +18,7 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
   const [newTopic, setNewTopic] = useState('');
   const [creating, setCreating] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
 
   useEffect(() => {
     actions.loadDmChannels();
@@ -45,12 +46,14 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
       const channel = await actions.createChannel(
         newName.trim(),
         newTopic.trim() || undefined,
-        selectedMemberIds.size > 0 ? [...selectedMemberIds] : undefined,
+        visibility === 'private' && selectedMemberIds.size > 0 ? [...selectedMemberIds] : undefined,
+        visibility,
       );
       actions.selectChannel(channel.id);
       setNewName('');
       setNewTopic('');
       setSelectedMemberIds(new Set());
+      setVisibility('public');
       setShowCreate(false);
       onClose?.();
     } catch (err) {
@@ -113,6 +116,29 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
             onChange={e => setNewTopic(e.target.value)}
             className="input-field"
           />
+          <div className="visibility-toggle">
+            <label className="visibility-option">
+              <input
+                type="radio"
+                name="visibility"
+                value="public"
+                checked={visibility === 'public'}
+                onChange={() => setVisibility('public')}
+              />
+              <span>🌐 公开 — 所有人可见</span>
+            </label>
+            <label className="visibility-option">
+              <input
+                type="radio"
+                name="visibility"
+                value="private"
+                checked={visibility === 'private'}
+                onChange={() => setVisibility('private')}
+              />
+              <span>🔒 私有 — 仅邀请成员可见</span>
+            </label>
+          </div>
+          {visibility === 'private' && (
           <div className="member-select-list">
             <div className="member-select-label">选择成员（可选）</div>
             {state.users
@@ -129,11 +155,12 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
                 </label>
               ))}
           </div>
+          )}
           <div className="form-actions">
             <button type="submit" disabled={creating || !newName.trim()} className="btn btn-primary btn-sm">
               {creating ? '创建中...' : '创建'}
             </button>
-            <button type="button" onClick={() => { setShowCreate(false); setSelectedMemberIds(new Set()); }} className="btn btn-sm">
+            <button type="button" onClick={() => { setShowCreate(false); setSelectedMemberIds(new Set()); setVisibility('public'); }} className="btn btn-sm">
               取消
             </button>
           </div>

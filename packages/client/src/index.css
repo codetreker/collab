@@ -286,6 +286,26 @@ body {
   gap: 8px;
 }
 
+.visibility-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.visibility-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-sidebar);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.visibility-option input[type="radio"] {
+  accent-color: var(--accent);
+}
+
 /* Online users */
 
 .online-users {
