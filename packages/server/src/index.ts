@@ -14,6 +14,7 @@ import { registerChannelRoutes } from './routes/channels.js';
 import { registerMessageRoutes } from './routes/messages.js';
 import { registerUserRoutes } from './routes/users.js';
 import { registerPollRoutes } from './routes/poll.js';
+import { registerStreamRoutes } from './routes/stream.js';
 import { registerUploadRoutes } from './routes/upload.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerDmRoutes } from './routes/dm.js';
@@ -62,6 +63,8 @@ async function main(): Promise<void> {
     if (
       url === '/health' ||
       url === '/api/v1/poll' ||
+      url === '/api/v1/stream' ||
+      url.startsWith('/api/v1/stream?') ||
       url.startsWith('/api/v1/auth/') ||
       url.startsWith('/assets/') ||
       url.startsWith('/uploads/') ||
@@ -100,6 +103,7 @@ async function main(): Promise<void> {
   registerMessageRoutes(app);
   registerUserRoutes(app);
   registerPollRoutes(app);
+  registerStreamRoutes(app);
   registerUploadRoutes(app);
   registerAdminRoutes(app);
   registerDmRoutes(app);
