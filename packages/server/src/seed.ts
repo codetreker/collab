@@ -50,14 +50,17 @@ export function seed(): void {
   }
 
   // #general channel
-  if (!getChannelByName(db, 'general')) {
+  const generalCreated = !getChannelByName(db, 'general');
+  if (generalCreated) {
     createChannel(db, 'general', 'General discussion', adminId);
     console.log('[seed] Created #general channel');
   }
 
-  // Add all users to public channels
-  const allUsers = db.prepare('SELECT id FROM users').all() as { id: string }[];
-  for (const u of allUsers) {
-    addUserToPublicChannels(db, u.id);
+  // Only add users to public channels on first run (when #general was just created)
+  if (generalCreated) {
+    const allUsers = db.prepare('SELECT id FROM users').all() as { id: string }[];
+    for (const u of allUsers) {
+      addUserToPublicChannels(db, u.id);
+    }
   }
 }
