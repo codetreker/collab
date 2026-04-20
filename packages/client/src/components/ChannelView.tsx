@@ -50,7 +50,7 @@ export default function ChannelView({ channelId }: Props) {
     : `${channel!.visibility === 'private' ? '🔒 ' : '#'}${channel!.name}`;
   const headerTopic = isDm ? undefined : channel!.topic;
   const isGeneral = channel?.name === 'general';
-  const isMember = channel?.is_member !== false;
+  const isMember = !!channel?.is_member;
 
   const handleLeave = async () => {
     try {
