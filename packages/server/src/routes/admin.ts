@@ -13,11 +13,14 @@ interface AdminUser {
   api_key: string | null;
   require_mention: number;
   created_at: number;
+  owner_id: string | null;
+  disabled: number;
+  deleted_at: number | null;
 }
 
 function listAdminUsers(db: import('better-sqlite3').Database): AdminUser[] {
   return db
-    .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at FROM users ORDER BY created_at ASC')
+    .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at, owner_id, disabled, deleted_at FROM users ORDER BY created_at ASC')
     .all() as AdminUser[];
 }
 
@@ -78,13 +81,14 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     return reply.status(201).send({ user });
   });
 
-  app.put('/api/v1/admin/users/:id', async (request, reply) => {
+  app.patch('/api/v1/admin/users/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { display_name, password, role, require_mention } = request.body as {
+    const { display_name, password, role, require_mention, disabled } = request.body as {
       display_name?: string;
       password?: string;
       role?: string;
       require_mention?: boolean;
+      disabled?: boolean;
     };
 
     const db = getDb();
@@ -101,8 +105,17 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       return reply.status(400).send({ error: 'role must be admin, member, or agent' });
     }
 
+    if (role && role !== existing.role) {
+      if (role === 'agent' && !existing.owner_id) {
+        return reply.status(400).send({ error: 'Cannot change role to agent without owner_id' });
+      }
+      if ((role === 'member' || role === 'admin') && existing.owner_id) {
+        return reply.status(400).send({ error: 'Cannot change agent to member/admin while owner_id is set' });
+      }
+    }
+
     const updates: string[] = [];
-    const params: (string | null)[] = [];
+    const params: (string | number | null)[] = [];
 
     if (display_name) {
       updates.push('display_name = ?');
@@ -118,18 +131,31 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     }
     if (require_mention !== undefined) {
       updates.push('require_mention = ?');
-      params.push(require_mention ? '1' : '0');
+      params.push(require_mention ? 1 : 0);
+    }
+    if (disabled !== undefined) {
+      updates.push('disabled = ?');
+      params.push(disabled ? 1 : 0);
     }
 
     if (updates.length === 0) {
       return reply.status(400).send({ error: 'No fields to update' });
     }
 
-    params.push(id);
-    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+    const txn = db.transaction(() => {
+      params.push(id);
+      db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+      if (disabled === true) {
+        db.prepare("UPDATE users SET disabled = 1 WHERE owner_id = ? AND role = 'agent'").run(id);
+      } else if (disabled === false) {
+        db.prepare("UPDATE users SET disabled = 0 WHERE owner_id = ? AND role = 'agent' AND deleted_at IS NULL").run(id);
+      }
+    });
+    txn();
 
     const user = db
-      .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at FROM users WHERE id = ?')
+      .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at, owner_id, disabled, deleted_at FROM users WHERE id = ?')
       .get(id) as AdminUser;
 
     return { user };
@@ -148,9 +174,24 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    db.prepare('DELETE FROM mentions WHERE user_id = ?').run(id);
-    db.prepare('DELETE FROM channel_members WHERE user_id = ?').run(id);
-    db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    if (existing.deleted_at) {
+      return reply.status(400).send({ error: 'User already deleted' });
+    }
+
+    const txn = db.transaction(() => {
+      const now = Date.now();
+      db.prepare('UPDATE users SET deleted_at = ?, disabled = 1 WHERE id = ?').run(now, id);
+      db.prepare('DELETE FROM user_permissions WHERE user_id = ?').run(id);
+      db.prepare('DELETE FROM channel_members WHERE user_id = ?').run(id);
+
+      const agents = db.prepare("SELECT id FROM users WHERE owner_id = ? AND role = 'agent' AND deleted_at IS NULL").all(id) as { id: string }[];
+      for (const agent of agents) {
+        db.prepare('UPDATE users SET deleted_at = ?, disabled = 1 WHERE id = ?').run(now, agent.id);
+        db.prepare('DELETE FROM user_permissions WHERE user_id = ?').run(agent.id);
+        db.prepare('DELETE FROM channel_members WHERE user_id = ?').run(agent.id);
+      }
+    });
+    txn();
 
     return { ok: true };
   });
@@ -213,6 +254,57 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       permissions: details.map((d) => d.permission),
       details,
     };
+  });
+
+  app.post('/api/v1/admin/users/:id/permissions', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { permission, scope } = request.body as { permission?: string; scope?: string };
+
+    if (!permission || typeof permission !== 'string') {
+      return reply.status(400).send({ error: 'permission is required' });
+    }
+
+    const db = getDb();
+    const user = Q.getUserById(db, id);
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    const now = Date.now();
+    const result = db.prepare(
+      'INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, ?, ?, ?)',
+    ).run(id, permission, scope ?? '*', request.currentUser!.id, now);
+
+    if (result.changes === 0) {
+      return reply.status(409).send({ error: 'Permission already granted' });
+    }
+
+    return reply.status(201).send({ ok: true, permission, scope: scope ?? '*' });
+  });
+
+  app.delete('/api/v1/admin/users/:id/permissions', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { permission, scope } = request.body as { permission?: string; scope?: string };
+
+    if (!permission || typeof permission !== 'string') {
+      return reply.status(400).send({ error: 'permission is required' });
+    }
+
+    const db = getDb();
+    const user = Q.getUserById(db, id);
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    const result = db.prepare(
+      'DELETE FROM user_permissions WHERE user_id = ? AND permission = ? AND scope = ?',
+    ).run(id, permission, scope ?? '*');
+
+    if (result.changes === 0) {
+      return reply.status(404).send({ error: 'Permission not found' });
+    }
+
+    return { ok: true };
   });
 
   // ─── Invite Codes ───────────────────────────────────
