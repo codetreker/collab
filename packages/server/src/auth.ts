@@ -1,8 +1,10 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import { getDb } from './db.js';
 import { getUserByApiKey, getUserById, getUserByEmail } from './queries.js';
+import * as Q from './queries.js';
 import type { User } from './types.js';
 
 declare module 'fastify' {
@@ -139,6 +141,57 @@ export function registerAuthRoutes(app: FastifyInstance): void {
       permissions: details.map((d) => d.permission),
       details,
     };
+  });
+
+  app.post('/api/v1/auth/register', async (request, reply) => {
+    const { invite_code, email, password, display_name } = request.body as {
+      invite_code?: string; email?: string; password?: string; display_name?: string;
+    };
+
+    if (!invite_code || !email || !password || !display_name) {
+      return reply.status(400).send({ error: 'invite_code, email, password, and display_name are required' });
+    }
+
+    const db = getDb();
+
+    const invite = Q.getInviteCode(db, invite_code);
+    if (!invite) {
+      return reply.status(400).send({ error: 'Invalid invite code' });
+    }
+    if (invite.used_by) {
+      return reply.status(400).send({ error: 'Invite code already used' });
+    }
+    if (invite.expires_at && invite.expires_at < Date.now()) {
+      return reply.status(400).send({ error: 'Invite code expired' });
+    }
+
+    if (getUserByEmail(db, email)) {
+      return reply.status(409).send({ error: 'Email already in use' });
+    }
+
+    const userId = uuidv4();
+    const passwordHash = bcrypt.hashSync(password, 10);
+
+    const txn = db.transaction(() => {
+      Q.createUser(db, userId, display_name.trim(), 'member', null, email, passwordHash);
+      Q.grantDefaultPermissions(db, userId, 'member');
+      Q.consumeInviteCode(db, invite_code, userId);
+      Q.addUserToPublicChannels(db, userId);
+    });
+    txn();
+
+    const tokenPayload: JwtPayload = { userId, email };
+    const signed = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+
+    const secure = isSecureCookie();
+    reply.header(
+      'Set-Cookie',
+      `${COOKIE_NAME}=${signed}; HttpOnly; Path=/; SameSite=Lax${secure ? '; Secure' : ''}; Max-Age=${7 * 24 * 60 * 60}`,
+    );
+
+    const user = getUserById(db, userId);
+    const { api_key, password_hash, ...safeUser } = user!;
+    return reply.status(201).send({ user: safeUser });
   });
 
   app.post('/api/v1/auth/login', async (request, reply) => {

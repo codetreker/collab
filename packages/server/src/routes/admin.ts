@@ -214,4 +214,27 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       details,
     };
   });
+
+  // ─── Invite Codes ───────────────────────────────────
+
+  app.post('/api/v1/admin/invites', async (request, reply) => {
+    const { expires_in_hours, note } = request.body as { expires_in_hours?: number; note?: string };
+    const db = getDb();
+    const expiresAt = expires_in_hours ? Date.now() + expires_in_hours * 3600_000 : null;
+    const invite = Q.createInviteCode(db, request.currentUser!.id, expiresAt, note ?? null);
+    return reply.status(201).send({ invite });
+  });
+
+  app.get('/api/v1/admin/invites', async () => {
+    const db = getDb();
+    return { invites: Q.listInviteCodes(db) };
+  });
+
+  app.delete('/api/v1/admin/invites/:code', async (request, reply) => {
+    const { code } = request.params as { code: string };
+    const db = getDb();
+    const ok = Q.deleteInviteCode(db, code);
+    if (!ok) return reply.status(404).send({ error: 'Invite code not found' });
+    return { ok: true };
+  });
 }
