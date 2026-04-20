@@ -92,6 +92,10 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       return reply.status(401).send({ error: 'Authentication required' });
     }
 
+    if (channel.visibility === 'private' && !Q.canAccessChannel(db, channelId, senderId)) {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
     if (!Q.isChannelMember(db, channelId, senderId)) {
       return reply.status(403).send({ error: 'Not a member of this channel' });
     }
