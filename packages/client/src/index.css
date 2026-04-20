@@ -1032,8 +1032,9 @@ body {
 }
 
 .modal-content {
-  background: var(--bg-main);
-  border-radius: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
   width: 400px;
   max-width: 90vw;
   max-height: 80vh;
@@ -1047,7 +1048,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h3 {
@@ -1112,6 +1113,7 @@ body {
 
 .member-row .btn {
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .member-name {
@@ -1121,7 +1123,7 @@ body {
 .add-member-section {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
 }
 
 .add-member-list {
@@ -1418,12 +1420,13 @@ body {
   background: var(--bg-secondary);
 }
 
-.btn-danger {
+.admin-actions .btn-danger {
+  background: transparent;
   color: var(--danger);
   border-color: var(--danger);
 }
 
-.btn-danger:hover {
+.admin-actions .btn-danger:hover {
   background: var(--danger);
   color: #fff;
 }
