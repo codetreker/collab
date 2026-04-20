@@ -106,26 +106,49 @@ interface SSEClient {
   userId: string;
   res: FastifyReply;       // 持有 HTTP response，用于 write
   heartbeatTimer: NodeJS.Timer;
+  channelRefreshTimer: NodeJS.Timer;  // 60s 定时刷新
   lastCursor: number;      // 该客户端已发送到的 cursor
+  cachedChannelIds: string[];  // 缓存的频道列表
   ready: boolean;          // 补发完成后才标记为 ready
 }
 
 const sseClients: SSEClient[] = [];
 
+// 频道变更事件类型（不走 channelIds 过滤）
+const CHANNEL_CHANGE_KINDS = new Set([
+  'member_joined', 'member_left', 'channel_created', 'channel_deleted'
+]);
+
 export function notifySSEClients(): void {
   const db = getDb();
   for (const client of sseClients) {
-    // 补发阶段未完成的客户端跳过（避免乱序/重复）
     if (!client.ready) continue;
     
     try {
-      // 每次推送时重新查询 channelIds（解决频道成员变更问题）
-      const channelIds = getUserChannelIds(db, client.userId);
-      const events = Q.getEventsSince(db, client.lastCursor, 100, channelIds);
+      // 用缓存的 channelIds 查询消息事件
+      const events = Q.getEventsSince(db, client.lastCursor, 100, client.cachedChannelIds);
       
-      for (const event of events) {
+      // 频道变更事件不受 channelIds 过滤（单独查）
+      const changeEvents = Q.getEventsSince(db, client.lastCursor, 100)
+        .filter(e => CHANNEL_CHANGE_KINDS.has(e.kind));
+      
+      // 合并去重，按 cursor 排序
+      const allEvents = mergeAndDedup(events, changeEvents);
+      
+      for (const event of allEvents) {
         const payload = JSON.parse(event.payload);
-        // 跳过自己发的消息——但必须推进 cursor，否则会重复查询
+        
+        // 频道变更事件：只推送给目标用户，同时刷新缓存
+        if (CHANNEL_CHANGE_KINDS.has(event.kind)) {
+          if (payload.user_id === client.userId) {
+            client.cachedChannelIds = getUserChannelIds(db, client.userId);
+            client.res.raw.write(`event: ${event.kind}\nid: ${event.cursor}\ndata: ${event.payload}\n\n`);
+          }
+          client.lastCursor = event.cursor;
+          continue;
+        }
+        
+        // 跳过自己发的消息——但必须推进 cursor
         if (payload.sender_id === client.userId) {
           client.lastCursor = event.cursor;
           continue;
@@ -135,16 +158,21 @@ export function notifySSEClients(): void {
         client.lastCursor = event.cursor;
       }
     } catch {
-      // write 失败 = 连接断了，标记清理（不中断其他 client）
       removeSSEClient(client);
     }
   }
 }
 ```
 
-**关键设计决策：每次推送重新查 channelIds**
+**关键设计决策：缓存 + 事件驱动失效**
 
-这是和长轮询的根本区别。长轮询在 poll 开始时缓存 channelIds，SSE 在每次有新事件时重新查询。成本极低（SQLite 内存查询，5 个用户 × 几个频道 = 微秒级），但彻底消除了"频道快照陈旧"问题。
+与长轮询的根本区别：长轮询在每次 poll 开始时缓存 channelIds，整个 poll 周期内用旧快照。SSE 改用**缓存 + 三层失效策略**：
+
+1. **事件驱动**：频道变更事件（`member_joined`/`member_left`/`channel_created`/`channel_deleted`）不走 channelIds 过滤，直接推送给目标用户，同时刷新该 client 的 channelIds 缓存
+2. **按需查询**：遇到不认识的 channel 或成员时主动查一次
+3. **定时兜底**：每 60 秒定时刷新 channelIds 缓存，防止任何边界情况导致缓存不一致
+
+频道变更类事件必须绕过 channelIds 过滤——否则用户加入新频道 C 的 `member_joined` 事件（channel_id=C）会被旧缓存过滤掉，导致缓存永远不更新。
 
 #### 连接生命周期管理
 
@@ -161,12 +189,17 @@ client.heartbeatTimer = setInterval(() => {
   try {
     client.res.raw.write(`event: heartbeat\nid: ${client.lastCursor}\ndata: {}\n\n`);
   } catch {
-    // 写失败 = 连接断了，清理
-    clearInterval(client.heartbeatTimer);
-    const idx = sseClients.indexOf(client);
-    if (idx >= 0) sseClients.splice(idx, 1);
+    removeSSEClient(client);
   }
 }, 15_000);
+
+// channelIds 缓存定时刷新（60 秒兜底）
+client.channelRefreshTimer = setInterval(() => {
+  try {
+    const db = getDb();
+    client.cachedChannelIds = getUserChannelIds(db, client.userId);
+  } catch { /* ignore */ }
+}, 60_000);
 ```
 
 #### 集成到现有事件通知
