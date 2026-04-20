@@ -59,6 +59,10 @@ export function registerChannelRoutes(app: FastifyInstance): void {
         }
       }
 
+      const creator = Q.getUserById(db, userId);
+      const creatorRole = creator?.role ?? 'member';
+      Q.grantCreatorPermissions(db, userId, creatorRole as 'admin' | 'member' | 'agent', channel.id, creator?.owner_id ?? undefined);
+
       return channel;
     });
 

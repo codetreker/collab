@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
+import crypto from 'node:crypto';
 import { v4 as uuidv4 } from 'uuid';
-import type { Channel, User, Message, EventRow, Mention, EventKind } from './types.js';
+import type { Channel, User, Message, EventRow, Mention, EventKind, InviteCode } from './types.js';
 
 // ─── Channels ───────────────────────────────────────────
 
@@ -614,6 +615,82 @@ export function getRecentlySeenUserIds(db: Database.Database, withinMs = 120000)
   const cutoff = Date.now() - withinMs;
   const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ?").all(cutoff) as { id: string }[];
   return rows.map((r) => r.id);
+}
+
+// ─── Invite Codes ──────────────────────────────────────
+
+export function createInviteCode(
+  db: Database.Database,
+  createdBy: string,
+  expiresAt: number | null = null,
+  note: string | null = null,
+): InviteCode {
+  const code = crypto.randomBytes(8).toString('hex');
+  const now = Date.now();
+  db.prepare(
+    'INSERT INTO invite_codes (code, created_by, created_at, expires_at, note) VALUES (?, ?, ?, ?, ?)',
+  ).run(code, createdBy, now, expiresAt, note);
+  return { code, created_by: createdBy, created_at: now, expires_at: expiresAt, used_by: null, used_at: null, note };
+}
+
+export function listInviteCodes(db: Database.Database): InviteCode[] {
+  return db.prepare('SELECT * FROM invite_codes ORDER BY created_at DESC').all() as InviteCode[];
+}
+
+export function getInviteCode(db: Database.Database, code: string): InviteCode | undefined {
+  return db.prepare('SELECT * FROM invite_codes WHERE code = ?').get(code) as InviteCode | undefined;
+}
+
+export function deleteInviteCode(db: Database.Database, code: string): boolean {
+  return db.prepare('DELETE FROM invite_codes WHERE code = ?').run(code).changes > 0;
+}
+
+export function consumeInviteCode(db: Database.Database, code: string, userId: string): boolean {
+  const now = Date.now();
+  return db.prepare(
+    'UPDATE invite_codes SET used_by = ?, used_at = ? WHERE code = ? AND used_by IS NULL',
+  ).run(userId, now, code).changes > 0;
+}
+
+// ─── Permissions ───────────────────────────────────────
+
+const DEFAULT_MEMBER_PERMISSIONS = ['channel.create', 'message.send', 'agent.manage'];
+const DEFAULT_AGENT_PERMISSIONS = ['message.send'];
+
+export function grantDefaultPermissions(
+  db: Database.Database,
+  userId: string,
+  role: 'member' | 'agent',
+  grantedBy: string | null = null,
+): void {
+  const perms = role === 'member' ? DEFAULT_MEMBER_PERMISSIONS : DEFAULT_AGENT_PERMISSIONS;
+  const now = Date.now();
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, \'*\', ?, ?)',
+  );
+  for (const p of perms) {
+    stmt.run(userId, p, grantedBy, now);
+  }
+}
+
+export function grantCreatorPermissions(
+  db: Database.Database,
+  creatorId: string,
+  creatorRole: 'admin' | 'member' | 'agent',
+  channelId: string,
+  ownerIdIfAgent?: string,
+): void {
+  const recipientId = creatorRole === 'agent' && ownerIdIfAgent ? ownerIdIfAgent : creatorId;
+  if (creatorRole === 'admin' && !ownerIdIfAgent) return;
+
+  const scope = `channel:${channelId}`;
+  const now = Date.now();
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, ?, ?, ?)',
+  );
+  stmt.run(recipientId, 'channel.delete', scope, null, now);
+  stmt.run(recipientId, 'channel.manage_members', scope, null, now);
+  stmt.run(recipientId, 'channel.manage_visibility', scope, null, now);
 }
 
 // ─── DM Channels ───────────────────────────────────────
