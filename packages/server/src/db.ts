@@ -29,6 +29,7 @@ function initSchema(db: Database.Database): void {
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL UNIQUE,
       topic       TEXT DEFAULT '',
+      visibility  TEXT DEFAULT 'public' CHECK(visibility IN ('public','private')),
       created_at  INTEGER NOT NULL,
       created_by  TEXT NOT NULL
     );
@@ -107,6 +108,11 @@ function initSchema(db: Database.Database): void {
   const channelCols = db.prepare("PRAGMA table_info(channels)").all() as { name: string }[];
   if (!channelCols.some((c) => c.name === 'type')) {
     db.exec("ALTER TABLE channels ADD COLUMN type TEXT DEFAULT 'channel'");
+  }
+
+  // Migration: add visibility column to channels
+  if (!channelCols.some((c) => c.name === 'visibility')) {
+    db.exec("ALTER TABLE channels ADD COLUMN visibility TEXT DEFAULT 'public'");
   }
 
   // Migration: clean up duplicate DM channels (keep the oldest per name)

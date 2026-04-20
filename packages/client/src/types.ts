@@ -5,6 +5,7 @@ export interface Channel {
   name: string;
   topic: string;
   type?: 'channel' | 'dm';
+  visibility?: 'public' | 'private';
   created_at: number;
   created_by: string;
   member_count?: number;
