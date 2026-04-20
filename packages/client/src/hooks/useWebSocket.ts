@@ -162,6 +162,10 @@ export function useWebSocket() {
       case 'channel_removed': {
         const removedChannelId = data.channel_id as string;
         dispatch({ type: 'REMOVE_CHANNEL', channelId: removedChannelId });
+        subscribedChannels.current.delete(removedChannelId);
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'unsubscribe', channel_id: removedChannelId }));
+        }
         break;
       }
       case 'visibility_changed': {
