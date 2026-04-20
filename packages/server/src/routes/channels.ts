@@ -45,6 +45,23 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     const userId = request.currentUser?.id ?? 'system';
 
+    if (vis === 'private' && Array.isArray(member_ids)) {
+      const caller = request.currentUser!;
+      for (const memberId of member_ids) {
+        if (typeof memberId !== 'string' || memberId === userId) continue;
+        const memberUser = Q.getUserById(db, memberId);
+        if (memberUser?.role === 'agent') {
+          if (caller.role !== 'admin' && caller.id !== memberUser.owner_id) {
+            return reply.status(403).send({ error: `Only the agent owner or admin can add agent ${memberId}` });
+          }
+          const ownerId = memberUser.owner_id;
+          if (ownerId && ownerId !== userId && !member_ids.includes(ownerId)) {
+            return reply.status(409).send({ error: `Agent owner must be a member of the channel` });
+          }
+        }
+      }
+    }
+
     const txn = db.transaction(() => {
       const channel = Q.createChannel(db, cleanName, topic?.trim() ?? '', userId, vis);
       Q.addChannelMember(db, channel.id, userId);
@@ -213,8 +230,15 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(403).send({ error: 'Cannot join private channels' });
     }
 
-    Q.addChannelMember(db, channelId, userId);
     const user = Q.getUserById(db, userId);
+    if (user?.role === 'agent') {
+      const ownerId = user.owner_id;
+      if (ownerId && !Q.isChannelMember(db, channelId, ownerId)) {
+        return reply.status(409).send({ error: 'Agent owner must be a member of the channel' });
+      }
+    }
+
+    Q.addChannelMember(db, channelId, userId);
 
     Q.insertEvent(db, 'user_joined', channelId, { channel_id: channelId, user_id: userId, display_name: user?.display_name });
 
@@ -303,6 +327,17 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     const user = Q.getUserById(db, user_id);
     if (!user) {
       return reply.status(404).send({ error: 'User not found' });
+    }
+
+    if (user.role === 'agent') {
+      const caller = request.currentUser!;
+      if (caller.role !== 'admin' && caller.id !== user.owner_id) {
+        return reply.status(403).send({ error: 'Only the agent owner or admin can add this agent' });
+      }
+      const ownerId = user.owner_id;
+      if (ownerId && !Q.isChannelMember(db, channelId, ownerId)) {
+        return reply.status(409).send({ error: 'Agent owner must be a member of the channel' });
+      }
     }
 
     Q.addChannelMember(db, channelId, user_id);
@@ -418,9 +453,13 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     const { channelId } = request.params;
     const db = getDb();
 
-    const channel = Q.getChannel(db, channelId);
+    const channel = Q.getChannelIncludingDeleted(db, channelId);
     if (!channel) {
       return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.deleted_at) {
+      return reply.status(204).send();
     }
 
     if (channel.type === 'dm') {
