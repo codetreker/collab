@@ -432,4 +432,52 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     Q.markChannelRead(db, channelId, userId);
     return { ok: true };
   });
+
+  // Delete channel (soft delete)
+  app.delete<{
+    Params: { channelId: string };
+  }>('/api/v1/channels/:channelId', async (request, reply) => {
+    const { channelId } = request.params;
+    const db = getDb();
+
+    const channel = Q.getChannel(db, channelId);
+    if (!channel) {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.type === 'dm') {
+      return reply.status(403).send({ error: 'Cannot delete DM channels' });
+    }
+
+    if (channel.name === 'general') {
+      return reply.status(403).send({ error: 'Cannot delete #general' });
+    }
+
+    const userId = request.currentUser?.id;
+    if (!userId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const user = Q.getUserById(db, userId);
+    if (channel.created_by !== userId && user?.role !== 'admin') {
+      return reply.status(403).send({ error: 'Only the channel creator or an admin can delete this channel' });
+    }
+
+    const memberIds = Q.getChannelMembers(db, channelId).map((m) => m.user_id);
+
+    const ok = Q.softDeleteChannel(db, channelId);
+    if (!ok) {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    const payload = { channel_id: channelId, name: channel.name };
+    Q.insertEvent(db, 'channel_deleted', channelId, payload);
+
+    broadcastToChannel(channelId, { type: 'channel_deleted', ...payload });
+    for (const uid of memberIds) {
+      broadcastToUser(uid, { type: 'channel_deleted', ...payload });
+    }
+
+    return { ok: true };
+  });
 }

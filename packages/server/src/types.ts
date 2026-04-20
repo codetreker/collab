@@ -6,6 +6,7 @@ export interface Channel {
   visibility?: 'public' | 'private';
   created_at: number;
   created_by: string;
+  deleted_at?: number | null;
 }
 
 export interface User {

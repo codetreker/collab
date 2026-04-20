@@ -115,6 +115,11 @@ function initSchema(db: Database.Database): void {
     db.exec("ALTER TABLE channels ADD COLUMN visibility TEXT DEFAULT 'public'");
   }
 
+  // Migration: add deleted_at column to channels (soft delete)
+  if (!channelCols.some((c) => c.name === 'deleted_at')) {
+    db.exec('ALTER TABLE channels ADD COLUMN deleted_at INTEGER');
+  }
+
   // Migration: clean up duplicate DM channels (keep the oldest per name)
   const dupes = db.prepare(
     `SELECT name, MIN(created_at) AS keep_created_at

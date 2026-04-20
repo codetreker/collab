@@ -305,6 +305,13 @@ export async function processEvent(
       ch?.created_by === client.userId ||
       client.cachedChannelIds.includes(event.channel_id);
 
+    if (!isRelevant && event.kind === 'channel_deleted') {
+      const row = db
+        .prepare('SELECT 1 FROM channel_members WHERE channel_id = ? AND user_id = ?')
+        .get(event.channel_id, client.userId);
+      if (row !== undefined) isRelevant = true;
+    }
+
     if (!isRelevant) {
       const refreshed = Q.getUserChannelIds(db, client.userId);
       if (refreshed.includes(event.channel_id)) {
