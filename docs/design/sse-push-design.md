@@ -419,18 +419,22 @@ collab.codetrek.cn {
 
 | ID | 任务 | 依赖 | 估时 | 说明 |
 |----|------|------|------|------|
-| SSE-T01a | 服务端 SSE 路由 + 认证 | — | 2h | `stream.ts`：路由注册、API key 认证、SSE 响应头、心跳 |
-| SSE-T01b | 补发循环 + 客户端注册 | T01a | 1.5h | Last-Event-ID 解析、循环补发直到追上、ready 标记机制 |
-| SSE-T02 | 服务端事件推送 | T01 | 2h | `notifySSEClients()`：channelIds 动态查询、自身过滤、集成到 `signalNewEvents()` |
-| SSE-T03 | Plugin SSE 客户端 | — | 3h | `sse-client.ts`：EventSource 连接、事件解析、dispatch、cursor 持久化 |
-| SSE-T04 | Plugin 降级逻辑 | T03 | 1h | SSE 优先，失败回退长轮询 |
-| SSE-T05 | Caddy 配置 | — | 0.5h | `flush_interval -1` |
-| SSE-T06 | 单测 + 集成测试 | T01-T04 | 3h | 覆盖核心路径 |
-| SSE-T07 | 部署 + E2E 验收 | T01-T06 | 2h | 阿里云部署 + 生产验证 |
+| SSE-T00 | `getEventsSinceWithChanges` SQL 查询 + `channel_deleted` 事件 | — | 2h | queries.ts 新增合并查询函数（`WHERE cursor > ? AND (channel_id IN (...) OR kind IN (...))`）；channels.ts 删除频道时 `insertEvent('channel_deleted', ...)`；补齐缺失的事件 emit |
+| SSE-T01a | 服务端 SSE 路由 + 认证 | T00 | 2h | `stream.ts`：路由注册、API key 认证（header + query param 脱敏）、SSE 响应头、心跳定时器、连接清理 |
+| SSE-T01b | 补发循环 + 客户端注册 + drain | T01a | 2.5h | Last-Event-ID 解析、`getLatestCursor()` bootstrap、循环补发（含频道变更合并）、ready 标记 + 循环 drain 追尾、自身消息过滤 |
+| SSE-T02 | 服务端事件推送 | T00, T01a | 2h | `notifySSEClients()`：用 `getEventsSinceWithChanges` 合并查询、isRelevant 判断（含 channel_deleted 缓存判断）、缓存刷新、集成到 `signalNewEvents()` |
+| SSE-T03a | Plugin SSE 客户端核心 | — | 2h | `sse-client.ts`：EventSource 连接、事件解析、dispatch 到 inbound handler、cursor 持久化 |
+| SSE-T03b | Plugin 重连状态机 | T03a | 1.5h | 手动管理重连：onerror → es.close() → 指数退避（1s→2s→4s→...→60s）→ 重建 EventSource（携带 Last-Event-ID）；不依赖 EventSource 自动重连 |
+| SSE-T04 | Plugin 降级逻辑 | T03a | 1h | HEAD /api/v1/stream 探测 → 404 降级长轮询；SSE 30 秒无事件降级；401 不降级直接停止 |
+| SSE-T05 | Caddy 配置 | — | 0.5h | `flush_interval -1`（staging + prod）|
+| SSE-T06 | 单测 + 集成测试 | T00-T04 | 4h | 测试基建搭建（vitest/jest）+ 单测（getEventsSinceWithChanges、补发循环、isRelevant、重连状态机）+ 集成测试（消息推送、断线续传、新频道加入、多客户端） |
+| SSE-T07 | 部署 staging + E2E 验收 | T00-T06 | 2h | 部署到 staging → QA E2E 全流程 → 通过后部署 prod |
 
-**总估时：~14.5h**
+**总估时：~19.5h**
 
-**关键路径**：T01 → T02 + T03（并行）→ T04 → T06 → T07
+**关键路径**：T00 → T01a → T01b + T02（并行）→ T03a → T03b → T04 → T06 → T07
+
+**并行说明**：T03a/T03b（Plugin 端）可以和 T01/T02（服务端）并行开发
 
 ## 风险与开放问题
 
