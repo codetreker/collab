@@ -329,4 +329,34 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     if (!ok) return reply.status(404).send({ error: 'Invite code not found' });
     return { ok: true };
   });
+
+  // ─── Admin Channels ─────────────────────────────────
+
+  app.get('/api/v1/admin/channels', async () => {
+    const db = getDb();
+    const channels = db.prepare(
+      'SELECT id, name, type, visibility, created_at, created_by, deleted_at FROM channels ORDER BY created_at ASC'
+    ).all() as { id: string; name: string; type: string; visibility: string; created_at: number; created_by: string; deleted_at: number | null }[];
+    return { channels };
+  });
+
+  app.delete('/api/v1/admin/channels/:id/force', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const db = getDb();
+    const channel = db.prepare('SELECT * FROM channels WHERE id = ?').get(id) as { id: string; name: string; type: string; deleted_at: number | null } | undefined;
+
+    if (!channel) return reply.status(404).send({ error: 'Channel not found' });
+    if (channel.name === 'general') return reply.status(409).send({ error: 'Cannot delete #general' });
+    if (channel.type === 'dm') return reply.status(409).send({ error: 'Cannot delete DM channels' });
+
+    const now = Date.now();
+    const txn = db.transaction(() => {
+      db.prepare('UPDATE channels SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run(now, id);
+      db.prepare('DELETE FROM channel_members WHERE channel_id = ?').run(id);
+      db.prepare("DELETE FROM user_permissions WHERE scope = ?").run(`channel:${id}`);
+    });
+    txn();
+
+    return { ok: true };
+  });
 }
