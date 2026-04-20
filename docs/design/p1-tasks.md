@@ -16,6 +16,7 @@ I've read both design docs and explored the codebase. Here's the full task break
 > - **Codex-H3**：T2 新增 `message.send` 权限挂载到 `POST /channels/:id/messages`
 > - **Codex-H4**：新增 T2.5 权限读取 API（`GET /api/v1/me/permissions` + `GET /api/v1/admin/users/:id/permissions`），解除 T9/T10 的后端依赖
 > - **CC-C2**：T1 新增 `users.deleted_at` (INTEGER, nullable) 和 `users.disabled` (INTEGER DEFAULT 0) 字段，供 T8 owner 删除/禁用级联使用；T2 认证中间件过滤 disabled/deleted 用户
+> - **CC-C3**：T8 `DELETE /admin/users/:id` 改为软删除（设 `deleted_at` + `disabled=1`），不再硬删 `users` 行。原因：`owner_id` 是 FK REFERENCES `users(id)`，硬删 owner 会导致 FK 冲突（agent 行的 `owner_id` 指向已删除的 `users` 行）。软删后 T2 认证层已拒绝 `deleted_at IS NOT NULL` 的用户，等效于不可用；同时保留 `users` 行使 agent 的 `owner_id` FK 仍然有效
 
 ---
 
@@ -188,9 +189,22 @@ I've read both design docs and explored the codebase. Here's the full task break
   - `DELETE /api/v1/admin/permissions/:id` — 撤销权限
   - `PATCH /api/v1/admin/users/:id` — 改 role（现有 PUT 改为支持 role 变更）
   - **`owner_id`/`role` 不变式校验**（Codex-H2）：role 变更时检查——将 member 改为 agent 必须提供 `owner_id`；将 agent 改为 member/admin 必须清除 `owner_id`；admin/member 的 `owner_id` 必须为 NULL
-  - **Owner 删除/禁用时 agent 级联处理**（CC-H3）：`DELETE /api/v1/admin/users/:id` 或禁用 member 时，级联软删其名下所有 `role='agent'` 的用户（设 `users.deleted_at = unixepoch()`），并将这些 agent 的 `users.disabled` 设为 1，同时清理相关 `user_permissions` 记录。禁用 member 时（`PATCH` 设 `disabled=1`），同样级联禁用其名下 agent（设 `users.disabled = 1`），但不设 `deleted_at`，以便解禁时可恢复
+  - **`DELETE /api/v1/admin/users/:id` — 软删除用户**（CC-C3）：不再执行 `DELETE FROM users`，改为设 `users.deleted_at = unixepoch()` + `users.disabled = 1`。原因：`owner_id` 是 FK REFERENCES `users(id)`，硬删 owner 行会导致其名下 agent 的 `owner_id` FK 约束失败。软删后 T2 认证层已拒绝 `deleted_at IS NOT NULL` 的用户，等效于账号不可用。同时级联软删其名下所有 `role='agent'` 的用户（设 `deleted_at = unixepoch()` + `disabled = 1`），并清理被删用户及其 agent 的 `user_permissions` 记录、从 `channel_members` 中移除（但不删 `users` 行）。对于 `mentions` 表中引用被删用户的记录保持不动（软删不影响历史数据完整性）
+  - **禁用用户**：`PATCH /api/v1/admin/users/:id` 设 `disabled=1` 时，级联禁用其名下 agent（设 `users.disabled = 1`），但不设 `deleted_at`，以便解禁时可恢复
 - **预估行数**：~200 行
-- **验证**：admin 可列全部频道（含已删）；非 admin 403；权限增删立即生效；将 member 改 agent 不提供 owner_id → 400；删除拥有 agent 的 member → 其 agent 全部软删（`deleted_at` 非 NULL + `disabled=1`）；禁用 member → 其 agent 全部 `disabled=1`（`deleted_at` 仍为 NULL）；被级联禁用/删除的 agent 使用 API key 调接口 → 401（由 T2 认证层保证）
+- **验证**：
+  - admin 可列全部频道（含已删）；非 admin 403；权限增删立即生效
+  - 将 member 改 agent 不提供 owner_id → 400
+  - **软删除用户验证**（CC-C3）：
+    - 删除 member → `users` 行仍存在，`deleted_at` 非 NULL + `disabled=1`
+    - 被删 member 名下 agent 全部 `deleted_at` 非 NULL + `disabled=1`
+    - 被删 member 及其 agent 的 `user_permissions` 已清理
+    - 被删 member 及其 agent 已从 `channel_members` 移除
+    - 被删用户使用 API key 调接口 → 401（由 T2 认证层保证）
+    - 被级联软删的 agent 使用 API key 调接口 → 401
+    - `users` 表中被删行的 `id` 仍可被其他 agent 的 `owner_id` 引用（FK 不冲突）
+  - 禁用 member → 其 agent 全部 `disabled=1`（`deleted_at` 仍为 NULL）
+  - 被级联禁用的 agent 使用 API key 调接口 → 401（由 T2 认证层保证）
 - **依赖**：T2（可与 T5/T7 并行）
 
 ---
@@ -230,7 +244,7 @@ I've read both design docs and explored the codebase. Here's the full task break
   - AdminLayout 带侧边 tab 导航（Users / Invites / Channels / Permissions）
   - 非 admin 访问重定向回主页
   - 每个页面：表格 + 操作按钮（CRUD）
-  - 用户页：列表、改 role、禁用
+  - 用户页：列表、改 role、禁用、软删除
   - 邀请码页：生成、列表、作废
   - 频道页：全部频道（含已删）、强制删除
   - 权限页：按用户查看/授予/撤销（调用 `GET /api/v1/admin/users/:id/permissions` 获取权限列表）
@@ -286,6 +300,7 @@ I've read both design docs and explored the codebase. Here's the full task break
   - **新增**：`owner_id`/`role` 不变式测试——admin role 变更不产生非法 `owner_id` 组合；owner 删除后其 agent 均已软删
   - **新增**：`message.send` 权限测试——撤销后 agent 发消息 → 403
   - **新增**：disabled/deleted 用户认证拒绝测试——被禁用/删除的用户和 agent 使用有效 API key 访问任意端点 → 401；owner 删除/禁用级联后 agent 立即被认证层拦截
+  - **新增**：owner 软删除 FK 完整性测试（CC-C3）——删除 owner 后 `users` 行仍存在，agent 的 `owner_id` FK 约束不报错；查询 agent 时可 JOIN users 获取 owner 信息（含 `deleted_at` 标记）
 - **预估行数**：~400 行
 - **验证**：`npm test` 全部通过
 - **依赖**：T1-T12 全部
@@ -300,7 +315,7 @@ T1 (DB migration + agent owner backfill + deleted_at/disabled 字段)
 │   ├── T5 (Agent CRUD) ←── T3
 │   │   └── T6 (Agent channel validation)
 │   ├── T7 (channel delete + filter) ── 可与 T5 并行
-│   ├── T8 (Admin API + cascade + invariants) ── 可与 T5/T7 并行
+│   ├── T8 (Admin API + soft-delete + cascade + invariants) ── 可与 T5/T7 并行
 │   └── T9 (frontend useCan + channel_deleted WS) ←── T2.5, T7
 ├── T2.5 (permission read APIs) ←── T1
 ├── T3 (default + creator permissions)
