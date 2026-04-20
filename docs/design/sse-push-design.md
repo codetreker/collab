@@ -68,26 +68,36 @@ packages/server/src/routes/stream.ts  (新文件)
 6. **循环补发历史事件**（如果有 Last-Event-ID）：
    ```
    while (true):
-     // 消息事件用 channelIds 过滤
-     events = getEventsSince(cursor, 100, channelIds)
-     // 频道变更事件不过滤（同实时路径的 mergeAndDedup 逻辑）
-     changeEvents = getEventsSince(cursor, 100).filter(CHANNEL_CHANGE_KINDS)
-     allEvents = mergeAndDedup(events, changeEvents)
+     // 用 SQL 合并查询（同实时路径的 getEventsSinceWithChanges）
+     // SQL: WHERE cursor > ? AND (channel_id IN (...) OR kind IN (...))
+     allEvents = getEventsSinceWithChanges(cursor, 100, channelIds, CHANNEL_CHANGE_KINDS)
+     
      for event in allEvents:
        推送 event（同 notifySSEClients 的 isRelevant/自身过滤逻辑）
        client.lastCursor = event.cursor  // 每条都推进，包括最后一批
+       
+       // 如果处理了频道变更事件且 isRelevant，刷新 channelIds
+       if CHANNEL_CHANGE_KINDS.has(event.kind) && isRelevant:
+         channelIds = getUserChannelIds(db, client.userId)
+     
      if allEvents.length < 100: break  // 追上了
      cursor = allEvents.last.cursor
-     // 频道变更事件可能刷新了 channelIds，用最新的
-     channelIds = getUserChannelIds(db, client.userId)
    ```
-7. **原子收尾**：标记 `ready=true` 后立即 drain 一次——
+   
+   **关键**：用 `getEventsSinceWithChanges` 做 SQL 层合并（`channel_id IN (...) OR kind IN (...)`），
+   确保频道变更事件不会被 LIMIT 截断。变更事件处理后立即刷新 channelIds，
+   下一轮循环自然用新的 channelIds 拉到新频道的消息。
+
+7. **原子收尾**：标记 `ready=true` 后循环 drain 直到追平——
    ```
    client.ready = true;
-   // 立即追尾：补发完成到 ready=true 之间可能漏掉的事件
-   drainPendingEvents(client);  // 内部就是 notifySSEClients 对单个 client 的逻辑
+   // 循环追尾：补发完成到 ready=true 之间可能漏掉的事件
+   while (true):
+     drained = drainPendingEvents(client);  // 返回本次处理的事件数
+     if drained === 0: break;  // 追平了
+     // 如果 drain 中处理了频道变更，channelIds 已刷新，继续 drain
    ```
-   这样即使在补发最后一批和 ready 切换之间有新事件插入，也会被 drain 捞到。
+   循环 drain 确保：即使 drain 中发现频道变更导致新频道可见，也会继续拉取新频道的消息，不会漏。
 8. 启动心跳定时器（15 秒）
 
 **关键：补发完成前 `ready=false`，`notifySSEClients()` 跳过该客户端；切换 ready 后立即 drain，消除窗口。**
