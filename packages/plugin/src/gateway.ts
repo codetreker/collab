@@ -15,11 +15,14 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
       return;
     }
-    const timer = setTimeout(resolve, ms);
     const onAbort = (): void => {
       clearTimeout(timer);
       reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
     };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
     signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
@@ -327,9 +330,15 @@ async function runAutoOrSse(params: {
       ctx: params.ctx,
       getLastEventId: () => {
         const c = readPersistedCursor(params.account.accountId);
+        if (c > 0) cursorRef.value = c;
         return c > 0 ? c : cursorRef.value > 0 ? cursorRef.value : undefined;
       },
     });
+
+    // SSE path only persists cursor; refresh cursorRef so a subsequent poll
+    // fallback doesn't replay events from the stale bootstrap cursor.
+    const latestPersisted = readPersistedCursor(params.account.accountId);
+    if (latestPersisted > cursorRef.value) cursorRef.value = latestPersisted;
 
     if (result.reason === "auth") {
       console.error(

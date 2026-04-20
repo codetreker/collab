@@ -112,10 +112,16 @@ export function connectSSE(params: {
 
   let closed = false;
   let req: ClientRequest | null = null;
+  const signal = params.signal;
+
+  const onAbort = (): void => {
+    close();
+  };
 
   const close = (): void => {
     if (closed) return;
     closed = true;
+    if (signal) signal.removeEventListener("abort", onAbort);
     try {
       req?.destroy();
     } catch {
@@ -124,15 +130,12 @@ export function connectSSE(params: {
     params.handlers.onClose?.();
   };
 
-  const onAbort = (): void => {
-    close();
-  };
-  if (params.signal) {
-    if (params.signal.aborted) {
+  if (signal) {
+    if (signal.aborted) {
       queueMicrotask(onAbort);
       return { close };
     }
-    params.signal.addEventListener("abort", onAbort, { once: true });
+    signal.addEventListener("abort", onAbort, { once: true });
   }
 
   req = client.request(
@@ -177,11 +180,23 @@ export function connectSSE(params: {
           if (!Number.isFinite(cursor)) return;
           let payloadStr = frame.data;
           if (!payloadStr) return;
-          const channelIdMatch = payloadStr.match(/"channel_id"\s*:\s*"([^"]+)"/);
+          let channelId = "";
+          try {
+            const parsed = JSON.parse(payloadStr) as Record<string, unknown>;
+            const direct = parsed["channel_id"];
+            if (typeof direct === "string") {
+              channelId = direct;
+            } else {
+              const ch = parsed["channel"] as { id?: unknown } | undefined;
+              if (ch && typeof ch.id === "string") channelId = ch.id;
+            }
+          } catch {
+            /* non-JSON payload — leave channelId empty */
+          }
           const event: CollabEvent = {
             cursor,
             kind: kind as CollabEvent["kind"],
-            channel_id: channelIdMatch?.[1] ?? "",
+            channel_id: channelId,
             payload: payloadStr,
             created_at: Date.now(),
           };
@@ -366,9 +381,15 @@ export async function probeSSE(params: {
 
   return await new Promise((resolve) => {
     let settled = false;
+    const sig = params.signal;
+    const onAbort = (): void => {
+      req.destroy();
+      finish({ ok: false });
+    };
     const finish = (r: { ok: boolean; status?: number }): void => {
       if (settled) return;
       settled = true;
+      if (sig) sig.removeEventListener("abort", onAbort);
       resolve(r);
     };
 
@@ -400,20 +421,13 @@ export async function probeSSE(params: {
       finish({ ok: false });
     });
 
-    if (params.signal) {
-      if (params.signal.aborted) {
+    if (sig) {
+      if (sig.aborted) {
         req.destroy();
         finish({ ok: false });
         return;
       }
-      params.signal.addEventListener(
-        "abort",
-        () => {
-          req.destroy();
-          finish({ ok: false });
-        },
-        { once: true },
-      );
+      sig.addEventListener("abort", onAbort, { once: true });
     }
 
     req.end();
@@ -432,11 +446,14 @@ function sleepAbortable(ms: number, signal: AbortSignal): Promise<void> {
       reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
       return;
     }
-    const t = setTimeout(resolve, ms);
     const onAbort = (): void => {
       clearTimeout(t);
       reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
     };
+    const t = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
     signal.addEventListener("abort", onAbort, { once: true });
   });
 }
