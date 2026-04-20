@@ -1,12 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
-import { broadcastToChannel } from '../ws.js';
+import { broadcastToChannel, broadcastToUser } from '../ws.js';
 
 export function registerChannelRoutes(app: FastifyInstance): void {
   // List channels
   app.get('/api/v1/channels', async (request) => {
     const db = getDb();
+    if (request.currentUser?.role === 'admin') {
+      const channels = Q.listAllChannelsForAdmin(db, request.currentUser.id);
+      return { channels };
+    }
     if (request.currentUser) {
       const channels = Q.listChannelsWithUnread(db, request.currentUser.id);
       return { channels };
@@ -17,12 +21,17 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
   // Create channel
   app.post<{
-    Body: { name: string; topic?: string; member_ids?: string[] };
+    Body: { name: string; topic?: string; member_ids?: string[]; visibility?: 'public' | 'private' };
   }>('/api/v1/channels', async (request, reply) => {
-    const { name, topic, member_ids } = request.body ?? {};
+    const { name, topic, member_ids, visibility } = request.body ?? {};
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return reply.status(400).send({ error: 'Channel name is required' });
+    }
+
+    const vis = visibility ?? 'public';
+    if (vis !== 'public' && vis !== 'private') {
+      return reply.status(400).send({ error: "visibility must be 'public' or 'private'" });
     }
 
     const cleanName = name.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
@@ -34,17 +43,25 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     }
 
     const userId = request.currentUser?.id ?? 'system';
-    const channel = Q.createChannel(db, cleanName, topic?.trim() ?? '', userId);
 
-    Q.addChannelMember(db, channel.id, userId);
+    const txn = db.transaction(() => {
+      const channel = Q.createChannel(db, cleanName, topic?.trim() ?? '', userId, vis);
+      Q.addChannelMember(db, channel.id, userId);
 
-    if (Array.isArray(member_ids)) {
-      for (const memberId of member_ids) {
-        if (typeof memberId === 'string' && memberId !== userId) {
-          Q.addChannelMember(db, channel.id, memberId);
+      if (vis === 'public') {
+        Q.addAllUsersToChannel(db, channel.id);
+      } else if (Array.isArray(member_ids)) {
+        for (const memberId of member_ids) {
+          if (typeof memberId === 'string' && memberId !== userId) {
+            Q.addChannelMember(db, channel.id, memberId);
+          }
         }
       }
-    }
+
+      return channel;
+    });
+
+    const channel = txn();
 
     broadcastToChannel(channel.id, {
       type: 'channel_created',
@@ -64,19 +81,31 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     if (!channel) {
       return reply.status(404).send({ error: 'Channel not found' });
     }
+
+    if (channel.visibility === 'private') {
+      const userId = request.currentUser?.id;
+      if (!userId || !Q.canAccessChannel(db, channelId, userId)) {
+        return reply.status(404).send({ error: 'Channel not found' });
+      }
+    }
+
     return { channel };
   });
 
   // Update channel
   app.put<{
     Params: { channelId: string };
-    Body: { name?: string; topic?: string };
+    Body: { name?: string; topic?: string; visibility?: 'public' | 'private' };
   }>('/api/v1/channels/:channelId', async (request, reply) => {
     const { channelId } = request.params;
-    const { name, topic } = request.body ?? {};
+    const { name, topic, visibility } = request.body ?? {};
 
     if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
       return reply.status(400).send({ error: 'Invalid channel name' });
+    }
+
+    if (visibility !== undefined && visibility !== 'public' && visibility !== 'private') {
+      return reply.status(400).send({ error: "visibility must be 'public' or 'private'" });
     }
 
     const db = getDb();
@@ -95,6 +124,10 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(403).send({ error: 'Only the channel creator or an admin can update this channel' });
     }
 
+    if (visibility === 'private' && channel.name === 'general') {
+      return reply.status(403).send({ error: 'Cannot make #general private' });
+    }
+
     const cleanName = name ? name.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-') : undefined;
     if (cleanName) {
       const existing = Q.getChannelByName(db, cleanName);
@@ -103,14 +136,133 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       }
     }
 
-    const updated = Q.updateChannel(db, channelId, {
-      name: cleanName,
-      topic: topic?.trim(),
-    });
+    const oldVisibility = channel.visibility ?? 'public';
+    const newVisibility = visibility ?? oldVisibility;
+    let newMemberUserIds: string[] = [];
+
+    if (oldVisibility === 'private' && newVisibility === 'public') {
+      const existingMembers = new Set(
+        Q.getChannelMembers(db, channelId).map((m) => m.user_id),
+      );
+
+      const txn = db.transaction(() => {
+        Q.updateChannel(db, channelId, { name: cleanName, topic: topic?.trim(), visibility });
+        Q.addAllUsersToChannel(db, channelId);
+      });
+      txn();
+
+      const allMembers = Q.getChannelMembers(db, channelId);
+      newMemberUserIds = allMembers
+        .filter((m) => !existingMembers.has(m.user_id))
+        .map((m) => m.user_id);
+    } else {
+      Q.updateChannel(db, channelId, { name: cleanName, topic: topic?.trim(), visibility });
+    }
+
+    const updated = Q.getChannel(db, channelId);
+
+    if (visibility && visibility !== oldVisibility) {
+      broadcastToChannel(channelId, {
+        type: 'visibility_changed',
+        channel_id: channelId,
+        visibility: newVisibility,
+      });
+      Q.insertEvent(db, 'visibility_changed', channelId, { channel_id: channelId, visibility: newVisibility });
+
+      for (const uid of newMemberUserIds) {
+        broadcastToUser(uid, { type: 'channel_added', channel: updated });
+      }
+    }
+
     return { channel: updated };
   });
 
-  // Join channel / add member
+  // Join channel (self-service)
+  app.post<{
+    Params: { channelId: string };
+  }>('/api/v1/channels/:channelId/join', async (request, reply) => {
+    const { channelId } = request.params;
+    const db = getDb();
+
+    const channel = Q.getChannel(db, channelId);
+    if (!channel) {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.type === 'dm') {
+      return reply.status(403).send({ error: 'Cannot join DM channels' });
+    }
+
+    const userId = request.currentUser?.id;
+    if (!userId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const vis = channel.visibility ?? 'public';
+    if (vis === 'private') {
+      return reply.status(403).send({ error: 'Cannot join private channels' });
+    }
+
+    Q.addChannelMember(db, channelId, userId);
+    const user = Q.getUserById(db, userId);
+
+    Q.insertEvent(db, 'user_joined', channelId, { channel_id: channelId, user_id: userId, display_name: user?.display_name });
+
+    broadcastToChannel(channelId, {
+      type: 'user_joined',
+      channel_id: channelId,
+      user_id: userId,
+      display_name: user?.display_name,
+    });
+
+    return { ok: true };
+  });
+
+  // Leave channel (self-service)
+  app.post<{
+    Params: { channelId: string };
+  }>('/api/v1/channels/:channelId/leave', async (request, reply) => {
+    const { channelId } = request.params;
+    const db = getDb();
+
+    const channel = Q.getChannel(db, channelId);
+    if (!channel) {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.type === 'dm') {
+      return reply.status(403).send({ error: 'Cannot leave DM channels' });
+    }
+
+    if (channel.name === 'general') {
+      return reply.status(403).send({ error: 'Cannot leave #general' });
+    }
+
+    const userId = request.currentUser?.id;
+    if (!userId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const removed = Q.removeChannelMember(db, channelId, userId);
+    if (!removed) {
+      return { ok: true };
+    }
+
+    const user = Q.getUserById(db, userId);
+
+    Q.insertEvent(db, 'user_left', channelId, { channel_id: channelId, user_id: userId, display_name: user?.display_name });
+
+    broadcastToChannel(channelId, {
+      type: 'user_left',
+      channel_id: channelId,
+      user_id: userId,
+      display_name: user?.display_name,
+    });
+
+    return { ok: true };
+  });
+
+  // Add member to channel
   app.post<{
     Params: { channelId: string };
     Body: { user_id: string };
@@ -157,10 +309,12 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       display_name: user.display_name,
     });
 
+    broadcastToUser(user_id, { type: 'channel_added', channel });
+
     return reply.status(201).send({ ok: true });
   });
 
-  // Leave / remove from channel
+  // Remove member from channel
   app.delete<{
     Params: { channelId: string; userId: string };
   }>('/api/v1/channels/:channelId/members/:userId', async (request, reply) => {
@@ -203,6 +357,8 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       display_name: user?.display_name,
     });
 
+    broadcastToUser(userId, { type: 'channel_removed', channel_id: channelId });
+
     return { ok: true };
   });
 
@@ -216,6 +372,13 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     const channel = Q.getChannel(db, channelId);
     if (!channel) {
       return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.visibility === 'private') {
+      const userId = request.currentUser?.id;
+      if (!userId || !Q.canAccessChannel(db, channelId, userId)) {
+        return reply.status(404).send({ error: 'Channel not found' });
+      }
     }
 
     const members = Q.getChannelMembers(db, channelId);
