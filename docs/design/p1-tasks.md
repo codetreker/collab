@@ -15,6 +15,7 @@ I've read both design docs and explored the codebase. Here's the full task break
 > - **Codex-H2**：T8 新增 `owner_id`/`role` 不变式校验（role 变更时）
 > - **Codex-H3**：T2 新增 `message.send` 权限挂载到 `POST /channels/:id/messages`
 > - **Codex-H4**：新增 T2.5 权限读取 API（`GET /api/v1/me/permissions` + `GET /api/v1/admin/users/:id/permissions`），解除 T9/T10 的后端依赖
+> - **CC-C2**：T1 新增 `users.deleted_at` (INTEGER, nullable) 和 `users.disabled` (INTEGER DEFAULT 0) 字段，供 T8 owner 删除/禁用级联使用；T2 认证中间件过滤 disabled/deleted 用户
 
 ---
 
@@ -29,25 +30,29 @@ I've read both design docs and explored the codebase. Here's the full task break
 - **文件**：`packages/server/src/db.ts`
 - **改动**：
   - `users` 表加 `owner_id` 列 + 索引
+  - `users` 表加 `deleted_at` 列（INTEGER, nullable）— 软删除时间戳，供 T8 owner 删除级联使用（CC-C2）
+  - `users` 表加 `disabled` 列（INTEGER DEFAULT 0）— 禁用标记，0=正常 1=禁用，供 T8 owner 禁用级联 + T2 认证过滤使用（CC-C2）
   - 新建 `user_permissions` 表 + 索引
   - 新建 `invite_codes` 表 + 索引
   - 回填现有 member 默认权限（`INSERT OR IGNORE`）
   - 回填现有频道 Creator 权限
   - **回填现有 agent 的 `owner_id`**：将所有 `role='agent'` 且 `owner_id IS NULL` 的行归属到首个 `role='admin'` 用户（Codex-H1）
-- **预估行数**：~140 行（SQL + 幂等检查逻辑 + agent 回填）
-- **验证**：启动 server，`PRAGMA table_info(users)` 确认 `owner_id`；查 `user_permissions` 表确认回填数据；确认所有 `role='agent'` 行均有非 NULL `owner_id`；重复启动不报错（幂等）
+- **预估行数**：~160 行（SQL + 幂等检查逻辑 + agent 回填 + 新字段迁移）
+- **验证**：启动 server，`PRAGMA table_info(users)` 确认 `owner_id`、`deleted_at`、`disabled`；查 `user_permissions` 表确认回填数据；确认所有 `role='agent'` 行均有非 NULL `owner_id`；确认 `disabled` 默认值为 0；重复启动不报错（幂等）
 - **依赖**：无
 
 ---
 
-### T2 — 权限中间件 `requirePermission`
+### T2 — 权限中间件 `requirePermission` + 认证层 disabled/deleted 过滤
 
 - **文件**：
   - 新建 `packages/server/src/middleware/permissions.ts`（或直接放 `auth.ts`）
+  - `packages/server/src/auth.ts`（认证中间件增加 disabled/deleted 检查）
   - `packages/server/src/routes/channels.ts`（挂载中间件）
 - **改动**：
   - 实现 `requirePermission(permission, scopeResolver?)` Fastify preHandler
   - admin 短路通过；其余查 `user_permissions` 表
+  - **认证中间件增加 disabled/deleted 用户过滤**（CC-C2）：在现有 API key / session 认证逻辑中，验证通过后额外检查 `users.deleted_at IS NOT NULL` 或 `users.disabled = 1`，若命中则返回 `401 Unauthorized`（body: `{ error: "account_disabled" }` 或 `{ error: "account_deleted" }`）。此检查确保被禁用/删除的用户（包括其 API key）无法访问任何 API 端点
   - 挂载到以下路由：
     - `POST /channels` — `channel.create`
     - `DELETE /channels/:id` — `channel.delete`（scope: channelId）
@@ -55,9 +60,14 @@ I've read both design docs and explored the codebase. Here's the full task break
     - `POST /channels/:id/members` — `channel.manage_members`（scope: channelId）
     - `DELETE /channels/:id/members/:uid` — `channel.manage_members`（scope: channelId）
     - `POST /channels/:id/messages` — `message.send`（scope: channelId）（Codex-H3）
-- **预估行数**：~60 行（中间件）+ ~40 行（路由改造）
+- **预估行数**：~80 行（中间件 + disabled/deleted 检查）+ ~40 行（路由改造）
 - **验证**：
   - 单测覆盖 admin 短路 / member 有权 / member 无权 / scope 通配 vs 精确匹配；无权限用户请求返回 403
+  - **disabled/deleted 用户认证测试**（CC-C2）：
+    - `disabled=1` 的用户使用有效 API key 调任意端点 → 401 `account_disabled`
+    - `deleted_at IS NOT NULL` 的用户使用有效 API key 调任意端点 → 401 `account_deleted`
+    - `disabled=1` 的 agent 使用有效 API key 发消息 → 401
+    - 正常用户不受影响
   - **逐端点验证**（CC-H2）：
     - `POST /channels`：无 `channel.create` 权限 → 403
     - `DELETE /channels/:id`：无 `channel.delete` 权限 → 403
@@ -178,9 +188,9 @@ I've read both design docs and explored the codebase. Here's the full task break
   - `DELETE /api/v1/admin/permissions/:id` — 撤销权限
   - `PATCH /api/v1/admin/users/:id` — 改 role（现有 PUT 改为支持 role 变更）
   - **`owner_id`/`role` 不变式校验**（Codex-H2）：role 变更时检查——将 member 改为 agent 必须提供 `owner_id`；将 agent 改为 member/admin 必须清除 `owner_id`；admin/member 的 `owner_id` 必须为 NULL
-  - **Owner 删除/禁用时 agent 级联处理**（CC-H3）：`DELETE /api/v1/admin/users/:id` 或禁用 member 时，级联软删（`deleted_at = NOW()`）其名下所有 `role='agent'` 的用户，并清理相关权限
+  - **Owner 删除/禁用时 agent 级联处理**（CC-H3）：`DELETE /api/v1/admin/users/:id` 或禁用 member 时，级联软删其名下所有 `role='agent'` 的用户（设 `users.deleted_at = unixepoch()`），并将这些 agent 的 `users.disabled` 设为 1，同时清理相关 `user_permissions` 记录。禁用 member 时（`PATCH` 设 `disabled=1`），同样级联禁用其名下 agent（设 `users.disabled = 1`），但不设 `deleted_at`，以便解禁时可恢复
 - **预估行数**：~200 行
-- **验证**：admin 可列全部频道（含已删）；非 admin 403；权限增删立即生效；将 member 改 agent 不提供 owner_id → 400；删除拥有 agent 的 member → 其 agent 全部软删
+- **验证**：admin 可列全部频道（含已删）；非 admin 403；权限增删立即生效；将 member 改 agent 不提供 owner_id → 400；删除拥有 agent 的 member → 其 agent 全部软删（`deleted_at` 非 NULL + `disabled=1`）；禁用 member → 其 agent 全部 `disabled=1`（`deleted_at` 仍为 NULL）；被级联禁用/删除的 agent 使用 API key 调接口 → 401（由 T2 认证层保证）
 - **依赖**：T2（可与 T5/T7 并行）
 
 ---
@@ -275,7 +285,8 @@ I've read both design docs and explored the codebase. Here's the full task break
   - 手动冒烟：Agent API key 流、#general 删除 409、DM 删除 409
   - **新增**：`owner_id`/`role` 不变式测试——admin role 变更不产生非法 `owner_id` 组合；owner 删除后其 agent 均已软删
   - **新增**：`message.send` 权限测试——撤销后 agent 发消息 → 403
-- **预估行数**：~350 行
+  - **新增**：disabled/deleted 用户认证拒绝测试——被禁用/删除的用户和 agent 使用有效 API key 访问任意端点 → 401；owner 删除/禁用级联后 agent 立即被认证层拦截
+- **预估行数**：~400 行
 - **验证**：`npm test` 全部通过
 - **依赖**：T1-T12 全部
 
@@ -284,8 +295,8 @@ I've read both design docs and explored the codebase. Here's the full task break
 ## 依赖关系图
 
 ```
-T1 (DB migration + agent owner backfill)
-├── T2 (permission middleware + message.send)
+T1 (DB migration + agent owner backfill + deleted_at/disabled 字段)
+├── T2 (permission middleware + message.send + disabled/deleted 认证过滤)
 │   ├── T5 (Agent CRUD) ←── T3
 │   │   └── T6 (Agent channel validation)
 │   ├── T7 (channel delete + filter) ── 可与 T5 并行
