@@ -94,6 +94,9 @@ function initSchema(db: Database.Database): void {
   if (!userCols.some((c) => c.name === 'email')) {
     db.exec('ALTER TABLE users ADD COLUMN email TEXT');
   }
+
+  // Migration: add UNIQUE index on email
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL');
   if (!userCols.some((c) => c.name === 'password_hash')) {
     db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
   }
