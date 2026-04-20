@@ -183,4 +183,35 @@ export function registerAdminRoutes(app: FastifyInstance): void {
 
     return { ok: true };
   });
+
+  app.get('/api/v1/admin/users/:id/permissions', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const db = getDb();
+
+    const user = Q.getUserById(db, id);
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      return {
+        user_id: id,
+        role: 'admin',
+        permissions: ['*'],
+        details: [],
+        note: 'Admin role has all permissions implicitly',
+      };
+    }
+
+    const details = db.prepare(
+      'SELECT id, permission, scope, granted_by, granted_at FROM user_permissions WHERE user_id = ? ORDER BY granted_at ASC'
+    ).all(id) as { id: number; permission: string; scope: string; granted_by: string | null; granted_at: number }[];
+
+    return {
+      user_id: id,
+      role: user.role,
+      permissions: details.map((d) => d.permission),
+      details,
+    };
+  });
 }

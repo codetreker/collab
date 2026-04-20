@@ -110,7 +110,35 @@ export function registerAuthRoutes(app: FastifyInstance): void {
       return reply.status(401).send({ error: 'Not authenticated' });
     }
     const { api_key, password_hash, ...user } = request.currentUser;
-    return { user };
+    const db = getDb();
+    let permissions: string[];
+    if (user.role === 'admin') {
+      permissions = ['*'];
+    } else {
+      const rows = db.prepare('SELECT permission FROM user_permissions WHERE user_id = ?').all(user.id) as { permission: string }[];
+      permissions = rows.map((r) => r.permission);
+    }
+    return { user: { ...user, permissions } };
+  });
+
+  app.get('/api/v1/me/permissions', async (request, reply) => {
+    if (!request.currentUser) {
+      return reply.status(401).send({ error: 'Not authenticated' });
+    }
+    const user = request.currentUser;
+    const db = getDb();
+    if (user.role === 'admin') {
+      return { user_id: user.id, role: 'admin', permissions: ['*'], details: [] };
+    }
+    const details = db.prepare(
+      'SELECT id, permission, scope, granted_by, granted_at FROM user_permissions WHERE user_id = ? ORDER BY granted_at ASC'
+    ).all(user.id) as { id: number; permission: string; scope: string; granted_by: string | null; granted_at: number }[];
+    return {
+      user_id: user.id,
+      role: user.role,
+      permissions: details.map((d) => d.permission),
+      details,
+    };
   });
 
   app.post('/api/v1/auth/login', async (request, reply) => {
