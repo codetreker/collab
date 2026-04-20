@@ -62,4 +62,7 @@ export interface AdminUser {
   api_key: string | null;
   require_mention: boolean;
   created_at: number;
+  owner_id?: string | null;
+  disabled?: number;
+  deleted_at?: number | null;
 }

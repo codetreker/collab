@@ -99,12 +99,12 @@ export default function UsersTab() {
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.id} style={{ opacity: (user as any).disabled ? 0.5 : 1 }}>
+              <tr key={user.id} style={{ opacity: user.disabled ? 0.5 : 1 }}>
                 <td><code>{user.id.slice(0, 8)}</code></td>
                 <td>{user.display_name}</td>
                 <td>{user.email ?? '—'}</td>
                 <td><span className={`role-badge role-${user.role}`}>{user.role}</span></td>
-                <td>{(user as any).deleted_at ? '🗑 Deleted' : (user as any).disabled ? '⛔ Disabled' : '✓ Active'}</td>
+                <td>{user.deleted_at ? '🗑 Deleted' : user.disabled ? '⛔ Disabled' : '✓ Active'}</td>
                 <td>
                   {user.api_key ? (
                     <div className="api-key-display">
@@ -120,13 +120,13 @@ export default function UsersTab() {
                 <td>
                   <div className="admin-actions">
                     <button className="btn btn-sm" onClick={() => setEditUser(user)}>Edit</button>
-                    {!(user as any).disabled && !(user as any).deleted_at && (
+                    {!user.disabled && !user.deleted_at && (
                       <button className="btn btn-sm" onClick={() => handleDisable(user)}>Disable</button>
                     )}
-                    {(user as any).disabled && !(user as any).deleted_at && (
+                    {user.disabled && !user.deleted_at && (
                       <button className="btn btn-sm" onClick={() => handleEnable(user)}>Enable</button>
                     )}
-                    {!(user as any).deleted_at && (
+                    {!user.deleted_at && (
                       <button className="btn btn-sm btn-danger" onClick={() => handleDelete(user)}>Delete</button>
                     )}
                   </div>

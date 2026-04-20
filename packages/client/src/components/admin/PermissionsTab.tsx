@@ -85,7 +85,7 @@ export default function PermissionsTab() {
 
       <div style={{ display: 'flex', gap: 16, minHeight: 400 }}>
         <div style={{ width: 240, borderRight: '1px solid var(--border)', paddingRight: 12, overflowY: 'auto' }}>
-          {users.filter(u => !(u as any).deleted_at).map(u => (
+          {users.filter(u => !u.deleted_at).map(u => (
             <button
               key={u.id}
               className={`admin-nav-item ${u.id === selectedUserId ? 'active' : ''}`}

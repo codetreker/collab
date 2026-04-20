@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
+import { broadcastToUser } from '../ws.js';
 
 interface AdminUser {
   id: string;
@@ -346,16 +347,26 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     const channel = db.prepare('SELECT * FROM channels WHERE id = ?').get(id) as { id: string; name: string; type: string; deleted_at: number | null } | undefined;
 
     if (!channel) return reply.status(404).send({ error: 'Channel not found' });
+    if (channel.deleted_at) return { ok: true };
     if (channel.name === 'general') return reply.status(409).send({ error: 'Cannot delete #general' });
     if (channel.type === 'dm') return reply.status(409).send({ error: 'Cannot delete DM channels' });
 
-    const now = Date.now();
+    const memberIds = Q.getChannelMembers(db, id).map((m) => m.user_id);
+
     const txn = db.transaction(() => {
+      const now = Date.now();
       db.prepare('UPDATE channels SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run(now, id);
       db.prepare('DELETE FROM channel_members WHERE channel_id = ?').run(id);
       db.prepare("DELETE FROM user_permissions WHERE scope = ?").run(`channel:${id}`);
     });
     txn();
+
+    const payload = { channel_id: id, name: channel.name };
+    Q.insertEvent(db, 'channel_deleted', id, payload);
+
+    for (const uid of memberIds) {
+      broadcastToUser(uid, { type: 'channel_deleted', ...payload });
+    }
 
     return { ok: true };
   });

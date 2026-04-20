@@ -30,7 +30,10 @@ export function registerAgentRoutes(app: FastifyInstance): void {
       }
       Q.grantDefaultPermissions(db, id, 'agent', user.id);
 
-      Q.addUserToPublicChannels(db, id);
+      const general = Q.getChannelByName(db, 'general');
+      if (general) {
+        Q.addChannelMember(db, general.id, id);
+      }
     });
     txn();
 

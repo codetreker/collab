@@ -681,7 +681,6 @@ export function grantCreatorPermissions(
   ownerIdIfAgent?: string,
 ): void {
   const recipientId = creatorRole === 'agent' && ownerIdIfAgent ? ownerIdIfAgent : creatorId;
-  if (creatorRole === 'admin' && !ownerIdIfAgent) return;
 
   const scope = `channel:${channelId}`;
   const now = Date.now();
