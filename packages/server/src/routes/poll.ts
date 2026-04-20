@@ -35,7 +35,7 @@ function notifyWaiters(): void {
 
 export function signalNewEvents(): void {
   notifyWaiters();
-  notifySSEClients();
+  void notifySSEClients();
 }
 
 export function registerPollRoutes(app: FastifyInstance): void {

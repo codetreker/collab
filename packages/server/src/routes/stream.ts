@@ -26,6 +26,7 @@ export interface SSEClient {
   lastCursor: number;
   cachedChannelIds: string[];
   ready: boolean;
+  dead: boolean;
 }
 
 const sseClients: SSEClient[] = [];
@@ -35,6 +36,8 @@ export function getSSEClients(): SSEClient[] {
 }
 
 export function removeSSEClient(client: SSEClient): void {
+  if (client.dead) return;
+  client.dead = true;
   clearInterval(client.heartbeatTimer);
   clearInterval(client.channelRefreshTimer);
   const idx = sseClients.indexOf(client);
@@ -46,10 +49,33 @@ export function removeSSEClient(client: SSEClient): void {
   }
 }
 
-export function writeSafe(client: SSEClient, chunk: string): boolean {
+export async function writeSafe(client: SSEClient, chunk: string): Promise<boolean> {
+  if (client.dead) return false;
   try {
-    client.res.raw.write(chunk);
-    return true;
+    const ok = client.res.raw.write(chunk);
+    if (!ok) {
+      await new Promise<void>((resolve, reject) => {
+        const onDrain = (): void => {
+          client.res.raw.off('error', onError);
+          client.res.raw.off('close', onClose);
+          resolve();
+        };
+        const onError = (err: Error): void => {
+          client.res.raw.off('drain', onDrain);
+          client.res.raw.off('close', onClose);
+          reject(err);
+        };
+        const onClose = (): void => {
+          client.res.raw.off('drain', onDrain);
+          client.res.raw.off('error', onError);
+          reject(new Error('closed'));
+        };
+        client.res.raw.once('drain', onDrain);
+        client.res.raw.once('error', onError);
+        client.res.raw.once('close', onClose);
+      });
+    }
+    return !client.dead;
   } catch {
     removeSSEClient(client);
     return false;
@@ -100,7 +126,24 @@ export function parseLastEventId(request: FastifyRequest): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+function touchLastSeen(userId: string): void {
+  try {
+    getDb().prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').run(Date.now(), userId);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function registerStreamRoutes(app: FastifyInstance): void {
+  // HEAD probe: used by plugin auto-mode to detect SSE availability without auth churn.
+  app.route({
+    method: 'HEAD',
+    url: '/api/v1/stream',
+    handler: async (_request, reply) => {
+      return reply.status(200).send();
+    },
+  });
+
   app.get('/api/v1/stream', async (request, reply) => {
     const user = authenticate(request);
     if (!user) {
@@ -110,6 +153,9 @@ export function registerStreamRoutes(app: FastifyInstance): void {
     const db = getDb();
     const lastEventId = parseLastEventId(request);
     const startCursor = lastEventId ?? Q.getLatestCursor(db);
+
+    // Hijack Fastify so it doesn't try to finalize the response after we return.
+    reply.hijack();
 
     reply.raw.statusCode = 200;
     reply.raw.setHeader('Content-Type', 'text/event-stream');
@@ -132,13 +178,17 @@ export function registerStreamRoutes(app: FastifyInstance): void {
       lastCursor: startCursor,
       cachedChannelIds: channelIds,
       ready: false,
+      dead: false,
     };
 
     clearInterval(client.heartbeatTimer);
     clearInterval(client.channelRefreshTimer);
 
     client.heartbeatTimer = setInterval(() => {
-      writeSafe(client, `:heartbeat\n\n`);
+      if (client.dead) return;
+      const latest = Q.getLatestCursor(getDb());
+      void writeSafe(client, `event: heartbeat\nid: ${latest}\ndata: {}\n\n`);
+      touchLastSeen(client.userId);
     }, HEARTBEAT_MS);
 
     client.channelRefreshTimer = setInterval(() => {
@@ -158,40 +208,34 @@ export function registerStreamRoutes(app: FastifyInstance): void {
     reply.raw.on('close', onClose);
     reply.raw.on('error', onClose);
 
-    try {
-      db.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').run(Date.now(), user.id);
-    } catch {
-      /* ignore */
-    }
+    touchLastSeen(user.id);
 
-    writeSafe(client, `:connected\n\n`);
+    void writeSafe(client, `:connected\n\n`);
 
     void backfillAndReady(client, lastEventId !== null);
-
-    return reply;
   });
 }
 
 async function backfillAndReady(client: SSEClient, hasLastEventId: boolean): Promise<void> {
   if (hasLastEventId) {
-    backfillLoop(client);
+    await backfillLoop(client);
   }
 
   client.ready = true;
 
   // drain-until-stable: catch events that slipped in between backfill end and ready=true
-  while (true) {
-    const drained = drainPending(client);
+  while (!client.dead) {
+    const drained = await drainPending(client);
     if (drained === 0) break;
   }
 }
 
-function backfillLoop(client: SSEClient): void {
+async function backfillLoop(client: SSEClient): Promise<void> {
   const db = getDb();
   const LIMIT = 100;
   const changeKinds = Array.from(CHANNEL_CHANGE_KINDS);
 
-  while (true) {
+  while (!client.dead) {
     const events = Q.getEventsSinceWithChanges(
       db,
       client.lastCursor,
@@ -202,20 +246,22 @@ function backfillLoop(client: SSEClient): void {
     if (events.length === 0) return;
 
     for (const ev of events) {
-      processEvent(client, ev);
+      if (!(await processEvent(client, ev))) return;
     }
 
     if (events.length < LIMIT) return;
+    // Yield to the event loop so we don't starve other requests during large backfills.
+    await new Promise<void>((r) => setImmediate(r));
   }
 }
 
-function drainPending(client: SSEClient): number {
+async function drainPending(client: SSEClient): Promise<number> {
   const db = getDb();
   const LIMIT = 100;
   const changeKinds = Array.from(CHANNEL_CHANGE_KINDS);
   let total = 0;
 
-  while (true) {
+  while (!client.dead) {
     const events = Q.getEventsSinceWithChanges(
       db,
       client.lastCursor,
@@ -226,66 +272,80 @@ function drainPending(client: SSEClient): number {
     if (events.length === 0) return total;
 
     for (const ev of events) {
-      processEvent(client, ev);
+      if (!(await processEvent(client, ev))) return total;
     }
     total += events.length;
 
     if (events.length < LIMIT) return total;
+    await new Promise<void>((r) => setImmediate(r));
   }
+  return total;
 }
 
-export function processEvent(
+/** Returns true if the client is still alive after processing this event. */
+export async function processEvent(
   client: SSEClient,
   event: { cursor: number; kind: string; channel_id: string; payload: string },
-): void {
+): Promise<boolean> {
+  if (client.dead) return false;
   const db = getDb();
   let payload: Record<string, unknown>;
   try {
     payload = JSON.parse(event.payload) as Record<string, unknown>;
   } catch {
     client.lastCursor = event.cursor;
-    return;
+    return !client.dead;
   }
 
   if (CHANNEL_CHANGE_KINDS.has(event.kind)) {
     const ch = payload['channel'] as { created_by?: string } | undefined;
     const payloadUserId = payload['user_id'] as string | undefined;
-    const isRelevant =
+    let isRelevant =
       payloadUserId === client.userId ||
       ch?.created_by === client.userId ||
-      client.cachedChannelIds.includes(event.channel_id) ||
-      Q.getUserChannelIds(db, client.userId).includes(event.channel_id);
+      client.cachedChannelIds.includes(event.channel_id);
+
+    if (!isRelevant) {
+      const refreshed = Q.getUserChannelIds(db, client.userId);
+      if (refreshed.includes(event.channel_id)) {
+        client.cachedChannelIds = refreshed;
+        isRelevant = true;
+      }
+    }
 
     if (isRelevant) {
       client.cachedChannelIds = Q.getUserChannelIds(db, client.userId);
-      writeSafe(
+      const ok = await writeSafe(
         client,
         `event: ${event.kind}\nid: ${event.cursor}\ndata: ${event.payload}\n\n`,
       );
+      client.lastCursor = event.cursor;
+      return ok && !client.dead;
     }
     client.lastCursor = event.cursor;
-    return;
+    return !client.dead;
   }
 
   const senderId = payload['sender_id'] as string | undefined;
   if (senderId === client.userId) {
     client.lastCursor = event.cursor;
-    return;
+    return !client.dead;
   }
 
-  writeSafe(
+  const ok = await writeSafe(
     client,
     `event: ${event.kind}\nid: ${event.cursor}\ndata: ${event.payload}\n\n`,
   );
   client.lastCursor = event.cursor;
+  return ok && !client.dead;
 }
 
-export function notifySSEClients(): void {
+export async function notifySSEClients(): Promise<void> {
   const db = getDb();
   const changeKinds = Array.from(CHANNEL_CHANGE_KINDS);
 
   for (const client of [...sseClients]) {
-    if (!client.ready) continue;
+    if (!client.ready || client.dead) continue;
 
     try {
       const events = Q.getEventsSinceWithChanges(
@@ -296,7 +356,7 @@ export function notifySSEClients(): void {
         changeKinds,
       );
       for (const ev of events) {
-        processEvent(client, ev);
+        if (!(await processEvent(client, ev))) break;
       }
     } catch {
       removeSSEClient(client);
