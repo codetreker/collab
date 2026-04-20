@@ -283,12 +283,25 @@ export async function runSSEOnce(params: {
   config: CoreConfig;
   ctx: ChannelGatewayContext<ResolvedCollabAccount>;
   lastEventId?: number;
-}): Promise<{ reason: "closed" | "auth"; status?: number }> {
+  heartbeatTimeoutMs?: number;
+  onOpen?: () => void;
+}): Promise<{ reason: "closed" | "auth" | "heartbeat"; status?: number }> {
   return await new Promise((resolve) => {
     let settled = false;
-    const done = (r: { reason: "closed" | "auth"; status?: number }): void => {
+    let hbTimer: NodeJS.Timeout | null = null;
+    const timeoutMs = params.heartbeatTimeoutMs ?? 30_000;
+
+    const resetHeartbeat = (): void => {
+      if (hbTimer) clearTimeout(hbTimer);
+      hbTimer = setTimeout(() => {
+        done({ reason: "heartbeat" });
+      }, timeoutMs);
+    };
+
+    const done = (r: { reason: "closed" | "auth" | "heartbeat"; status?: number }): void => {
       if (settled) return;
       settled = true;
+      if (hbTimer) clearTimeout(hbTimer);
       conn.close();
       resolve(r);
     };
@@ -299,7 +312,15 @@ export async function runSSEOnce(params: {
       lastEventId: params.lastEventId,
       signal: params.ctx.abortSignal,
       handlers: {
+        onOpen: () => {
+          resetHeartbeat();
+          params.onOpen?.();
+        },
+        onHeartbeat: () => {
+          resetHeartbeat();
+        },
         onMessage: async (event) => {
+          resetHeartbeat();
           try {
             await dispatchSSEEvent({
               channelId: params.channelId,
@@ -326,4 +347,176 @@ export async function runSSEOnce(params: {
       },
     });
   });
+}
+
+// ─── HEAD probe ────────────────────────────────────────
+
+export async function probeSSE(params: {
+  baseUrl: string;
+  apiKey: string;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}): Promise<{ ok: boolean; status?: number }> {
+  const url = new URL(
+    "/api/v1/stream",
+    params.baseUrl.endsWith("/") ? params.baseUrl : params.baseUrl + "/",
+  );
+  const client = url.protocol === "https:" ? https : http;
+  const timeoutMs = params.timeoutMs ?? 5_000;
+
+  return await new Promise((resolve) => {
+    let settled = false;
+    const finish = (r: { ok: boolean; status?: number }): void => {
+      if (settled) return;
+      settled = true;
+      resolve(r);
+    };
+
+    const req = client.request(
+      url,
+      {
+        method: "HEAD",
+        headers: {
+          authorization: `Bearer ${params.apiKey}`,
+          accept: "text/event-stream",
+        },
+        timeout: timeoutMs,
+      },
+      (res: IncomingMessage) => {
+        const status = res.statusCode ?? 0;
+        res.resume();
+        // Any response (including 200/405) means server is reachable.
+        // 404 means the endpoint doesn't exist — not reachable for SSE.
+        // 401/403 means auth failed — fatal.
+        if (status === 404) finish({ ok: false, status });
+        else if (status === 401 || status === 403) finish({ ok: false, status });
+        else finish({ ok: status > 0, status });
+      },
+    );
+
+    req.on("error", () => finish({ ok: false }));
+    req.on("timeout", () => {
+      req.destroy();
+      finish({ ok: false });
+    });
+
+    if (params.signal) {
+      if (params.signal.aborted) {
+        req.destroy();
+        finish({ ok: false });
+        return;
+      }
+      params.signal.addEventListener(
+        "abort",
+        () => {
+          req.destroy();
+          finish({ ok: false });
+        },
+        { once: true },
+      );
+    }
+
+    req.end();
+  });
+}
+
+// ─── Reconnect state machine ──────────────────────────
+
+const RECONNECT_BASE_MS = 1_000;
+const RECONNECT_MAX_MS = 60_000;
+const STABLE_THRESHOLD_MS = 30_000;
+
+function sleepAbortable(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
+      return;
+    }
+    const t = setTimeout(resolve, ms);
+    const onAbort = (): void => {
+      clearTimeout(t);
+      reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+export interface SSELoopResult {
+  reason: "auth" | "aborted";
+  status?: number;
+}
+
+/**
+ * Drive SSE with exponential-backoff reconnect.
+ * Returns when auth fails (401/403) or ctx is aborted.
+ */
+export async function runSSELoop(params: {
+  channelId: string;
+  channelLabel: string;
+  account: ResolvedCollabAccount;
+  config: CoreConfig;
+  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  getLastEventId: () => number | undefined;
+}): Promise<SSELoopResult> {
+  const signal = params.ctx.abortSignal;
+  let attempt = 0;
+
+  while (!signal.aborted) {
+    // HEAD probe before connecting (except on first attempt to avoid latency)
+    if (attempt > 0) {
+      const probe = await probeSSE({
+        baseUrl: params.account.baseUrl,
+        apiKey: params.account.apiKey,
+        signal,
+      });
+      if (probe.status === 401 || probe.status === 403) {
+        return { reason: "auth", status: probe.status };
+      }
+      if (!probe.ok) {
+        const delay = Math.min(RECONNECT_BASE_MS * 2 ** attempt, RECONNECT_MAX_MS);
+        try {
+          await sleepAbortable(delay, signal);
+        } catch {
+          return { reason: "aborted" };
+        }
+        attempt++;
+        continue;
+      }
+    }
+
+    const connectedAt = Date.now();
+    const result = await runSSEOnce({
+      channelId: params.channelId,
+      channelLabel: params.channelLabel,
+      account: params.account,
+      config: params.config,
+      ctx: params.ctx,
+      lastEventId: params.getLastEventId(),
+      onOpen: () => {
+        console.log(`[collab-plugin] SSE connected (${params.account.accountId})`);
+      },
+    });
+
+    if (signal.aborted) return { reason: "aborted" };
+
+    if (result.reason === "auth") {
+      return { reason: "auth", status: result.status };
+    }
+
+    const stable = Date.now() - connectedAt >= STABLE_THRESHOLD_MS;
+    if (stable) attempt = 0;
+    else attempt++;
+
+    const delay = Math.min(RECONNECT_BASE_MS * 2 ** Math.max(0, attempt - 1), RECONNECT_MAX_MS);
+    console.warn(
+      `[collab-plugin] SSE disconnected (${result.reason}); reconnecting in ${delay}ms`,
+    );
+    try {
+      await sleepAbortable(delay, signal);
+    } catch {
+      return { reason: "aborted" };
+    }
+  }
+
+  return { reason: "aborted" };
 }
