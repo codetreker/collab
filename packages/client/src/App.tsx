@@ -8,6 +8,7 @@ import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import UserPicker from './components/UserPicker';
 import AdminPage from './components/AdminPage';
+import AgentManager from './components/AgentManager';
 import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
 
@@ -19,6 +20,7 @@ function AppInner() {
   const [authenticated, setAuthenticated] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [showAgents, setShowAgents] = useState(false);
 
   // Responsive check
   useEffect(() => {
@@ -139,12 +141,14 @@ function AppInner() {
         {isMobile && sidebarOpen && (
           <div className="sidebar-overlay" onClick={closeSidebar} />
         )}
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} />
       </div>
 
       <div className="main-content">
         {showAdmin ? (
           <AdminPage onBack={() => setShowAdmin(false)} />
+        ) : showAgents ? (
+          <AgentManager onBack={() => setShowAgents(false)} />
         ) : state.currentChannelId ? (
           <ChannelView channelId={state.currentChannelId} />
         ) : (
