@@ -180,15 +180,21 @@ export function useWebSocket() {
         if (joinedUserId) {
           dispatch({ type: 'USER_ONLINE', userId: joinedUserId });
         }
-        if (joinedChannelId && typeof data.member_count === 'number') {
-          dispatch({ type: 'UPDATE_CHANNEL', channelId: joinedChannelId, updates: { member_count: data.member_count as number } });
+        if (joinedChannelId) {
+          if (typeof data.member_count === 'number') {
+            dispatch({ type: 'UPDATE_CHANNEL', channelId: joinedChannelId, updates: { member_count: data.member_count as number } });
+          }
+          dispatch({ type: 'BUMP_CHANNEL_MEMBERS_VERSION', channelId: joinedChannelId });
         }
         break;
       }
       case 'user_left': {
         const leftChannelId = data.channel_id as string;
-        if (leftChannelId && typeof data.member_count === 'number') {
-          dispatch({ type: 'UPDATE_CHANNEL', channelId: leftChannelId, updates: { member_count: data.member_count as number } });
+        if (leftChannelId) {
+          if (typeof data.member_count === 'number') {
+            dispatch({ type: 'UPDATE_CHANNEL', channelId: leftChannelId, updates: { member_count: data.member_count as number } });
+          }
+          dispatch({ type: 'BUMP_CHANNEL_MEMBERS_VERSION', channelId: leftChannelId });
         }
         break;
       }
