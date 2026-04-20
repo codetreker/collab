@@ -4,7 +4,7 @@ import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChann
 import type { ChannelMember } from '../lib/api';
 
 export default function ChannelMembersModal({ channelId, onClose }: { channelId: string; onClose: () => void }) {
-  const { state, actions } = useAppContext();
+  const { state, actions, dispatch } = useAppContext();
   const channel = state.channels.find(c => c.id === channelId);
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +39,7 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
     try {
       await addChannelMember(channelId, userId);
       await load();
+      dispatch({ type: 'BUMP_CHANNEL_MEMBERS_VERSION', channelId });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to add member');
     } finally {
@@ -50,6 +51,7 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
     try {
       await removeChannelMember(channelId, userId);
       await load();
+      dispatch({ type: 'BUMP_CHANNEL_MEMBERS_VERSION', channelId });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to remove member');
     }

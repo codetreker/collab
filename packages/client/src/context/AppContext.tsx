@@ -16,6 +16,7 @@ interface AppState {
   currentUser: User | null;
   onlineUserIds: Set<string>;
   connectionState: ConnectionState;
+  channelMembersVersion: Map<string, number>; // channelId -> version counter
   initialized: boolean;
 }
 
@@ -31,6 +32,7 @@ const initialState: AppState = {
   currentUser: null,
   onlineUserIds: new Set(),
   connectionState: 'disconnected',
+  channelMembersVersion: new Map(),
   initialized: false,
 };
 
@@ -57,7 +59,8 @@ type Action =
   | { type: 'ADD_DM_CHANNEL'; channel: DmChannel }
   | { type: 'UPDATE_DM_CHANNEL'; channelId: string; updates: Partial<DmChannel> }
   | { type: 'REMOVE_CHANNEL'; channelId: string }
-  | { type: 'UPDATE_CHANNEL'; channelId: string; updates: Partial<Channel> };
+  | { type: 'UPDATE_CHANNEL'; channelId: string; updates: Partial<Channel> }
+  | { type: 'BUMP_CHANNEL_MEMBERS_VERSION'; channelId: string };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -214,6 +217,12 @@ function reducer(state: AppState, action: Action): AppState {
         c.id === action.channelId ? { ...c, ...action.updates } : c,
       );
       return { ...state, channels };
+    }
+
+    case 'BUMP_CHANNEL_MEMBERS_VERSION': {
+      const v = new Map(state.channelMembersVersion);
+      v.set(action.channelId, (v.get(action.channelId) ?? 0) + 1);
+      return { ...state, channelMembersVersion: v };
     }
 
     default:

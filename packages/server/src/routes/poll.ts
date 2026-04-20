@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
+import { notifySSEClients } from './stream.js';
 
 import type { EventRow } from '../types.js';
 
@@ -34,6 +35,7 @@ function notifyWaiters(): void {
 
 export function signalNewEvents(): void {
   notifyWaiters();
+  void notifySSEClients();
 }
 
 export function registerPollRoutes(app: FastifyInstance): void {
@@ -87,7 +89,7 @@ export function registerPollRoutes(app: FastifyInstance): void {
       const timeoutDuration = Math.min(Math.max(timeout_ms, 1000), 60000);
       return new Promise<{ cursor: number; events: EventRows }>((resolve) => {
         setTimeout(() => {
-          resolve({ cursor: Q.getLatestCursor(db), events: [] });
+          resolve({ cursor: currentCursor, events: [] });
         }, timeoutDuration);
       });
     }
@@ -106,14 +108,14 @@ export function registerPollRoutes(app: FastifyInstance): void {
       const timer = setTimeout(() => {
         const idx = waiters.findIndex((w) => w.timer === timer);
         if (idx >= 0) waiters.splice(idx, 1);
-        resolve({ cursor: Q.getLatestCursor(db), events: [] });
+        resolve({ cursor: currentCursor, events: [] });
       }, timeoutDuration);
 
       waiters.push({
         cursor: currentCursor,
         channelIds: filteredChannelIds,
         resolve: (events: EventRows) => {
-          const latestCursor = events.length > 0 ? events[events.length - 1]!.cursor : Q.getLatestCursor(db);
+          const latestCursor = events.length > 0 ? events[events.length - 1]!.cursor : currentCursor;
           resolve({ cursor: latestCursor, events });
         },
         timer,

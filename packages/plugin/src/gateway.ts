@@ -1,52 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
 import { fetchBotIdentity, pollCollabEvents } from "./api-client.js";
 import { handleCollabInbound } from "./inbound.js";
+import { readPersistedCursor, persistCursor } from "./cursor-store.js";
+import { probeSSE, runSSELoop } from "./sse-client.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
-import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
+import type { CoreConfig, ResolvedCollabAccount } from "./types.js";
 
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 30_000;
-
-// ─── Cursor persistence ──────────────────────────────────
-
-function cursorFilePath(accountId: string): string {
-  // Store under OpenClaw data dir; fall back to cwd
-  const base = process.env.OPENCLAW_DATA_DIR || process.env.HOME || ".";
-  return join(base, "data", `collab-cursor-${accountId}.json`);
-}
-
-function readPersistedCursor(accountId: string): number {
-  const fp = cursorFilePath(accountId);
-  try {
-    if (existsSync(fp)) {
-      const raw = readFileSync(fp, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (typeof parsed.cursor === "number" && parsed.cursor > 0) {
-        return parsed.cursor;
-      }
-    }
-  } catch {
-    // Corrupt or unreadable — fall through to default
-  }
-  // No persisted cursor — caller must bootstrap from the server
-  return -1;
-}
-
-function persistCursor(accountId: string, cursor: number): void {
-  const fp = cursorFilePath(accountId);
-  try {
-    const dir = dirname(fp);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-    writeFileSync(fp, JSON.stringify({ cursor, updatedAt: Date.now() }), "utf-8");
-  } catch {
-    // Best-effort — don't crash the gateway over a write failure
-  }
-}
-
-// ─── Gateway ─────────────────────────────────────────────
+const SSE_RECOVERY_INTERVAL_MS = 5 * 60_000;
 
 async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -54,14 +15,132 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
       return;
     }
-    const timer = setTimeout(resolve, ms);
-    const onAbort = () => {
+    const onAbort = (): void => {
       clearTimeout(timer);
       reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
     };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
     signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
+
+// ─── Poll loop (unchanged logic) ─────────────────────────
+
+async function runPollLoop(params: {
+  channelId: string;
+  channelLabel: string;
+  account: ResolvedCollabAccount;
+  config: CoreConfig;
+  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  cursorRef: { value: number };
+  /** Abort this poll session (but not the whole gateway) to retry SSE */
+  sessionSignal: AbortSignal;
+}): Promise<void> {
+  let consecutiveErrors = 0;
+  const account = params.account;
+
+  while (!params.ctx.abortSignal.aborted && !params.sessionSignal.aborted) {
+    try {
+      const result = await pollCollabEvents({
+        baseUrl: account.baseUrl,
+        apiKey: account.apiKey,
+        cursor: params.cursorRef.value,
+        timeoutMs: account.pollTimeoutMs,
+        signal: params.sessionSignal,
+      });
+
+      if (result.events.length > 0) {
+        params.cursorRef.value = result.cursor;
+        persistCursor(account.accountId, result.cursor);
+      }
+      consecutiveErrors = 0;
+
+      for (const event of result.events) {
+        if (event.kind !== "message") continue;
+        let payload: {
+          id: string;
+          channel_id: string;
+          sender_id: string;
+          sender_name?: string;
+          content: string;
+          content_type: string;
+          created_at: number;
+          mentions?: string[];
+          reply_to_id?: string | null;
+          channel_type?: string;
+        };
+        try {
+          payload = JSON.parse(event.payload);
+        } catch {
+          continue;
+        }
+        if (payload.sender_id === account.botUserId) continue;
+        const isDmChannel = payload.channel_type === "dm";
+        if (!isDmChannel && account.requireMention) {
+          const mentions: string[] = payload.mentions ?? [];
+          if (!mentions.includes(account.botUserId)) continue;
+        }
+        await handleCollabInbound({
+          channelId: params.channelId,
+          channelLabel: params.channelLabel,
+          account,
+          config: params.config,
+          event,
+          channelType: isDmChannel ? "dm" : "channel",
+          message: payload,
+        });
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      consecutiveErrors++;
+      const backoff = Math.min(
+        RETRY_BASE_MS * Math.pow(2, consecutiveErrors - 1),
+        RETRY_MAX_MS,
+      );
+      console.error(
+        `[collab-plugin] Poll error (retry #${consecutiveErrors} in ${backoff}ms):`,
+        error instanceof Error ? error.message : error,
+      );
+      try {
+        await sleep(backoff, params.sessionSignal);
+      } catch {
+        return;
+      }
+    }
+  }
+}
+
+// ─── Bootstrap cursor from server ────────────────────────
+
+async function bootstrapCursor(params: {
+  account: ResolvedCollabAccount;
+  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+}): Promise<number> {
+  try {
+    const bootstrap = await pollCollabEvents({
+      baseUrl: params.account.baseUrl,
+      apiKey: params.account.apiKey,
+      cursor: 0,
+      timeoutMs: 1000,
+      signal: params.ctx.abortSignal,
+    });
+    persistCursor(params.account.accountId, bootstrap.cursor);
+    console.log(`[collab-plugin] Bootstrapped cursor: ${bootstrap.cursor}`);
+    return bootstrap.cursor;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    console.warn(
+      "[collab-plugin] Bootstrap poll failed, starting from cursor 0:",
+      error instanceof Error ? error.message : error,
+    );
+    return 0;
+  }
+}
+
+// ─── Orchestrator ────────────────────────────────────────
 
 export async function startCollabGateway(
   channelId: string,
@@ -73,7 +152,6 @@ export async function startCollabGateway(
     throw new Error(`Collab channel is not configured for account "${account.accountId}"`);
   }
 
-  // Auto-fetch bot identity from server unless explicitly overridden in config
   if (!account.config.botUserId || !account.config.botDisplayName) {
     try {
       const identity = await fetchBotIdentity({
@@ -106,101 +184,38 @@ export async function startCollabGateway(
   });
 
   let cursor = readPersistedCursor(account.accountId);
-  let consecutiveErrors = 0;
-
-  // Bootstrap: if no persisted cursor, do a single poll to discover the latest cursor
-  // without processing events (avoids replaying all history on first start)
   if (cursor < 0) {
-    try {
-      const bootstrap = await pollCollabEvents({
-        baseUrl: account.baseUrl,
-        apiKey: account.apiKey,
-        cursor: 0,
-        timeoutMs: 1000,
-        signal: ctx.abortSignal,
-      });
-      cursor = bootstrap.cursor;
-      persistCursor(account.accountId, cursor);
-      console.log(`[collab-plugin] Bootstrapped cursor: ${cursor}`);
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") throw error;
-      cursor = 0;
-      console.warn("[collab-plugin] Bootstrap poll failed, starting from cursor 0:", error instanceof Error ? error.message : error);
-    }
+    cursor = await bootstrapCursor({ account, ctx });
   }
 
+  const transport = account.transport;
+  const cfg = ctx.cfg as CoreConfig;
+
   try {
-    while (!ctx.abortSignal.aborted) {
-      try {
-        const result = await pollCollabEvents({
-          baseUrl: account.baseUrl,
-          apiKey: account.apiKey,
-          cursor,
-          timeoutMs: account.pollTimeoutMs,
-          signal: ctx.abortSignal,
-        });
-
-        cursor = result.cursor;
-        persistCursor(account.accountId, cursor);
-        consecutiveErrors = 0;
-
-        for (const event of result.events) {
-          // Only process new message events — skip edits/deletes/etc for now
-          if (event.kind !== "message") continue;
-
-          // Parse the payload
-          let payload: {
-            id: string;
-            channel_id: string;
-            sender_id: string;
-            sender_name?: string;
-            content: string;
-            content_type: string;
-            created_at: number;
-            mentions?: string[];
-            reply_to_id?: string | null;
-            channel_type?: string;
-          };
-          try {
-            payload = JSON.parse(event.payload);
-          } catch {
-            continue;
-          }
-
-          // Skip messages sent by the bot itself to avoid loops
-          if (payload.sender_id === account.botUserId) continue;
-
-          const isDmChannel = payload.channel_type === 'dm';
-
-          // requireMention filtering: skip messages not mentioning this bot (DMs always pass)
-          if (!isDmChannel && account.requireMention) {
-            const mentions: string[] = payload.mentions ?? [];
-            if (!mentions.includes(account.botUserId)) {
-              continue;
-            }
-          }
-
-          await handleCollabInbound({
-            channelId,
-            channelLabel,
-            account,
-            config: ctx.cfg as CoreConfig,
-            event,
-            channelType: isDmChannel ? 'dm' : 'channel',
-            message: payload,
-          });
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") throw error;
-
-        consecutiveErrors++;
-        const backoff = Math.min(RETRY_BASE_MS * Math.pow(2, consecutiveErrors - 1), RETRY_MAX_MS);
-        console.error(
-          `[collab-plugin] Poll error (retry #${consecutiveErrors} in ${backoff}ms):`,
-          error instanceof Error ? error.message : error,
-        );
-        await sleep(backoff, ctx.abortSignal);
-      }
+    if (transport === "poll") {
+      console.log(`[collab-plugin] transport=poll (forced)`);
+      const cursorRef = { value: cursor };
+      const sessionCtrl = new AbortController();
+      ctx.abortSignal.addEventListener("abort", () => sessionCtrl.abort(), { once: true });
+      await runPollLoop({
+        channelId,
+        channelLabel,
+        account,
+        config: cfg,
+        ctx,
+        cursorRef,
+        sessionSignal: sessionCtrl.signal,
+      });
+    } else {
+      await runAutoOrSse({
+        channelId,
+        channelLabel,
+        account,
+        config: cfg,
+        ctx,
+        initialCursor: cursor,
+        forceSSE: transport === "sse",
+      });
     }
   } catch (error) {
     if (!(error instanceof Error) || error.name !== "AbortError") {
@@ -212,4 +227,125 @@ export async function startCollabGateway(
     accountId: account.accountId,
     running: false,
   });
+}
+
+/**
+ * Auto / SSE mode:
+ * 1. HEAD probe. If 404 → fallback to poll (schedule SSE recovery in 5 min).
+ *    If 401/403 → stop.
+ * 2. Run SSE loop until auth failure or abort.
+ * 3. On auth failure → stop. On graceful end → loop around.
+ *
+ * In "auto" mode, when SSE is unavailable we fall back to poll AND periodically
+ * re-probe SSE every 5 minutes; on recovery we abort the poll session and switch back.
+ * In "sse" (forced) mode we never fall back — we keep retrying SSE.
+ */
+async function runAutoOrSse(params: {
+  channelId: string;
+  channelLabel: string;
+  account: ResolvedCollabAccount;
+  config: CoreConfig;
+  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  initialCursor: number;
+  forceSSE: boolean;
+}): Promise<void> {
+  const cursorRef = { value: params.initialCursor };
+  const abortSignal = params.ctx.abortSignal;
+
+  while (!abortSignal.aborted) {
+    const probe = await probeSSE({
+      baseUrl: params.account.baseUrl,
+      apiKey: params.account.apiKey,
+      signal: abortSignal,
+    });
+
+    if (probe.status === 401 || probe.status === 403) {
+      console.error(
+        `[collab-plugin] SSE auth failed (${probe.status}); stopping gateway`,
+      );
+      return;
+    }
+
+    if (!probe.ok) {
+      if (params.forceSSE) {
+        console.warn(
+          `[collab-plugin] SSE probe failed (transport=sse forced); retrying in ${RETRY_MAX_MS}ms`,
+        );
+        try {
+          await sleep(RETRY_MAX_MS, abortSignal);
+        } catch {
+          return;
+        }
+        continue;
+      }
+
+      // Auto mode: fall back to poll, run SSE recovery probe every 5 min
+      console.log(
+        `[collab-plugin] SSE unavailable; falling back to poll (will retry SSE every ${SSE_RECOVERY_INTERVAL_MS / 1000}s)`,
+      );
+      const sessionCtrl = new AbortController();
+      const onAbort = (): void => sessionCtrl.abort();
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+
+      const recoveryTimer = setInterval(() => {
+        void (async () => {
+          const p = await probeSSE({
+            baseUrl: params.account.baseUrl,
+            apiKey: params.account.apiKey,
+            signal: abortSignal,
+          });
+          if (p.ok) {
+            console.log(`[collab-plugin] SSE available again; switching from poll → SSE`);
+            sessionCtrl.abort();
+          }
+        })();
+      }, SSE_RECOVERY_INTERVAL_MS);
+
+      try {
+        await runPollLoop({
+          channelId: params.channelId,
+          channelLabel: params.channelLabel,
+          account: params.account,
+          config: params.config,
+          ctx: params.ctx,
+          cursorRef,
+          sessionSignal: sessionCtrl.signal,
+        });
+      } finally {
+        clearInterval(recoveryTimer);
+        abortSignal.removeEventListener("abort", onAbort);
+      }
+
+      if (abortSignal.aborted) return;
+      continue; // re-probe SSE
+    }
+
+    // SSE available — run loop
+    console.log(`[collab-plugin] transport=sse (${params.account.accountId})`);
+    const result = await runSSELoop({
+      channelId: params.channelId,
+      channelLabel: params.channelLabel,
+      account: params.account,
+      config: params.config,
+      ctx: params.ctx,
+      getLastEventId: () => {
+        const c = readPersistedCursor(params.account.accountId);
+        if (c > 0) cursorRef.value = c;
+        return c > 0 ? c : cursorRef.value > 0 ? cursorRef.value : undefined;
+      },
+    });
+
+    // SSE path only persists cursor; refresh cursorRef so a subsequent poll
+    // fallback doesn't replay events from the stale bootstrap cursor.
+    const latestPersisted = readPersistedCursor(params.account.accountId);
+    if (latestPersisted > cursorRef.value) cursorRef.value = latestPersisted;
+
+    if (result.reason === "auth") {
+      console.error(
+        `[collab-plugin] SSE auth failed (${result.status}); stopping gateway`,
+      );
+      return;
+    }
+    if (result.reason === "aborted") return;
+  }
 }

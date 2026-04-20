@@ -5,12 +5,12 @@ interface Props {
   users: User[];
   query: string;
   onSelect: (user: User) => void;
-  position: { top: number; left: number };
+
   visible: boolean;
   selectedIndex: number;
 }
 
-export default function MentionPicker({ users, query, onSelect, position, visible, selectedIndex }: Props) {
+export default function MentionPicker({ users, query, onSelect, visible, selectedIndex }: Props) {
   if (!visible || users.length === 0) return null;
 
   const filtered = users.filter(u =>
@@ -22,7 +22,6 @@ export default function MentionPicker({ users, query, onSelect, position, visibl
   return (
     <div
       className="mention-picker"
-      style={{ bottom: position.top, left: position.left }}
     >
       {filtered.map((user, idx) => (
         <button
