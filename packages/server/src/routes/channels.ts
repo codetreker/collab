@@ -45,7 +45,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     const userId = request.currentUser?.id ?? 'system';
 
-    if (vis === 'private' && Array.isArray(member_ids)) {
+    if (Array.isArray(member_ids)) {
       const caller = request.currentUser!;
       for (const memberId of member_ids) {
         if (typeof memberId !== 'string' || memberId === userId) continue;
@@ -54,9 +54,11 @@ export function registerChannelRoutes(app: FastifyInstance): void {
           if (caller.role !== 'admin' && caller.id !== memberUser.owner_id) {
             return reply.status(403).send({ error: `Only the agent owner or admin can add agent ${memberId}` });
           }
-          const ownerId = memberUser.owner_id;
-          if (ownerId && ownerId !== userId && !member_ids.includes(ownerId)) {
-            return reply.status(409).send({ error: `Agent owner must be a member of the channel` });
+          if (vis === 'private') {
+            const ownerId = memberUser.owner_id;
+            if (ownerId && ownerId !== userId && !member_ids.includes(ownerId)) {
+              return reply.status(409).send({ error: `Agent owner must be a member of the channel` });
+            }
           }
         }
       }

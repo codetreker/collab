@@ -3,17 +3,18 @@ import crypto from 'node:crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
+import { requirePermission } from '../middleware/permissions.js';
 import type { User } from '../types.js';
 
 export function registerAgentRoutes(app: FastifyInstance): void {
   app.post<{
     Body: { display_name: string; avatar_url?: string; permissions?: string[] };
-  }>('/api/v1/agents', async (request, reply) => {
+  }>('/api/v1/agents', { preHandler: [requirePermission('agent.manage')] }, async (request, reply) => {
     const user = request.currentUser;
     if (!user) return reply.status(401).send({ error: 'Authentication required' });
     if (user.role === 'agent') return reply.status(403).send({ error: 'Agents cannot create agents' });
 
-    const { display_name, avatar_url, permissions } = request.body ?? {};
+    const { display_name, avatar_url } = request.body ?? {};
     if (!display_name || typeof display_name !== 'string' || !display_name.trim()) {
       return reply.status(400).send({ error: 'display_name is required' });
     }
@@ -28,18 +29,6 @@ export function registerAgentRoutes(app: FastifyInstance): void {
         db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatar_url, id);
       }
       Q.grantDefaultPermissions(db, id, 'agent', user.id);
-
-      if (Array.isArray(permissions)) {
-        const now = Date.now();
-        const stmt = db.prepare(
-          'INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, \'*\', ?, ?)',
-        );
-        for (const p of permissions) {
-          if (typeof p === 'string' && p !== 'message.send') {
-            stmt.run(id, p, user.id, now);
-          }
-        }
-      }
 
       Q.addUserToPublicChannels(db, id);
     });

@@ -59,12 +59,15 @@ export function registerPollRoutes(app: FastifyInstance): void {
     if (!user) {
       return reply.status(401).send({ error: 'Invalid API key' });
     }
+    if (user.deleted_at || user.disabled) {
+      return reply.status(401).send({ error: 'Account disabled or deleted' });
+    }
 
     const now = Date.now();
     db.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").run(now, user.id);
     console.log(`[poll] user=${user.id} last_seen_at=${now}`);
 
-    const userChannelIds = (db.prepare("SELECT channel_id FROM channel_members WHERE user_id = ?").all(user.id) as { channel_id: string }[]).map(r => r.channel_id);
+    const userChannelIds = Q.getUserChannelIds(db, user.id);
 
     let currentCursor: number;
 

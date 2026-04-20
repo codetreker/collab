@@ -17,9 +17,11 @@ export function useCan(permission: string, scope?: string): boolean {
 
   if (!permissions) return false;
 
+  const normalizedScope = scope != null && !scope.includes(':') ? `channel:${scope}` : scope;
+
   return permissions.some(
     (p) =>
       p.permission === permission &&
-      (p.scope === '*' || (scope != null && p.scope === scope)),
+      (p.scope === '*' || (normalizedScope != null && p.scope === normalizedScope)),
   );
 }

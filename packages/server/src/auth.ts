@@ -88,6 +88,8 @@ export async function authMiddleware(
     if (devUserId) {
       const user = getUserById(db, devUserId);
       if (user) {
+        if (user.deleted_at) return reply.status(401).send({ error: 'account_deleted' });
+        if (user.disabled) return reply.status(401).send({ error: 'account_disabled' });
         request.currentUser = user;
         return;
       }
@@ -95,7 +97,7 @@ export async function authMiddleware(
     }
 
     const adminUser = db
-      .prepare("SELECT * FROM users WHERE role = 'admin' LIMIT 1")
+      .prepare("SELECT * FROM users WHERE role = 'admin' AND deleted_at IS NULL AND disabled = 0 LIMIT 1")
       .get() as User | undefined;
     if (adminUser) {
       request.currentUser = adminUser;
@@ -210,6 +212,9 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     if (!valid) {
       return reply.status(401).send({ error: 'Invalid email or password' });
     }
+
+    if (user.deleted_at) return reply.status(401).send({ error: 'account_deleted' });
+    if (user.disabled) return reply.status(401).send({ error: 'account_disabled' });
 
     const tokenPayload: JwtPayload = { userId: user.id, email };
     const signed = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });

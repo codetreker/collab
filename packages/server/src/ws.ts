@@ -27,6 +27,7 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
   if (token) {
     const user = Q.getUserByApiKey(db, token);
     if (user) {
+      if (user.deleted_at || user.disabled) return undefined;
       console.log(`[ws] Authenticated via API key: ${user.id}`);
       return user;
     }
@@ -39,6 +40,7 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
       const payload = jwt.verify(jwtToken, JWT_SECRET) as JwtPayload;
       const user = Q.getUserById(db, payload.userId);
       if (user) {
+        if (user.deleted_at || user.disabled) return undefined;
         console.log(`[ws] Authenticated via JWT cookie: ${user.id}`);
         return user;
       }
@@ -52,9 +54,9 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
     const devUserId = url.searchParams.get('user_id');
     if (devUserId) {
       const user = Q.getUserById(db, devUserId);
-      if (user) return user;
+      if (user && !user.deleted_at && !user.disabled) return user;
     }
-    return db.prepare("SELECT * FROM users WHERE role = 'admin' LIMIT 1").get() as User | undefined;
+    return db.prepare("SELECT * FROM users WHERE role = 'admin' AND deleted_at IS NULL AND disabled = 0 LIMIT 1").get() as User | undefined;
   }
 
   return undefined;
@@ -210,6 +212,16 @@ export function registerWebSocket(app: FastifyInstance): void {
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
               socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
               break;
+            }
+
+            if (user.role !== 'admin') {
+              const hasPerm = db.prepare(
+                "SELECT 1 FROM user_permissions WHERE user_id = ? AND permission = 'message.send' AND (scope = '*' OR scope = ?) LIMIT 1",
+              ).get(userId, `channel:${msg.channel_id}`);
+              if (!hasPerm) {
+                socket.send(JSON.stringify({ type: 'error', message: 'Permission denied: message.send required' }));
+                break;
+              }
             }
 
             const ct = msg.content_type ?? 'text';
