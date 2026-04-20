@@ -1,0 +1,127 @@
+import Database from 'better-sqlite3';
+import { v4 as uuidv4 } from 'uuid';
+
+export function createTestDb(): Database.Database {
+  const db = new Database(':memory:');
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS channels (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL UNIQUE,
+      topic       TEXT DEFAULT '',
+      type        TEXT DEFAULT 'channel',
+      visibility  TEXT DEFAULT 'public' CHECK(visibility IN ('public','private')),
+      created_at  INTEGER NOT NULL,
+      created_by  TEXT NOT NULL,
+      deleted_at  INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id           TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      role         TEXT DEFAULT 'member',
+      avatar_url   TEXT,
+      api_key      TEXT UNIQUE,
+      email        TEXT,
+      password_hash TEXT,
+      last_seen_at INTEGER,
+      require_mention INTEGER DEFAULT 1,
+      owner_id     TEXT REFERENCES users(id),
+      deleted_at   INTEGER,
+      disabled     INTEGER DEFAULT 0,
+      created_at   INTEGER NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id            TEXT PRIMARY KEY,
+      channel_id    TEXT NOT NULL REFERENCES channels(id),
+      sender_id     TEXT NOT NULL REFERENCES users(id),
+      content       TEXT NOT NULL,
+      content_type  TEXT DEFAULT 'text',
+      reply_to_id   TEXT REFERENCES messages(id),
+      created_at    INTEGER NOT NULL,
+      edited_at     INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS channel_members (
+      channel_id    TEXT NOT NULL REFERENCES channels(id),
+      user_id       TEXT NOT NULL REFERENCES users(id),
+      joined_at     INTEGER NOT NULL,
+      last_read_at  INTEGER,
+      PRIMARY KEY (channel_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS mentions (
+      id          TEXT PRIMARY KEY,
+      message_id  TEXT NOT NULL REFERENCES messages(id),
+      user_id     TEXT NOT NULL REFERENCES users(id),
+      channel_id  TEXT NOT NULL REFERENCES channels(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS events (
+      cursor      INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind        TEXT NOT NULL,
+      channel_id  TEXT NOT NULL,
+      payload     TEXT NOT NULL,
+      created_at  INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS user_permissions (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      permission  TEXT NOT NULL,
+      scope       TEXT NOT NULL DEFAULT '*',
+      granted_by  TEXT REFERENCES users(id),
+      granted_at  INTEGER NOT NULL,
+      UNIQUE(user_id, permission, scope)
+    );
+
+    CREATE TABLE IF NOT EXISTS invite_codes (
+      code        TEXT PRIMARY KEY,
+      created_by  TEXT NOT NULL REFERENCES users(id),
+      created_at  INTEGER NOT NULL,
+      expires_at  INTEGER,
+      used_by     TEXT REFERENCES users(id),
+      used_at     INTEGER,
+      note        TEXT
+    );
+  `);
+
+  return db;
+}
+
+export function seedAdmin(db: Database.Database): string {
+  const id = uuidv4();
+  const now = Date.now();
+  db.prepare('INSERT INTO users (id, display_name, role, created_at) VALUES (?, ?, ?, ?)').run(id, 'Admin', 'admin', now);
+  return id;
+}
+
+export function seedMember(db: Database.Database, name = 'Member'): string {
+  const id = uuidv4();
+  const now = Date.now();
+  db.prepare('INSERT INTO users (id, display_name, role, email, created_at) VALUES (?, ?, ?, ?, ?)').run(id, name, 'member', `${name.toLowerCase()}@test.com`, now);
+  return id;
+}
+
+export function seedAgent(db: Database.Database, ownerId: string, name = 'Bot'): string {
+  const id = uuidv4();
+  const now = Date.now();
+  db.prepare('INSERT INTO users (id, display_name, role, owner_id, api_key, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, name, 'agent', ownerId, `col_${id}`, now);
+  return id;
+}
+
+export function seedChannel(db: Database.Database, createdBy: string, name = 'test-channel', visibility = 'public'): string {
+  const id = uuidv4();
+  const now = Date.now();
+  db.prepare('INSERT INTO channels (id, name, topic, visibility, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)').run(id, name, '', visibility, now, createdBy);
+  return id;
+}
+
+export function grantPermission(db: Database.Database, userId: string, permission: string, scope = '*'): void {
+  db.prepare('INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, ?, NULL, ?)').run(userId, permission, scope, Date.now());
+}
