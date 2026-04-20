@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './components/Toast';
 import Sidebar from './components/Sidebar';
 import ChannelView from './components/ChannelView';
 import LoginPage from './components/LoginPage';
@@ -51,6 +52,7 @@ function AppInner() {
     const init = async () => {
       await actions.loadUsers();
       await actions.loadCurrentUser();
+      await actions.loadPermissions();
       await actions.loadChannels();
       await actions.loadOnlineUsers();
       dispatch({ type: 'SET_INITIALIZED' });
@@ -156,7 +158,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AppProvider>
-        <AppInner />
+        <ToastProvider>
+          <AppInner />
+        </ToastProvider>
       </AppProvider>
     </ThemeProvider>
   );

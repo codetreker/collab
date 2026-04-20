@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
+import { useCan } from '../hooks/usePermissions';
 import { logout, joinChannel } from '../lib/api';
 import type { Channel, DmChannel } from '../types';
 
@@ -13,6 +14,7 @@ interface Props {
 export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
+  const canCreateChannel = useCan('channel.create');
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newTopic, setNewTopic] = useState('');
@@ -89,13 +91,15 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen }: Props) {
           >
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
-          <button
-            className="icon-btn"
-            onClick={() => setShowCreate(!showCreate)}
-            title="创建频道"
-          >
-            +
-          </button>
+          {canCreateChannel && (
+            <button
+              className="icon-btn"
+              onClick={() => setShowCreate(!showCreate)}
+              title="创建频道"
+            >
+              +
+            </button>
+          )}
         </div>
       </div>
 

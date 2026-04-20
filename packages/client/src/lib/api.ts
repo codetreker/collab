@@ -235,6 +235,27 @@ export async function fetchDmChannels(): Promise<DmChannel[]> {
   return data.channels;
 }
 
+// ─── Permissions ────────────────────────────────────────
+
+export interface PermissionDetail {
+  id: number;
+  permission: string;
+  scope: string;
+  granted_by: string | null;
+  granted_at: number;
+}
+
+export interface MyPermissionsResponse {
+  user_id: string;
+  role: string;
+  permissions: string[];
+  details: PermissionDetail[];
+}
+
+export async function fetchMyPermissions(): Promise<MyPermissionsResponse> {
+  return request<MyPermissionsResponse>('/api/v1/me/permissions');
+}
+
 // ─── Admin ──────────────────────────────────────────────
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {
@@ -282,5 +303,134 @@ export async function generateApiKey(userId: string): Promise<{ api_key: string 
 export async function deleteApiKey(userId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/admin/users/${userId}/api-key`, {
     method: 'DELETE',
+  });
+}
+
+// ─── Admin Permissions ─────────────────────────────────
+
+export async function fetchAdminUserPermissions(userId: string): Promise<MyPermissionsResponse> {
+  return request<MyPermissionsResponse>(`/api/v1/admin/users/${userId}/permissions`);
+}
+
+export async function grantAdminPermission(userId: string, permission: string, scope?: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/admin/users/${userId}/permissions`, {
+    method: 'POST',
+    body: JSON.stringify({ permission, scope }),
+  });
+}
+
+export async function revokeAdminPermission(userId: string, permission: string, scope?: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/admin/users/${userId}/permissions`, {
+    method: 'DELETE',
+    body: JSON.stringify({ permission, scope }),
+  });
+}
+
+export async function patchAdminUser(
+  id: string,
+  data: { display_name?: string; password?: string; role?: string; require_mention?: boolean; disabled?: boolean },
+): Promise<AdminUser> {
+  const res = await request<{ user: AdminUser }>(`/api/v1/admin/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return res.user;
+}
+
+// ─── Admin Invites ─────────────────────────────────────
+
+export interface InviteCode {
+  code: string;
+  created_by: string;
+  created_at: number;
+  expires_at: number | null;
+  used_by: string | null;
+  used_at: number | null;
+  note: string | null;
+}
+
+export async function fetchAdminInvites(): Promise<InviteCode[]> {
+  const data = await request<{ invites: InviteCode[] }>('/api/v1/admin/invites');
+  return data.invites;
+}
+
+export async function createAdminInvite(expiresInHours?: number, note?: string): Promise<InviteCode> {
+  const data = await request<{ invite: InviteCode }>('/api/v1/admin/invites', {
+    method: 'POST',
+    body: JSON.stringify({ expires_in_hours: expiresInHours, note }),
+  });
+  return data.invite;
+}
+
+export async function deleteAdminInvite(code: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/admin/invites/${code}`, {
+    method: 'DELETE',
+  });
+}
+
+// ─── Auth Register ─────────────────────────────────────
+
+export async function register(inviteCode: string, email: string, password: string, displayName: string): Promise<User> {
+  const data = await request<{ user: User }>('/api/v1/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ invite_code: inviteCode, email, password, display_name: displayName }),
+  });
+  return data.user;
+}
+
+// ─── Agents ────────────────────────────────────────────
+
+export interface Agent {
+  id: string;
+  display_name: string;
+  role: string;
+  avatar_url: string | null;
+  owner_id: string | null;
+  created_at: number;
+  api_key?: string;
+  disabled?: number;
+}
+
+export async function fetchAgents(): Promise<Agent[]> {
+  const data = await request<{ agents: Agent[] }>('/api/v1/agents');
+  return data.agents;
+}
+
+export async function createAgent(displayName: string, permissions?: string[]): Promise<Agent> {
+  const data = await request<{ agent: Agent }>('/api/v1/agents', {
+    method: 'POST',
+    body: JSON.stringify({ display_name: displayName, permissions }),
+  });
+  return data.agent;
+}
+
+export async function deleteAgent(id: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/agents/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function rotateAgentApiKey(id: string): Promise<string> {
+  const data = await request<{ api_key: string }>(`/api/v1/agents/${id}/rotate-api-key`, {
+    method: 'POST',
+  });
+  return data.api_key;
+}
+
+export async function fetchAgentPermissions(id: string): Promise<{ permissions: string[]; details: PermissionDetail[] }> {
+  return request<{ permissions: string[]; details: PermissionDetail[] }>(`/api/v1/agents/${id}/permissions`);
+}
+
+export async function updateAgentPermissions(id: string, permissions: { permission: string; scope?: string }[]): Promise<void> {
+  await request<{ agent_id: string }>(`/api/v1/agents/${id}/permissions`, {
+    method: 'PUT',
+    body: JSON.stringify({ permissions }),
+  });
+}
+
+export async function addAgentToChannel(channelId: string, agentId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/members`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: agentId }),
   });
 }
