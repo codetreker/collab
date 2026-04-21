@@ -3,6 +3,13 @@ import { getDb } from '../db.js';
 import * as Q from '../queries.js';
 import { broadcastToChannel } from '../ws.js';
 
+const EMOJI_REGEX = /^(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F)(?:\u200D(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F))*$/u;
+const MAX_EMOJI_BYTES = 32;
+
+function isValidEmoji(s: string): boolean {
+  return Buffer.byteLength(s, 'utf8') <= MAX_EMOJI_BYTES && EMOJI_REGEX.test(s);
+}
+
 export function registerReactionRoutes(app: FastifyInstance): void {
   app.put<{
     Params: { messageId: string };
@@ -15,6 +22,9 @@ export function registerReactionRoutes(app: FastifyInstance): void {
     const { emoji } = request.body ?? {};
     if (!emoji || typeof emoji !== 'string') {
       return reply.status(400).send({ error: 'emoji is required' });
+    }
+    if (!isValidEmoji(emoji)) {
+      return reply.status(400).send({ error: 'Invalid emoji' });
     }
 
     const db = getDb();
@@ -57,6 +67,9 @@ export function registerReactionRoutes(app: FastifyInstance): void {
     const { emoji } = request.body ?? {};
     if (!emoji || typeof emoji !== 'string') {
       return reply.status(400).send({ error: 'emoji is required' });
+    }
+    if (!isValidEmoji(emoji)) {
+      return reply.status(400).send({ error: 'Invalid emoji' });
     }
 
     const db = getDb();
