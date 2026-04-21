@@ -1,4 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import Picker from '@emoji-mart/react';
+import emojiData from '@emoji-mart/data';
 import { useAppContext } from '../context/AppContext';
 import MentionPicker from './MentionPicker';
 import * as api from '../lib/api';
@@ -19,6 +21,9 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingSent = useRef(0);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiBtnRef = useRef<HTMLButtonElement>(null);
 
   // Mention state
   const [mentionQuery, setMentionQuery] = useState('');
@@ -143,6 +148,30 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     lastTypingSent.current = now;
     sendWsMessage({ type: 'typing', channel_id: channelId });
   }, [channelId, sendWsMessage]);
+
+  const insertEmojiAtCursor = useCallback((emoji: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const newText = text.slice(0, start) + emoji + text.slice(end);
+    setText(newText);
+    requestAnimationFrame(() => {
+      const pos = start + emoji.length;
+      ta.setSelectionRange(pos, pos);
+    });
+  }, [text]);
+
+  useEffect(() => {
+    if (!emojiPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current?.contains(e.target as Node)) return;
+      if (emojiBtnRef.current?.contains(e.target as Node)) return;
+      setEmojiPickerOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [emojiPickerOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -270,6 +299,28 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
           style={{ display: 'none' }}
           onChange={handleFileSelect}
         />
+        <button
+          ref={emojiBtnRef}
+          className="icon-btn emoji-btn"
+          onClick={() => setEmojiPickerOpen(v => !v)}
+          title="选择表情"
+        >
+          😊
+        </button>
+        {emojiPickerOpen && (
+          <div className="emoji-picker-popover" ref={emojiPickerRef}>
+            <Picker
+              data={emojiData}
+              onEmojiSelect={(emoji: { native: string }) => {
+                insertEmojiAtCursor(emoji.native);
+                setEmojiPickerOpen(false);
+                textareaRef.current?.focus();
+              }}
+              locale="zh"
+              previewPosition="none"
+            />
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           className="message-textarea"

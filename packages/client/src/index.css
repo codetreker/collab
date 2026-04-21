@@ -820,6 +820,19 @@ body {
   margin-bottom: 4px;
 }
 
+.emoji-btn {
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+
+.emoji-picker-popover {
+  position: absolute;
+  bottom: 100%;
+  left: 20px;
+  z-index: 50;
+  margin-bottom: 4px;
+}
+
 .message-textarea {
   flex: 1;
   padding: 10px 14px;
