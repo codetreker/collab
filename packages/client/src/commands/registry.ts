@@ -15,7 +15,8 @@ export interface CommandContext {
   currentUserId: string;
   args: string;
   resolvedUser?: { id: string; username: string };
-  dispatch: React.Dispatch<unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dispatch: (action: any) => void;
   api: typeof api;
   actions: { openDm: (userId: string) => Promise<void> };
 }

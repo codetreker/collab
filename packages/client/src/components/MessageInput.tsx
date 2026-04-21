@@ -3,6 +3,11 @@ import Picker from '@emoji-mart/react';
 import emojiData from '@emoji-mart/data';
 import { useAppContext } from '../context/AppContext';
 import MentionPicker from './MentionPicker';
+import SlashCommandPicker from './SlashCommandPicker';
+import { useSlashCommands } from '../hooks/useSlashCommands';
+import { commandRegistry } from '../commands/registry';
+import type { CommandDefinition, CommandContext } from '../commands/registry';
+import '../commands/builtins';
 import * as api from '../lib/api';
 import { fetchChannelMembers } from '../lib/api';
 import type { User, SendStatus } from '../types';
@@ -34,6 +39,8 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   const channel = state.channels.find(c => c.id === channelId);
   const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
   const isPrivate = !dmChannel && channel?.visibility === 'private';
+
+  const slash = useSlashCommands(text);
 
   const [channelMemberIds, setChannelMemberIds] = useState<Set<string> | null>(null);
 
@@ -114,7 +121,37 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     registerAckTimer(clientMessageId, () => clearTimeout(timer));
   }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer]);
 
+  const handleSlashSelect = useCallback((cmd: CommandDefinition) => {
+    if (cmd.paramType === 'none') {
+      const ctx: CommandContext = {
+        channelId,
+        currentUserId: state.currentUser?.id ?? '',
+        args: '',
+        dispatch,
+        api,
+        actions,
+      };
+      cmd.execute(ctx).catch(() => {});
+      setText('');
+      slash.close();
+    } else {
+      setText(`/${cmd.name} `);
+      slash.close();
+      textareaRef.current?.focus();
+    }
+  }, [channelId, state.currentUser, dispatch, actions, slash]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (slash.isActive && slash.filtered.length > 0) {
+      if (slash.handleKeyDown(e)) return;
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const cmd = slash.filtered[slash.selectedIndex];
+        if (cmd) handleSlashSelect(cmd);
+        return;
+      }
+    }
+
     if (mentionVisible) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -143,7 +180,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       e.preventDefault();
       handleSend();
     }
-  }, [mentionVisible, filteredUsers, mentionIndex, handleSend]);
+  }, [slash, handleSlashSelect, mentionVisible, filteredUsers, mentionIndex, handleSend]);
 
   const insertMention = (user: User) => {
     const before = text.slice(0, mentionStart);
@@ -197,6 +234,12 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     const value = e.target.value;
     setText(value);
     emitTyping();
+
+    // Slash commands take priority over mentions
+    if (value.startsWith('/') && !value.includes(' ')) {
+      setMentionVisible(false);
+      return;
+    }
 
     // Check for @ mention trigger
     const cursorPos = e.target.selectionStart;
@@ -319,6 +362,12 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
   return (
     <div className="message-input-container" onDrop={handleDrop} onDragOver={handleDragOver}>
+      <SlashCommandPicker
+        commands={slash.filtered}
+        visible={slash.isActive}
+        selectedIndex={slash.selectedIndex}
+        onSelect={handleSlashSelect}
+      />
       <MentionPicker
         users={mentionUsers}
         query={mentionQuery}
