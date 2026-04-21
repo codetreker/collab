@@ -12,8 +12,8 @@ Based on the design doc and current codebase, **the registration API and page al
 |------|------|
 | **文件** | `packages/server/src/auth.ts` (~251行), `packages/server/src/queries.ts` (~858行) |
 | **改动** | ~30-50 行 |
-| **内容** | 1) 补全输入校验：email 格式校验、密码 8-72 字符、display_name 1-50 字符 2) 确认 email lowercase normalize 3) 确认事务内步骤顺序匹配设计（claim invite → check email → hash → create user → permissions → join channels → JWT） 4) Rate limiting: 注册端点 IP 级 10次/分 |
-| **验证** | curl 测试各错误场景（400/404/409），并发邀请码 claim 测试 |
+| **内容** | 1) 补全输入校验：email 格式校验、密码 8-72 字节（bcrypt 限制，多字节字符需按 byte 计算）、display_name 1-50 字符 2) 确认 email lowercase normalize 3) 确认 IMMEDIATE 事务包裹全部步骤（claim→create→perms→channels→JWT），JWT 失败需完整回滚（claim invite → check email → hash → create user → permissions → join channels → JWT） 4) Rate limiting: 注册端点 IP 级 10次/分 |
+| **验证** | curl 测试各错误场景（400/404/409），并发邀请码 claim 测试，事务回滚测试（模拟下游失败确认无残留数据） |
 | **依赖** | 无 |
 
 ### T2: 前端注册页面补全
