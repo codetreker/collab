@@ -4,6 +4,101 @@ import { sendCollabMessage } from "./api-client.js";
 import { getCollabRuntime } from "./runtime.js";
 import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
 
+export async function handleCollabReactionInbound(params: {
+  channelId: string;
+  channelLabel: string;
+  account: ResolvedCollabAccount;
+  config: CoreConfig;
+  event: CollabEvent;
+  payload: {
+    message_id: string;
+    emoji: string;
+    user_id: string;
+    action: string;
+  };
+}): Promise<void> {
+  const runtime = getCollabRuntime();
+  const p = params.payload;
+  const rawChannelId = stripChannelPrefix(params.event.channel_id);
+  const target = buildCollabTarget(rawChannelId);
+
+  const actionLabel = p.action === "added" ? "added" : "removed";
+  const body = `[reaction_update] ${p.user_id} ${actionLabel} ${p.emoji} on message ${p.message_id}`;
+
+  const route = runtime.channel.routing.resolveAgentRoute({
+    cfg: params.config as OpenClawConfig,
+    channel: params.channelId,
+    accountId: params.account.accountId,
+    peer: {
+      kind: "channel",
+      id: rawChannelId,
+    },
+  });
+
+  const storePath = runtime.channel.session.resolveStorePath(params.config.session?.store, {
+    agentId: route.agentId,
+  });
+
+  const ctxPayload = runtime.channel.reply.finalizeInboundContext({
+    Body: body,
+    BodyForAgent: body,
+    RawBody: JSON.stringify(p),
+    CommandBody: body,
+    From: buildCollabTarget(stripChannelPrefix(p.user_id)),
+    To: target,
+    SessionKey: route.sessionKey,
+    AccountId: route.accountId ?? params.account.accountId,
+    ChatType: "group",
+    ConversationLabel: params.event.channel_id,
+    GroupSubject: params.event.channel_id,
+    GroupChannel: params.event.channel_id,
+    NativeChannelId: params.event.channel_id,
+    SenderId: p.user_id,
+    Provider: params.channelId,
+    Surface: params.channelId,
+    MessageSid: `reaction:${p.message_id}:${p.emoji}`,
+    MessageSidFull: `reaction:${p.message_id}:${p.emoji}`,
+    Timestamp: params.event.created_at,
+    OriginatingChannel: params.channelId,
+    OriginatingTo: target,
+    CommandAuthorized: true,
+  });
+
+  await dispatchInboundReplyWithBase({
+    cfg: params.config as OpenClawConfig,
+    channel: params.channelId,
+    accountId: params.account.accountId,
+    route,
+    storePath,
+    ctxPayload,
+    core: runtime,
+    deliver: async (payload) => {
+      const text =
+        payload && typeof payload === "object" && "text" in payload
+          ? ((payload as { text?: string }).text ?? "")
+          : "";
+      if (!text.trim()) return;
+
+      await sendCollabMessage({
+        baseUrl: params.account.baseUrl,
+        apiKey: params.account.apiKey,
+        channelId: params.event.channel_id,
+        content: text,
+      });
+    },
+    onRecordError: (error) => {
+      throw error instanceof Error
+        ? error
+        : new Error(`collab session record failed: ${String(error)}`);
+    },
+    onDispatchError: (error) => {
+      throw error instanceof Error
+        ? error
+        : new Error(`collab dispatch failed: ${String(error)}`);
+    },
+  });
+}
+
 /**
  * Target format for Collab:
  *   channel:<channel_id>

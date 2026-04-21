@@ -1,5 +1,5 @@
 import { fetchBotIdentity, pollCollabEvents } from "./api-client.js";
-import { handleCollabInbound } from "./inbound.js";
+import { handleCollabInbound, handleCollabReactionInbound } from "./inbound.js";
 import { readPersistedCursor, persistCursor } from "./cursor-store.js";
 import { probeSSE, runSSELoop } from "./sse-client.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
@@ -59,15 +59,33 @@ async function runPollLoop(params: {
       consecutiveErrors = 0;
 
       for (const event of result.events) {
-        if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted") continue;
+        if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted" && event.kind !== "reaction_update") continue;
         let payload: Record<string, unknown>;
         try {
           payload = JSON.parse(event.payload);
         } catch {
           continue;
         }
-        const senderId = payload.sender_id as string | undefined;
+        const senderId = payload.sender_id as string | undefined ?? payload.user_id as string | undefined;
         if (senderId && senderId === account.botUserId) continue;
+
+        if (event.kind === "reaction_update") {
+          await handleCollabReactionInbound({
+            channelId: params.channelId,
+            channelLabel: params.channelLabel,
+            account,
+            config: params.config,
+            event,
+            payload: {
+              message_id: (payload.message_id as string) ?? "",
+              emoji: (payload.emoji as string) ?? "",
+              user_id: (payload.user_id as string) ?? "",
+              action: (payload.action as string) ?? "",
+            },
+          });
+          continue;
+        }
+
         const isDmChannel = (payload.channel_type as string | undefined) === "dm";
         if (event.kind === "message") {
           if (!isDmChannel && account.requireMention) {

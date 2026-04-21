@@ -1,7 +1,7 @@
 import http from "node:http";
 import https from "node:https";
 import type { IncomingMessage, ClientRequest } from "node:http";
-import { handleCollabInbound } from "./inbound.js";
+import { handleCollabInbound, handleCollabReactionInbound } from "./inbound.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
 import { persistCursor } from "./cursor-store.js";
 import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
@@ -247,7 +247,35 @@ export async function dispatchSSEEvent(params: {
 }): Promise<void> {
   const { account, event } = params;
 
-  if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted") return;
+  if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted" && event.kind !== "reaction_update") return;
+
+  if (event.kind === "reaction_update") {
+    let payload: { message_id?: string; emoji?: string; user_id?: string; action?: string; channel_id?: string };
+    try {
+      payload = JSON.parse(event.payload);
+    } catch {
+      return;
+    }
+    const userId = payload.user_id;
+    if (userId && userId === account.botUserId) return;
+    await handleCollabReactionInbound({
+      channelId: params.channelId,
+      channelLabel: params.channelLabel,
+      account: params.account,
+      config: params.config,
+      event,
+      payload: {
+        message_id: payload.message_id ?? "",
+        emoji: payload.emoji ?? "",
+        user_id: payload.user_id ?? "",
+        action: payload.action ?? "",
+      },
+    });
+    if (event.cursor > 0) {
+      persistCursor(account.accountId, event.cursor);
+    }
+    return;
+  }
 
   let payload: {
     id?: string;
