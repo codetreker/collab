@@ -308,6 +308,28 @@ function maskDeletedMessages(messages: Message[]): void {
   }
 }
 
+export function getPreviewMessages(
+  db: Database.Database,
+  channelId: string,
+  limit = 50,
+): Message[] {
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const rows = db
+    .prepare(
+      `SELECT m.*, u.display_name AS sender_name
+       FROM messages m
+       JOIN users u ON u.id = m.sender_id
+       WHERE m.channel_id = ? AND m.created_at > ?
+       ORDER BY m.created_at DESC
+       LIMIT ?`,
+    )
+    .all(channelId, since, limit) as Message[];
+
+  attachMentions(db, rows);
+  maskDeletedMessages(rows);
+  return rows.reverse();
+}
+
 export function searchMessages(
   db: Database.Database,
   channelId: string,

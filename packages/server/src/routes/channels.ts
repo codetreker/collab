@@ -129,6 +129,26 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     return { channel };
   });
 
+  // Preview channel (public only, 24h messages)
+  app.get<{
+    Params: { channelId: string };
+  }>('/api/v1/channels/:channelId/preview', async (request, reply) => {
+    const { channelId } = request.params;
+    const db = getDb();
+
+    if (!request.currentUser) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const channel = Q.getChannel(db, channelId);
+    if (!channel || (channel.visibility ?? 'public') === 'private') {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    const messages = Q.getPreviewMessages(db, channelId);
+    return { messages, channel };
+  });
+
   // Update channel
   app.put<{
     Params: { channelId: string };
