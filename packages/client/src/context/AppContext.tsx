@@ -352,8 +352,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ): Promise<Channel> => {
     const channel = await api.createChannel(name, topic, memberIds, visibility);
     dispatch({ type: 'ADD_CHANNEL', channel });
+    await loadPermissions();
     return channel;
-  }, []);
+  }, [loadPermissions]);
 
   const loadDmChannels = useCallback(async () => {
     try {
