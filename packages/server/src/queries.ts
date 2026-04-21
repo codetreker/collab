@@ -316,7 +316,7 @@ export function searchMessages(
       `SELECT m.*, u.display_name AS sender_name
        FROM messages m
        JOIN users u ON u.id = m.sender_id
-       WHERE m.channel_id = ? AND m.content LIKE ?
+       WHERE m.channel_id = ? AND m.content LIKE ? AND m.deleted_at IS NULL
        ORDER BY m.created_at DESC
        LIMIT ?`,
     )
