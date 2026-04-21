@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import bcrypt from 'bcryptjs';
 import Database from 'better-sqlite3';
-import { createTestDb, seedAdmin, seedMember, seedInviteCode } from './setup.js';
+import { createTestDb, seedAdmin, seedMember, seedInviteCode, authCookie, grantPermission } from './setup.js';
 
 let testDb: Database.Database;
 
@@ -300,6 +300,66 @@ describe('Auth API', () => {
       });
       expect(res.statusCode).toBe(200);
       expect(res.headers['set-cookie']).toContain('Max-Age=0');
+    });
+  });
+
+  describe('GET /api/v1/users/me', () => {
+    it('returns current user with permissions', async () => {
+      const adminId = seedAdmin(testDb, 'MeAdmin');
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/users/me',
+        headers: { cookie: authCookie(adminId) },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.user.id).toBe(adminId);
+      expect(body.user.permissions).toContain('*');
+      expect(body.user.api_key).toBeUndefined();
+      expect(body.user.password_hash).toBeUndefined();
+    });
+
+    it('returns member permissions list', async () => {
+      const memberId = seedMember(testDb, 'MeMember');
+      grantPermission(testDb, memberId, 'channel.create');
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/users/me',
+        headers: { cookie: authCookie(memberId) },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.user.permissions).toContain('channel.create');
+    });
+  });
+
+  describe('GET /api/v1/me/permissions', () => {
+    it('returns admin permissions', async () => {
+      const adminId = seedAdmin(testDb, 'PermAdmin');
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/me/permissions',
+        headers: { cookie: authCookie(adminId) },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.role).toBe('admin');
+      expect(body.permissions).toContain('*');
+    });
+
+    it('returns member permissions with details', async () => {
+      const memberId = seedMember(testDb, 'PermMember');
+      grantPermission(testDb, memberId, 'message.send');
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/me/permissions',
+        headers: { cookie: authCookie(memberId) },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.role).toBe('member');
+      expect(body.permissions).toContain('message.send');
+      expect(body.details.length).toBeGreaterThanOrEqual(1);
     });
   });
 });

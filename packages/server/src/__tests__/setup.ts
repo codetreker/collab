@@ -1,5 +1,22 @@
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = 'test-secret-for-vitest';
+
+export function makeToken(userId: string, email = 'test@test.com'): string {
+  return jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '1h' });
+}
+
+export function authCookie(userId: string, email?: string): string {
+  return `collab_token=${makeToken(userId, email)}`;
+}
+
+export function seedMessage(db: Database.Database, channelId: string, senderId: string, content = 'hello', createdAt?: number): string {
+  const id = uuidv4();
+  db.prepare('INSERT INTO messages (id, channel_id, sender_id, content, content_type, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, channelId, senderId, content, 'text', createdAt ?? Date.now());
+  return id;
+}
 
 export function createTestDb(): Database.Database {
   const db = new Database(':memory:');
