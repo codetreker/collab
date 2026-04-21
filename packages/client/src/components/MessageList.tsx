@@ -25,9 +25,10 @@ function toPseudoMessage(p: PendingMessage): Message {
 
 interface Props {
   channelId: string;
+  previewMessages?: Message[] | null;
 }
 
-export default function MessageList({ channelId }: Props) {
+export default function MessageList({ channelId, previewMessages }: Props) {
   const { state, actions, dispatch, sendWsMessage, registerAckTimer } = useAppContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -36,8 +37,8 @@ export default function MessageList({ channelId }: Props) {
   const isInitialLoad = useRef(true);
   const loadingOlder = useRef(false);
 
-  const messages = state.messages.get(channelId) ?? [];
-  const pending = state.pendingMessages.get(channelId) ?? [];
+  const messages = previewMessages ?? (state.messages.get(channelId) ?? []);
+  const pending = previewMessages ? [] : (state.pendingMessages.get(channelId) ?? []);
   const allMessages = [...messages, ...pending.map(toPseudoMessage)];
   const hasMore = state.hasMore.get(channelId) ?? false;
   const isLoading = state.loadingMessages.has(channelId);

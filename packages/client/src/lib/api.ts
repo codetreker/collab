@@ -110,6 +110,10 @@ export async function joinChannel(channelId: string): Promise<void> {
   });
 }
 
+export async function fetchChannelPreview(channelId: string): Promise<{ messages: Message[]; channel: Channel }> {
+  return request<{ messages: Message[]; channel: Channel }>(`/api/v1/channels/${channelId}/preview`);
+}
+
 export async function leaveChannel(channelId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/leave`, {
     method: 'POST',
