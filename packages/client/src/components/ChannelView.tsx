@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { useWebSocket } from '../hooks/useWebSocket';
 import { leaveChannel } from '../lib/api';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
@@ -13,7 +12,7 @@ interface Props {
 
 export default function ChannelView({ channelId }: Props) {
   const { state, actions } = useAppContext();
-  const { subscribe, unsubscribe, connectionState } = useWebSocket();
+  const connectionState = state.connectionState;
   const [showMembers, setShowMembers] = useState(false);
 
   const channel = state.channels.find(c => c.id === channelId);
@@ -24,12 +23,6 @@ export default function ChannelView({ channelId }: Props) {
   useEffect(() => {
     actions.loadMessages(channelId);
   }, [channelId, actions]);
-
-  // Subscribe to channel via WebSocket
-  useEffect(() => {
-    subscribe(channelId);
-    return () => unsubscribe(channelId);
-  }, [channelId, subscribe, unsubscribe]);
 
   useEffect(() => {
     setShowMembers(false);
