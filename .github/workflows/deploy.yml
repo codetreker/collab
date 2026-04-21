@@ -32,36 +32,37 @@ jobs:
   deploy-staging:
     needs: test
     runs-on: ubuntu-latest
+    outputs:
+      build_tag: ${{ steps.tag.outputs.build_tag }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Generate build tag
+        id: tag
+        run: echo "build_tag=$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
       - name: Login to Harbor
-        run: echo "${{ secrets.HARBOR_API_TOKEN }}" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
+        run: echo '${{ secrets.HARBOR_API_TOKEN }}' | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
 
       - name: Build and push
         run: |
           docker build \
-            -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.tag.outputs.build_tag }} \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:staging \
             .
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.tag.outputs.build_tag }}
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:staging
 
       - name: Deploy staging
         uses: appleboy/ssh-action@v1
-        env:
-          HARBOR_API_TOKEN: ${{ secrets.HARBOR_API_TOKEN }}
         with:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
-          envs: HARBOR_API_TOKEN
           script: |
-            echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
-            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }} collab:staging
             cd /opt/dockers/collab-staging
+            docker compose pull
             docker compose up -d
             sleep 5
             curl -sf http://localhost:4901/ > /dev/null && echo "✅ Staging healthy" || (echo "❌ Staging unhealthy" && exit 1)
@@ -74,21 +75,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Login to Harbor
+        run: echo '${{ secrets.HARBOR_API_TOKEN }}' | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
+
+      - name: Tag and push prod
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ needs.deploy-staging.outputs.build_tag }}
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ needs.deploy-staging.outputs.build_tag }} ${{ env.REGISTRY }}/${{ env.IMAGE }}:prod
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:prod
+
       - name: Deploy production
         uses: appleboy/ssh-action@v1
-        env:
-          HARBOR_API_TOKEN: ${{ secrets.HARBOR_API_TOKEN }}
         with:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
-          envs: HARBOR_API_TOKEN
           script: |
-            echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
-            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }} collab:prod
             cd /opt/dockers/collab
+            docker compose pull
             docker compose up -d
             sleep 5
             curl -sf http://localhost:4900/ > /dev/null && echo "✅ Production healthy" || (echo "❌ Production unhealthy" && exit 1)
@@ -98,12 +103,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const now = new Date();
-            const tag = `v${now.getUTCFullYear()}${String(now.getUTCMonth()+1).padStart(2,'0')}${String(now.getUTCDate()).padStart(2,'0')}-${String(now.getUTCHours()).padStart(2,'0')}${String(now.getUTCMinutes()).padStart(2,'0')}${String(now.getUTCSeconds()).padStart(2,'0')}`;
+            const tag = '${{ needs.deploy-staging.outputs.build_tag }}';
             await github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: `refs/tags/${tag}`,
+              ref: `refs/tags/v${tag}`,
               sha: context.sha
             });
-            core.info(`Tagged: ${tag}`);
+            core.info(`Tagged: v${tag}`);
