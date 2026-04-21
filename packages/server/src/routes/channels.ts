@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
-import { broadcastToChannel, broadcastToUser, getOnlineUserIds } from '../ws.js';
+import { broadcastToChannel, broadcastToUser, getOnlineUserIds, unsubscribeUserFromChannel } from '../ws.js';
 import { requirePermission } from '../middleware/permissions.js';
 
 export function registerChannelRoutes(app: FastifyInstance): void {
@@ -28,6 +28,10 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return reply.status(400).send({ error: 'Channel name is required' });
+    }
+
+    if (topic !== undefined && typeof topic === 'string' && topic.length > 250) {
+      return reply.status(400).send({ error: 'Topic must be 250 characters or fewer' });
     }
 
     const vis = visibility ?? 'public';
@@ -129,12 +133,24 @@ export function registerChannelRoutes(app: FastifyInstance): void {
   app.put<{
     Params: { channelId: string };
     Body: { name?: string; topic?: string; visibility?: 'public' | 'private' };
-  }>('/api/v1/channels/:channelId', { preHandler: [requirePermission('channel.manage_visibility', (req) => `channel:${(req.params as { channelId: string }).channelId}`)] }, async (request, reply) => {
+  }>('/api/v1/channels/:channelId', { preHandler: [async (request, reply) => {
+    const { name, visibility } = (request.body ?? {}) as { name?: string; visibility?: string };
+    const topicOnly = !name && !visibility;
+    if (topicOnly) {
+      // Any channel member can update topic
+      return;
+    }
+    return requirePermission('channel.manage_visibility', (req) => `channel:${(req.params as { channelId: string }).channelId}`)(request, reply);
+  }] }, async (request, reply) => {
     const { channelId } = request.params;
     const { name, topic, visibility } = request.body ?? {};
 
     if (name !== undefined && (typeof name !== 'string' || name.trim().length === 0)) {
       return reply.status(400).send({ error: 'Invalid channel name' });
+    }
+
+    if (topic !== undefined && typeof topic === 'string' && topic.length > 250) {
+      return reply.status(400).send({ error: 'Topic must be 250 characters or fewer' });
     }
 
     if (visibility !== undefined && visibility !== 'public' && visibility !== 'private') {
@@ -154,6 +170,11 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     if (visibility === 'private' && channel.name === 'general') {
       return reply.status(403).send({ error: 'Cannot make #general private' });
+    }
+
+    const topicOnly = !name && !visibility && topic !== undefined;
+    if (topicOnly && !Q.isChannelMember(db, channelId, userId) && request.currentUser?.role !== 'admin') {
+      return reply.status(403).send({ error: 'Must be a channel member to set topic' });
     }
 
     const cleanName = name ? name.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-') : undefined;
@@ -201,6 +222,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
         const fullChannel = Q.getChannelWithCounts(db, channelId, uid);
         broadcastToUser(uid, { type: 'channel_added', channel: fullChannel ?? updated });
       }
+    }
+
+    if (topic !== undefined) {
+      broadcastToChannel(channelId, {
+        type: 'channel_updated',
+        channel_id: channelId,
+        topic: topic.trim(),
+      });
     }
 
     return { channel: updated };
@@ -339,6 +368,9 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       display_name: user?.display_name,
       member_count: leaveCount,
     });
+
+    broadcastToUser(userId, { type: 'channel_removed', channel_id: channelId });
+    unsubscribeUserFromChannel(userId, channelId);
 
     return { ok: true };
   });

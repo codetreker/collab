@@ -173,7 +173,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     registerAckTimer(clientMessageId, () => clearTimeout(timer));
   }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand]);
 
-  const handleSlashSelect = useCallback((cmd: CommandDefinition) => {
+  const handleSlashSelect = useCallback(async (cmd: CommandDefinition) => {
     if (cmd.paramType === 'none') {
       const ctx: CommandContext = {
         channelId,
@@ -183,13 +183,15 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         api,
         actions,
       };
-      cmd.execute(ctx).catch((err) => {
+      try {
+        await cmd.execute(ctx);
+      } catch (err) {
         if (err instanceof CommandError || err instanceof ApiError) {
           setCommandError(err.message);
         } else {
           setCommandError(err instanceof Error ? err.message : 'Command failed');
         }
-      });
+      }
       setText('');
       slash.close();
     } else {

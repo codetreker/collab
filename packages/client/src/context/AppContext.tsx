@@ -357,7 +357,15 @@ function reducer(state: AppState, action: Action): AppState {
     case 'NAVIGATE_AFTER_LEAVE': {
       const channels = state.channels.filter(c => c.id !== action.payload.channelId);
       const fallback = channels.find(c => c.name === 'general')?.id ?? channels[0]?.id ?? null;
-      return { ...state, channels, currentChannelId: fallback };
+      const messages = new Map(state.messages);
+      messages.delete(action.payload.channelId);
+      const pendingMessages = new Map(state.pendingMessages);
+      pendingMessages.delete(action.payload.channelId);
+      const typingUsers = new Map(state.typingUsers);
+      typingUsers.delete(action.payload.channelId);
+      const channelMembersVersion = new Map(state.channelMembersVersion);
+      channelMembersVersion.delete(action.payload.channelId);
+      return { ...state, channels, currentChannelId: fallback, messages, pendingMessages, typingUsers, channelMembersVersion };
     }
 
     default:

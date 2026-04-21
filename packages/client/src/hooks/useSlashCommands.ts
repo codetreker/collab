@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { commandRegistry } from '../commands/registry';
 import type { CommandDefinition } from '../commands/registry';
 
@@ -29,7 +29,7 @@ export function useSlashCommands(text: string): UseSlashCommandsReturn {
   }, []);
 
   // Reset dismissed when text changes back to non-slash or empty
-  useMemo(() => {
+  useEffect(() => {
     if (!text.startsWith('/') || text === '') {
       setDismissed(false);
       setSelectedIndex(0);
