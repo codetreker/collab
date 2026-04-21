@@ -792,3 +792,66 @@ export function listDmChannelsForUser(
     };
   });
 }
+
+// ─── Reactions ─────────────────────────────────────────
+
+export function addReaction(
+  db: Database.Database, messageId: string, userId: string, emoji: string,
+): void {
+  db.prepare(
+    'INSERT OR IGNORE INTO message_reactions (id, message_id, user_id, emoji, created_at) VALUES (?, ?, ?, ?, ?)',
+  ).run(uuidv4(), messageId, userId, emoji, Date.now());
+}
+
+export function removeReaction(
+  db: Database.Database, messageId: string, userId: string, emoji: string,
+): boolean {
+  return db.prepare(
+    'DELETE FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?',
+  ).run(messageId, userId, emoji).changes > 0;
+}
+
+export function getReactionsByMessageId(
+  db: Database.Database, messageId: string,
+): { emoji: string; count: number; user_ids: string[] }[] {
+  const rows = db.prepare(
+    `SELECT emoji, GROUP_CONCAT(user_id) AS user_ids, COUNT(*) AS count
+     FROM message_reactions
+     WHERE message_id = ?
+     GROUP BY emoji
+     ORDER BY MIN(created_at) ASC`,
+  ).all(messageId) as { emoji: string; user_ids: string; count: number }[];
+  return rows.map(r => ({ emoji: r.emoji, count: r.count, user_ids: r.user_ids.split(',') }));
+}
+
+export function getReactionsForMessages(
+  db: Database.Database, messageIds: string[],
+): Map<string, { emoji: string; count: number; user_ids: string[] }[]> {
+  const result = new Map<string, { emoji: string; count: number; user_ids: string[] }[]>();
+  if (messageIds.length === 0) return result;
+
+  const placeholders = messageIds.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT message_id, emoji, GROUP_CONCAT(user_id) AS user_ids, COUNT(*) AS count
+     FROM message_reactions
+     WHERE message_id IN (${placeholders})
+     GROUP BY message_id, emoji
+     ORDER BY MIN(created_at) ASC`,
+  ).all(...messageIds) as { message_id: string; emoji: string; user_ids: string; count: number }[];
+
+  for (const r of rows) {
+    const arr = result.get(r.message_id) ?? [];
+    arr.push({ emoji: r.emoji, count: r.count, user_ids: r.user_ids.split(',') });
+    result.set(r.message_id, arr);
+  }
+  return result;
+}
+
+export function getReactionCountForMessage(
+  db: Database.Database, messageId: string,
+): number {
+  const row = db.prepare(
+    'SELECT COUNT(DISTINCT emoji) AS cnt FROM message_reactions WHERE message_id = ?',
+  ).get(messageId) as { cnt: number };
+  return row.cnt;
+}

@@ -28,7 +28,13 @@ export function registerMessageRoutes(app: FastifyInstance): void {
     }
 
     const result = Q.getMessages(db, channelId, before, limit, after);
-    return result;
+    const messageIds = result.messages.map(m => m.id);
+    const reactionsMap = Q.getReactionsForMessages(db, messageIds);
+    const messagesWithReactions = result.messages.map(m => ({
+      ...m,
+      reactions: reactionsMap.get(m.id) ?? [],
+    }));
+    return { messages: messagesWithReactions, has_more: result.has_more };
   });
 
   // Search messages in a channel

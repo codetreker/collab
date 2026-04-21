@@ -68,7 +68,8 @@ type Action =
   | { type: 'UPDATE_CHANNEL'; channelId: string; updates: Partial<Channel> }
   | { type: 'BUMP_CHANNEL_MEMBERS_VERSION'; channelId: string }
   | { type: 'SET_TYPING'; channelId: string; userId: string; displayName: string }
-  | { type: 'CLEAR_EXPIRED_TYPING' };
+  | { type: 'CLEAR_EXPIRED_TYPING' }
+  | { type: 'UPDATE_REACTIONS'; messageId: string; channelId: string; reactions: { emoji: string; count: number; user_ids: string[] }[] };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -263,6 +264,17 @@ function reducer(state: AppState, action: Action): AppState {
         }
       }
       return changed ? { ...state, typingUsers } : state;
+    }
+
+    case 'UPDATE_REACTIONS': {
+      const msgs = new Map(state.messages);
+      const channelMsgs = msgs.get(action.channelId);
+      if (!channelMsgs) return state;
+      const updated = channelMsgs.map(m =>
+        m.id === action.messageId ? { ...m, reactions: action.reactions } : m
+      );
+      msgs.set(action.channelId, updated);
+      return { ...state, messages: msgs };
     }
 
     default:

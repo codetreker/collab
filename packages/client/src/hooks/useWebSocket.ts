@@ -220,6 +220,15 @@ export function useWebSocket() {
         dispatch({ type: 'SET_TYPING', channelId, userId, displayName });
         break;
       }
+      case 'reaction_update': {
+        dispatch({
+          type: 'UPDATE_REACTIONS',
+          messageId: data.message_id as string,
+          channelId: data.channel_id as string,
+          reactions: data.reactions as { emoji: string; count: number; user_ids: string[] }[],
+        });
+        break;
+      }
       case 'error':
         console.warn('[ws] Server error:', data.message);
         break;

@@ -43,6 +43,7 @@ export interface Message {
   created_at: number;
   edited_at: number | null;
   mentions?: string[];
+  reactions?: { emoji: string; count: number; user_ids: string[] }[];
 }
 
 export type SendStatus = 'idle' | 'sending' | 'sent' | 'error';

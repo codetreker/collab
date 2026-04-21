@@ -235,6 +235,22 @@ function initSchema(db: Database.Database): void {
     }
 
     // Migration: clean up DM channels with >2 members (keep only the pair from the channel name)
+
+    // Migration: P5 — message_reactions table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS message_reactions (
+        id          TEXT PRIMARY KEY,
+        message_id  TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        user_id     TEXT NOT NULL REFERENCES users(id),
+        emoji       TEXT NOT NULL,
+        created_at  INTEGER NOT NULL
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_unique
+        ON message_reactions(message_id, user_id, emoji);
+      CREATE INDEX IF NOT EXISTS idx_reactions_message
+        ON message_reactions(message_id);
+    `);
+
     const dmChannels = db.prepare(
       `SELECT c.id, c.name FROM channels c
        WHERE c.type = 'dm'

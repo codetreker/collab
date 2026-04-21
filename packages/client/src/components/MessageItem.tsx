@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { renderMarkdown } from '../lib/markdown';
+import ReactionBar from './ReactionBar';
 import type { Message } from '../types';
 
 interface Props {
@@ -43,6 +44,14 @@ export default function MessageItem({ message, userMap, currentUserId }: Props) 
             />
           )}
         </div>
+        {message.reactions && message.reactions.length > 0 && (
+          <ReactionBar
+            reactions={message.reactions}
+            messageId={message.id}
+            currentUserId={currentUserId}
+            userMap={userMap}
+          />
+        )}
       </div>
     </div>
   );

@@ -1725,3 +1725,54 @@ body {
   0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
   40% { opacity: 1; transform: scale(1); }
 }
+
+/* ─── Reaction Bar ────────────────────────────────────── */
+
+.reaction-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  position: relative;
+}
+
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.reaction-pill:hover {
+  background: var(--bg-message-hover);
+  border-color: var(--accent);
+}
+
+.reaction-active {
+  background: rgba(88, 101, 242, 0.15);
+  border-color: var(--accent);
+}
+
+.reaction-add {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.reaction-add:hover {
+  opacity: 1;
+}
+
+.reaction-picker-popover {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 50;
+  margin-bottom: 4px;
+}
