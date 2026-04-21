@@ -322,10 +322,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     const user = Q.getUserById(db, userId);
     if (user?.role === 'agent') {
-      const ownerId = user.owner_id;
-      if (ownerId && !Q.isChannelMember(db, channelId, ownerId)) {
-        return reply.status(409).send({ error: 'Agent owner must be a member of the channel' });
-      }
+      return reply.status(403).send({ error: 'Agents cannot self-join channels. An owner must add the agent.' });
     }
 
     Q.addChannelMember(db, channelId, userId);
