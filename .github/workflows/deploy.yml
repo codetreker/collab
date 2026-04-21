@@ -44,9 +44,24 @@ jobs:
       - name: Login to Harbor
         run: echo '${{ secrets.HARBOR_API_TOKEN }}' | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
 
+      - name: Build base image if needed
+        id: base
+        run: |
+          BASE_HASH=$(cat Dockerfile.base pnpm-lock.yaml | sha256sum | cut -c1-8)
+          echo "base_hash=$BASE_HASH" >> "$GITHUB_OUTPUT"
+          if docker pull ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} 2>/dev/null; then
+            echo "✅ Base image exists, skipping build"
+          else
+            echo "🔨 Building base image..."
+            docker build -f Dockerfile.base \
+              -t ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} .
+            docker push ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH}
+          fi
+
       - name: Build and push
         run: |
           docker build \
+            --build-arg BASE_TAG=${{ steps.base.outputs.base_hash }} \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.tag.outputs.build_tag }} \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:staging \
             .
