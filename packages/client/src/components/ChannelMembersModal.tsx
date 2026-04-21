@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useCan } from '../hooks/usePermissions';
 import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel, deleteChannel } from '../lib/api';
 import type { ChannelMember } from '../lib/api';
 
@@ -20,8 +21,11 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
   const isGeneral = channelName === 'general';
   const isDm = channel?.type === 'dm';
   const currentUser = state.currentUser;
-  const canManage = currentUser?.role === 'admin' || currentUser?.id === channelCreatedBy;
-  const canDelete = canManage && !isGeneral && !isDm;
+  const canManageMembers = useCan('channel.manage_members', channelId);
+  const canDeleteChannel = useCan('channel.delete', channelId);
+  const canManageVisibility = useCan('channel.manage_visibility', channelId);
+  const canManage = canManageMembers;
+  const canDelete = canDeleteChannel && !isGeneral && !isDm;
   const visibility = channel?.visibility ?? 'public';
 
   const load = useCallback(async () => {
@@ -105,7 +109,7 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
           <div className="modal-body"><p>加载中...</p></div>
         ) : (
           <div className="modal-body">
-            {canManage && (
+            {canManageVisibility && (
               <div className="visibility-section">
                 <div className="visibility-current">
                   频道可见性：{visibility === 'public' ? '🌐 公开' : '🔒 私有'}

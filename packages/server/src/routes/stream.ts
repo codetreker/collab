@@ -97,7 +97,10 @@ function authenticate(request: FastifyRequest): User | null {
     try {
       const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
       const user = Q.getUserById(db, payload.userId);
-      if (user) return user;
+      if (user) {
+        if (user.deleted_at || user.disabled) return null;
+        return user;
+      }
     } catch {
       /* fall through */
     }
@@ -107,13 +110,19 @@ function authenticate(request: FastifyRequest): User | null {
   if (authHeader?.startsWith('Bearer ')) {
     const apiKey = authHeader.slice(7);
     const user = Q.getUserByApiKey(db, apiKey);
-    if (user) return user;
+    if (user) {
+      if (user.deleted_at || user.disabled) return null;
+      return user;
+    }
   }
 
   const q = request.query as { api_key?: string } | undefined;
   if (q?.api_key && typeof q.api_key === 'string') {
     const user = Q.getUserByApiKey(db, q.api_key);
-    if (user) return user;
+    if (user) {
+      if (user.deleted_at || user.disabled) return null;
+      return user;
+    }
   }
 
   return null;

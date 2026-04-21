@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useToast } from '../components/Toast';
 import { getDevUserId, fetchMessages } from '../lib/api';
 import type { ConnectionState, Message, Channel } from '../types';
 
@@ -9,6 +10,7 @@ const AUTH_FAILURE_CODES = new Set([4001, 4003]);
 
 export function useWebSocket() {
   const { state, dispatch } = useAppContext();
+  const { showToast } = useToast();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -170,11 +172,13 @@ export function useWebSocket() {
       }
       case 'channel_deleted': {
         const deletedChannelId = data.channel_id as string;
+        const deletedName = data.name as string | undefined;
         dispatch({ type: 'REMOVE_CHANNEL', channelId: deletedChannelId });
         subscribedChannels.current.delete(deletedChannelId);
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({ type: 'unsubscribe', channel_id: deletedChannelId }));
         }
+        showToast(deletedName ? `频道 #${deletedName} 已被删除` : '频道已被删除');
         break;
       }
       case 'visibility_changed': {
@@ -213,7 +217,7 @@ export function useWebSocket() {
         console.warn('[ws] Server error:', data.message);
         break;
     }
-  }, [dispatch]);
+  }, [dispatch, showToast]);
 
   const subscribe = useCallback((channelId: string) => {
     subscribedChannels.current.add(channelId);

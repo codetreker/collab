@@ -3,6 +3,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import fastifyStatic from '@fastify/static';
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
+import fastifyRateLimit from '@fastify/rate-limit';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,7 @@ import { registerStreamRoutes } from './routes/stream.js';
 import { registerUploadRoutes } from './routes/upload.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerDmRoutes } from './routes/dm.js';
+import { registerAgentRoutes } from './routes/agents.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
 import * as Q from './queries.js';
 
@@ -44,6 +46,7 @@ async function main(): Promise<void> {
   await app.register(fastifyCors, { origin: corsOrigin });
   await app.register(fastifyWebsocket);
   await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 } });
+  await app.register(fastifyRateLimit, { global: false });
 
   // Serve uploads directory
   const uploadDir = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'data', 'uploads');
@@ -106,6 +109,7 @@ async function main(): Promise<void> {
   registerStreamRoutes(app);
   registerUploadRoutes(app);
   registerAdminRoutes(app);
+  registerAgentRoutes(app);
   registerDmRoutes(app);
 
   // WebSocket

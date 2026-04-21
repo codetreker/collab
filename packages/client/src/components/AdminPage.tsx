@@ -1,343 +1,47 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import type { AdminUser } from '../types';
-import {
-  fetchAdminUsers,
-  createAdminUser,
-  updateAdminUser,
-  deleteAdminUser,
-  generateApiKey,
-  deleteApiKey,
-} from '../lib/api';
+import React, { useState } from 'react';
+import UsersTab from './admin/UsersTab';
+import InvitesTab from './admin/InvitesTab';
+import ChannelsTab from './admin/ChannelsTab';
+import PermissionsTab from './admin/PermissionsTab';
 
 interface Props {
   onBack: () => void;
 }
 
+const TABS = [
+  { key: 'users', label: 'Users' },
+  { key: 'invites', label: 'Invites' },
+  { key: 'channels', label: 'Channels' },
+  { key: 'permissions', label: 'Permissions' },
+] as const;
+
+type TabKey = typeof TABS[number]['key'];
+
 export default function AdminPage({ onBack }: Props) {
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [error, setError] = useState('');
+  const [tab, setTab] = useState<TabKey>('users');
 
-  const loadUsers = useCallback(async () => {
-    try {
-      const u = await fetchAdminUsers();
-      setUsers(u);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
-
-  const handleDelete = async (user: AdminUser) => {
-    if (!confirm(`Delete user "${user.display_name}"? This cannot be undone.`)) return;
-    try {
-      await deleteAdminUser(user.id);
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete user');
-    }
-  };
-
-  const handleGenerateKey = async (userId: string) => {
-    try {
-      const { api_key } = await generateApiKey(userId);
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, api_key } : u)),
-      );
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to generate API key');
-    }
-  };
-
-  const handleDeleteKey = async (userId: string) => {
-    try {
-      await deleteApiKey(userId);
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, api_key: null } : u)),
-      );
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete API key');
-    }
-  };
-
-  const handleCopyKey = (key: string) => {
-    navigator.clipboard.writeText(key).catch(() => {});
-  };
-
-  const maskKey = (key: string) => {
-    if (key.length <= 12) return key;
-    return `${key.slice(0, 8)}...${key.slice(-4)}`;
-  };
-
-  if (loading) {
-    return (
-      <div className="admin-page">
-        <div className="admin-header">
+  return (
+    <div className="admin-layout">
+      <div className="admin-sidebar">
+        <div className="admin-sidebar-header">
           <button className="btn btn-sm" onClick={onBack}>← Back</button>
-          <h2>Admin — Users</h2>
+          <strong>Admin</strong>
         </div>
-        <div className="app-loading"><div className="loading-spinner-large" /></div>
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            className={`admin-nav-item ${tab === t.key ? 'active' : ''}`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-    );
-  }
-
-  return (
-    <div className="admin-page">
-      <div className="admin-header">
-        <button className="btn btn-sm" onClick={onBack}>← Back</button>
-        <h2>Admin — Users</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
-          Create User
-        </button>
-      </div>
-
-      {error && <div className="admin-error">{error}</div>}
-
-      <div className="admin-table-wrapper">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>User ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>API Key</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td><code style={{ fontFamily: 'monospace' }}>{user.id}</code></td>
-                <td>{user.display_name}</td>
-                <td>{user.email ?? '—'}</td>
-                <td><span className={`role-badge role-${user.role}`}>{user.role}</span></td>
-                <td>
-                  {user.api_key ? (
-                    <div className="api-key-display">
-                      <code>{maskKey(user.api_key)}</code>
-                      <button className="btn-icon" onClick={() => handleCopyKey(user.api_key!)} title="Copy">
-                        📋
-                      </button>
-                      <button className="btn-icon" onClick={() => handleGenerateKey(user.id)} title="Regenerate">
-                        🔄
-                      </button>
-                      <button className="btn-icon" onClick={() => handleDeleteKey(user.id)} title="Revoke">
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <button className="btn btn-sm" onClick={() => handleGenerateKey(user.id)}>
-                      Generate
-                    </button>
-                  )}
-                </td>
-                <td>{new Date(user.created_at).toLocaleDateString()}</td>
-                <td>
-                  <div className="admin-actions">
-                    <button className="btn btn-sm" onClick={() => setEditUser(user)}>Edit</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(user)}>Delete</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {showCreate && (
-        <CreateUserModal
-          onClose={() => setShowCreate(false)}
-          onCreated={(user) => {
-            setUsers((prev) => [...prev, user]);
-            setShowCreate(false);
-          }}
-        />
-      )}
-
-      {editUser && (
-        <EditUserModal
-          user={editUser}
-          onClose={() => setEditUser(null)}
-          onUpdated={(updated) => {
-            setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-            setEditUser(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function CreateUserModal({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: (user: AdminUser) => void;
-}) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [customId, setCustomId] = useState('');
-  const [role, setRole] = useState('member');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const isAgent = role === 'agent';
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-    try {
-      const user = await createAdminUser({
-        id: customId || undefined,
-        email: isAgent ? undefined : email,
-        password: isAgent ? undefined : password,
-        display_name: displayName,
-        role,
-      });
-      onCreated(user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create user');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="admin-modal" onClick={onClose}>
-      <div className="admin-modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3>Create User</h3>
-        <form onSubmit={handleSubmit}>
-          <label>
-            User ID (leave blank to auto-generate)
-            <input className="input-field" value={customId} onChange={(e) => setCustomId(e.target.value)} placeholder="e.g. agent-mybot" style={{ fontFamily: 'monospace' }} />
-          </label>
-          <label>
-            Display Name
-            <input className="input-field" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
-          </label>
-          {!isAgent && (
-            <>
-              <label>
-                Email
-                <input className="input-field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </label>
-              <label>
-                Password
-                <input className="input-field" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              </label>
-            </>
-          )}
-          <label>
-            Role
-            <select className="input-field" value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="member">member</option>
-              <option value="admin">admin</option>
-              <option value="agent">agent</option>
-            </select>
-          </label>
-          {error && <div className="admin-form-error">{error}</div>}
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-              {saving ? 'Creating...' : 'Create'}
-            </button>
-            <button type="button" className="btn btn-sm" onClick={onClose}>Cancel</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function EditUserModal({
-  user,
-  onClose,
-  onUpdated,
-}: {
-  user: AdminUser;
-  onClose: () => void;
-  onUpdated: (user: AdminUser) => void;
-}) {
-  const [displayName, setDisplayName] = useState(user.display_name);
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState(user.role);
-  const [requireMention, setRequireMention] = useState(Boolean(user.require_mention));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-    try {
-      const data: { display_name?: string; password?: string; role?: string; require_mention?: boolean } = {};
-      if (displayName !== user.display_name) data.display_name = displayName;
-      if (password) data.password = password;
-      if (role !== user.role) data.role = role;
-      if (requireMention !== Boolean(user.require_mention)) data.require_mention = requireMention;
-      const updated = await updateAdminUser(user.id, data);
-      onUpdated(updated);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="admin-modal" onClick={onClose}>
-      <div className="admin-modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3>Edit User</h3>
-        <form onSubmit={handleSubmit}>
-          <label>
-            User ID
-            <input className="input-field" value={user.id} readOnly style={{ fontFamily: 'monospace', opacity: 0.7 }} />
-          </label>
-          <label>
-            Display Name
-            <input className="input-field" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
-          </label>
-          <label>
-            New Password (leave blank to keep)
-            <input className="input-field" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </label>
-          <label>
-            Role
-            <select className="input-field" value={role} onChange={(e) => setRole(e.target.value as AdminUser['role'])}>
-              <option value="member">member</option>
-              <option value="admin">admin</option>
-              <option value="agent">agent</option>
-            </select>
-          </label>
-          {role === 'agent' && (
-            <label className="toggle-label">
-              <input
-                type="checkbox"
-                checked={requireMention}
-                onChange={(e) => setRequireMention(e.target.checked)}
-              />
-              仅 @mention 时响应
-            </label>
-          )}
-          {error && <div className="admin-form-error">{error}</div>}
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-            <button type="button" className="btn btn-sm" onClick={onClose}>Cancel</button>
-          </div>
-        </form>
+      <div className="admin-main">
+        {tab === 'users' && <UsersTab />}
+        {tab === 'invites' && <InvitesTab />}
+        {tab === 'channels' && <ChannelsTab />}
+        {tab === 'permissions' && <PermissionsTab />}
       </div>
     </div>
   );

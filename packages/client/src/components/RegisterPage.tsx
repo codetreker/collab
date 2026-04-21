@@ -1,27 +1,30 @@
 import React, { useState } from 'react';
-import { login } from '../lib/api';
+import { register, login } from '../lib/api';
 
 interface Props {
   onLogin: () => void;
-  onRegister?: () => void;
+  onBack: () => void;
 }
 
-export default function LoginPage({ onLogin, onRegister }: Props) {
+export default function RegisterPage({ onLogin, onBack }: Props) {
+  const [inviteCode, setInviteCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || loading) return;
+    if (!inviteCode || !email || !password || !displayName || loading) return;
     setLoading(true);
     setError('');
     try {
+      await register(inviteCode.trim(), email, password, displayName);
       await login(email, password);
       onLogin();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -31,14 +34,29 @@ export default function LoginPage({ onLogin, onRegister }: Props) {
     <div className="login-page">
       <div className="login-card">
         <h1 className="login-title">Collab</h1>
+        <h2 style={{ textAlign: 'center', fontSize: 16, marginBottom: 16, fontWeight: 400, color: 'var(--text-secondary)' }}>Create Account</h2>
         <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Invite Code"
+            value={inviteCode}
+            onChange={e => setInviteCode(e.target.value)}
+            className="input-field login-input"
+            autoFocus
+          />
+          <input
+            type="text"
+            placeholder="Display Name"
+            value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            className="input-field login-input"
+          />
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={e => setEmail(e.target.value)}
             className="input-field login-input"
-            autoFocus
           />
           <input
             type="password"
@@ -50,17 +68,15 @@ export default function LoginPage({ onLogin, onRegister }: Props) {
           {error && <div className="login-error">{error}</div>}
           <button
             type="submit"
-            disabled={loading || !email || !password}
+            disabled={loading || !inviteCode || !email || !password || !displayName}
             className="btn btn-primary login-btn"
           >
-            {loading ? 'Logging in...' : 'Log in'}
+            {loading ? 'Creating account...' : 'Register'}
           </button>
         </form>
-        {onRegister && (
-          <div className="register-link">
-            <a onClick={onRegister}>Have an invite code? Register</a>
-          </div>
-        )}
+        <div className="register-link">
+          <a onClick={onBack}>Already have an account? Log in</a>
+        </div>
       </div>
     </div>
   );

@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './components/Toast';
 import Sidebar from './components/Sidebar';
 import ChannelView from './components/ChannelView';
 import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage';
 import UserPicker from './components/UserPicker';
 import AdminPage from './components/AdminPage';
+import AgentManager from './components/AgentManager';
 import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
 
@@ -16,6 +19,8 @@ function AppInner() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [showAgents, setShowAgents] = useState(false);
 
   // Responsive check
   useEffect(() => {
@@ -51,6 +56,7 @@ function AppInner() {
     const init = async () => {
       await actions.loadUsers();
       await actions.loadCurrentUser();
+      await actions.loadPermissions();
       await actions.loadChannels();
       await actions.loadOnlineUsers();
       dispatch({ type: 'SET_INITIALIZED' });
@@ -108,7 +114,10 @@ function AppInner() {
   }
 
   if (!authenticated) {
-    return <LoginPage onLogin={handleLogin} />;
+    if (showRegister) {
+      return <RegisterPage onLogin={handleLogin} onBack={() => setShowRegister(false)} />;
+    }
+    return <LoginPage onLogin={handleLogin} onRegister={() => setShowRegister(true)} />;
   }
 
   if (!state.initialized) {
@@ -132,12 +141,14 @@ function AppInner() {
         {isMobile && sidebarOpen && (
           <div className="sidebar-overlay" onClick={closeSidebar} />
         )}
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} />
       </div>
 
       <div className="main-content">
         {showAdmin ? (
           <AdminPage onBack={() => setShowAdmin(false)} />
+        ) : showAgents ? (
+          <AgentManager onBack={() => setShowAgents(false)} />
         ) : state.currentChannelId ? (
           <ChannelView channelId={state.currentChannelId} />
         ) : (
@@ -156,7 +167,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AppProvider>
-        <AppInner />
+        <ToastProvider>
+          <AppInner />
+        </ToastProvider>
       </AppProvider>
     </ThemeProvider>
   );

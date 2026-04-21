@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { Channel, Message, User, ConnectionState, DmChannel } from '../types';
+import type { PermissionDetail } from '../lib/api';
 import * as api from '../lib/api';
 
 // ─── State ──────────────────────────────────────────────
@@ -14,6 +15,7 @@ interface AppState {
   users: User[];
   userMap: Map<string, string>;         // userId -> displayName
   currentUser: User | null;
+  permissions: PermissionDetail[] | null;
   onlineUserIds: Set<string>;
   connectionState: ConnectionState;
   channelMembersVersion: Map<string, number>; // channelId -> version counter
@@ -30,6 +32,7 @@ const initialState: AppState = {
   users: [],
   userMap: new Map(),
   currentUser: null,
+  permissions: null,
   onlineUserIds: new Set(),
   connectionState: 'disconnected',
   channelMembersVersion: new Map(),
@@ -48,6 +51,7 @@ type Action =
   | { type: 'SET_LOADING_MESSAGES'; channelId: string; loading: boolean }
   | { type: 'SET_USERS'; users: User[] }
   | { type: 'SET_CURRENT_USER'; user: User | null }
+  | { type: 'SET_PERMISSIONS'; permissions: PermissionDetail[] | null }
   | { type: 'SET_ONLINE_USERS'; userIds: string[] }
   | { type: 'USER_ONLINE'; userId: string }
   | { type: 'USER_OFFLINE'; userId: string }
@@ -151,6 +155,9 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_CURRENT_USER':
       return { ...state, currentUser: action.user };
 
+    case 'SET_PERMISSIONS':
+      return { ...state, permissions: action.permissions };
+
     case 'SET_ONLINE_USERS':
       return { ...state, onlineUserIds: new Set(action.userIds) };
 
@@ -241,6 +248,7 @@ interface AppContextValue {
     loadOlderMessages: (channelId: string) => Promise<void>;
     loadUsers: () => Promise<void>;
     loadCurrentUser: () => Promise<void>;
+    loadPermissions: () => Promise<void>;
     loadOnlineUsers: () => Promise<void>;
     selectChannel: (channelId: string) => void;
     sendMessage: (channelId: string, content: string, contentType?: 'text' | 'image', mentions?: string[]) => Promise<Message>;
@@ -305,6 +313,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loadPermissions = useCallback(async () => {
+    try {
+      const data = await api.fetchMyPermissions();
+      dispatch({ type: 'SET_PERMISSIONS', permissions: data.details });
+    } catch {
+      // Ignore
+    }
+  }, []);
+
   const loadOnlineUsers = useCallback(async () => {
     try {
       const userIds = await api.fetchOnlineUsers();
@@ -335,8 +352,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ): Promise<Channel> => {
     const channel = await api.createChannel(name, topic, memberIds, visibility);
     dispatch({ type: 'ADD_CHANNEL', channel });
+    await loadPermissions();
     return channel;
-  }, []);
+  }, [loadPermissions]);
 
   const loadDmChannels = useCallback(async () => {
     try {
@@ -361,13 +379,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadOlderMessages,
     loadUsers,
     loadCurrentUser,
+    loadPermissions,
     loadOnlineUsers,
     selectChannel,
     sendMessage: sendMessageAction,
     createChannel: createChannelAction,
     loadDmChannels,
     openDm,
-  }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction, loadDmChannels, openDm]);
+  }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadPermissions, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction, loadDmChannels, openDm]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, actions }}>

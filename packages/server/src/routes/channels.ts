@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
 import { broadcastToChannel, broadcastToUser, getOnlineUserIds } from '../ws.js';
+import { requirePermission } from '../middleware/permissions.js';
 
 export function registerChannelRoutes(app: FastifyInstance): void {
   // List channels
@@ -22,7 +23,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
   // Create channel
   app.post<{
     Body: { name: string; topic?: string; member_ids?: string[]; visibility?: 'public' | 'private' };
-  }>('/api/v1/channels', async (request, reply) => {
+  }>('/api/v1/channels', { preHandler: [requirePermission('channel.create')] }, async (request, reply) => {
     const { name, topic, member_ids, visibility } = request.body ?? {};
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -44,6 +45,25 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     const userId = request.currentUser?.id ?? 'system';
 
+    if (Array.isArray(member_ids)) {
+      const caller = request.currentUser!;
+      for (const memberId of member_ids) {
+        if (typeof memberId !== 'string' || memberId === userId) continue;
+        const memberUser = Q.getUserById(db, memberId);
+        if (memberUser?.role === 'agent') {
+          if (caller.role !== 'admin' && caller.id !== memberUser.owner_id) {
+            return reply.status(403).send({ error: `Only the agent owner or admin can add agent ${memberId}` });
+          }
+          if (vis === 'private') {
+            const ownerId = memberUser.owner_id;
+            if (ownerId && ownerId !== userId && !member_ids.includes(ownerId)) {
+              return reply.status(409).send({ error: `Agent owner must be a member of the channel` });
+            }
+          }
+        }
+      }
+    }
+
     const txn = db.transaction(() => {
       const channel = Q.createChannel(db, cleanName, topic?.trim() ?? '', userId, vis);
       Q.addChannelMember(db, channel.id, userId);
@@ -57,6 +77,10 @@ export function registerChannelRoutes(app: FastifyInstance): void {
           }
         }
       }
+
+      const creator = Q.getUserById(db, userId);
+      const creatorRole = creator?.role ?? 'member';
+      Q.grantCreatorPermissions(db, userId, creatorRole as 'admin' | 'member' | 'agent', channel.id, creator?.owner_id ?? undefined);
 
       return channel;
     });
@@ -105,7 +129,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
   app.put<{
     Params: { channelId: string };
     Body: { name?: string; topic?: string; visibility?: 'public' | 'private' };
-  }>('/api/v1/channels/:channelId', async (request, reply) => {
+  }>('/api/v1/channels/:channelId', { preHandler: [requirePermission('channel.manage_visibility', (req) => `channel:${(req.params as { channelId: string }).channelId}`)] }, async (request, reply) => {
     const { channelId } = request.params;
     const { name, topic, visibility } = request.body ?? {};
 
@@ -126,11 +150,6 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     const userId = request.currentUser?.id;
     if (!userId) {
       return reply.status(401).send({ error: 'Authentication required' });
-    }
-
-    const user = Q.getUserById(db, userId);
-    if (channel.created_by !== userId && user?.role !== 'admin') {
-      return reply.status(403).send({ error: 'Only the channel creator or an admin can update this channel' });
     }
 
     if (visibility === 'private' && channel.name === 'general') {
@@ -213,8 +232,15 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(403).send({ error: 'Cannot join private channels' });
     }
 
-    Q.addChannelMember(db, channelId, userId);
     const user = Q.getUserById(db, userId);
+    if (user?.role === 'agent') {
+      const ownerId = user.owner_id;
+      if (ownerId && !Q.isChannelMember(db, channelId, ownerId)) {
+        return reply.status(409).send({ error: 'Agent owner must be a member of the channel' });
+      }
+    }
+
+    Q.addChannelMember(db, channelId, userId);
 
     Q.insertEvent(db, 'user_joined', channelId, { channel_id: channelId, user_id: userId, display_name: user?.display_name });
 
@@ -282,7 +308,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
   app.post<{
     Params: { channelId: string };
     Body: { user_id: string };
-  }>('/api/v1/channels/:channelId/members', async (request, reply) => {
+  }>('/api/v1/channels/:channelId/members', { preHandler: [requirePermission('channel.manage_members', (req) => `channel:${(req.params as { channelId: string }).channelId}`)] }, async (request, reply) => {
     const { channelId } = request.params;
     const { user_id } = request.body ?? {};
 
@@ -300,19 +326,20 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(403).send({ error: 'Cannot join DM channels' });
     }
 
-    const requesterId = request.currentUser?.id;
-    if (!requesterId) {
-      return reply.status(401).send({ error: 'Authentication required' });
-    }
-
-    const requester = Q.getUserById(db, requesterId);
-    if (channel.created_by !== requesterId && requester?.role !== 'admin') {
-      return reply.status(403).send({ error: 'Only channel creator or admin can add members' });
-    }
-
     const user = Q.getUserById(db, user_id);
     if (!user) {
       return reply.status(404).send({ error: 'User not found' });
+    }
+
+    if (user.role === 'agent') {
+      const caller = request.currentUser!;
+      if (caller.role !== 'admin' && caller.id !== user.owner_id) {
+        return reply.status(403).send({ error: 'Only the agent owner or admin can add this agent' });
+      }
+      const ownerId = user.owner_id;
+      if (ownerId && !Q.isChannelMember(db, channelId, ownerId)) {
+        return reply.status(409).send({ error: 'Agent owner must be a member of the channel' });
+      }
     }
 
     Q.addChannelMember(db, channelId, user_id);
@@ -334,10 +361,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     return reply.status(201).send({ ok: true });
   });
 
-  // Remove member from channel
+  // Remove member from channel (self-leave bypasses permission check)
   app.delete<{
     Params: { channelId: string; userId: string };
-  }>('/api/v1/channels/:channelId/members/:userId', async (request, reply) => {
+  }>('/api/v1/channels/:channelId/members/:userId', { preHandler: [async (request, reply) => {
+    const { userId } = request.params as { userId: string };
+    if (request.currentUser?.id === userId) return;
+    return requirePermission('channel.manage_members', (req) => `channel:${(req.params as { channelId: string }).channelId}`)(request, reply);
+  }] }, async (request, reply) => {
     const { channelId, userId } = request.params;
     const db = getDb();
 
@@ -348,18 +379,6 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     if (channel.name === 'general') {
       return reply.status(403).send({ error: 'Cannot remove members from #general' });
-    }
-
-    const requesterId = request.currentUser?.id;
-    if (!requesterId) {
-      return reply.status(401).send({ error: 'Authentication required' });
-    }
-
-    const requester = Q.getUserById(db, requesterId);
-    const isSelf = requesterId === userId;
-    const isCreatorOrAdmin = channel.created_by === requesterId || requester?.role === 'admin';
-    if (!isSelf && !isCreatorOrAdmin) {
-      return reply.status(403).send({ error: 'Only channel creator, admin, or the user themselves can remove members' });
     }
 
     const removed = Q.removeChannelMember(db, channelId, userId);
@@ -436,13 +455,17 @@ export function registerChannelRoutes(app: FastifyInstance): void {
   // Delete channel (soft delete)
   app.delete<{
     Params: { channelId: string };
-  }>('/api/v1/channels/:channelId', async (request, reply) => {
+  }>('/api/v1/channels/:channelId', { preHandler: [requirePermission('channel.delete', (req) => `channel:${(req.params as { channelId: string }).channelId}`)] }, async (request, reply) => {
     const { channelId } = request.params;
     const db = getDb();
 
-    const channel = Q.getChannel(db, channelId);
+    const channel = Q.getChannelIncludingDeleted(db, channelId);
     if (!channel) {
       return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.deleted_at) {
+      return reply.status(204).send();
     }
 
     if (channel.type === 'dm') {
@@ -453,22 +476,15 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(403).send({ error: 'Cannot delete #general' });
     }
 
-    const userId = request.currentUser?.id;
-    if (!userId) {
-      return reply.status(401).send({ error: 'Authentication required' });
-    }
-
-    const user = Q.getUserById(db, userId);
-    if (channel.created_by !== userId && user?.role !== 'admin') {
-      return reply.status(403).send({ error: 'Only the channel creator or an admin can delete this channel' });
-    }
-
     const memberIds = Q.getChannelMembers(db, channelId).map((m) => m.user_id);
 
     const ok = Q.softDeleteChannel(db, channelId);
     if (!ok) {
       return reply.status(404).send({ error: 'Channel not found' });
     }
+
+    // Clean up orphaned permissions for this channel
+    db.prepare("DELETE FROM user_permissions WHERE scope = ?").run(`channel:${channelId}`);
 
     const payload = { channel_id: channelId, name: channel.name };
     Q.insertEvent(db, 'channel_deleted', channelId, payload);
