@@ -304,8 +304,6 @@ PUT/DELETE handler 流程：
 4. 查询该消息的最新 reactions 聚合
 5. `broadcastToChannel(channelId, { type: 'reaction_update', message_id, channel_id, reactions })`
 
-emoji 参数通过 URL 传递，需 `decodeURIComponent` 处理。
-
 ### 4.4 WS 事件
 
 **服务端 → 频道成员：**
