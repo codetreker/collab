@@ -58,9 +58,9 @@ jobs:
           command_timeout: 5m
           envs: HARBOR_API_TOKEN
           script: |
-            echo "$HARBOR_API_TOKEN" | docker login harbor.coretrek.cn -u 'robot$coretrek+github-ci' --password-stdin
-            docker pull harbor.coretrek.cn/coretrek/collab:${{ github.sha }}
-            docker tag harbor.coretrek.cn/coretrek/collab:${{ github.sha }} collab:staging
+            echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
+            docker pull ${{ env.IMAGE }}:${{ github.sha }}
+            docker tag ${{ env.IMAGE }}:${{ github.sha }} collab:staging
             cd /opt/dockers/collab-staging
             docker compose up -d
             sleep 5
@@ -85,9 +85,9 @@ jobs:
           command_timeout: 5m
           envs: HARBOR_API_TOKEN
           script: |
-            echo "$HARBOR_API_TOKEN" | docker login harbor.coretrek.cn -u 'robot$coretrek+github-ci' --password-stdin
-            docker pull harbor.coretrek.cn/coretrek/collab:${{ github.sha }}
-            docker tag harbor.coretrek.cn/coretrek/collab:${{ github.sha }} collab:prod
+            echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
+            docker pull ${{ env.IMAGE }}:${{ github.sha }}
+            docker tag ${{ env.IMAGE }}:${{ github.sha }} collab:prod
             cd /opt/dockers/collab
             docker compose up -d
             sleep 5
