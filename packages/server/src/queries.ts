@@ -509,7 +509,7 @@ export function addAllUsersToChannel(
   channelId: string,
 ): void {
   const now = Date.now();
-  const users = db.prepare('SELECT id FROM users').all() as { id: string }[];
+  const users = db.prepare('SELECT id FROM users WHERE deleted_at IS NULL AND disabled = 0').all() as { id: string }[];
   const stmt = db.prepare(
     'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
   );
