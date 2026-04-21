@@ -27,35 +27,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Build image, save, SCP to aliyun, load, restart
-      - name: Build and deploy staging
+      - name: Build Docker image
+        run: docker build -t collab:latest .
+
+      - name: Save image
+        run: docker save collab:latest | gzip > ${{ github.workspace }}/collab-image.tar.gz
+
+      - name: Setup SSH key
         run: |
-          docker build -t collab-staging:latest .
-          docker save collab-staging:latest | gzip > /tmp/collab-image.tar.gz
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ALIYUN_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.ALIYUN_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Transfer and deploy
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: ${{ secrets.ALIYUN_USER }}
-          key: ${{ secrets.ALIYUN_SSH_KEY }}
-          source: /tmp/collab-image.tar.gz
-          target: /tmp/
+      - name: Transfer image
+        run: scp -i ~/.ssh/deploy_key ${{ github.workspace }}/collab-image.tar.gz ${{ secrets.ALIYUN_USER }}@${{ secrets.ALIYUN_HOST }}:/tmp/collab-image.tar.gz
 
-      - name: Start staging
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: ${{ secrets.ALIYUN_USER }}
-          key: ${{ secrets.ALIYUN_SSH_KEY }}
-          command_timeout: 5m
-          script: |
+      - name: Deploy staging
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.ALIYUN_USER }}@${{ secrets.ALIYUN_HOST }} << 'DEPLOY'
             docker load < /tmp/collab-image.tar.gz
+            docker tag collab:latest collab-staging:latest
             cd /opt/dockers/collab-staging
-            git fetch origin main && git reset --hard origin/main
             docker compose up -d
             sleep 5
             curl -sf http://localhost:4901/ > /dev/null && echo "✅ Staging healthy" || (echo "❌ Staging unhealthy" && exit 1)
+            rm -f /tmp/collab-image.tar.gz
+          DEPLOY
 
   deploy-prod:
     needs: build-and-deploy-staging
@@ -64,19 +62,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ALIYUN_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.ALIYUN_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy production
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: ${{ secrets.ALIYUN_USER }}
-          key: ${{ secrets.ALIYUN_SSH_KEY }}
-          command_timeout: 5m
-          script: |
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.ALIYUN_USER }}@${{ secrets.ALIYUN_HOST }} << 'DEPLOY'
             docker tag collab-staging:latest collab-collab:latest
             cd /opt/dockers/collab
             docker compose up -d
             sleep 5
             curl -sf http://localhost:4900/ > /dev/null && echo "✅ Production healthy" || (echo "❌ Production unhealthy" && exit 1)
+          DEPLOY
 
       - name: Tag release
         run: |
