@@ -59,13 +59,22 @@ export default function MessageItem({ message, userMap, currentUserId, onRetry }
             />
           )}
         </div>
-        {message.reactions && message.reactions.length > 0 && (
+        {message.reactions && message.reactions.length > 0 ? (
           <ReactionBar
             reactions={message.reactions}
             messageId={message.id}
             currentUserId={currentUserId}
             userMap={userMap}
           />
+        ) : (
+          !message._pending && !message._failed && (
+            <ReactionBar
+              reactions={[]}
+              messageId={message.id}
+              currentUserId={currentUserId}
+              userMap={userMap}
+            />
+          )
         )}
       </div>
     </div>

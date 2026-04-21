@@ -55,7 +55,20 @@ export default function ReactionBar({ reactions, messageId, currentUserId, userM
     }
   };
 
-  if (reactions.length === 0 && !pickerOpen) return null;
+  if (reactions.length === 0 && !pickerOpen) {
+    return (
+      <div className="reaction-bar reaction-bar-empty">
+        <button
+          ref={addBtnRef}
+          className="reaction-pill reaction-add"
+          onClick={() => setPickerOpen(v => !v)}
+          title="添加表情"
+        >
+          ➕
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="reaction-bar">
