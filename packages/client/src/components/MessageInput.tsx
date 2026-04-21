@@ -75,9 +75,47 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     }
   }, [text]);
 
+  const [commandError, setCommandError] = useState<string | null>(null);
+
+  const executeCommand = useCallback(async (name: string, args: string, resolvedUser?: { id: string; username: string }) => {
+    const cmd = commandRegistry.get(name);
+    if (!cmd) return false;
+    const ctx: CommandContext = {
+      channelId,
+      currentUserId: state.currentUser?.id ?? '',
+      args,
+      resolvedUser,
+      dispatch,
+      api,
+      actions,
+    };
+    await cmd.execute(ctx);
+    return true;
+  }, [channelId, state.currentUser, dispatch, actions]);
+
   const handleSend = useCallback(async () => {
     const content = text.trim();
     if (!content || sendStatus === 'sending') return;
+
+    setCommandError(null);
+
+    // Slash command interception
+    if (content.startsWith('/')) {
+      const spaceIdx = content.indexOf(' ');
+      const name = spaceIdx === -1 ? content.slice(1) : content.slice(1, spaceIdx);
+      const args = spaceIdx === -1 ? '' : content.slice(spaceIdx + 1).trim();
+      const cmd = commandRegistry.get(name);
+      if (cmd) {
+        try {
+          await executeCommand(name, args);
+          setText('');
+          textareaRef.current?.focus();
+        } catch (err) {
+          setCommandError(err instanceof Error ? err.message : 'Command failed');
+        }
+        return;
+      }
+    }
 
     const mentionIds: string[] = [];
     const mentionRegex = /<@([^>]+)>/g;
@@ -119,7 +157,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId, channelId });
     }, 10_000);
     registerAckTimer(clientMessageId, () => clearTimeout(timer));
-  }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer]);
+  }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand]);
 
   const handleSlashSelect = useCallback((cmd: CommandDefinition) => {
     if (cmd.paramType === 'none') {
