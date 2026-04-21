@@ -164,6 +164,50 @@ export class CollabApiClient {
     );
   }
 
+  // ── Reactions ──
+
+  async addReaction(messageId: string, emoji: string): Promise<void> {
+    await request<void>(
+      this.baseUrl,
+      "PUT",
+      `/api/v1/messages/${encodeURIComponent(messageId)}/reactions`,
+      { emoji },
+      this.apiKey,
+    );
+  }
+
+  async removeReaction(messageId: string, emoji: string): Promise<void> {
+    await request<void>(
+      this.baseUrl,
+      "DELETE",
+      `/api/v1/messages/${encodeURIComponent(messageId)}/reactions`,
+      { emoji },
+      this.apiKey,
+    );
+  }
+
+  // ── Edit / Delete ──
+
+  async editMessage(messageId: string, content: string): Promise<{ message: CollabMessage }> {
+    return await request<{ message: CollabMessage }>(
+      this.baseUrl,
+      "PUT",
+      `/api/v1/messages/${encodeURIComponent(messageId)}`,
+      { content },
+      this.apiKey,
+    );
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    await request<void>(
+      this.baseUrl,
+      "DELETE",
+      `/api/v1/messages/${encodeURIComponent(messageId)}`,
+      undefined,
+      this.apiKey,
+    );
+  }
+
   // ── Users ──
 
   async listUsers(): Promise<{ users: CollabUser[] }> {
@@ -249,6 +293,65 @@ export async function sendCollabMessage(params: {
       reply_to_id: params.replyToId,
       mentions: params.mentions,
     },
+    params.apiKey,
+  );
+}
+
+export async function addCollabReaction(params: {
+  baseUrl: string;
+  apiKey: string;
+  messageId: string;
+  emoji: string;
+}): Promise<void> {
+  await request<void>(
+    params.baseUrl,
+    "PUT",
+    `/api/v1/messages/${encodeURIComponent(params.messageId)}/reactions`,
+    { emoji: params.emoji },
+    params.apiKey,
+  );
+}
+
+export async function removeCollabReaction(params: {
+  baseUrl: string;
+  apiKey: string;
+  messageId: string;
+  emoji: string;
+}): Promise<void> {
+  await request<void>(
+    params.baseUrl,
+    "DELETE",
+    `/api/v1/messages/${encodeURIComponent(params.messageId)}/reactions`,
+    { emoji: params.emoji },
+    params.apiKey,
+  );
+}
+
+export async function editCollabMessage(params: {
+  baseUrl: string;
+  apiKey: string;
+  messageId: string;
+  content: string;
+}): Promise<{ message: CollabMessage }> {
+  return await request<{ message: CollabMessage }>(
+    params.baseUrl,
+    "PUT",
+    `/api/v1/messages/${encodeURIComponent(params.messageId)}`,
+    { content: params.content },
+    params.apiKey,
+  );
+}
+
+export async function deleteCollabMessage(params: {
+  baseUrl: string;
+  apiKey: string;
+  messageId: string;
+}): Promise<void> {
+  await request<void>(
+    params.baseUrl,
+    "DELETE",
+    `/api/v1/messages/${encodeURIComponent(params.messageId)}`,
+    undefined,
     params.apiKey,
   );
 }
