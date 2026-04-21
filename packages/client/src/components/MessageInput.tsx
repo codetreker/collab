@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function MessageInput({ channelId, disabled, disabledHint }: Props) {
-  const { state, actions, sendWsMessage } = useAppContext();
+  const { state, actions, dispatch, sendWsMessage, registerAckTimer } = useAppContext();
   const [text, setText] = useState('');
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
   const [uploading, setUploading] = useState(false);
@@ -72,7 +72,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     const content = text.trim();
     if (!content || sendStatus === 'sending') return;
 
-    // Extract mention user IDs from <@user_id> tokens in content
     const mentionIds: string[] = [];
     const mentionRegex = /<@([^>]+)>/g;
     let match;
@@ -81,18 +80,39 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       if (state.users.some(u => u.id === userId)) mentionIds.push(userId);
     }
 
-    setSendStatus('sending');
-    try {
-      await actions.sendMessage(channelId, content, 'text', mentionIds);
-      setText('');
-      setSendStatus('sent');
-      setTimeout(() => setSendStatus('idle'), 1000);
-      textareaRef.current?.focus();
-    } catch {
-      setSendStatus('error');
-      setTimeout(() => setSendStatus('idle'), 3000);
-    }
-  }, [text, sendStatus, channelId, actions, state.users]);
+    const clientMessageId = crypto.randomUUID();
+    dispatch({
+      type: 'ADD_PENDING_MESSAGE',
+      message: {
+        clientMessageId,
+        channelId,
+        content,
+        contentType: 'text',
+        status: 'pending',
+        createdAt: Date.now(),
+        senderName: state.currentUser?.display_name ?? 'Unknown',
+        senderId: state.currentUser?.id ?? '',
+        mentions: mentionIds,
+      },
+    });
+
+    setText('');
+    textareaRef.current?.focus();
+
+    sendWsMessage({
+      type: 'send_message',
+      channel_id: channelId,
+      content,
+      content_type: 'text',
+      client_message_id: clientMessageId,
+      mentions: mentionIds,
+    });
+
+    const timer = setTimeout(() => {
+      dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId, channelId });
+    }, 10_000);
+    registerAckTimer(clientMessageId, () => clearTimeout(timer));
+  }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (mentionVisible) {
@@ -237,7 +257,31 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     setUploading(true);
     try {
       const { url } = await api.uploadImage(file);
-      await actions.sendMessage(channelId, url, 'image');
+      const clientMessageId = crypto.randomUUID();
+      dispatch({
+        type: 'ADD_PENDING_MESSAGE',
+        message: {
+          clientMessageId,
+          channelId,
+          content: url,
+          contentType: 'image',
+          status: 'pending',
+          createdAt: Date.now(),
+          senderName: state.currentUser?.display_name ?? 'Unknown',
+          senderId: state.currentUser?.id ?? '',
+        },
+      });
+      sendWsMessage({
+        type: 'send_message',
+        channel_id: channelId,
+        content: url,
+        content_type: 'image',
+        client_message_id: clientMessageId,
+      });
+      const timer = setTimeout(() => {
+        dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId, channelId });
+      }, 10_000);
+      registerAckTimer(clientMessageId, () => clearTimeout(timer));
     } catch (err) {
       alert(err instanceof Error ? err.message : '上传失败');
     } finally {

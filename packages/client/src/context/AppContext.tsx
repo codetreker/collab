@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { Channel, Message, User, ConnectionState, DmChannel } from '../types';
+import type { Channel, Message, User, ConnectionState, DmChannel, PendingMessage } from '../types';
 import type { PermissionDetail } from '../lib/api';
 import * as api from '../lib/api';
 
@@ -20,6 +20,7 @@ interface AppState {
   connectionState: ConnectionState;
   channelMembersVersion: Map<string, number>; // channelId -> version counter
   typingUsers: Map<string, Map<string, { displayName: string; expiresAt: number }>>;
+  pendingMessages: Map<string, PendingMessage[]>;
   initialized: boolean;
 }
 
@@ -38,6 +39,7 @@ const initialState: AppState = {
   connectionState: 'disconnected',
   channelMembersVersion: new Map(),
   typingUsers: new Map(),
+  pendingMessages: new Map(),
   initialized: false,
 };
 
@@ -69,7 +71,11 @@ type Action =
   | { type: 'BUMP_CHANNEL_MEMBERS_VERSION'; channelId: string }
   | { type: 'SET_TYPING'; channelId: string; userId: string; displayName: string }
   | { type: 'CLEAR_EXPIRED_TYPING' }
-  | { type: 'UPDATE_REACTIONS'; messageId: string; channelId: string; reactions: { emoji: string; count: number; user_ids: string[] }[] };
+  | { type: 'UPDATE_REACTIONS'; messageId: string; channelId: string; reactions: { emoji: string; count: number; user_ids: string[] }[] }
+  | { type: 'ADD_PENDING_MESSAGE'; message: PendingMessage }
+  | { type: 'ACK_PENDING_MESSAGE'; clientMessageId: string; channelId: string; serverMessage: Message }
+  | { type: 'FAIL_PENDING_MESSAGE'; clientMessageId: string; channelId: string }
+  | { type: 'REMOVE_PENDING_MESSAGE'; clientMessageId: string; channelId: string };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -277,6 +283,58 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, messages: msgs };
     }
 
+    case 'ADD_PENDING_MESSAGE': {
+      const pm = new Map(state.pendingMessages);
+      const list = [...(pm.get(action.message.channelId) ?? []), action.message];
+      pm.set(action.message.channelId, list);
+      return { ...state, pendingMessages: pm };
+    }
+
+    case 'ACK_PENDING_MESSAGE': {
+      const pm = new Map(state.pendingMessages);
+      const list = (pm.get(action.channelId) ?? []).filter(p => p.clientMessageId !== action.clientMessageId);
+      if (list.length === 0) pm.delete(action.channelId);
+      else pm.set(action.channelId, list);
+
+      const msgs = new Map(state.messages);
+      const existing = msgs.get(action.channelId) ?? [];
+      if (!existing.some(m => m.id === action.serverMessage.id)) {
+        msgs.set(action.channelId, [...existing, action.serverMessage]);
+      }
+
+      const channels = state.channels.map(c => {
+        if (c.id !== action.channelId) return c;
+        return { ...c, last_message_at: action.serverMessage.created_at };
+      });
+
+      const dmChannels = state.dmChannels.map(dm => {
+        if (dm.id !== action.channelId) return dm;
+        return {
+          ...dm,
+          last_message: { content: action.serverMessage.content, created_at: action.serverMessage.created_at },
+        };
+      });
+
+      return { ...state, pendingMessages: pm, messages: msgs, channels, dmChannels };
+    }
+
+    case 'FAIL_PENDING_MESSAGE': {
+      const pm = new Map(state.pendingMessages);
+      const list = (pm.get(action.channelId) ?? []).map(p =>
+        p.clientMessageId === action.clientMessageId ? { ...p, status: 'failed' as const } : p
+      );
+      pm.set(action.channelId, list);
+      return { ...state, pendingMessages: pm };
+    }
+
+    case 'REMOVE_PENDING_MESSAGE': {
+      const pm = new Map(state.pendingMessages);
+      const list = (pm.get(action.channelId) ?? []).filter(p => p.clientMessageId !== action.clientMessageId);
+      if (list.length === 0) pm.delete(action.channelId);
+      else pm.set(action.channelId, list);
+      return { ...state, pendingMessages: pm };
+    }
+
     default:
       return state;
   }
@@ -289,6 +347,8 @@ interface AppContextValue {
   dispatch: React.Dispatch<Action>;
   sendWsMessage: (payload: Record<string, unknown>) => void;
   setSendWsMessage: (fn: (payload: Record<string, unknown>) => void) => void;
+  registerAckTimer: (clientMessageId: string, cancel: () => void) => void;
+  setRegisterAckTimer: (fn: (clientMessageId: string, cancel: () => void) => void) => void;
   actions: {
     loadChannels: () => Promise<void>;
     loadMessages: (channelId: string) => Promise<void>;
@@ -313,6 +373,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   stateRef.current = state;
 
   const sendWsMessageRef = useRef<(payload: Record<string, unknown>) => void>(() => {});
+  const registerAckTimerRef = useRef<(clientMessageId: string, cancel: () => void) => void>(() => {});
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -437,6 +498,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sendWsMessageRef.current = fn;
   }, []);
 
+  const registerAckTimer = useCallback((clientMessageId: string, cancel: () => void) => {
+    registerAckTimerRef.current(clientMessageId, cancel);
+  }, []);
+
+  const setRegisterAckTimer = useCallback((fn: (clientMessageId: string, cancel: () => void) => void) => {
+    registerAckTimerRef.current = fn;
+  }, []);
+
   const actions = useMemo(() => ({
     loadChannels,
     loadMessages,
@@ -453,7 +522,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadPermissions, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction, loadDmChannels, openDm]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, sendWsMessage, setSendWsMessage, actions }}>
+    <AppContext.Provider value={{ state, dispatch, sendWsMessage, setSendWsMessage, registerAckTimer, setRegisterAckTimer, actions }}>
       {children}
     </AppContext.Provider>
   );

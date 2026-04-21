@@ -1776,3 +1776,35 @@ body {
   z-index: 50;
   margin-bottom: 4px;
 }
+
+/* ─── Delivery Status ─────────────────────────────────── */
+
+.message-delivery-status {
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.delivery-check {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.retry-btn {
+  font-size: 11px;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.retry-btn:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.message-item-pending {
+  opacity: 0.6;
+}

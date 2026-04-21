@@ -7,9 +7,10 @@ interface Props {
   message: Message;
   userMap: Map<string, string>;
   currentUserId?: string;
+  onRetry?: (message: Message) => void;
 }
 
-export default function MessageItem({ message, userMap, currentUserId }: Props) {
+export default function MessageItem({ message, userMap, currentUserId, onRetry }: Props) {
   const senderName = message.sender_name ?? userMap.get(message.sender_id) ?? 'Unknown';
   const isOwn = message.sender_id === currentUserId;
   const time = formatTime(message.created_at);
@@ -33,6 +34,20 @@ export default function MessageItem({ message, userMap, currentUserId }: Props) 
         <div className="message-header">
           <span className="message-sender">{senderName}</span>
           <span className="message-time">{time}</span>
+          {isOwn && (
+            <span className="message-delivery-status">
+              {message._pending && '⏳'}
+              {message._failed && (
+                <>
+                  ❌
+                  {onRetry && (
+                    <button className="retry-btn" onClick={() => onRetry(message)}>重试</button>
+                  )}
+                </>
+              )}
+              {!message._pending && !message._failed && <span className="delivery-check">✓</span>}
+            </span>
+          )}
         </div>
         <div className="message-content">
           {message.content_type === 'image' ? (

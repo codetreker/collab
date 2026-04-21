@@ -44,6 +44,9 @@ export interface Message {
   edited_at: number | null;
   mentions?: string[];
   reactions?: { emoji: string; count: number; user_ids: string[] }[];
+  _pending?: boolean;
+  _failed?: boolean;
+  _clientMessageId?: string;
 }
 
 export type SendStatus = 'idle' | 'sending' | 'sent' | 'error';
@@ -54,6 +57,18 @@ export interface WsMessage {
 }
 
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
+
+export interface PendingMessage {
+  clientMessageId: string;
+  channelId: string;
+  content: string;
+  contentType: 'text' | 'image';
+  status: 'pending' | 'failed';
+  createdAt: number;
+  senderName: string;
+  senderId: string;
+  mentions?: string[];
+}
 
 export interface AdminUser {
   id: string;

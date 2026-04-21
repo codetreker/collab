@@ -14,8 +14,8 @@ import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
 
 function AppInner() {
-  const { state, actions, dispatch, setSendWsMessage } = useAppContext();
-  const { subscribe, sendWsMessage } = useWebSocket();
+  const { state, actions, dispatch, setSendWsMessage, setRegisterAckTimer } = useAppContext();
+  const { subscribe, sendWsMessage, registerAckTimer } = useWebSocket();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [authChecked, setAuthChecked] = useState(false);
@@ -27,7 +27,8 @@ function AppInner() {
   // Wire sendWsMessage into context
   useEffect(() => {
     setSendWsMessage(sendWsMessage);
-  }, [sendWsMessage, setSendWsMessage]);
+    setRegisterAckTimer(registerAckTimer);
+  }, [sendWsMessage, setSendWsMessage, registerAckTimer, setRegisterAckTimer]);
 
   // Responsive check
   useEffect(() => {
