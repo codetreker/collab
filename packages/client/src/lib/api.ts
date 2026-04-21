@@ -282,7 +282,7 @@ export async function updateAdminUser(
   data: { display_name?: string; password?: string; role?: string; require_mention?: boolean },
 ): Promise<AdminUser> {
   const res = await request<{ user: AdminUser }>(`/api/v1/admin/users/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(data),
   });
   return res.user;
