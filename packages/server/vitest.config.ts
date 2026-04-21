@@ -1,0 +1,19 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    root: '.',
+    include: ['src/__tests__/**/*.test.ts'],
+    env: {
+      JWT_SECRET: 'test-secret-for-vitest',
+    },
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/__tests__/**', 'src/index.ts', 'src/ws.ts', 'src/db.ts', 'src/seed.ts', 'src/routes/stream.ts', 'src/routes/poll.ts', 'src/routes/upload.ts'],
+      thresholds: {
+        statements: 80,
+      },
+    },
+  },
+});
