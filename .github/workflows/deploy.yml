@@ -57,6 +57,7 @@ jobs:
               -t ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} .
             docker push ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH}
           fi
+          docker tag ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} collab-base:${BASE_HASH}
 
       - name: Build and push
         run: |
