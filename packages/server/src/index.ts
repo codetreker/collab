@@ -122,7 +122,6 @@ async function main(): Promise<void> {
       root: clientDistPath,
       prefix: '/',
       wildcard: false,
-      decorateReply: false,
     });
 
     app.setNotFoundHandler(async (request, reply) => {
