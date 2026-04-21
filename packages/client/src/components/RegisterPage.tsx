@@ -1,9 +1,30 @@
 import React, { useState } from 'react';
-import { register, login } from '../lib/api';
+import { register } from '../lib/api';
 
 interface Props {
   onLogin: () => void;
   onBack: () => void;
+}
+
+function validateEmail(email: string): string | null {
+  if (!email) return null;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email) ? null : 'Invalid email format';
+}
+
+function validatePassword(password: string): string | null {
+  if (!password) return null;
+  const byteLen = new TextEncoder().encode(password).length;
+  if (byteLen < 8) return 'Password must be at least 8 characters';
+  if (byteLen > 72) return 'Password must be at most 72 characters';
+  return null;
+}
+
+function validateDisplayName(name: string): string | null {
+  if (!name) return null;
+  const trimmed = name.trim();
+  if (trimmed.length < 1 || trimmed.length > 50) return 'Display name must be 1-50 characters';
+  return null;
 }
 
 export default function RegisterPage({ onLogin, onBack }: Props) {
@@ -12,16 +33,39 @@ export default function RegisterPage({ onLogin, onBack }: Props) {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+
+  const updateFieldError = (field: string, msg: string | null) => {
+    setFieldErrors(prev => {
+      if (msg) return { ...prev, [field]: msg };
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteCode || !email || !password || !displayName || loading) return;
+    if (loading) return;
+
+    const errors: Record<string, string> = {};
+    const emailErr = validateEmail(email);
+    if (emailErr) errors.email = emailErr;
+    const pwErr = validatePassword(password);
+    if (pwErr) errors.password = pwErr;
+    const nameErr = validateDisplayName(displayName);
+    if (nameErr) errors.displayName = nameErr;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       await register(inviteCode.trim(), email, password, displayName);
-      await login(email, password);
       onLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -48,23 +92,35 @@ export default function RegisterPage({ onLogin, onBack }: Props) {
             type="text"
             placeholder="Display Name"
             value={displayName}
-            onChange={e => setDisplayName(e.target.value)}
+            onChange={e => {
+              setDisplayName(e.target.value);
+              updateFieldError('displayName', validateDisplayName(e.target.value));
+            }}
             className="input-field login-input"
           />
+          {fieldErrors.displayName && <div className="login-error" style={{ marginTop: -8, marginBottom: 8, fontSize: 13 }}>{fieldErrors.displayName}</div>}
           <input
             type="email"
             placeholder="Email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={e => {
+              setEmail(e.target.value);
+              updateFieldError('email', validateEmail(e.target.value));
+            }}
             className="input-field login-input"
           />
+          {fieldErrors.email && <div className="login-error" style={{ marginTop: -8, marginBottom: 8, fontSize: 13 }}>{fieldErrors.email}</div>}
           <input
             type="password"
             placeholder="Password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={e => {
+              setPassword(e.target.value);
+              updateFieldError('password', validatePassword(e.target.value));
+            }}
             className="input-field login-input"
           />
+          {fieldErrors.password && <div className="login-error" style={{ marginTop: -8, marginBottom: 8, fontSize: 13 }}>{fieldErrors.password}</div>}
           {error && <div className="login-error">{error}</div>}
           <button
             type="submit"
