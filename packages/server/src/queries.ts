@@ -28,7 +28,7 @@ export function listChannels(db: Database.Database): (Channel & { member_count: 
 export function listChannelsWithUnread(
   db: Database.Database,
   userId: string,
-): (Channel & { member_count: number; last_message_at: number | null; unread_count: number })[] {
+): (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[] {
   return db
     .prepare(
       `SELECT c.*,
@@ -39,19 +39,22 @@ export function listChannelsWithUnread(
                  WHERE m2.channel_id = c.id
                    AND m2.created_at > COALESCE(cm.last_read_at, 0)),
                 0
-              ) AS unread_count
+              ) AS unread_count,
+              CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
        FROM channels c
-       INNER JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+       LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
        LEFT JOIN channel_members cm2 ON cm2.channel_id = c.id
        WHERE (c.type = 'channel' OR c.type IS NULL)
          AND c.deleted_at IS NULL
+         AND (cm.user_id IS NOT NULL OR c.visibility = 'public')
        GROUP BY c.id
        ORDER BY
+         CASE WHEN cm.user_id IS NOT NULL THEN 0 ELSE 1 END,
          CASE WHEN (SELECT MAX(m3.created_at) FROM messages m3 WHERE m3.channel_id = c.id) IS NULL THEN 1 ELSE 0 END,
          (SELECT MAX(m4.created_at) FROM messages m4 WHERE m4.channel_id = c.id) DESC,
          c.created_at DESC`,
     )
-    .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number })[];
+    .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[];
 }
 
 export function listAllChannelsForAdmin(
@@ -303,6 +306,28 @@ function maskDeletedMessages(messages: Message[]): void {
       msg.content = '';
     }
   }
+}
+
+export function getPreviewMessages(
+  db: Database.Database,
+  channelId: string,
+  limit = 50,
+): Message[] {
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const rows = db
+    .prepare(
+      `SELECT m.*, u.display_name AS sender_name
+       FROM messages m
+       JOIN users u ON u.id = m.sender_id
+       WHERE m.channel_id = ? AND m.created_at > ?
+       ORDER BY m.created_at DESC
+       LIMIT ?`,
+    )
+    .all(channelId, since, limit) as Message[];
+
+  attachMentions(db, rows);
+  maskDeletedMessages(rows);
+  return rows.reverse();
 }
 
 export function searchMessages(

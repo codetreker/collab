@@ -1,28 +1,42 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { leaveChannel } from '../lib/api';
+import { leaveChannel, joinChannel, fetchChannelPreview } from '../lib/api';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConnectionStatus from './ConnectionStatus';
 import ChannelMembersModal from './ChannelMembersModal';
+import type { Message } from '../types';
 
 interface Props {
   channelId: string;
 }
 
 export default function ChannelView({ channelId }: Props) {
-  const { state, actions } = useAppContext();
+  const { state, actions, sendWsMessage } = useAppContext();
   const connectionState = state.connectionState;
   const [showMembers, setShowMembers] = useState(false);
+  const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
+  const [joining, setJoining] = useState(false);
 
   const channel = state.channels.find(c => c.id === channelId);
   const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
   const isDm = !!dmChannel;
+  const isMember = channel?.is_member !== false;
+  const isPublicPreview = !isDm && channel && !isMember && channel.visibility !== 'private';
 
-  // Load messages when channel changes
   useEffect(() => {
-    actions.loadMessages(channelId);
-  }, [channelId, actions]);
+    if (isPublicPreview) {
+      setPreviewMessages(null);
+      fetchChannelPreview(channelId).then(data => {
+        setPreviewMessages(data.messages);
+      }).catch(() => {
+        setPreviewMessages([]);
+      });
+    } else {
+      setPreviewMessages(null);
+      actions.loadMessages(channelId);
+    }
+  }, [channelId, isPublicPreview, actions]);
 
   useEffect(() => {
     setShowMembers(false);
@@ -43,7 +57,6 @@ export default function ChannelView({ channelId }: Props) {
     : `${channel!.visibility === 'private' ? '🔒 ' : '#'}${channel!.name}`;
   const headerTopic = isDm ? undefined : channel!.topic;
   const isGeneral = channel?.name === 'general';
-  const isMember = !!channel?.is_member;
 
   const handleLeave = async () => {
     try {
@@ -51,6 +64,22 @@ export default function ChannelView({ channelId }: Props) {
       await actions.loadChannels();
     } catch (err) {
       alert(err instanceof Error ? err.message : '离开失败');
+    }
+  };
+
+  const handleJoin = async () => {
+    if (joining) return;
+    setJoining(true);
+    try {
+      await joinChannel(channelId);
+      await actions.loadChannels();
+      await actions.loadMessages(channelId);
+      setPreviewMessages(null);
+      sendWsMessage({ type: 'subscribe', channel_id: channelId });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '加入失败');
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -82,12 +111,34 @@ export default function ChannelView({ channelId }: Props) {
           </>
         )}
       </div>
+      {isPublicPreview && (
+        <div className="preview-banner">
+          你正在预览 <strong>#{channel!.name}</strong>
+        </div>
+      )}
       <ConnectionStatus state={connectionState} />
-      <MessageList channelId={channelId} />
-      {!isDm && channel?.visibility === 'private' && state.currentUser?.role === 'admin' && !isMember ? (
-        <MessageInput channelId={channelId} disabled disabledHint="你不是此频道成员，无法发送消息。请先将自己添加为成员。" />
+      {isPublicPreview ? (
+        <>
+          <MessageList channelId={channelId} previewMessages={previewMessages} />
+          <div className="preview-join-container">
+            <button
+              className="btn btn-primary preview-join-btn"
+              onClick={handleJoin}
+              disabled={joining}
+            >
+              {joining ? '加入中...' : '加入频道'}
+            </button>
+          </div>
+        </>
       ) : (
-        <MessageInput channelId={channelId} />
+        <>
+          <MessageList channelId={channelId} />
+          {!isDm && channel?.visibility === 'private' && state.currentUser?.role === 'admin' && !isMember ? (
+            <MessageInput channelId={channelId} disabled disabledHint="你不是此频道成员，无法发送消息。请先将自己添加为成员。" />
+          ) : (
+            <MessageInput channelId={channelId} />
+          )}
+        </>
       )}
       {showMembers && channel && (
         <ChannelMembersModal

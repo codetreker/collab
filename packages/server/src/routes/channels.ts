@@ -129,6 +129,26 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     return { channel };
   });
 
+  // Preview channel (public only, 24h messages)
+  app.get<{
+    Params: { channelId: string };
+  }>('/api/v1/channels/:channelId/preview', async (request, reply) => {
+    const { channelId } = request.params;
+    const db = getDb();
+
+    if (!request.currentUser) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const channel = Q.getChannel(db, channelId);
+    if (!channel || (channel.visibility ?? 'public') === 'private') {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    const messages = Q.getPreviewMessages(db, channelId);
+    return { messages, channel };
+  });
+
   // Update channel
   app.put<{
     Params: { channelId: string };
@@ -302,10 +322,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     const user = Q.getUserById(db, userId);
     if (user?.role === 'agent') {
-      const ownerId = user.owner_id;
-      if (ownerId && !Q.isChannelMember(db, channelId, ownerId)) {
-        return reply.status(409).send({ error: 'Agent owner must be a member of the channel' });
-      }
+      return reply.status(403).send({ error: 'Agents cannot self-join channels. An owner must add the agent.' });
     }
 
     Q.addChannelMember(db, channelId, userId);
