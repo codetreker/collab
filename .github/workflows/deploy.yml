@@ -8,9 +8,9 @@ permissions:
   contents: write
 
 env:
-  REGISTRY: harbor.coretrek.cn
-  CR_BASE_URL: harbor.coretrek.cn/coretrek
-  HARBOR_USER: "robot$coretrek+github-ci"
+  REGISTRY: harbor.codetrek.cn
+  IMAGE: collab
+  HARBOR_USER: "robot$library+github-ci"
 
 jobs:
   test:
@@ -41,11 +41,11 @@ jobs:
       - name: Build and push
         run: |
           docker build \
-            -t ${{ env.CR_BASE_URL }}/collab:${{ github.sha }} \
-            -t ${{ env.CR_BASE_URL }}/collab:staging \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:staging \
             .
-          docker push ${{ env.CR_BASE_URL }}/collab:${{ github.sha }}
-          docker push ${{ env.CR_BASE_URL }}/collab:staging
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:staging
 
       - name: Deploy staging
         uses: appleboy/ssh-action@v1
@@ -59,8 +59,8 @@ jobs:
           envs: HARBOR_API_TOKEN
           script: |
             echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
-            docker pull ${{ env.CR_BASE_URL }}/collab:${{ github.sha }}
-            docker tag ${{ env.CR_BASE_URL }}/collab:${{ github.sha }} collab:staging
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }} collab:staging
             cd /opt/dockers/collab-staging
             docker compose up -d
             sleep 5
@@ -86,8 +86,8 @@ jobs:
           envs: HARBOR_API_TOKEN
           script: |
             echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
-            docker pull ${{ env.CR_BASE_URL }}/collab:${{ github.sha }}
-            docker tag ${{ env.CR_BASE_URL }}/collab:${{ github.sha }} collab:prod
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }} collab:prod
             cd /opt/dockers/collab
             docker compose up -d
             sleep 5
