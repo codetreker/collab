@@ -17,7 +17,8 @@
 - **服务端**：Fastify + `@fastify/websocket`，SQLite (better-sqlite3)，WebSocket 在 `ws.ts` 中管理客户端连接（`clients` Map<WebSocket, WsClient>）、频道订阅和广播
 - **客户端**：React SPA，`AppContext` (useReducer) 全局状态管理，`useWebSocket` hook 管理 WS 连接和消息分发
 - **WS 协议**：客户端发 `subscribe`/`unsubscribe`/`ping`/`send_message`，服务端推送 `new_message`/`presence`/`channel_*` 等事件
-- **广播函数**：`broadcastToChannel(channelId, payload)`、`broadcastToUser(userId, payload)`、`broadcastToAll(payload)`
+- **广播函数**：`broadcastToChannel(channelId, payload, excludeWs?)`、`broadcastToUser(userId, payload)`、`broadcastToAll(payload)`
+- **注意**：`broadcastToChannel` 将新增 `excludeWs` 参数，用于排除发送者自己（typing、new_message 场景）
 - **数据库**：SQLite，migration 采用 `initSchema()` 中的 `ALTER TABLE ADD COLUMN` 模式（检查列是否存在后添加）
 
 ---
@@ -236,7 +237,7 @@ useEffect(() => {
 ```sql
 CREATE TABLE IF NOT EXISTS message_reactions (
   id          TEXT PRIMARY KEY,
-  message_id  TEXT NOT NULL REFERENCES messages(id),
+  message_id  TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
   user_id     TEXT NOT NULL REFERENCES users(id),
   emoji       TEXT NOT NULL,
   created_at  INTEGER NOT NULL
@@ -290,8 +291,10 @@ ORDER BY MIN(created_at) ASC
 
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
-| `PUT` | `/api/v1/messages/:messageId/reactions/:emoji` | 需登录 + 频道成员 | 添加 reaction（幂等） |
-| `DELETE` | `/api/v1/messages/:messageId/reactions/:emoji` | 需登录 + 频道成员 | 移除自己的 reaction |
+| `PUT` | `/api/v1/messages/:messageId/reactions` | 需登录 + 频道成员 | 添加 reaction（幂等），body: `{ emoji: "👍" }` |
+| `DELETE` | `/api/v1/messages/:messageId/reactions` | 需登录 + 频道成员 | 移除自己的 reaction，body: `{ emoji: "👍" }` |
+
+> **注意**：emoji 通过 request body 传递，不放 URL path，避免 ZWJ 序列等特殊字符的 URL 编码问题。每条消息限 20 种不同 emoji，超出返回 429。
 | `GET` | `/api/v1/messages/:messageId/reactions` | 需登录 + 频道成员 | 获取 reaction 聚合列表 |
 
 PUT/DELETE handler 流程：
@@ -426,7 +429,12 @@ Props: `{ reactions, messageId, channelId, currentUserId }`
 
 ### 5.2 服务端改动（`ws.ts`）
 
-在现有 `send_message` handler 中，将 `socket.send({ type: 'message_sent', message })` 改为：
+在现有 `send_message` handler 中，修改发送逻辑：
+1. 先发 ack 给发送者
+2. 再 broadcastToChannel（排除发送者的 ws）
+3. 发送失败时返回 message_nack
+
+将 `socket.send({ type: 'message_sent', message })` 改为：
 
 ```typescript
 socket.send(JSON.stringify({
@@ -509,7 +517,15 @@ const allMessages = [...messages, ...pending.map(p => toPseudoMessage(p))];
 
 ### 5.8 去重处理
 
-`message_ack` 到达后将 pending 替换为 server message。随后 `broadcastToChannel` 也会推送同一条 `new_message` 给发送者（因为发送者也订阅了该频道）。`ADD_MESSAGE` reducer 已有去重逻辑（检查 `message.id` 是否已存在），所以不会重复添加。
+`message_ack` 到达后将 pending 替换为 server message。服务端发送顺序：**先发 ack 给发送者，再 broadcastToChannel（排除发送者）**。这样发送者不会收到自己消息的 `new_message` 广播，避免重复。
+
+`ADD_MESSAGE` reducer 需新增 id 去重逻辑：如果 `state.messages` 中已存在相同 `id` 的消息，跳过添加。这是防御性编程，防止 ack 和 new_message 顺序异常时的重复显示。
+
+发送失败时，服务端返回 `message_nack` 事件：
+```json
+{ "type": "message_nack", "client_message_id": "...", "code": "PERMISSION_DENIED", "message": "..." }
+```
+客户端收到后立即将对应 pending 消息标记为 failed，无需等 10 秒超时。
 
 ### 5.9 HTTP API 保留
 
@@ -561,7 +577,10 @@ const allMessages = [...messages, ...pending.map(p => toPseudoMessage(p))];
 
 | # | 任务 | 文件 | 验收标准 |
 |---|------|------|---------|
-| T4.1 | 服务端 `send_message` 支持 client_message_id + message_ack | `ws.ts` | ack 含 client_message_id + message |
+| T0.1 | `broadcastToChannel` 加 `excludeWs` 参数 | `ws.ts` | typing、new_message 可排除发送者 |
+| T0.2 | `sendWsMessage` 暴露给前端（通过 Context 或 hook） | `useWebSocket.ts`, `AppContext.tsx` | 断连时 fail fast，不 queue |
+| T0.3 | `ADD_MESSAGE` reducer 加 id 去重 | `AppContext.tsx` | 已存在的 message.id 不重复添加 |
+| T4.1 | 服务端 `send_message` 支持 client_message_id + message_ack + message_nack + 排除发送者广播 | `ws.ts` | ack 先于广播，nack 携带 client_message_id |
 | T4.2 | `AppContext` pending 状态管理 | `AppContext.tsx`, `types.ts` | pending/ack/fail 状态转换正确 |
 | T4.3 | `MessageInput` 改为 WS 发送 | `MessageInput.tsx` | 立即显示 pending 消息 |
 | T4.4 | `useWebSocket` 处理 message_ack | `useWebSocket.ts` | pending 替换为 server message |
