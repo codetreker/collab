@@ -31,10 +31,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t collab:latest .
+        run: docker build -t collab:staging .
 
       - name: Save image
-        run: docker save collab:latest | gzip > ${{ github.workspace }}/collab-image.tar.gz
+        run: docker save collab:staging | gzip > ${{ github.workspace }}/collab-image.tar.gz
 
       - name: Setup SSH key
         run: |
@@ -50,7 +50,6 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.ALIYUN_USER }}@${{ secrets.ALIYUN_HOST }} << 'DEPLOY'
             docker load < /tmp/collab-image.tar.gz
-            docker tag collab:latest collab-staging:latest
             cd /opt/dockers/collab-staging
             docker compose up -d
             sleep 5
@@ -75,7 +74,7 @@ jobs:
       - name: Deploy production
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.ALIYUN_USER }}@${{ secrets.ALIYUN_HOST }} << 'DEPLOY'
-            docker tag collab-staging:latest collab-collab:latest
+            docker tag collab:staging collab:prod
             cd /opt/dockers/collab
             docker compose up -d
             sleep 5
