@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 env:
-  CR_REGISTRY: harbor.coretrek.cn
+  REGISTRY: harbor.coretrek.cn
   CR_BASE_URL: harbor.coretrek.cn/coretrek
   HARBOR_USER: "robot$coretrek+github-ci"
 
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Login to Harbor
-        run: echo "${{ secrets.HARBOR_API_TOKEN }}" | docker login ${{ env.CR_REGISTRY }} -u "${{ env.HARBOR_USER }}" --password-stdin
+        run: echo "${{ secrets.HARBOR_API_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ env.HARBOR_USER }}" --password-stdin
 
       - name: Build and push
         run: |
@@ -58,7 +58,7 @@ jobs:
           command_timeout: 5m
           envs: HARBOR_API_TOKEN
           script: |
-            echo "$HARBOR_API_TOKEN" | docker login ${{ env.CR_REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
+            echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
             docker pull ${{ env.CR_BASE_URL }}/collab:${{ github.sha }}
             docker tag ${{ env.CR_BASE_URL }}/collab:${{ github.sha }} collab:staging
             cd /opt/dockers/collab-staging
@@ -85,7 +85,7 @@ jobs:
           command_timeout: 5m
           envs: HARBOR_API_TOKEN
           script: |
-            echo "$HARBOR_API_TOKEN" | docker login ${{ env.CR_REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
+            echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
             docker pull ${{ env.CR_BASE_URL }}/collab:${{ github.sha }}
             docker tag ${{ env.CR_BASE_URL }}/collab:${{ github.sha }} collab:prod
             cd /opt/dockers/collab
