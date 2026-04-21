@@ -268,6 +268,29 @@ body {
   flex-shrink: 0;
 }
 
+.channel-item-preview {
+  opacity: 0.6;
+}
+
+.preview-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+  background: var(--surface1);
+  border-radius: 4px;
+  color: var(--subtext0);
+}
+
+.channel-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--subtext0);
+  padding: 8px 16px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .leave-btn {
   font-size: 12px;
   color: var(--text-secondary);

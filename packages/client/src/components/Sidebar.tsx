@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCan } from '../hooks/usePermissions';
-import { logout, joinChannel } from '../lib/api';
+import { logout } from '../lib/api';
 import type { Channel, DmChannel } from '../types';
 
 interface Props {
@@ -173,7 +173,7 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen }
       )}
 
       <div className="channel-list">
-        {sortedChannels.map(channel => (
+        {sortedChannels.filter(c => c.is_member !== false).map(channel => (
           <ChannelItem
             key={channel.id}
             channel={channel}
@@ -181,6 +181,19 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen }
             onClick={() => handleSelect(channel.id)}
           />
         ))}
+        {sortedChannels.some(c => c.is_member === false) && (
+          <>
+            <div className="channel-group-label">公开频道</div>
+            {sortedChannels.filter(c => c.is_member === false).map(channel => (
+              <ChannelItem
+                key={channel.id}
+                channel={channel}
+                active={channel.id === state.currentChannelId}
+                onClick={() => handleSelect(channel.id)}
+              />
+            ))}
+          </>
+        )}
         {sortedChannels.length === 0 && (
           <div className="sidebar-empty">暂无频道</div>
         )}
@@ -249,32 +262,21 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen }
 }
 
 function ChannelItem({ channel, active, onClick }: { channel: Channel; active: boolean; onClick: () => void }) {
-  const { actions } = useAppContext();
   const unread = channel.unread_count ?? 0;
   const isPrivate = channel.visibility === 'private';
   const isMember = channel.is_member !== false;
 
-  const handleJoin = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await joinChannel(channel.id);
-      await actions.loadChannels();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : '加入失败');
-    }
-  };
-
   return (
     <button
-      className={`channel-item ${active ? 'channel-item-active' : ''}`}
+      className={`channel-item ${active ? 'channel-item-active' : ''} ${!isMember ? 'channel-item-preview' : ''}`}
       onClick={onClick}
     >
       <span className="channel-hash">{isPrivate ? '🔒' : '#'}</span>
       <span className="channel-name">{channel.name}</span>
       {!isMember && !isPrivate && (
-        <span className="btn btn-sm join-btn" onClick={handleJoin}>加入</span>
+        <span className="preview-badge">预览</span>
       )}
-      {unread > 0 && (
+      {unread > 0 && isMember && (
         <span className="unread-badge">{unread > 99 ? '99+' : unread}</span>
       )}
     </button>
