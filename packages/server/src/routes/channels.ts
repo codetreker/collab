@@ -455,17 +455,23 @@ export function registerChannelRoutes(app: FastifyInstance): void {
   // Delete channel (soft delete)
   app.delete<{
     Params: { channelId: string };
-  }>('/api/v1/channels/:channelId', { preHandler: [requirePermission('channel.delete', (req) => `channel:${(req.params as { channelId: string }).channelId}`)] }, async (request, reply) => {
+  }>('/api/v1/channels/:channelId', { preHandler: [
+    async (request, reply) => {
+      const { channelId } = request.params as { channelId: string };
+      const db = getDb();
+      const channel = Q.getChannelIncludingDeleted(db, channelId);
+      if (!channel || channel.deleted_at) {
+        return reply.status(204).send();
+      }
+    },
+    requirePermission('channel.delete', (req) => `channel:${(req.params as { channelId: string }).channelId}`)
+  ] }, async (request, reply) => {
     const { channelId } = request.params;
     const db = getDb();
 
     const channel = Q.getChannelIncludingDeleted(db, channelId);
     if (!channel) {
       return reply.status(404).send({ error: 'Channel not found' });
-    }
-
-    if (channel.deleted_at) {
-      return reply.status(204).send();
     }
 
     if (channel.type === 'dm') {
