@@ -167,4 +167,44 @@ export function registerMessageRoutes(app: FastifyInstance): void {
 
     return { message };
   });
+
+  // Delete message (soft delete)
+  app.delete<{
+    Params: { messageId: string };
+  }>('/api/v1/messages/:messageId', async (request, reply) => {
+    const { messageId } = request.params;
+
+    const senderId = request.currentUser?.id;
+    if (!senderId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const db = getDb();
+    const existing = Q.getMessageById(db, messageId);
+    if (!existing) {
+      return reply.status(404).send({ error: 'Message not found' });
+    }
+
+    // Already deleted — idempotent
+    if (existing.deleted_at) {
+      return { id: existing.id, channel_id: existing.channel_id, deleted_at: existing.deleted_at };
+    }
+
+    const isAdmin = request.currentUser?.role === 'admin';
+    if (existing.sender_id !== senderId && !isAdmin) {
+      return reply.status(403).send({ error: 'Permission denied' });
+    }
+
+    const { deleted_at } = Q.softDeleteMessage(db, messageId);
+
+    const { broadcastToChannel } = await import('../ws.js');
+    broadcastToChannel(existing.channel_id, {
+      type: 'message_deleted',
+      message_id: existing.id,
+      channel_id: existing.channel_id,
+      deleted_at,
+    });
+
+    return { id: existing.id, channel_id: existing.channel_id, deleted_at };
+  });
 }

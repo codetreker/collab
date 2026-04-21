@@ -253,6 +253,7 @@ export function getMessages(
     const hasMore = rows.length > limit;
     const messages = hasMore ? rows.slice(0, limit) : rows;
     attachMentions(db, messages);
+    maskDeletedMessages(messages);
     return { messages, has_more: hasMore };
   }
 
@@ -283,6 +284,7 @@ export function getMessages(
   const hasMore = rows.length > limit;
   const messages = hasMore ? rows.slice(0, limit) : rows;
   attachMentions(db, messages);
+  maskDeletedMessages(messages);
   return { messages: messages.reverse(), has_more: hasMore };
 }
 
@@ -292,6 +294,14 @@ function attachMentions(db: Database.Database, messages: Message[]): void {
       .prepare('SELECT user_id FROM mentions WHERE message_id = ?')
       .all(msg.id) as { user_id: string }[];
     msg.mentions = mentionRows.map((r) => r.user_id);
+  }
+}
+
+function maskDeletedMessages(messages: Message[]): void {
+  for (const msg of messages) {
+    if (msg.deleted_at) {
+      msg.content = '';
+    }
   }
 }
 
@@ -313,6 +323,7 @@ export function searchMessages(
     .all(channelId, `%${query}%`, limit) as Message[];
 
   attachMentions(db, rows);
+  maskDeletedMessages(rows);
   return rows;
 }
 
