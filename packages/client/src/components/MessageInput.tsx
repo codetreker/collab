@@ -5,11 +5,11 @@ import { useAppContext } from '../context/AppContext';
 import MentionPicker from './MentionPicker';
 import SlashCommandPicker from './SlashCommandPicker';
 import { useSlashCommands } from '../hooks/useSlashCommands';
-import { commandRegistry } from '../commands/registry';
+import { commandRegistry, CommandError } from '../commands/registry';
 import type { CommandDefinition, CommandContext } from '../commands/registry';
 import '../commands/builtins';
 import * as api from '../lib/api';
-import { fetchChannelMembers } from '../lib/api';
+import { fetchChannelMembers, ApiError } from '../lib/api';
 import type { User, SendStatus } from '../types';
 
 interface Props {
@@ -78,6 +78,12 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
   const [commandError, setCommandError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!commandError) return;
+    const timer = setTimeout(() => setCommandError(null), 4000);
+    return () => clearTimeout(timer);
+  }, [commandError]);
+
   const executeCommand = useCallback(async (name: string, args: string, resolvedUser?: { id: string; username: string }) => {
     const cmd = commandRegistry.get(name);
     if (!cmd) return false;
@@ -113,7 +119,13 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
           setSlashResolvedUser(undefined);
           textareaRef.current?.focus();
         } catch (err) {
-          setCommandError(err instanceof Error ? err.message : 'Command failed');
+          if (err instanceof CommandError) {
+            setCommandError(err.message);
+          } else if (err instanceof ApiError) {
+            setCommandError(err.message);
+          } else {
+            setCommandError(err instanceof Error ? err.message : 'Command failed');
+          }
         }
         return;
       }
@@ -171,7 +183,13 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         api,
         actions,
       };
-      cmd.execute(ctx).catch(() => {});
+      cmd.execute(ctx).catch((err) => {
+        if (err instanceof CommandError || err instanceof ApiError) {
+          setCommandError(err.message);
+        } else {
+          setCommandError(err instanceof Error ? err.message : 'Command failed');
+        }
+      });
       setText('');
       slash.close();
     } else {
@@ -517,6 +535,9 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         </button>
       </div>
 
+      {commandError && (
+        <div className="send-status send-status-error">{commandError}</div>
+      )}
       {statusText() && (
         <div className={`send-status ${sendStatus === 'error' ? 'send-status-error' : ''}`}>
           {statusText()}
