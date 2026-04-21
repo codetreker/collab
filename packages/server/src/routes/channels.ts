@@ -30,6 +30,10 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(400).send({ error: 'Channel name is required' });
     }
 
+    if (topic !== undefined && typeof topic === 'string' && topic.length > 250) {
+      return reply.status(400).send({ error: 'Topic must be 250 characters or fewer' });
+    }
+
     const vis = visibility ?? 'public';
     if (vis !== 'public' && vis !== 'private') {
       return reply.status(400).send({ error: "visibility must be 'public' or 'private'" });
@@ -137,6 +141,10 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(400).send({ error: 'Invalid channel name' });
     }
 
+    if (topic !== undefined && typeof topic === 'string' && topic.length > 250) {
+      return reply.status(400).send({ error: 'Topic must be 250 characters or fewer' });
+    }
+
     if (visibility !== undefined && visibility !== 'public' && visibility !== 'private') {
       return reply.status(400).send({ error: "visibility must be 'public' or 'private'" });
     }
@@ -216,6 +224,10 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     if (topic === undefined || typeof topic !== 'string') {
       return reply.status(400).send({ error: 'topic is required' });
+    }
+
+    if (topic.length > 250) {
+      return reply.status(400).send({ error: 'Topic must be 250 characters or fewer' });
     }
 
     const db = getDb();
