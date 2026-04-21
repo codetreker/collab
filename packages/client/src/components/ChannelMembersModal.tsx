@@ -4,9 +4,11 @@ import { useCan } from '../hooks/usePermissions';
 import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel, deleteChannel } from '../lib/api';
 import type { ChannelMember } from '../lib/api';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import { useToast } from './Toast';
 
 export default function ChannelMembersModal({ channelId, onClose }: { channelId: string; onClose: () => void }) {
   const { state, actions, dispatch } = useAppContext();
+  const { showToast } = useToast();
   const channel = state.channels.find(c => c.id === channelId);
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,8 +94,9 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
         dispatch({ type: 'SET_CURRENT_CHANNEL', channelId: general.id });
       }
       onClose();
+      showToast('频道已删除');
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败');
+      showToast(err instanceof Error ? err.message : '删除失败');
       setDeleting(false);
     }
   };
