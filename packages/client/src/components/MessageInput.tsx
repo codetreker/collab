@@ -35,6 +35,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   const [mentionVisible, setMentionVisible] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [mentionStart, setMentionStart] = useState(-1);
+  const [slashResolvedUser, setSlashResolvedUser] = useState<{ id: string; username: string } | undefined>();
 
   const channel = state.channels.find(c => c.id === channelId);
   const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
@@ -107,8 +108,9 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       const cmd = commandRegistry.get(name);
       if (cmd) {
         try {
-          await executeCommand(name, args);
+          await executeCommand(name, args, slashResolvedUser);
           setText('');
+          setSlashResolvedUser(undefined);
           textareaRef.current?.focus();
         } catch (err) {
           setCommandError(err instanceof Error ? err.message : 'Command failed');
@@ -221,6 +223,19 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   }, [slash, handleSlashSelect, mentionVisible, filteredUsers, mentionIndex, handleSend]);
 
   const insertMention = (user: User) => {
+    const slashMatch = text.match(/^\/(\w+)\s/);
+    if (slashMatch) {
+      const cmd = commandRegistry.get(slashMatch[1]!);
+      if (cmd && cmd.paramType === 'user') {
+        setText(`/${cmd.name} @${user.display_name}`);
+        setMentionVisible(false);
+        setMentionQuery('');
+        setMentionIndex(0);
+        setSlashResolvedUser({ id: user.id, username: user.display_name });
+        return;
+      }
+    }
+
     const before = text.slice(0, mentionStart);
     const after = text.slice(textareaRef.current?.selectionStart ?? text.length);
     const mentionToken = `<@${user.id}>`;
@@ -273,10 +288,29 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     setText(value);
     emitTyping();
 
+    if (slashResolvedUser) {
+      setSlashResolvedUser(undefined);
+    }
+
     // Slash commands take priority over mentions
     if (value.startsWith('/') && !value.includes(' ')) {
       setMentionVisible(false);
       return;
+    }
+
+    // User-param slash command argument phase
+    const slashUserMatch = value.match(/^\/(\w+)\s(.*)$/);
+    if (slashUserMatch) {
+      const cmd = commandRegistry.get(slashUserMatch[1]!);
+      if (cmd && cmd.paramType === 'user') {
+        const argText = slashUserMatch[2]!;
+        const query = argText.replace(/^@/, '');
+        setMentionStart(value.indexOf(argText));
+        setMentionQuery(query);
+        setMentionVisible(true);
+        setMentionIndex(0);
+        return;
+      }
     }
 
     // Check for @ mention trigger
