@@ -189,7 +189,7 @@ export function softDeleteChannel(db: Database.Database, id: string): boolean {
 
 export function listUsers(db: Database.Database): User[] {
   return db
-    .prepare('SELECT id, display_name, role, avatar_url, require_mention, created_at FROM users ORDER BY created_at ASC')
+    .prepare('SELECT id, display_name, role, avatar_url, require_mention, created_at FROM users WHERE deleted_at IS NULL AND disabled = 0 ORDER BY created_at ASC')
     .all() as User[];
 }
 
@@ -613,7 +613,7 @@ export function getUnreadCount(
 
 export function getRecentlySeenUserIds(db: Database.Database, withinMs = 120000): string[] {
   const cutoff = Date.now() - withinMs;
-  const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ?").all(cutoff) as { id: string }[];
+  const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ? AND deleted_at IS NULL AND disabled = 0").all(cutoff) as { id: string }[];
   return rows.map((r) => r.id);
 }
 
