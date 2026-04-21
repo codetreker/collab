@@ -165,6 +165,13 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       message,
     });
 
+    const senderName = request.currentUser?.display_name ?? senderId;
+    Q.insertEvent(db, 'message_edited', existing.channel_id, {
+      ...message,
+      sender_id: senderId,
+      system_message: `用户 ${senderName} 编辑了消息`,
+    });
+
     return { message };
   });
 
@@ -203,6 +210,15 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       message_id: existing.id,
       channel_id: existing.channel_id,
       deleted_at,
+    });
+
+    const senderName = request.currentUser?.display_name ?? senderId;
+    Q.insertEvent(db, 'message_deleted', existing.channel_id, {
+      message_id: existing.id,
+      channel_id: existing.channel_id,
+      deleted_at,
+      sender_id: senderId,
+      system_message: `用户 ${senderName} 删除了一条消息`,
     });
 
     return { id: existing.id, channel_id: existing.channel_id, deleted_at };
