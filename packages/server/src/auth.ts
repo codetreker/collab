@@ -146,54 +146,72 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   });
 
   app.post('/api/v1/auth/register', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
-    const { invite_code, email, password, display_name } = request.body as {
+    const { invite_code, email: rawEmail, password, display_name } = request.body as {
       invite_code?: string; email?: string; password?: string; display_name?: string;
     };
 
-    if (!invite_code || !email || !password || !display_name) {
-      return reply.status(400).send({ error: 'invite_code, email, password, and display_name are required' });
+    if (!invite_code || !rawEmail || !password || !display_name) {
+      return reply.status(400).send({ error: 'All fields are required' });
+    }
+
+    const email = rawEmail.toLowerCase().trim();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return reply.status(400).send({ error: 'Invalid email format' });
+    }
+
+    const passwordBytes = Buffer.byteLength(password, 'utf8');
+    if (passwordBytes < 8) {
+      return reply.status(400).send({ error: 'Password must be at least 8 characters' });
+    }
+    if (passwordBytes > 72) {
+      return reply.status(400).send({ error: 'Password must be at most 72 characters' });
+    }
+
+    const trimmedName = display_name.trim();
+    if (trimmedName.length < 1 || trimmedName.length > 50) {
+      return reply.status(400).send({ error: 'Display name must be 1-50 characters' });
     }
 
     const db = getDb();
 
-    const invite = Q.getInviteCode(db, invite_code);
-    if (!invite) {
-      return reply.status(400).send({ error: 'Invalid invite code' });
-    }
-    if (invite.used_by) {
-      return reply.status(400).send({ error: 'Invite code already used' });
-    }
-    if (invite.expires_at && invite.expires_at < Date.now()) {
-      return reply.status(400).send({ error: 'Invite code expired' });
-    }
-
-    if (getUserByEmail(db, email)) {
-      return reply.status(409).send({ error: 'Email already in use' });
-    }
-
-    const userId = uuidv4();
     const passwordHash = bcrypt.hashSync(password, 10);
+    const userId = uuidv4();
 
     const txn = db.transaction(() => {
-      Q.createUser(db, userId, display_name.trim(), 'member', null, email, passwordHash);
-      Q.grantDefaultPermissions(db, userId, 'member');
       const consumed = Q.consumeInviteCode(db, invite_code, userId);
       if (!consumed) {
-        throw new Error('INVITE_ALREADY_USED');
+        throw new Error('INVITE_INVALID');
       }
+
+      if (getUserByEmail(db, email)) {
+        throw new Error('EMAIL_EXISTS');
+      }
+
+      Q.createUser(db, userId, trimmedName, 'member', null, email, passwordHash);
+      Q.grantDefaultPermissions(db, userId, 'member');
       Q.addUserToPublicChannels(db, userId);
+
+      const tokenPayload: JwtPayload = { userId, email };
+      const signed = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+      return signed;
     });
+
+    let signed: string;
     try {
-      txn();
+      signed = txn();
     } catch (err) {
-      if (err instanceof Error && err.message === 'INVITE_ALREADY_USED') {
-        return reply.status(409).send({ error: 'Invite code already used' });
+      if (err instanceof Error) {
+        if (err.message === 'INVITE_INVALID') {
+          return reply.status(404).send({ error: 'Invalid or expired invite code' });
+        }
+        if (err.message === 'EMAIL_EXISTS') {
+          return reply.status(409).send({ error: 'Email already registered' });
+        }
       }
       throw err;
     }
-
-    const tokenPayload: JwtPayload = { userId, email };
-    const signed = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
 
     const secure = isSecureCookie();
     reply.header(
@@ -207,11 +225,12 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   });
 
   app.post('/api/v1/auth/login', async (request, reply) => {
-    const { email, password } = request.body as { email?: string; password?: string };
-    if (!email || !password) {
+    const { email: rawEmail, password } = request.body as { email?: string; password?: string };
+    if (!rawEmail || !password) {
       return reply.status(400).send({ error: 'Email and password are required' });
     }
 
+    const email = rawEmail.toLowerCase().trim();
     const db = getDb();
     const user = getUserByEmail(db, email);
     if (!user || !user.password_hash) {

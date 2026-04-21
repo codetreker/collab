@@ -648,8 +648,8 @@ export function deleteInviteCode(db: Database.Database, code: string): boolean {
 export function consumeInviteCode(db: Database.Database, code: string, userId: string): boolean {
   const now = Date.now();
   return db.prepare(
-    'UPDATE invite_codes SET used_by = ?, used_at = ? WHERE code = ? AND used_by IS NULL',
-  ).run(userId, now, code).changes > 0;
+    'UPDATE invite_codes SET used_by = ?, used_at = ? WHERE code = ? AND used_by IS NULL AND (expires_at IS NULL OR expires_at > ?)',
+  ).run(userId, now, code, now).changes > 0;
 }
 
 // ─── Permissions ───────────────────────────────────────
