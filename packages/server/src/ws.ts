@@ -90,6 +90,15 @@ export function broadcastToUser(userId: string, payload: unknown): void {
   }
 }
 
+export function broadcastToAll(payload: unknown): void {
+  const data = JSON.stringify(payload);
+  for (const client of clients.values()) {
+    if (client.ws.readyState === 1) {
+      client.ws.send(data);
+    }
+  }
+}
+
 function broadcastPresence(userId: string, status: 'online' | 'offline'): void {
   const db = getDb();
   const user = Q.getUserById(db, userId);

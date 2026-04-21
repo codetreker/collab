@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
-import { broadcastToUser } from '../ws.js';
+import { broadcastToAll } from '../ws.js';
 
 interface AdminUser {
   id: string;
@@ -351,8 +351,6 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     if (channel.name === 'general') return reply.status(409).send({ error: 'Cannot delete #general' });
     if (channel.type === 'dm') return reply.status(409).send({ error: 'Cannot delete DM channels' });
 
-    const memberIds = Q.getChannelMembers(db, id).map((m) => m.user_id);
-
     const txn = db.transaction(() => {
       const now = Date.now();
       db.prepare('UPDATE channels SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run(now, id);
@@ -364,9 +362,7 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     const payload = { channel_id: id, name: channel.name };
     Q.insertEvent(db, 'channel_deleted', id, payload);
 
-    for (const uid of memberIds) {
-      broadcastToUser(uid, { type: 'channel_deleted', ...payload });
-    }
+    broadcastToAll({ type: 'channel_deleted', ...payload });
 
     return { ok: true };
   });
