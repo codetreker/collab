@@ -251,6 +251,12 @@ function initSchema(db: Database.Database): void {
         ON message_reactions(message_id);
     `);
 
+    // Migration: B10 — add deleted_at column to messages (soft delete)
+    const msgCols = db.prepare("PRAGMA table_info(messages)").all() as { name: string }[];
+    if (!msgCols.some((c) => c.name === 'deleted_at')) {
+      db.exec('ALTER TABLE messages ADD COLUMN deleted_at INTEGER');
+    }
+
     const dmChannels = db.prepare(
       `SELECT c.id, c.name FROM channels c
        WHERE c.type = 'dm'

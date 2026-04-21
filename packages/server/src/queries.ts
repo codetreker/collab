@@ -378,6 +378,7 @@ export function createMessage(
     reply_to_id: replyToId,
     created_at: now,
     edited_at: null,
+    deleted_at: null,
     mentions: allMentionIds,
   };
 
@@ -473,6 +474,32 @@ export function getLatestCursor(db: Database.Database): number {
 
 export function getMessageById(db: Database.Database, id: string): Message | undefined {
   return db.prepare('SELECT * FROM messages WHERE id = ?').get(id) as Message | undefined;
+}
+
+export function updateMessageContent(
+  db: Database.Database,
+  messageId: string,
+  content: string,
+): Message | undefined {
+  const now = Date.now();
+  db.prepare('UPDATE messages SET content = ?, edited_at = ? WHERE id = ?').run(content, now, messageId);
+  const msg = db.prepare(
+    `SELECT m.*, u.display_name AS sender_name FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.id = ?`,
+  ).get(messageId) as Message | undefined;
+  if (msg) {
+    attachMentions(db, [msg]);
+  }
+  return msg;
+}
+
+export function softDeleteMessage(
+  db: Database.Database,
+  messageId: string,
+): { deleted_at: number } {
+  const now = Date.now();
+  db.prepare('UPDATE messages SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run(now, messageId);
+  const row = db.prepare('SELECT deleted_at FROM messages WHERE id = ?').get(messageId) as { deleted_at: number };
+  return { deleted_at: row.deleted_at };
 }
 
 // ─── Channel Members ────────────────────────────────────
