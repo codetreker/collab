@@ -422,6 +422,17 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     }
   };
 
+  // Determine active command for placeholder
+  const activeCommandPlaceholder = (() => {
+    const m = text.match(/^\/(\w+)\s/);
+    if (!m) return null;
+    const cmd = commandRegistry.get(m[1]!);
+    if (cmd && cmd.paramType === 'text' && !text.slice(m[0].length).trim()) {
+      return cmd.placeholder ?? `输入 ${cmd.name} 参数…`;
+    }
+    return null;
+  })();
+
   if (disabled) {
     return (
       <div className="message-input-container">
@@ -493,7 +504,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+          placeholder={activeCommandPlaceholder ?? "输入消息... (Enter 发送, Shift+Enter 换行)"}
           rows={1}
           disabled={sendStatus === 'sending'}
         />
