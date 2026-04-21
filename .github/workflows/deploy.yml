@@ -114,4 +114,15 @@ jobs:
             curl -sf http://localhost:4900/ > /dev/null && echo "✅ Production healthy" || (echo "❌ Production unhealthy" && exit 1)
             docker image prune -f
 
-      # Release tagging removed — use manual `gh release create` when needed
+      - name: Tag release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ needs.deploy-staging.outputs.build_tag }}';
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/v${tag}`,
+              sha: context.sha
+            });
+            core.info(`Tagged: v${tag}`);
