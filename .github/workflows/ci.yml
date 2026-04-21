@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --filter @collab/server --filter @collab/client --filter collab
       - run: pnpm --filter @collab/client build
       - run: pnpm --filter @collab/server build
       - run: cd packages/server && npx vitest run
