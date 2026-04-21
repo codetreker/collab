@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 env:
-  REGISTRY: harbor.codetrek.cn
+  REGISTRY: ${{ vars.REGISTRY }}
   IMAGE: collab
   HARBOR_USER: "robot$library+github-ci"
 
