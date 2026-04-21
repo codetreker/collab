@@ -21,51 +21,65 @@ jobs:
       - run: pnpm --filter @collab/server build
       - run: cd packages/server && npx vitest run
 
-  deploy-staging:
+  build-and-deploy-staging:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to staging
+      - uses: actions/checkout@v4
+
+      # Build image, save, SCP to aliyun, load, restart
+      - name: Build and deploy staging
+        run: |
+          docker build -t collab-staging:latest .
+          docker save collab-staging:latest | gzip > /tmp/collab-image.tar.gz
+
+      - name: Transfer and deploy
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          key: ${{ secrets.ALIYUN_SSH_KEY }}
+          source: /tmp/collab-image.tar.gz
+          target: /tmp/
+
+      - name: Start staging
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
-          command_timeout: 10m
+          command_timeout: 5m
           script: |
-            cd /opt/dockers/collab
-            git fetch origin main
-            git reset --hard origin/main
-            docker compose build collab
-            docker compose up -d collab-staging
+            docker load < /tmp/collab-image.tar.gz
+            cd /opt/dockers/collab-staging
+            git fetch origin main && git reset --hard origin/main
+            docker compose up -d
             sleep 5
             curl -sf http://localhost:4901/ > /dev/null && echo "✅ Staging healthy" || (echo "❌ Staging unhealthy" && exit 1)
 
   deploy-prod:
-    needs: deploy-staging
+    needs: build-and-deploy-staging
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to production
+      - name: Deploy production
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
-          command_timeout: 10m
+          command_timeout: 5m
           script: |
+            docker tag collab-staging:latest collab-collab:latest
             cd /opt/dockers/collab
-            docker compose up -d collab
+            docker compose up -d
             sleep 5
             curl -sf http://localhost:4900/ > /dev/null && echo "✅ Production healthy" || (echo "❌ Production unhealthy" && exit 1)
 
       - name: Tag release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v$(date -u +%Y%m%d-%H%M%S)"
           git tag "$TAG"
           git push origin "$TAG"
-          echo "Tagged: $TAG"
