@@ -133,7 +133,15 @@ export function registerChannelRoutes(app: FastifyInstance): void {
   app.put<{
     Params: { channelId: string };
     Body: { name?: string; topic?: string; visibility?: 'public' | 'private' };
-  }>('/api/v1/channels/:channelId', { preHandler: [requirePermission('channel.manage_visibility', (req) => `channel:${(req.params as { channelId: string }).channelId}`)] }, async (request, reply) => {
+  }>('/api/v1/channels/:channelId', { preHandler: [async (request, reply) => {
+    const { name, visibility } = (request.body ?? {}) as { name?: string; visibility?: string };
+    const topicOnly = !name && !visibility;
+    if (topicOnly) {
+      // Any channel member can update topic
+      return;
+    }
+    return requirePermission('channel.manage_visibility', (req) => `channel:${(req.params as { channelId: string }).channelId}`)(request, reply);
+  }] }, async (request, reply) => {
     const { channelId } = request.params;
     const { name, topic, visibility } = request.body ?? {};
 
@@ -162,6 +170,11 @@ export function registerChannelRoutes(app: FastifyInstance): void {
 
     if (visibility === 'private' && channel.name === 'general') {
       return reply.status(403).send({ error: 'Cannot make #general private' });
+    }
+
+    const topicOnly = !name && !visibility && topic !== undefined;
+    if (topicOnly && !Q.isChannelMember(db, channelId, userId) && request.currentUser?.role !== 'admin') {
+      return reply.status(403).send({ error: 'Must be a channel member to set topic' });
     }
 
     const cleanName = name ? name.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-') : undefined;
@@ -211,48 +224,13 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       }
     }
 
-    return { channel: updated };
-  });
-
-  // Set channel topic (any member can do this)
-  app.put<{
-    Params: { channelId: string };
-    Body: { topic: string };
-  }>('/api/v1/channels/:channelId/topic', async (request, reply) => {
-    const { channelId } = request.params;
-    const { topic } = request.body ?? {};
-
-    if (topic === undefined || typeof topic !== 'string') {
-      return reply.status(400).send({ error: 'topic is required' });
+    if (topic !== undefined) {
+      broadcastToChannel(channelId, {
+        type: 'channel_updated',
+        channel_id: channelId,
+        topic: topic.trim(),
+      });
     }
-
-    if (topic.length > 250) {
-      return reply.status(400).send({ error: 'Topic must be 250 characters or fewer' });
-    }
-
-    const db = getDb();
-    const channel = Q.getChannel(db, channelId);
-    if (!channel) {
-      return reply.status(404).send({ error: 'Channel not found' });
-    }
-
-    const userId = request.currentUser?.id;
-    if (!userId) {
-      return reply.status(401).send({ error: 'Authentication required' });
-    }
-
-    if (!Q.isChannelMember(db, channelId, userId) && request.currentUser?.role !== 'admin') {
-      return reply.status(403).send({ error: 'Must be a channel member to set topic' });
-    }
-
-    Q.updateChannel(db, channelId, { topic: topic.trim() });
-    const updated = Q.getChannel(db, channelId);
-
-    broadcastToChannel(channelId, {
-      type: 'channel_updated',
-      channel_id: channelId,
-      topic: topic.trim(),
-    });
 
     return { channel: updated };
   });
