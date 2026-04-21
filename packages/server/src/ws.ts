@@ -90,6 +90,14 @@ export function broadcastToUser(userId: string, payload: unknown): void {
   }
 }
 
+export function unsubscribeUserFromChannel(userId: string, channelId: string): void {
+  for (const client of clients.values()) {
+    if (client.userId === userId) {
+      client.subscribedChannels.delete(channelId);
+    }
+  }
+}
+
 export function broadcastToAll(payload: unknown): void {
   const data = JSON.stringify(payload);
   for (const client of clients.values()) {

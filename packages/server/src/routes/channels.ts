@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
-import { broadcastToChannel, broadcastToUser, getOnlineUserIds } from '../ws.js';
+import { broadcastToChannel, broadcastToUser, getOnlineUserIds, unsubscribeUserFromChannel } from '../ws.js';
 import { requirePermission } from '../middleware/permissions.js';
 
 export function registerChannelRoutes(app: FastifyInstance): void {
@@ -329,6 +329,9 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       display_name: user?.display_name,
       member_count: leaveCount,
     });
+
+    broadcastToUser(userId, { type: 'channel_removed', channel_id: channelId });
+    unsubscribeUserFromChannel(userId, channelId);
 
     return { ok: true };
   });
