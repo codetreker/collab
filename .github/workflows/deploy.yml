@@ -10,7 +10,7 @@ permissions:
 env:
   REGISTRY: ${{ vars.REGISTRY }}
   IMAGE: collab
-  HARBOR_USER: "robot$library+github-ci"
+  HARBOR_USER: ${{ vars.HARBOR_USER }}
 
 jobs:
   test:
