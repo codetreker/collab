@@ -21,6 +21,8 @@ export function useWebSocket() {
   const scheduleReconnectRef = useRef<() => void>();
   const ackTimers = useRef<Map<string, () => void>>(new Map());
   const handleMessageRef = useRef<(data: { type: string; [key: string]: unknown }) => void>(() => {});
+  const currentChannelIdRef = useRef(state.currentChannelId);
+  currentChannelIdRef.current = state.currentChannelId;
 
   const findPendingChannelId = useCallback((clientMessageId: string): string | null => {
     for (const [channelId, pending] of state.pendingMessages) {
@@ -204,7 +206,9 @@ export function useWebSocket() {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({ type: 'unsubscribe', channel_id: deletedChannelId }));
         }
-        showToast(deletedName ? `频道 #${deletedName} 已被删除` : '频道已被删除');
+        if (currentChannelIdRef.current === deletedChannelId) {
+          showToast(deletedName ? `频道 #${deletedName} 已被删除` : '频道已被删除');
+        }
         break;
       }
       case 'visibility_changed': {

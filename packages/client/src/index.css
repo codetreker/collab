@@ -2014,3 +2014,34 @@ body {
 .message-item-pending {
   opacity: 0.6;
 }
+
+/* ─── Confirm Delete Modal ────────────────────────────── */
+
+.confirm-delete-modal {
+  width: 360px;
+}
+
+.confirm-delete-text {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.confirm-delete-actions {
+  justify-content: flex-end;
+}
+
+.danger-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--danger);
+}
+
+.danger-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}

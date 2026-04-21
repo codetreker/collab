@@ -3,9 +3,12 @@ import { useAppContext } from '../context/AppContext';
 import { useCan } from '../hooks/usePermissions';
 import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel, deleteChannel } from '../lib/api';
 import type { ChannelMember } from '../lib/api';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
+import { useToast } from './Toast';
 
 export default function ChannelMembersModal({ channelId, onClose }: { channelId: string; onClose: () => void }) {
   const { state, actions, dispatch } = useAppContext();
+  const { showToast } = useToast();
   const channel = state.channels.find(c => c.id === channelId);
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,8 +94,9 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
         dispatch({ type: 'SET_CURRENT_CHANNEL', channelId: general.id });
       }
       onClose();
+      showToast('频道已删除');
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败');
+      showToast(err instanceof Error ? err.message : '删除失败');
       setDeleting(false);
     }
   };
@@ -195,39 +199,26 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
 
             {canDelete && (
               <div className="danger-section">
-                {!confirmingDelete ? (
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => setConfirmingDelete(true)}
-                  >
-                    删除频道
-                  </button>
-                ) : (
-                  <div className="confirm-dialog">
-                    <p>确定删除 #{channelName}？此操作不可撤销。</p>
-                    <div className="form-actions">
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={handleDelete}
-                        disabled={deleting}
-                      >
-                        {deleting ? '删除中...' : '确认删除'}
-                      </button>
-                      <button
-                        className="btn btn-sm"
-                        onClick={() => setConfirmingDelete(false)}
-                        disabled={deleting}
-                      >
-                        取消
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <div className="danger-section-label">危险区域</div>
+                <button
+                  className="btn btn-sm btn-danger"
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  删除频道
+                </button>
               </div>
             )}
           </div>
         )}
       </div>
+      {confirmingDelete && (
+        <ConfirmDeleteModal
+          channelName={channelName}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmingDelete(false)}
+          loading={deleting}
+        />
+      )}
     </div>
   );
 }

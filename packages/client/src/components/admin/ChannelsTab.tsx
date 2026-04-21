@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { deleteChannel } from '../../lib/api';
+import ConfirmDeleteModal from '../ConfirmDeleteModal';
 
 interface AdminChannel {
   id: string;
@@ -32,6 +33,8 @@ async function forceDeleteChannel(id: string): Promise<void> {
 export default function ChannelsTab() {
   const [channels, setChannels] = useState<AdminChannel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmTarget, setConfirmTarget] = useState<{ ch: AdminChannel; force: boolean } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -44,23 +47,21 @@ export default function ChannelsTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleForceDelete = async (ch: AdminChannel) => {
-    if (!confirm(`Force delete #${ch.name}?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!confirmTarget) return;
+    setDeleting(true);
     try {
-      await forceDeleteChannel(ch.id);
+      if (confirmTarget.force) {
+        await forceDeleteChannel(confirmTarget.ch.id);
+      } else {
+        await deleteChannel(confirmTarget.ch.id);
+      }
+      setConfirmTarget(null);
       await load();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed');
-    }
-  };
-
-  const handleDelete = async (ch: AdminChannel) => {
-    if (!confirm(`Delete #${ch.name}?`)) return;
-    try {
-      await deleteChannel(ch.id);
-      await load();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -95,8 +96,8 @@ export default function ChannelsTab() {
                 <td>
                   {!ch.deleted_at && ch.name !== 'general' && ch.type !== 'dm' && (
                     <div className="admin-actions">
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(ch)}>Delete</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleForceDelete(ch)}>Force Delete</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => setConfirmTarget({ ch, force: false })}>Delete</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => setConfirmTarget({ ch, force: true })}>Force Delete</button>
                     </div>
                   )}
                 </td>
@@ -105,6 +106,15 @@ export default function ChannelsTab() {
           </tbody>
         </table>
       </div>
+
+      {confirmTarget && (
+        <ConfirmDeleteModal
+          channelName={confirmTarget.ch.name}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmTarget(null)}
+          loading={deleting}
+        />
+      )}
     </div>
   );
 }
