@@ -1360,6 +1360,11 @@ body {
   vertical-align: middle;
 }
 
+.user-id-cell {
+  font-size: 12px;
+  word-break: break-all;
+}
+
 .admin-table tbody tr:hover {
   background: var(--bg-message-hover);
 }
