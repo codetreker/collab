@@ -378,6 +378,22 @@ export async function register(inviteCode: string, email: string, password: stri
   return data.user;
 }
 
+// ─── Reactions ─────────────────────────────────────────
+
+export async function addReaction(messageId: string, emoji: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/messages/${messageId}/reactions`, {
+    method: 'PUT',
+    body: JSON.stringify({ emoji }),
+  });
+}
+
+export async function removeReaction(messageId: string, emoji: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/messages/${messageId}/reactions`, {
+    method: 'DELETE',
+    body: JSON.stringify({ emoji }),
+  });
+}
+
 // ─── Agents ────────────────────────────────────────────
 
 export interface Agent {

@@ -72,10 +72,10 @@ interface WsClient {
 const clients = new Map<WebSocket, WsClient>();
 const onlineUsers = new Map<string, Set<WebSocket>>();
 
-export function broadcastToChannel(channelId: string, payload: unknown): void {
+export function broadcastToChannel(channelId: string, payload: unknown, excludeWs?: WebSocket): void {
   const data = JSON.stringify(payload);
   for (const client of clients.values()) {
-    if (client.subscribedChannels.has(channelId) && client.ws.readyState === 1) {
+    if (client.ws !== excludeWs && client.subscribedChannels.has(channelId) && client.ws.readyState === 1) {
       client.ws.send(data);
     }
   }
@@ -206,6 +206,18 @@ export function registerWebSocket(app: FastifyInstance): void {
             client.alive = true;
             break;
 
+          case 'typing': {
+            if (!msg.channel_id) break;
+            if (!client.subscribedChannels.has(msg.channel_id)) break;
+            broadcastToChannel(msg.channel_id, {
+              type: 'typing',
+              channel_id: msg.channel_id,
+              user_id: userId,
+              display_name: user.display_name,
+            }, socket);
+            break;
+          }
+
           case 'send_message': {
             if (!msg.channel_id || !msg.content) {
               socket.send(JSON.stringify({ type: 'error', message: 'channel_id and content are required' }));
@@ -214,12 +226,12 @@ export function registerWebSocket(app: FastifyInstance): void {
 
             const channel = Q.getChannel(db, msg.channel_id);
             if (!channel) {
-              socket.send(JSON.stringify({ type: 'error', message: 'Channel not found' }));
+              socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'NOT_FOUND', message: 'Channel not found' }));
               break;
             }
 
             if (!Q.isChannelMember(db, msg.channel_id, userId)) {
-              socket.send(JSON.stringify({ type: 'error', message: 'Not a member of this channel' }));
+              socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'NOT_MEMBER', message: 'Not a member of this channel' }));
               break;
             }
 
@@ -228,33 +240,43 @@ export function registerWebSocket(app: FastifyInstance): void {
                 "SELECT 1 FROM user_permissions WHERE user_id = ? AND permission = 'message.send' AND (scope = '*' OR scope = ?) LIMIT 1",
               ).get(userId, `channel:${msg.channel_id}`);
               if (!hasPerm) {
-                socket.send(JSON.stringify({ type: 'error', message: 'Permission denied: message.send required' }));
+                socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'PERMISSION_DENIED', message: 'Permission denied: message.send required' }));
                 break;
               }
             }
 
             const ct = msg.content_type ?? 'text';
             if (ct !== 'text' && ct !== 'image') {
-              socket.send(JSON.stringify({ type: 'error', message: "content_type must be 'text' or 'image'" }));
+              socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INVALID_CONTENT_TYPE', message: "content_type must be 'text' or 'image'" }));
               break;
             }
 
-            const message = Q.createMessage(
-              db,
-              msg.channel_id,
-              userId,
-              msg.content,
-              ct,
-              msg.reply_to_id ?? null,
-              msg.mentions ?? [],
-            );
+            try {
+              const message = Q.createMessage(
+                db,
+                msg.channel_id,
+                userId,
+                msg.content,
+                ct,
+                msg.reply_to_id ?? null,
+                msg.mentions ?? [],
+              );
 
-            broadcastToChannel(msg.channel_id, {
-              type: 'new_message',
-              message,
-            });
+              const clientMessageId = msg.client_message_id ?? null;
 
-            socket.send(JSON.stringify({ type: 'message_sent', message }));
+              socket.send(JSON.stringify({
+                type: 'message_ack',
+                client_message_id: clientMessageId,
+                message,
+              }));
+
+              broadcastToChannel(msg.channel_id, {
+                type: 'new_message',
+                message,
+              }, clientMessageId ? socket : undefined);
+            } catch {
+              socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INTERNAL_ERROR', message: 'Failed to create message' }));
+            }
             break;
           }
 

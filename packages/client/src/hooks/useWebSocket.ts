@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
 import { getDevUserId, fetchMessages } from '../lib/api';
-import type { ConnectionState, Message, Channel } from '../types';
+import type { ConnectionState, Message, Channel, PendingMessage } from '../types';
 
 const PING_INTERVAL = 25_000;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
@@ -19,10 +19,35 @@ export function useWebSocket() {
   const mountedRef = useRef(true);
   const lastMessageTimestamp = useRef<Map<string, number>>(new Map());
   const scheduleReconnectRef = useRef<() => void>();
+  const ackTimers = useRef<Map<string, () => void>>(new Map());
+  const handleMessageRef = useRef<(data: { type: string; [key: string]: unknown }) => void>(() => {});
+
+  const findPendingChannelId = useCallback((clientMessageId: string): string | null => {
+    for (const [channelId, pending] of state.pendingMessages) {
+      if (pending.some(p => p.clientMessageId === clientMessageId)) return channelId;
+    }
+    return null;
+  }, [state.pendingMessages]);
 
   const setConnectionState = useCallback((cs: ConnectionState) => {
     dispatch({ type: 'SET_CONNECTION_STATE', state: cs });
   }, [dispatch]);
+
+  const reconcilePendingMessages = useCallback((channelId: string, fetchedMessages: Message[]) => {
+    const pending = state.pendingMessages.get(channelId);
+    if (!pending || pending.length === 0) return;
+    const fetchedContents = new Set(fetchedMessages.map(m => `${m.sender_id}:${m.content}`));
+    for (const p of pending) {
+      if (fetchedContents.has(`${p.senderId}:${p.content}`)) {
+        dispatch({ type: 'REMOVE_PENDING_MESSAGE', clientMessageId: p.clientMessageId, channelId });
+        ackTimers.current.get(p.clientMessageId)?.();
+        ackTimers.current.delete(p.clientMessageId);
+      }
+    }
+  }, [state.pendingMessages, dispatch]);
+
+  const reconcilePendingRef = useRef(reconcilePendingMessages);
+  reconcilePendingRef.current = reconcilePendingMessages;
 
   const connect = useCallback(() => {
     if (wsRef.current) {
@@ -67,6 +92,7 @@ export function useWebSocket() {
                 for (const msg of messages) {
                   dispatch({ type: 'ADD_MESSAGE', channelId: msg.channel_id, message: msg });
                 }
+                reconcilePendingRef.current(channelId, messages);
               })
               .catch((err: unknown) => console.warn('[ws] Failed to fetch missed messages:', err));
           }
@@ -86,7 +112,7 @@ export function useWebSocket() {
       if (!mountedRef.current) return;
       try {
         const data = JSON.parse(event.data);
-        handleMessage(data);
+        handleMessageRef.current(data);
       } catch {
         // Invalid JSON
       }
@@ -213,11 +239,58 @@ export function useWebSocket() {
       }
       case 'pong':
         break;
+      case 'typing': {
+        const channelId = data.channel_id as string;
+        const userId = data.user_id as string;
+        const displayName = data.display_name as string;
+        dispatch({ type: 'SET_TYPING', channelId, userId, displayName });
+        break;
+      }
+      case 'reaction_update': {
+        dispatch({
+          type: 'UPDATE_REACTIONS',
+          messageId: data.message_id as string,
+          channelId: data.channel_id as string,
+          reactions: data.reactions as { emoji: string; count: number; user_ids: string[] }[],
+        });
+        break;
+      }
+      case 'message_ack': {
+        const clientMessageId = data.client_message_id as string | null;
+        const serverMessage = data.message as Message;
+        if (clientMessageId) {
+          dispatch({
+            type: 'ACK_PENDING_MESSAGE',
+            clientMessageId,
+            channelId: serverMessage.channel_id,
+            serverMessage,
+          });
+          ackTimers.current.get(clientMessageId)?.();
+          ackTimers.current.delete(clientMessageId);
+        }
+        break;
+      }
+      case 'message_nack': {
+        const nackClientId = data.client_message_id as string | null;
+        if (nackClientId) {
+          const channelId = findPendingChannelId(nackClientId);
+          if (channelId) {
+            dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId: nackClientId, channelId });
+          }
+          ackTimers.current.get(nackClientId)?.();
+          ackTimers.current.delete(nackClientId);
+        }
+        break;
+      }
+      case 'message_sent':
+        break;
       case 'error':
         console.warn('[ws] Server error:', data.message);
         break;
     }
-  }, [dispatch, showToast]);
+  }, [dispatch, showToast, findPendingChannelId]);
+
+  handleMessageRef.current = handleMessage;
 
   const subscribe = useCallback((channelId: string) => {
     subscribedChannels.current.add(channelId);
@@ -259,9 +332,21 @@ export function useWebSocket() {
     }
   }, [state.dmChannels, subscribe]);
 
+  const sendWsMessage = useCallback((payload: Record<string, unknown>) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(payload));
+    }
+  }, []);
+
+  const registerAckTimer = useCallback((clientMessageId: string, cancel: () => void) => {
+    ackTimers.current.set(clientMessageId, cancel);
+  }, []);
+
   return {
     subscribe,
     unsubscribe,
+    sendWsMessage,
+    registerAckTimer,
     connectionState: state.connectionState,
   };
 }

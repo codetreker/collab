@@ -1,14 +1,16 @@
 import React, { useMemo } from 'react';
 import { renderMarkdown } from '../lib/markdown';
+import ReactionBar from './ReactionBar';
 import type { Message } from '../types';
 
 interface Props {
   message: Message;
   userMap: Map<string, string>;
   currentUserId?: string;
+  onRetry?: (message: Message) => void;
 }
 
-export default function MessageItem({ message, userMap, currentUserId }: Props) {
+export default function MessageItem({ message, userMap, currentUserId, onRetry }: Props) {
   const senderName = message.sender_name ?? userMap.get(message.sender_id) ?? 'Unknown';
   const isOwn = message.sender_id === currentUserId;
   const time = formatTime(message.created_at);
@@ -32,6 +34,20 @@ export default function MessageItem({ message, userMap, currentUserId }: Props) 
         <div className="message-header">
           <span className="message-sender">{senderName}</span>
           <span className="message-time">{time}</span>
+          {isOwn && (
+            <span className="message-delivery-status">
+              {message._pending && '⏳'}
+              {message._failed && (
+                <>
+                  ❌
+                  {onRetry && (
+                    <button className="retry-btn" onClick={() => onRetry(message)}>重试</button>
+                  )}
+                </>
+              )}
+              {!message._pending && !message._failed && <span className="delivery-check">✓</span>}
+            </span>
+          )}
         </div>
         <div className="message-content">
           {message.content_type === 'image' ? (
@@ -43,6 +59,23 @@ export default function MessageItem({ message, userMap, currentUserId }: Props) 
             />
           )}
         </div>
+        {message.reactions && message.reactions.length > 0 ? (
+          <ReactionBar
+            reactions={message.reactions}
+            messageId={message.id}
+            currentUserId={currentUserId}
+            userMap={userMap}
+          />
+        ) : (
+          !message._pending && !message._failed && (
+            <ReactionBar
+              reactions={[]}
+              messageId={message.id}
+              currentUserId={currentUserId}
+              userMap={userMap}
+            />
+          )
+        )}
       </div>
     </div>
   );

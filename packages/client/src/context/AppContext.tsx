@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { Channel, Message, User, ConnectionState, DmChannel } from '../types';
+import type { Channel, Message, User, ConnectionState, DmChannel, PendingMessage } from '../types';
 import type { PermissionDetail } from '../lib/api';
 import * as api from '../lib/api';
 
@@ -19,6 +19,8 @@ interface AppState {
   onlineUserIds: Set<string>;
   connectionState: ConnectionState;
   channelMembersVersion: Map<string, number>; // channelId -> version counter
+  typingUsers: Map<string, Map<string, { displayName: string; expiresAt: number }>>;
+  pendingMessages: Map<string, PendingMessage[]>;
   initialized: boolean;
 }
 
@@ -36,6 +38,8 @@ const initialState: AppState = {
   onlineUserIds: new Set(),
   connectionState: 'disconnected',
   channelMembersVersion: new Map(),
+  typingUsers: new Map(),
+  pendingMessages: new Map(),
   initialized: false,
 };
 
@@ -64,7 +68,14 @@ type Action =
   | { type: 'UPDATE_DM_CHANNEL'; channelId: string; updates: Partial<DmChannel> }
   | { type: 'REMOVE_CHANNEL'; channelId: string }
   | { type: 'UPDATE_CHANNEL'; channelId: string; updates: Partial<Channel> }
-  | { type: 'BUMP_CHANNEL_MEMBERS_VERSION'; channelId: string };
+  | { type: 'BUMP_CHANNEL_MEMBERS_VERSION'; channelId: string }
+  | { type: 'SET_TYPING'; channelId: string; userId: string; displayName: string }
+  | { type: 'CLEAR_EXPIRED_TYPING' }
+  | { type: 'UPDATE_REACTIONS'; messageId: string; channelId: string; reactions: { emoji: string; count: number; user_ids: string[] }[] }
+  | { type: 'ADD_PENDING_MESSAGE'; message: PendingMessage }
+  | { type: 'ACK_PENDING_MESSAGE'; clientMessageId: string; channelId: string; serverMessage: Message }
+  | { type: 'FAIL_PENDING_MESSAGE'; clientMessageId: string; channelId: string }
+  | { type: 'REMOVE_PENDING_MESSAGE'; clientMessageId: string; channelId: string };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -232,6 +243,98 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, channelMembersVersion: v };
     }
 
+    case 'SET_TYPING': {
+      const typingUsers = new Map(state.typingUsers);
+      const channelMap = new Map(typingUsers.get(action.channelId) ?? new Map());
+      channelMap.set(action.userId, { displayName: action.displayName, expiresAt: Date.now() + 3000 });
+      typingUsers.set(action.channelId, channelMap);
+      return { ...state, typingUsers };
+    }
+
+    case 'CLEAR_EXPIRED_TYPING': {
+      const now = Date.now();
+      let changed = false;
+      const typingUsers = new Map(state.typingUsers);
+      for (const [channelId, userMap] of typingUsers) {
+        const filtered = new Map(userMap);
+        for (const [userId, info] of filtered) {
+          if (info.expiresAt < now) {
+            filtered.delete(userId);
+            changed = true;
+          }
+        }
+        if (filtered.size === 0) {
+          typingUsers.delete(channelId);
+        } else {
+          typingUsers.set(channelId, filtered);
+        }
+      }
+      return changed ? { ...state, typingUsers } : state;
+    }
+
+    case 'UPDATE_REACTIONS': {
+      const msgs = new Map(state.messages);
+      const channelMsgs = msgs.get(action.channelId);
+      if (!channelMsgs) return state;
+      const updated = channelMsgs.map(m =>
+        m.id === action.messageId ? { ...m, reactions: action.reactions } : m
+      );
+      msgs.set(action.channelId, updated);
+      return { ...state, messages: msgs };
+    }
+
+    case 'ADD_PENDING_MESSAGE': {
+      const pm = new Map(state.pendingMessages);
+      const list = [...(pm.get(action.message.channelId) ?? []), action.message];
+      pm.set(action.message.channelId, list);
+      return { ...state, pendingMessages: pm };
+    }
+
+    case 'ACK_PENDING_MESSAGE': {
+      const pm = new Map(state.pendingMessages);
+      const list = (pm.get(action.channelId) ?? []).filter(p => p.clientMessageId !== action.clientMessageId);
+      if (list.length === 0) pm.delete(action.channelId);
+      else pm.set(action.channelId, list);
+
+      const msgs = new Map(state.messages);
+      const existing = msgs.get(action.channelId) ?? [];
+      if (!existing.some(m => m.id === action.serverMessage.id)) {
+        msgs.set(action.channelId, [...existing, action.serverMessage]);
+      }
+
+      const channels = state.channels.map(c => {
+        if (c.id !== action.channelId) return c;
+        return { ...c, last_message_at: action.serverMessage.created_at };
+      });
+
+      const dmChannels = state.dmChannels.map(dm => {
+        if (dm.id !== action.channelId) return dm;
+        return {
+          ...dm,
+          last_message: { content: action.serverMessage.content, created_at: action.serverMessage.created_at },
+        };
+      });
+
+      return { ...state, pendingMessages: pm, messages: msgs, channels, dmChannels };
+    }
+
+    case 'FAIL_PENDING_MESSAGE': {
+      const pm = new Map(state.pendingMessages);
+      const list = (pm.get(action.channelId) ?? []).map(p =>
+        p.clientMessageId === action.clientMessageId ? { ...p, status: 'failed' as const } : p
+      );
+      pm.set(action.channelId, list);
+      return { ...state, pendingMessages: pm };
+    }
+
+    case 'REMOVE_PENDING_MESSAGE': {
+      const pm = new Map(state.pendingMessages);
+      const list = (pm.get(action.channelId) ?? []).filter(p => p.clientMessageId !== action.clientMessageId);
+      if (list.length === 0) pm.delete(action.channelId);
+      else pm.set(action.channelId, list);
+      return { ...state, pendingMessages: pm };
+    }
+
     default:
       return state;
   }
@@ -242,6 +345,10 @@ function reducer(state: AppState, action: Action): AppState {
 interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
+  sendWsMessage: (payload: Record<string, unknown>) => void;
+  setSendWsMessage: (fn: (payload: Record<string, unknown>) => void) => void;
+  registerAckTimer: (clientMessageId: string, cancel: () => void) => void;
+  setRegisterAckTimer: (fn: (clientMessageId: string, cancel: () => void) => void) => void;
   actions: {
     loadChannels: () => Promise<void>;
     loadMessages: (channelId: string) => Promise<void>;
@@ -264,6 +371,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  const sendWsMessageRef = useRef<(payload: Record<string, unknown>) => void>(() => {});
+  const registerAckTimerRef = useRef<(clientMessageId: string, cancel: () => void) => void>(() => {});
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      dispatch({ type: 'CLEAR_EXPIRED_TYPING' });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadChannels = useCallback(async () => {
     const channels = await api.fetchChannels();
@@ -373,6 +490,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     api.markChannelRead(dm.id).catch(() => {});
   }, []);
 
+  const sendWsMessage = useCallback((payload: Record<string, unknown>) => {
+    sendWsMessageRef.current(payload);
+  }, []);
+
+  const setSendWsMessage = useCallback((fn: (payload: Record<string, unknown>) => void) => {
+    sendWsMessageRef.current = fn;
+  }, []);
+
+  const registerAckTimer = useCallback((clientMessageId: string, cancel: () => void) => {
+    registerAckTimerRef.current(clientMessageId, cancel);
+  }, []);
+
+  const setRegisterAckTimer = useCallback((fn: (clientMessageId: string, cancel: () => void) => void) => {
+    registerAckTimerRef.current = fn;
+  }, []);
+
   const actions = useMemo(() => ({
     loadChannels,
     loadMessages,
@@ -389,7 +522,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadPermissions, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction, loadDmChannels, openDm]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, actions }}>
+    <AppContext.Provider value={{ state, dispatch, sendWsMessage, setSendWsMessage, registerAckTimer, setRegisterAckTimer, actions }}>
       {children}
     </AppContext.Provider>
   );

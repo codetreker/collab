@@ -1,13 +1,34 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import MessageItem from './MessageItem';
+import TypingIndicator from './TypingIndicator';
+
+import type { Message, PendingMessage } from '../types';
+
+function toPseudoMessage(p: PendingMessage): Message {
+  return {
+    id: p.clientMessageId,
+    channel_id: p.channelId,
+    sender_id: p.senderId,
+    sender_name: p.senderName,
+    content: p.content,
+    content_type: p.contentType,
+    reply_to_id: null,
+    created_at: p.createdAt,
+    edited_at: null,
+    mentions: p.mentions,
+    _pending: p.status === 'pending',
+    _failed: p.status === 'failed',
+    _clientMessageId: p.clientMessageId,
+  };
+}
 
 interface Props {
   channelId: string;
 }
 
 export default function MessageList({ channelId }: Props) {
-  const { state, actions } = useAppContext();
+  const { state, actions, dispatch, sendWsMessage, registerAckTimer } = useAppContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevScrollHeight = useRef(0);
@@ -16,12 +37,14 @@ export default function MessageList({ channelId }: Props) {
   const loadingOlder = useRef(false);
 
   const messages = state.messages.get(channelId) ?? [];
+  const pending = state.pendingMessages.get(channelId) ?? [];
+  const allMessages = [...messages, ...pending.map(toPseudoMessage)];
   const hasMore = state.hasMore.get(channelId) ?? false;
   const isLoading = state.loadingMessages.has(channelId);
 
   // Scroll to bottom on initial load or new message (if already at bottom)
   useEffect(() => {
-    if (isInitialLoad.current && messages.length > 0) {
+    if (isInitialLoad.current && allMessages.length > 0) {
       bottomRef.current?.scrollIntoView();
       isInitialLoad.current = false;
       return;
@@ -30,7 +53,7 @@ export default function MessageList({ channelId }: Props) {
     if (isAtBottom.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages.length]);
+  }, [allMessages.length]);
 
   // Reset initial load flag when channel changes
   useEffect(() => {
@@ -46,7 +69,7 @@ export default function MessageList({ channelId }: Props) {
       containerRef.current.scrollTop += diff;
       loadingOlder.current = false;
     }
-  }, [messages]);
+  }, [allMessages]);
 
   const handleScroll = useCallback(() => {
     const container = containerRef.current;
@@ -63,6 +86,41 @@ export default function MessageList({ channelId }: Props) {
       actions.loadOlderMessages(channelId);
     }
   }, [channelId, hasMore, isLoading, actions]);
+
+  const handleRetry = useCallback((msg: Message) => {
+    if (!msg._clientMessageId) return;
+    dispatch({ type: 'REMOVE_PENDING_MESSAGE', clientMessageId: msg._clientMessageId, channelId });
+
+    const newClientMessageId = crypto.randomUUID();
+    dispatch({
+      type: 'ADD_PENDING_MESSAGE',
+      message: {
+        clientMessageId: newClientMessageId,
+        channelId,
+        content: msg.content,
+        contentType: msg.content_type,
+        status: 'pending',
+        createdAt: Date.now(),
+        senderName: msg.sender_name ?? '',
+        senderId: msg.sender_id,
+        mentions: msg.mentions,
+      },
+    });
+
+    sendWsMessage({
+      type: 'send_message',
+      channel_id: channelId,
+      content: msg.content,
+      content_type: msg.content_type,
+      client_message_id: newClientMessageId,
+      mentions: msg.mentions ?? [],
+    });
+
+    const timer = setTimeout(() => {
+      dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId: newClientMessageId, channelId });
+    }, 10_000);
+    registerAckTimer(newClientMessageId, () => clearTimeout(timer));
+  }, [channelId, dispatch, sendWsMessage, registerAckTimer]);
 
   return (
     <div
@@ -85,7 +143,7 @@ export default function MessageList({ channelId }: Props) {
         </div>
       )}
 
-      {isLoading && messages.length === 0 && (
+      {isLoading && allMessages.length === 0 && (
         <div className="message-skeleton">
           {[1, 2, 3].map(i => (
             <div key={i} className="skeleton-item">
@@ -99,22 +157,24 @@ export default function MessageList({ channelId }: Props) {
         </div>
       )}
 
-      {!isLoading && messages.length === 0 && (
+      {!isLoading && allMessages.length === 0 && (
         <div className="empty-channel">
           <p>👋 还没有消息</p>
           <p className="empty-hint">发送第一条消息开始聊天吧</p>
         </div>
       )}
 
-      {messages.map(msg => (
+      {allMessages.map(msg => (
         <MessageItem
           key={msg.id}
           message={msg}
           userMap={state.userMap}
           currentUserId={state.currentUser?.id}
+          onRetry={msg._failed ? handleRetry : undefined}
         />
       ))}
 
+      <TypingIndicator channelId={channelId} />
       <div ref={bottomRef} />
     </div>
   );
