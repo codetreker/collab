@@ -33,6 +33,22 @@ export function useWebSocket() {
     dispatch({ type: 'SET_CONNECTION_STATE', state: cs });
   }, [dispatch]);
 
+  const reconcilePendingMessages = useCallback((channelId: string, fetchedMessages: Message[]) => {
+    const pending = state.pendingMessages.get(channelId);
+    if (!pending || pending.length === 0) return;
+    const fetchedContents = new Set(fetchedMessages.map(m => `${m.sender_id}:${m.content}`));
+    for (const p of pending) {
+      if (fetchedContents.has(`${p.senderId}:${p.content}`)) {
+        dispatch({ type: 'REMOVE_PENDING_MESSAGE', clientMessageId: p.clientMessageId, channelId });
+        ackTimers.current.get(p.clientMessageId)?.();
+        ackTimers.current.delete(p.clientMessageId);
+      }
+    }
+  }, [state.pendingMessages, dispatch]);
+
+  const reconcilePendingRef = useRef(reconcilePendingMessages);
+  reconcilePendingRef.current = reconcilePendingMessages;
+
   const connect = useCallback(() => {
     if (wsRef.current) {
       const rs = wsRef.current.readyState;
@@ -76,6 +92,7 @@ export function useWebSocket() {
                 for (const msg of messages) {
                   dispatch({ type: 'ADD_MESSAGE', channelId: msg.channel_id, message: msg });
                 }
+                reconcilePendingRef.current(channelId, messages);
               })
               .catch((err: unknown) => console.warn('[ws] Failed to fetch missed messages:', err));
           }
