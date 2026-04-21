@@ -75,14 +75,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login to Harbor
-        run: echo '${{ secrets.HARBOR_API_TOKEN }}' | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
-
-      - name: Tag and push prod
+      - name: Tag prod via Harbor API
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ needs.deploy-staging.outputs.build_tag }}
-          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ needs.deploy-staging.outputs.build_tag }} ${{ env.REGISTRY }}/${{ env.IMAGE }}:prod
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:prod
+          curl -sf -u '${{ env.HARBOR_USER }}:${{ secrets.HARBOR_API_TOKEN }}' \
+            -X POST 'https://${{ env.REGISTRY }}/api/v2.0/projects/library/repositories/collab/artifacts/${{ needs.deploy-staging.outputs.build_tag }}/tags' \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"prod"}'
 
       - name: Deploy production
         uses: appleboy/ssh-action@v1
