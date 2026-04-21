@@ -53,7 +53,7 @@ RUN pnpm install --frozen-lockfile --filter @collab/server --filter @collab/clie
 ```dockerfile
 # ── Build stage ──
 ARG BASE_TAG=latest
-FROM harbor.coretrek.cn/library/collab-base:${BASE_TAG} AS builder
+FROM harbor.codetrek.cn/library/collab-base:${BASE_TAG} AS builder
 WORKDIR /build
 
 COPY packages/ packages/
@@ -62,7 +62,7 @@ RUN pnpm --filter @collab/server build
 
 # ── Production stage ──
 ARG BASE_TAG=latest
-FROM harbor.coretrek.cn/library/collab-base:${BASE_TAG}
+FROM harbor.codetrek.cn/library/collab-base:${BASE_TAG}
 WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
