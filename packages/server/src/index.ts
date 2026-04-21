@@ -34,6 +34,7 @@ async function main(): Promise<void> {
   seed();
 
   const app = Fastify({
+    trustProxy: true,
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
     },
