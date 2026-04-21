@@ -78,6 +78,8 @@ jobs:
       - name: Tag prod via Harbor API
         run: |
           curl -sf -u '${{ env.HARBOR_USER }}:${{ secrets.HARBOR_API_TOKEN }}' \
+            -X DELETE 'https://${{ env.REGISTRY }}/api/v2.0/projects/library/repositories/collab/artifacts/prod/tags/prod' || true
+          curl -sf -u '${{ env.HARBOR_USER }}:${{ secrets.HARBOR_API_TOKEN }}' \
             -X POST 'https://${{ env.REGISTRY }}/api/v2.0/projects/library/repositories/collab/artifacts/${{ needs.deploy-staging.outputs.build_tag }}/tags' \
             -H 'Content-Type: application/json' \
             -d '{"name":"prod"}'
