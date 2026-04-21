@@ -44,8 +44,12 @@ export function createTestDb(): Database.Database {
       content_type  TEXT DEFAULT 'text',
       reply_to_id   TEXT REFERENCES messages(id),
       created_at    INTEGER NOT NULL,
-      edited_at     INTEGER
+      edited_at     INTEGER,
+      deleted_at    INTEGER
     );
+
+    CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
 
     CREATE TABLE IF NOT EXISTS channel_members (
       channel_id    TEXT NOT NULL REFERENCES channels(id),
@@ -61,6 +65,8 @@ export function createTestDb(): Database.Database {
       user_id     TEXT NOT NULL REFERENCES users(id),
       channel_id  TEXT NOT NULL REFERENCES channels(id)
     );
+
+    CREATE INDEX IF NOT EXISTS idx_mentions_user ON mentions(user_id, channel_id);
 
     CREATE TABLE IF NOT EXISTS events (
       cursor      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,6 +86,9 @@ export function createTestDb(): Database.Database {
       UNIQUE(user_id, permission, scope)
     );
 
+    CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_permissions_lookup ON user_permissions(user_id, permission, scope);
+
     CREATE TABLE IF NOT EXISTS invite_codes (
       code        TEXT PRIMARY KEY,
       created_by  TEXT NOT NULL REFERENCES users(id),
@@ -89,15 +98,30 @@ export function createTestDb(): Database.Database {
       used_at     INTEGER,
       note        TEXT
     );
+
+    CREATE INDEX IF NOT EXISTS idx_invite_codes_used ON invite_codes(used_by);
+
+    CREATE TABLE IF NOT EXISTS message_reactions (
+      id          TEXT PRIMARY KEY,
+      message_id  TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      user_id     TEXT NOT NULL REFERENCES users(id),
+      emoji       TEXT NOT NULL,
+      created_at  INTEGER NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_unique
+      ON message_reactions(message_id, user_id, emoji);
+    CREATE INDEX IF NOT EXISTS idx_reactions_message
+      ON message_reactions(message_id);
   `);
 
   return db;
 }
 
-export function seedAdmin(db: Database.Database): string {
+export function seedAdmin(db: Database.Database, name = 'Admin'): string {
   const id = uuidv4();
   const now = Date.now();
-  db.prepare('INSERT INTO users (id, display_name, role, created_at) VALUES (?, ?, ?, ?)').run(id, 'Admin', 'admin', now);
+  db.prepare('INSERT INTO users (id, display_name, role, created_at) VALUES (?, ?, ?, ?)').run(id, name, 'admin', now);
   return id;
 }
 
@@ -122,6 +146,15 @@ export function seedChannel(db: Database.Database, createdBy: string, name = 'te
   return id;
 }
 
+export function seedInviteCode(db: Database.Database, createdBy: string, code = 'TESTINVITE'): string {
+  db.prepare('INSERT INTO invite_codes (code, created_by, created_at) VALUES (?, ?, ?)').run(code, createdBy, Date.now());
+  return code;
+}
+
 export function grantPermission(db: Database.Database, userId: string, permission: string, scope = '*'): void {
   db.prepare('INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, ?, NULL, ?)').run(userId, permission, scope, Date.now());
+}
+
+export function addChannelMember(db: Database.Database, channelId: string, userId: string): void {
+  db.prepare('INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at) VALUES (?, ?, ?)').run(channelId, userId, Date.now());
 }
