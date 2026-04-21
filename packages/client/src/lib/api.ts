@@ -90,6 +90,13 @@ export async function updateChannel(
   channelId: string,
   updates: { name?: string; topic?: string; visibility?: 'public' | 'private' },
 ): Promise<Channel> {
+  if (updates.topic !== undefined && !updates.name && !updates.visibility) {
+    const data = await request<{ channel: Channel }>(`/api/v1/channels/${channelId}/topic`, {
+      method: 'PUT',
+      body: JSON.stringify({ topic: updates.topic }),
+    });
+    return data.channel;
+  }
   const data = await request<{ channel: Channel }>(`/api/v1/channels/${channelId}`, {
     method: 'PUT',
     body: JSON.stringify(updates),
