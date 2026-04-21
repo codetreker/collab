@@ -9,7 +9,7 @@ permissions:
 
 env:
   REGISTRY: ${{ vars.REGISTRY }}
-  IMAGE: collab
+  IMAGE: library/collab
   HARBOR_USER: ${{ vars.HARBOR_USER }}
 
 jobs:
