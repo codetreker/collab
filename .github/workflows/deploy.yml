@@ -1,11 +1,11 @@
-name: Deploy Staging
+name: Deploy
 
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy-staging:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,14 +16,15 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-
-      # Build & test
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @collab/client build
       - run: pnpm --filter @collab/server build
       - run: cd packages/server && npx vitest run
 
-      # Deploy to staging via SSH
+  deploy-staging:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to staging
         uses: appleboy/ssh-action@v1
         with:
@@ -39,3 +40,32 @@ jobs:
             docker compose up -d collab-staging
             sleep 5
             curl -sf http://localhost:4901/ > /dev/null && echo "✅ Staging healthy" || (echo "❌ Staging unhealthy" && exit 1)
+
+  deploy-prod:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          key: ${{ secrets.ALIYUN_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            cd /opt/dockers/collab
+            docker compose up -d collab
+            sleep 5
+            curl -sf http://localhost:4900/ > /dev/null && echo "✅ Production healthy" || (echo "❌ Production unhealthy" && exit 1)
+
+      - name: Tag release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v$(date -u +%Y%m%d-%H%M%S)"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "Tagged: $TAG"
