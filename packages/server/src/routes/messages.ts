@@ -125,4 +125,102 @@ export function registerMessageRoutes(app: FastifyInstance): void {
 
     return reply.status(201).send({ message });
   });
+
+  // Edit message
+  app.put<{
+    Params: { messageId: string };
+    Body: { content: string };
+  }>('/api/v1/messages/:messageId', async (request, reply) => {
+    const { messageId } = request.params;
+    const { content } = request.body ?? {};
+
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      return reply.status(400).send({ error: 'Content is required' });
+    }
+
+    const senderId = request.currentUser?.id;
+    if (!senderId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const db = getDb();
+    const existing = Q.getMessageById(db, messageId);
+    if (!existing) {
+      return reply.status(404).send({ error: 'Message not found' });
+    }
+
+    if (existing.deleted_at) {
+      return reply.status(400).send({ error: 'Cannot edit deleted message' });
+    }
+
+    if (existing.sender_id !== senderId) {
+      return reply.status(403).send({ error: 'Can only edit your own messages' });
+    }
+
+    const message = Q.updateMessageContent(db, messageId, content.trim());
+
+    const { broadcastToChannel } = await import('../ws.js');
+    broadcastToChannel(existing.channel_id, {
+      type: 'message_edited',
+      message,
+    });
+
+    const senderName = request.currentUser?.display_name ?? senderId;
+    Q.insertEvent(db, 'message_edited', existing.channel_id, {
+      ...message,
+      sender_id: senderId,
+      system_message: `用户 ${senderName} 编辑了消息`,
+    });
+
+    return { message };
+  });
+
+  // Delete message (soft delete)
+  app.delete<{
+    Params: { messageId: string };
+  }>('/api/v1/messages/:messageId', async (request, reply) => {
+    const { messageId } = request.params;
+
+    const senderId = request.currentUser?.id;
+    if (!senderId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const db = getDb();
+    const existing = Q.getMessageById(db, messageId);
+    if (!existing) {
+      return reply.status(404).send({ error: 'Message not found' });
+    }
+
+    // Already deleted — idempotent
+    if (existing.deleted_at) {
+      return reply.status(204).send();
+    }
+
+    const isAdmin = request.currentUser?.role === 'admin';
+    if (existing.sender_id !== senderId && !isAdmin) {
+      return reply.status(403).send({ error: 'Permission denied' });
+    }
+
+    const { deleted_at } = Q.softDeleteMessage(db, messageId);
+
+    const { broadcastToChannel } = await import('../ws.js');
+    broadcastToChannel(existing.channel_id, {
+      type: 'message_deleted',
+      message_id: existing.id,
+      channel_id: existing.channel_id,
+      deleted_at,
+    });
+
+    const senderName = request.currentUser?.display_name ?? senderId;
+    Q.insertEvent(db, 'message_deleted', existing.channel_id, {
+      message_id: existing.id,
+      channel_id: existing.channel_id,
+      deleted_at,
+      sender_id: senderId,
+      system_message: `用户 ${senderName} 删除了一条消息`,
+    });
+
+    return reply.status(204).send();
+  });
 }

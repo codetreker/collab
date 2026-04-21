@@ -253,6 +253,7 @@ export function getMessages(
     const hasMore = rows.length > limit;
     const messages = hasMore ? rows.slice(0, limit) : rows;
     attachMentions(db, messages);
+    maskDeletedMessages(messages);
     return { messages, has_more: hasMore };
   }
 
@@ -283,6 +284,7 @@ export function getMessages(
   const hasMore = rows.length > limit;
   const messages = hasMore ? rows.slice(0, limit) : rows;
   attachMentions(db, messages);
+  maskDeletedMessages(messages);
   return { messages: messages.reverse(), has_more: hasMore };
 }
 
@@ -292,6 +294,14 @@ function attachMentions(db: Database.Database, messages: Message[]): void {
       .prepare('SELECT user_id FROM mentions WHERE message_id = ?')
       .all(msg.id) as { user_id: string }[];
     msg.mentions = mentionRows.map((r) => r.user_id);
+  }
+}
+
+function maskDeletedMessages(messages: Message[]): void {
+  for (const msg of messages) {
+    if (msg.deleted_at) {
+      msg.content = '';
+    }
   }
 }
 
@@ -306,13 +316,14 @@ export function searchMessages(
       `SELECT m.*, u.display_name AS sender_name
        FROM messages m
        JOIN users u ON u.id = m.sender_id
-       WHERE m.channel_id = ? AND m.content LIKE ?
+       WHERE m.channel_id = ? AND m.content LIKE ? AND m.deleted_at IS NULL
        ORDER BY m.created_at DESC
        LIMIT ?`,
     )
     .all(channelId, `%${query}%`, limit) as Message[];
 
   attachMentions(db, rows);
+  maskDeletedMessages(rows);
   return rows;
 }
 
@@ -378,6 +389,7 @@ export function createMessage(
     reply_to_id: replyToId,
     created_at: now,
     edited_at: null,
+    deleted_at: null,
     mentions: allMentionIds,
   };
 
@@ -473,6 +485,32 @@ export function getLatestCursor(db: Database.Database): number {
 
 export function getMessageById(db: Database.Database, id: string): Message | undefined {
   return db.prepare('SELECT * FROM messages WHERE id = ?').get(id) as Message | undefined;
+}
+
+export function updateMessageContent(
+  db: Database.Database,
+  messageId: string,
+  content: string,
+): Message | undefined {
+  const now = Date.now();
+  db.prepare('UPDATE messages SET content = ?, edited_at = ? WHERE id = ?').run(content, now, messageId);
+  const msg = db.prepare(
+    `SELECT m.*, u.display_name AS sender_name FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.id = ?`,
+  ).get(messageId) as Message | undefined;
+  if (msg) {
+    attachMentions(db, [msg]);
+  }
+  return msg;
+}
+
+export function softDeleteMessage(
+  db: Database.Database,
+  messageId: string,
+): { deleted_at: number } {
+  const now = Date.now();
+  db.prepare('UPDATE messages SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run(now, messageId);
+  const row = db.prepare('SELECT deleted_at FROM messages WHERE id = ?').get(messageId) as { deleted_at: number };
+  return { deleted_at: row.deleted_at };
 }
 
 // ─── Channel Members ────────────────────────────────────

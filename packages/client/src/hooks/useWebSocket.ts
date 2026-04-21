@@ -293,6 +293,29 @@ export function useWebSocket() {
       }
       case 'message_sent':
         break;
+      case 'message_edited': {
+        const editedMsg = data.message as Message;
+        dispatch({
+          type: 'EDIT_MESSAGE',
+          channelId: editedMsg.channel_id,
+          messageId: editedMsg.id,
+          content: editedMsg.content,
+          editedAt: editedMsg.edited_at!,
+        });
+        break;
+      }
+      case 'message_deleted': {
+        const deletedChannelId = data.channel_id as string;
+        const deletedMessageId = data.message_id as string;
+        const deletedAt = data.deleted_at as number;
+        dispatch({
+          type: 'DELETE_MESSAGE',
+          channelId: deletedChannelId,
+          messageId: deletedMessageId,
+          deletedAt,
+        });
+        break;
+      }
       case 'error':
         console.warn('[ws] Server error:', data.message);
         break;

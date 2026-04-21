@@ -77,7 +77,9 @@ type Action =
   | { type: 'FAIL_PENDING_MESSAGE'; clientMessageId: string; channelId: string }
   | { type: 'REMOVE_PENDING_MESSAGE'; clientMessageId: string; channelId: string }
   | { type: 'INSERT_LOCAL_SYSTEM_MESSAGE'; payload: { channelId: string; text: string } }
-  | { type: 'NAVIGATE_AFTER_LEAVE'; payload: { channelId: string } };
+  | { type: 'NAVIGATE_AFTER_LEAVE'; payload: { channelId: string } }
+  | { type: 'EDIT_MESSAGE'; channelId: string; messageId: string; content: string; editedAt: number }
+  | { type: 'DELETE_MESSAGE'; channelId: string; messageId: string; deletedAt: number };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -366,6 +368,28 @@ function reducer(state: AppState, action: Action): AppState {
       const channelMembersVersion = new Map(state.channelMembersVersion);
       channelMembersVersion.delete(action.payload.channelId);
       return { ...state, channels, currentChannelId: fallback, messages, pendingMessages, typingUsers, channelMembersVersion };
+    }
+
+    case 'EDIT_MESSAGE': {
+      const msgs = new Map(state.messages);
+      const channelMsgs = msgs.get(action.channelId);
+      if (!channelMsgs) return state;
+      const updated = channelMsgs.map(m =>
+        m.id === action.messageId ? { ...m, content: action.content, edited_at: action.editedAt } : m
+      );
+      msgs.set(action.channelId, updated);
+      return { ...state, messages: msgs };
+    }
+
+    case 'DELETE_MESSAGE': {
+      const msgs = new Map(state.messages);
+      const channelMsgs = msgs.get(action.channelId);
+      if (!channelMsgs) return state;
+      const updated = channelMsgs.map(m =>
+        m.id === action.messageId ? { ...m, content: '', deleted_at: action.deletedAt } : m
+      );
+      msgs.set(action.channelId, updated);
+      return { ...state, messages: msgs };
     }
 
     default:

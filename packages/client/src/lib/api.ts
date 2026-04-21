@@ -181,6 +181,30 @@ export async function sendMessage(
   return data.message;
 }
 
+export async function editMessage(messageId: string, content: string): Promise<Message> {
+  const data = await request<{ message: Message }>(`/api/v1/messages/${messageId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
+  });
+  return data.message;
+}
+
+export async function deleteMessage(messageId: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (import.meta.env.DEV && currentUserId) {
+    headers['X-Dev-User-Id'] = currentUserId;
+  }
+  const res = await fetch(`${BASE}/api/v1/messages/${messageId}`, {
+    method: 'DELETE',
+    headers,
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new ApiError(res.status, body.error ?? 'Request failed');
+  }
+}
+
 // ─── Users ──────────────────────────────────────────────
 
 export async function fetchUsers(): Promise<User[]> {

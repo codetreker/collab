@@ -54,6 +54,7 @@ export interface Message {
   reply_to_id: string | null;
   created_at: number;
   edited_at: number | null;
+  deleted_at: number | null;
   mentions?: string[];
 }
 
