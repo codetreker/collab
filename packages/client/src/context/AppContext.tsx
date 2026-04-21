@@ -75,7 +75,9 @@ type Action =
   | { type: 'ADD_PENDING_MESSAGE'; message: PendingMessage }
   | { type: 'ACK_PENDING_MESSAGE'; clientMessageId: string; channelId: string; serverMessage: Message }
   | { type: 'FAIL_PENDING_MESSAGE'; clientMessageId: string; channelId: string }
-  | { type: 'REMOVE_PENDING_MESSAGE'; clientMessageId: string; channelId: string };
+  | { type: 'REMOVE_PENDING_MESSAGE'; clientMessageId: string; channelId: string }
+  | { type: 'INSERT_LOCAL_SYSTEM_MESSAGE'; payload: { channelId: string; text: string } }
+  | { type: 'NAVIGATE_AFTER_LEAVE'; payload: { channelId: string } };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -333,6 +335,29 @@ function reducer(state: AppState, action: Action): AppState {
       if (list.length === 0) pm.delete(action.channelId);
       else pm.set(action.channelId, list);
       return { ...state, pendingMessages: pm };
+    }
+
+    case 'INSERT_LOCAL_SYSTEM_MESSAGE': {
+      const msgs = new Map(state.messages);
+      const existing = msgs.get(action.payload.channelId) ?? [];
+      const systemMsg: Message = {
+        id: `local-${Date.now()}-${Math.random()}`,
+        channel_id: action.payload.channelId,
+        sender_id: 'system',
+        content: action.payload.text,
+        content_type: 'text',
+        reply_to_id: null,
+        created_at: Date.now(),
+        edited_at: null,
+      };
+      msgs.set(action.payload.channelId, [...existing, systemMsg]);
+      return { ...state, messages: msgs };
+    }
+
+    case 'NAVIGATE_AFTER_LEAVE': {
+      const channels = state.channels.filter(c => c.id !== action.payload.channelId);
+      const fallback = channels.find(c => c.name === 'general')?.id ?? channels[0]?.id ?? null;
+      return { ...state, channels, currentChannelId: fallback };
     }
 
     default:

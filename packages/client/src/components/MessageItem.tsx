@@ -11,7 +11,8 @@ interface Props {
 }
 
 export default function MessageItem({ message, userMap, currentUserId, onRetry }: Props) {
-  const senderName = message.sender_name ?? userMap.get(message.sender_id) ?? 'Unknown';
+  const isSystem = message.sender_id === 'system';
+  const senderName = isSystem ? '系统' : (message.sender_name ?? userMap.get(message.sender_id) ?? 'Unknown');
   const isOwn = message.sender_id === currentUserId;
   const time = formatTime(message.created_at);
 
@@ -24,6 +25,19 @@ export default function MessageItem({ message, userMap, currentUserId, onRetry }
     }
     return renderMarkdown(message.content, message.mentions, userMap);
   }, [message.content, message.content_type, message.mentions, userMap]);
+
+  if (isSystem) {
+    return (
+      <div className="message-item message-system">
+        <div className="message-system-content">
+          <div
+            className="message-text"
+            dangerouslySetInnerHTML={{ __html: renderedContent! }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`message-item ${isOwn ? 'message-own' : ''}`}>

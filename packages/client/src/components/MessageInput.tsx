@@ -3,8 +3,13 @@ import Picker from '@emoji-mart/react';
 import emojiData from '@emoji-mart/data';
 import { useAppContext } from '../context/AppContext';
 import MentionPicker from './MentionPicker';
+import SlashCommandPicker from './SlashCommandPicker';
+import { useSlashCommands } from '../hooks/useSlashCommands';
+import { commandRegistry, CommandError } from '../commands/registry';
+import type { CommandDefinition, CommandContext } from '../commands/registry';
+import '../commands/builtins';
 import * as api from '../lib/api';
-import { fetchChannelMembers } from '../lib/api';
+import { fetchChannelMembers, ApiError } from '../lib/api';
 import type { User, SendStatus } from '../types';
 
 interface Props {
@@ -30,10 +35,13 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   const [mentionVisible, setMentionVisible] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [mentionStart, setMentionStart] = useState(-1);
+  const [slashResolvedUser, setSlashResolvedUser] = useState<{ id: string; username: string } | undefined>();
 
   const channel = state.channels.find(c => c.id === channelId);
   const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
   const isPrivate = !dmChannel && channel?.visibility === 'private';
+
+  const slash = useSlashCommands(text);
 
   const [channelMemberIds, setChannelMemberIds] = useState<Set<string> | null>(null);
 
@@ -68,9 +76,60 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     }
   }, [text]);
 
+  const [commandError, setCommandError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!commandError) return;
+    const timer = setTimeout(() => setCommandError(null), 4000);
+    return () => clearTimeout(timer);
+  }, [commandError]);
+
+  const executeCommand = useCallback(async (name: string, args: string, resolvedUser?: { id: string; username: string }) => {
+    const cmd = commandRegistry.get(name);
+    if (!cmd) return false;
+    const ctx: CommandContext = {
+      channelId,
+      currentUserId: state.currentUser?.id ?? '',
+      args,
+      resolvedUser,
+      dispatch,
+      api,
+      actions,
+    };
+    await cmd.execute(ctx);
+    return true;
+  }, [channelId, state.currentUser, dispatch, actions]);
+
   const handleSend = useCallback(async () => {
     const content = text.trim();
     if (!content || sendStatus === 'sending') return;
+
+    setCommandError(null);
+
+    // Slash command interception
+    if (content.startsWith('/')) {
+      const spaceIdx = content.indexOf(' ');
+      const name = spaceIdx === -1 ? content.slice(1) : content.slice(1, spaceIdx);
+      const args = spaceIdx === -1 ? '' : content.slice(spaceIdx + 1).trim();
+      const cmd = commandRegistry.get(name);
+      if (cmd) {
+        try {
+          await executeCommand(name, args, slashResolvedUser);
+          setText('');
+          setSlashResolvedUser(undefined);
+          textareaRef.current?.focus();
+        } catch (err) {
+          if (err instanceof CommandError) {
+            setCommandError(err.message);
+          } else if (err instanceof ApiError) {
+            setCommandError(err.message);
+          } else {
+            setCommandError(err instanceof Error ? err.message : 'Command failed');
+          }
+        }
+        return;
+      }
+    }
 
     const mentionIds: string[] = [];
     const mentionRegex = /<@([^>]+)>/g;
@@ -112,9 +171,45 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId, channelId });
     }, 10_000);
     registerAckTimer(clientMessageId, () => clearTimeout(timer));
-  }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer]);
+  }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand]);
+
+  const handleSlashSelect = useCallback((cmd: CommandDefinition) => {
+    if (cmd.paramType === 'none') {
+      const ctx: CommandContext = {
+        channelId,
+        currentUserId: state.currentUser?.id ?? '',
+        args: '',
+        dispatch,
+        api,
+        actions,
+      };
+      cmd.execute(ctx).catch((err) => {
+        if (err instanceof CommandError || err instanceof ApiError) {
+          setCommandError(err.message);
+        } else {
+          setCommandError(err instanceof Error ? err.message : 'Command failed');
+        }
+      });
+      setText('');
+      slash.close();
+    } else {
+      setText(`/${cmd.name} `);
+      slash.close();
+      textareaRef.current?.focus();
+    }
+  }, [channelId, state.currentUser, dispatch, actions, slash]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (slash.isActive && slash.filtered.length > 0) {
+      if (slash.handleKeyDown(e)) return;
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const cmd = slash.filtered[slash.selectedIndex];
+        if (cmd) handleSlashSelect(cmd);
+        return;
+      }
+    }
+
     if (mentionVisible) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -143,9 +238,22 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       e.preventDefault();
       handleSend();
     }
-  }, [mentionVisible, filteredUsers, mentionIndex, handleSend]);
+  }, [slash, handleSlashSelect, mentionVisible, filteredUsers, mentionIndex, handleSend]);
 
   const insertMention = (user: User) => {
+    const slashMatch = text.match(/^\/(\w+)\s/);
+    if (slashMatch) {
+      const cmd = commandRegistry.get(slashMatch[1]!);
+      if (cmd && cmd.paramType === 'user') {
+        setText(`/${cmd.name} @${user.display_name}`);
+        setMentionVisible(false);
+        setMentionQuery('');
+        setMentionIndex(0);
+        setSlashResolvedUser({ id: user.id, username: user.display_name });
+        return;
+      }
+    }
+
     const before = text.slice(0, mentionStart);
     const after = text.slice(textareaRef.current?.selectionStart ?? text.length);
     const mentionToken = `<@${user.id}>`;
@@ -197,6 +305,31 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     const value = e.target.value;
     setText(value);
     emitTyping();
+
+    if (slashResolvedUser) {
+      setSlashResolvedUser(undefined);
+    }
+
+    // Slash commands take priority over mentions
+    if (value.startsWith('/') && !value.includes(' ')) {
+      setMentionVisible(false);
+      return;
+    }
+
+    // User-param slash command argument phase
+    const slashUserMatch = value.match(/^\/(\w+)\s(.*)$/);
+    if (slashUserMatch) {
+      const cmd = commandRegistry.get(slashUserMatch[1]!);
+      if (cmd && cmd.paramType === 'user') {
+        const argText = slashUserMatch[2]!;
+        const query = argText.replace(/^@/, '');
+        setMentionStart(value.indexOf(argText));
+        setMentionQuery(query);
+        setMentionVisible(true);
+        setMentionIndex(0);
+        return;
+      }
+    }
 
     // Check for @ mention trigger
     const cursorPos = e.target.selectionStart;
@@ -307,6 +440,17 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     }
   };
 
+  // Determine active command for placeholder
+  const activeCommandPlaceholder = (() => {
+    const m = text.match(/^\/(\w+)\s/);
+    if (!m) return null;
+    const cmd = commandRegistry.get(m[1]!);
+    if (cmd && cmd.paramType === 'text' && !text.slice(m[0].length).trim()) {
+      return cmd.placeholder ?? `输入 ${cmd.name} 参数…`;
+    }
+    return null;
+  })();
+
   if (disabled) {
     return (
       <div className="message-input-container">
@@ -319,6 +463,12 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
   return (
     <div className="message-input-container" onDrop={handleDrop} onDragOver={handleDragOver}>
+      <SlashCommandPicker
+        commands={slash.filtered}
+        visible={slash.isActive}
+        selectedIndex={slash.selectedIndex}
+        onSelect={handleSlashSelect}
+      />
       <MentionPicker
         users={mentionUsers}
         query={mentionQuery}
@@ -372,7 +522,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+          placeholder={activeCommandPlaceholder ?? "输入消息... (Enter 发送, Shift+Enter 换行)"}
           rows={1}
           disabled={sendStatus === 'sending'}
         />
@@ -385,6 +535,9 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         </button>
       </div>
 
+      {commandError && (
+        <div className="send-status send-status-error">{commandError}</div>
+      )}
       {statusText() && (
         <div className={`send-status ${sendStatus === 'error' ? 'send-status-error' : ''}`}>
           {statusText()}

@@ -927,6 +927,81 @@ body {
   font-weight: 500;
 }
 
+/* ─── Slash Command Picker ────────────────────────────── */
+
+.slash-command-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  right: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  margin-bottom: 4px;
+}
+
+.slash-command-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.slash-command-option:hover,
+.slash-command-option-active {
+  background: var(--bg-secondary);
+}
+
+.slash-command-name {
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 80px;
+}
+
+.slash-command-desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.slash-command-empty {
+  padding: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ─── System Messages ─────────────────────────────────── */
+
+.message-system {
+  justify-content: center;
+  padding: 4px 16px;
+}
+
+.message-system-content {
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  width: 100%;
+}
+
+.message-system-content .message-text {
+  white-space: pre-wrap;
+}
+
 /* ─── User Picker (dev mode) ───────────────────────────── */
 
 .user-picker {

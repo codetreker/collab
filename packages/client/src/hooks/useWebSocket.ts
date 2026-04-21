@@ -213,6 +213,15 @@ export function useWebSocket() {
         dispatch({ type: 'UPDATE_CHANNEL', channelId: chId, updates: { visibility: vis } });
         break;
       }
+      case 'channel_updated': {
+        const updatedChId = data.channel_id as string;
+        const updates: Record<string, unknown> = {};
+        if (typeof data.topic === 'string') updates.topic = data.topic;
+        if (Object.keys(updates).length > 0) {
+          dispatch({ type: 'UPDATE_CHANNEL', channelId: updatedChId, updates });
+        }
+        break;
+      }
       case 'user_joined': {
         const joinedChannelId = data.channel_id as string;
         const joinedUserId = data.user_id as string;
