@@ -982,6 +982,26 @@ body {
   text-align: center;
 }
 
+/* ─── System Messages ─────────────────────────────────── */
+
+.message-system {
+  justify-content: center;
+  padding: 4px 16px;
+}
+
+.message-system-content {
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  width: 100%;
+}
+
+.message-system-content .message-text {
+  white-space: pre-wrap;
+}
+
 /* ─── User Picker (dev mode) ───────────────────────────── */
 
 .user-picker {
