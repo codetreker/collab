@@ -2,6 +2,9 @@
 FROM node:22-slim AS builder
 WORKDIR /build
 
+# Install build dependencies for native modules (better-sqlite3)
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+
 # Enable pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -27,6 +30,9 @@ RUN pnpm --filter @collab/server build
 # ── Production stage ─────────────────────────────────────
 FROM node:22-slim
 WORKDIR /app
+
+# Install build dependencies for native modules (better-sqlite3)
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 # Enable pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
