@@ -259,9 +259,16 @@ export function useWebSocket() {
     }
   }, [state.dmChannels, subscribe]);
 
+  const sendWsMessage = useCallback((payload: Record<string, unknown>) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(payload));
+    }
+  }, []);
+
   return {
     subscribe,
     unsubscribe,
+    sendWsMessage,
     connectionState: state.connectionState,
   };
 }

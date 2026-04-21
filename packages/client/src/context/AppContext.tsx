@@ -242,6 +242,8 @@ function reducer(state: AppState, action: Action): AppState {
 interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
+  sendWsMessage: (payload: Record<string, unknown>) => void;
+  setSendWsMessage: (fn: (payload: Record<string, unknown>) => void) => void;
   actions: {
     loadChannels: () => Promise<void>;
     loadMessages: (channelId: string) => Promise<void>;
@@ -264,6 +266,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  const sendWsMessageRef = useRef<(payload: Record<string, unknown>) => void>(() => {});
 
   const loadChannels = useCallback(async () => {
     const channels = await api.fetchChannels();
@@ -373,6 +377,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     api.markChannelRead(dm.id).catch(() => {});
   }, []);
 
+  const sendWsMessage = useCallback((payload: Record<string, unknown>) => {
+    sendWsMessageRef.current(payload);
+  }, []);
+
+  const setSendWsMessage = useCallback((fn: (payload: Record<string, unknown>) => void) => {
+    sendWsMessageRef.current = fn;
+  }, []);
+
   const actions = useMemo(() => ({
     loadChannels,
     loadMessages,
@@ -389,7 +401,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadPermissions, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction, loadDmChannels, openDm]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, actions }}>
+    <AppContext.Provider value={{ state, dispatch, sendWsMessage, setSendWsMessage, actions }}>
       {children}
     </AppContext.Provider>
   );

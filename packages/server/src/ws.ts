@@ -72,10 +72,10 @@ interface WsClient {
 const clients = new Map<WebSocket, WsClient>();
 const onlineUsers = new Map<string, Set<WebSocket>>();
 
-export function broadcastToChannel(channelId: string, payload: unknown): void {
+export function broadcastToChannel(channelId: string, payload: unknown, excludeWs?: WebSocket): void {
   const data = JSON.stringify(payload);
   for (const client of clients.values()) {
-    if (client.subscribedChannels.has(channelId) && client.ws.readyState === 1) {
+    if (client.ws !== excludeWs && client.subscribedChannels.has(channelId) && client.ws.readyState === 1) {
       client.ws.send(data);
     }
   }
