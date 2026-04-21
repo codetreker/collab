@@ -20,6 +20,7 @@ export function useWebSocket() {
   const lastMessageTimestamp = useRef<Map<string, number>>(new Map());
   const scheduleReconnectRef = useRef<() => void>();
   const ackTimers = useRef<Map<string, () => void>>(new Map());
+  const handleMessageRef = useRef<(data: { type: string; [key: string]: unknown }) => void>(() => {});
 
   const findPendingChannelId = useCallback((clientMessageId: string): string | null => {
     for (const [channelId, pending] of state.pendingMessages) {
@@ -94,7 +95,7 @@ export function useWebSocket() {
       if (!mountedRef.current) return;
       try {
         const data = JSON.parse(event.data);
-        handleMessage(data);
+        handleMessageRef.current(data);
       } catch {
         // Invalid JSON
       }
@@ -271,6 +272,8 @@ export function useWebSocket() {
         break;
     }
   }, [dispatch, showToast, findPendingChannelId]);
+
+  handleMessageRef.current = handleMessage;
 
   const subscribe = useCallback((channelId: string) => {
     subscribedChannels.current.add(channelId);
