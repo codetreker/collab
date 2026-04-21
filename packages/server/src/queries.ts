@@ -133,7 +133,7 @@ export function getChannelDetail(
       `SELECT cm.user_id, u.display_name, u.role, cm.joined_at
        FROM channel_members cm
        JOIN users u ON u.id = cm.user_id
-       WHERE cm.channel_id = ?
+       WHERE cm.channel_id = ? AND u.deleted_at IS NULL AND u.disabled = 0
        ORDER BY cm.joined_at ASC`,
     )
     .all(id) as { user_id: string; display_name: string; role: string; joined_at: number }[];
@@ -189,7 +189,7 @@ export function softDeleteChannel(db: Database.Database, id: string): boolean {
 
 export function listUsers(db: Database.Database): User[] {
   return db
-    .prepare('SELECT id, display_name, role, avatar_url, require_mention, created_at FROM users ORDER BY created_at ASC')
+    .prepare('SELECT id, display_name, role, avatar_url, require_mention, created_at FROM users WHERE deleted_at IS NULL AND disabled = 0 ORDER BY created_at ASC')
     .all() as User[];
 }
 
@@ -509,7 +509,7 @@ export function addAllUsersToChannel(
   channelId: string,
 ): void {
   const now = Date.now();
-  const users = db.prepare('SELECT id FROM users').all() as { id: string }[];
+  const users = db.prepare('SELECT id FROM users WHERE deleted_at IS NULL AND disabled = 0').all() as { id: string }[];
   const stmt = db.prepare(
     'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
   );
@@ -558,7 +558,7 @@ export function getChannelMembers(
       `SELECT cm.user_id, u.display_name, u.role, cm.joined_at
        FROM channel_members cm
        JOIN users u ON u.id = cm.user_id
-       WHERE cm.channel_id = ?
+       WHERE cm.channel_id = ? AND u.deleted_at IS NULL AND u.disabled = 0
        ORDER BY cm.joined_at ASC`,
     )
     .all(channelId) as { user_id: string; display_name: string; role: string; joined_at: number }[];
@@ -613,7 +613,7 @@ export function getUnreadCount(
 
 export function getRecentlySeenUserIds(db: Database.Database, withinMs = 120000): string[] {
   const cutoff = Date.now() - withinMs;
-  const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ?").all(cutoff) as { id: string }[];
+  const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ? AND deleted_at IS NULL AND disabled = 0").all(cutoff) as { id: string }[];
   return rows.map((r) => r.id);
 }
 
