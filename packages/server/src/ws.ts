@@ -262,16 +262,18 @@ export function registerWebSocket(app: FastifyInstance): void {
                 msg.mentions ?? [],
               );
 
+              const clientMessageId = msg.client_message_id ?? null;
+
               socket.send(JSON.stringify({
                 type: 'message_ack',
-                client_message_id: msg.client_message_id ?? null,
+                client_message_id: clientMessageId,
                 message,
               }));
 
               broadcastToChannel(msg.channel_id, {
                 type: 'new_message',
                 message,
-              }, socket);
+              }, clientMessageId ? socket : undefined);
             } catch {
               socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INTERNAL_ERROR', message: 'Failed to create message' }));
             }
