@@ -180,16 +180,17 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     const userId = uuidv4();
 
     const txn = db.transaction(() => {
-      const consumed = Q.consumeInviteCode(db, invite_code, userId);
-      if (!consumed) {
-        throw new Error('INVITE_INVALID');
-      }
-
       if (getUserByEmail(db, email)) {
         throw new Error('EMAIL_EXISTS');
       }
 
+      const invite = Q.getInviteCode(db, invite_code);
+      if (!invite || invite.used_by || (invite.expires_at && invite.expires_at <= Date.now())) {
+        throw new Error('INVITE_INVALID');
+      }
+
       Q.createUser(db, userId, trimmedName, 'member', null, email, passwordHash);
+      Q.consumeInviteCode(db, invite_code, userId);
       Q.grantDefaultPermissions(db, userId, 'member');
       Q.addUserToPublicChannels(db, userId);
 
