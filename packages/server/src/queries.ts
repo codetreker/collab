@@ -133,7 +133,7 @@ export function getChannelDetail(
       `SELECT cm.user_id, u.display_name, u.role, cm.joined_at
        FROM channel_members cm
        JOIN users u ON u.id = cm.user_id
-       WHERE cm.channel_id = ?
+       WHERE cm.channel_id = ? AND u.deleted_at IS NULL AND u.disabled = 0
        ORDER BY cm.joined_at ASC`,
     )
     .all(id) as { user_id: string; display_name: string; role: string; joined_at: number }[];
@@ -558,7 +558,7 @@ export function getChannelMembers(
       `SELECT cm.user_id, u.display_name, u.role, cm.joined_at
        FROM channel_members cm
        JOIN users u ON u.id = cm.user_id
-       WHERE cm.channel_id = ?
+       WHERE cm.channel_id = ? AND u.deleted_at IS NULL AND u.disabled = 0
        ORDER BY cm.joined_at ASC`,
     )
     .all(channelId) as { user_id: string; display_name: string; role: string; joined_at: number }[];
