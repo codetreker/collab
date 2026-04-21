@@ -247,7 +247,7 @@ export async function dispatchSSEEvent(params: {
 }): Promise<void> {
   const { account, event } = params;
 
-  if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted") return;
+  if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted" && event.kind !== "reaction_update") return;
 
   let payload: {
     id?: string;

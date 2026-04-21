@@ -59,7 +59,7 @@ async function runPollLoop(params: {
       consecutiveErrors = 0;
 
       for (const event of result.events) {
-        if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted") continue;
+        if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted" && event.kind !== "reaction_update") continue;
         let payload: Record<string, unknown>;
         try {
           payload = JSON.parse(event.payload);

@@ -83,7 +83,8 @@ export type CollabEventKind =
   | 'mention'
   | 'channel_created'
   | 'member_joined'
-  | 'member_left';
+  | 'member_left'
+  | 'reaction_update';
 
 export type CollabEvent = {
   cursor: number;
