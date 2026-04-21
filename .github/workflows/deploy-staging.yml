@@ -1,0 +1,41 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Build & test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @collab/client build
+      - run: pnpm --filter @collab/server build
+      - run: cd packages/server && npx vitest run
+
+      # Deploy to staging via SSH
+      - name: Deploy to staging
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          key: ${{ secrets.ALIYUN_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            cd /opt/dockers/collab
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose build collab
+            docker compose up -d collab-staging
+            sleep 5
+            curl -sf http://localhost:4901/ > /dev/null && echo "✅ Staging healthy" || (echo "❌ Staging unhealthy" && exit 1)
