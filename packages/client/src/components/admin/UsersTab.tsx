@@ -100,7 +100,7 @@ export default function UsersTab() {
           <tbody>
             {users.map(user => (
               <tr key={user.id} style={{ opacity: user.disabled ? 0.5 : 1 }}>
-                <td><code>{user.id.slice(0, 8)}</code></td>
+                <td><code className="user-id-cell">{user.id}</code></td>
                 <td>{user.display_name}</td>
                 <td>{user.email ?? '—'}</td>
                 <td><span className={`role-badge role-${user.role}`}>{user.role}</span></td>

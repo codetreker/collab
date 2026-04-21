@@ -9,11 +9,13 @@ import RegisterPage from './components/RegisterPage';
 import UserPicker from './components/UserPicker';
 import AdminPage from './components/AdminPage';
 import AgentManager from './components/AgentManager';
+import { useWebSocket } from './hooks/useWebSocket';
 import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
 
 function AppInner() {
   const { state, actions, dispatch } = useAppContext();
+  const { subscribe } = useWebSocket();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [authChecked, setAuthChecked] = useState(false);
@@ -75,6 +77,16 @@ function AppInner() {
       actions.selectChannel(state.channels[0]!.id);
     }
   }, [state.initialized, state.currentChannelId, state.channels, actions]);
+
+  // Auto-subscribe to all joined channels via WebSocket
+  useEffect(() => {
+    if (!state.initialized) return;
+    for (const ch of state.channels) {
+      if (ch.is_member) {
+        subscribe(ch.id);
+      }
+    }
+  }, [state.initialized, state.channels, subscribe]);
 
   // Auto-set dev user if not set (dev mode only)
   useEffect(() => {
