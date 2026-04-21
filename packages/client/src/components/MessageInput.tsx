@@ -12,12 +12,13 @@ interface Props {
 }
 
 export default function MessageInput({ channelId, disabled, disabledHint }: Props) {
-  const { state, actions } = useAppContext();
+  const { state, actions, sendWsMessage } = useAppContext();
   const [text, setText] = useState('');
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
   const [uploading, setUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastTypingSent = useRef(0);
 
   // Mention state
   const [mentionQuery, setMentionQuery] = useState('');
@@ -136,9 +137,17 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     }, 0);
   };
 
+  const emitTyping = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTypingSent.current < 2000) return;
+    lastTypingSent.current = now;
+    sendWsMessage({ type: 'typing', channel_id: channelId });
+  }, [channelId, sendWsMessage]);
+
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setText(value);
+    emitTyping();
 
     // Check for @ mention trigger
     const cursorPos = e.target.selectionStart;

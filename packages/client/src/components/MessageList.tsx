@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import MessageItem from './MessageItem';
+import TypingIndicator from './TypingIndicator';
 
 interface Props {
   channelId: string;
@@ -115,6 +116,7 @@ export default function MessageList({ channelId }: Props) {
         />
       ))}
 
+      <TypingIndicator channelId={channelId} />
       <div ref={bottomRef} />
     </div>
   );

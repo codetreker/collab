@@ -206,6 +206,18 @@ export function registerWebSocket(app: FastifyInstance): void {
             client.alive = true;
             break;
 
+          case 'typing': {
+            if (!msg.channel_id) break;
+            if (!client.subscribedChannels.has(msg.channel_id)) break;
+            broadcastToChannel(msg.channel_id, {
+              type: 'typing',
+              channel_id: msg.channel_id,
+              user_id: userId,
+              display_name: user.display_name,
+            }, socket);
+            break;
+          }
+
           case 'send_message': {
             if (!msg.channel_id || !msg.content) {
               socket.send(JSON.stringify({ type: 'error', message: 'channel_id and content are required' }));

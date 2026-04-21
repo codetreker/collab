@@ -19,6 +19,7 @@ interface AppState {
   onlineUserIds: Set<string>;
   connectionState: ConnectionState;
   channelMembersVersion: Map<string, number>; // channelId -> version counter
+  typingUsers: Map<string, Map<string, { displayName: string; expiresAt: number }>>;
   initialized: boolean;
 }
 
@@ -36,6 +37,7 @@ const initialState: AppState = {
   onlineUserIds: new Set(),
   connectionState: 'disconnected',
   channelMembersVersion: new Map(),
+  typingUsers: new Map(),
   initialized: false,
 };
 
@@ -64,7 +66,9 @@ type Action =
   | { type: 'UPDATE_DM_CHANNEL'; channelId: string; updates: Partial<DmChannel> }
   | { type: 'REMOVE_CHANNEL'; channelId: string }
   | { type: 'UPDATE_CHANNEL'; channelId: string; updates: Partial<Channel> }
-  | { type: 'BUMP_CHANNEL_MEMBERS_VERSION'; channelId: string };
+  | { type: 'BUMP_CHANNEL_MEMBERS_VERSION'; channelId: string }
+  | { type: 'SET_TYPING'; channelId: string; userId: string; displayName: string }
+  | { type: 'CLEAR_EXPIRED_TYPING' };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -232,6 +236,35 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, channelMembersVersion: v };
     }
 
+    case 'SET_TYPING': {
+      const typingUsers = new Map(state.typingUsers);
+      const channelMap = new Map(typingUsers.get(action.channelId) ?? new Map());
+      channelMap.set(action.userId, { displayName: action.displayName, expiresAt: Date.now() + 3000 });
+      typingUsers.set(action.channelId, channelMap);
+      return { ...state, typingUsers };
+    }
+
+    case 'CLEAR_EXPIRED_TYPING': {
+      const now = Date.now();
+      let changed = false;
+      const typingUsers = new Map(state.typingUsers);
+      for (const [channelId, userMap] of typingUsers) {
+        const filtered = new Map(userMap);
+        for (const [userId, info] of filtered) {
+          if (info.expiresAt < now) {
+            filtered.delete(userId);
+            changed = true;
+          }
+        }
+        if (filtered.size === 0) {
+          typingUsers.delete(channelId);
+        } else {
+          typingUsers.set(channelId, filtered);
+        }
+      }
+      return changed ? { ...state, typingUsers } : state;
+    }
+
     default:
       return state;
   }
@@ -268,6 +301,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   stateRef.current = state;
 
   const sendWsMessageRef = useRef<(payload: Record<string, unknown>) => void>(() => {});
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      dispatch({ type: 'CLEAR_EXPIRED_TYPING' });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadChannels = useCallback(async () => {
     const channels = await api.fetchChannels();

@@ -213,6 +213,13 @@ export function useWebSocket() {
       }
       case 'pong':
         break;
+      case 'typing': {
+        const channelId = data.channel_id as string;
+        const userId = data.user_id as string;
+        const displayName = data.display_name as string;
+        dispatch({ type: 'SET_TYPING', channelId, userId, displayName });
+        break;
+      }
       case 'error':
         console.warn('[ws] Server error:', data.message);
         break;
