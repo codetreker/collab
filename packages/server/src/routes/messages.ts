@@ -194,7 +194,7 @@ export function registerMessageRoutes(app: FastifyInstance): void {
 
     // Already deleted — idempotent
     if (existing.deleted_at) {
-      return { id: existing.id, channel_id: existing.channel_id, deleted_at: existing.deleted_at };
+      return reply.status(204).send();
     }
 
     const isAdmin = request.currentUser?.role === 'admin';
@@ -221,6 +221,6 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       system_message: `用户 ${senderName} 删除了一条消息`,
     });
 
-    return { id: existing.id, channel_id: existing.channel_id, deleted_at };
+    return reply.status(204).send();
   });
 }

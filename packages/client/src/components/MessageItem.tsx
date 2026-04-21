@@ -88,18 +88,12 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
 
   const handleDelete = useCallback(async () => {
     try {
-      const result = await api.deleteMessage(message.id);
-      dispatch({
-        type: 'DELETE_MESSAGE',
-        channelId: message.channel_id,
-        messageId: message.id,
-        deletedAt: result.deleted_at,
-      });
+      await api.deleteMessage(message.id);
     } catch {
       // ignore
     }
     setShowDeleteConfirm(false);
-  }, [message.id, message.channel_id, dispatch]);
+  }, [message.id]);
 
   const canEdit = isOwn && !isDeleted && !message._pending && !message._failed;
   const canDelete = (isOwn || isAdmin) && !isDeleted && !message._pending && !message._failed;
