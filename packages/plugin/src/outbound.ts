@@ -1,5 +1,5 @@
 import { resolveCollabAccount } from "./accounts.js";
-import { sendCollabMessage, createOrGetCollabDm, addCollabReaction, removeCollabReaction } from "./api-client.js";
+import { sendCollabMessage, createOrGetCollabDm, addCollabReaction, removeCollabReaction, editCollabMessage, deleteCollabMessage } from "./api-client.js";
 import { parseCollabTarget } from "./inbound.js";
 import type { CoreConfig } from "./types.js";
 
@@ -52,5 +52,34 @@ export async function handleCollabReaction(params: {
     apiKey: account.apiKey,
     messageId: params.messageId,
     emoji: params.emoji,
+  });
+}
+
+export async function handleCollabMessageEdit(params: {
+  cfg: CoreConfig;
+  accountId?: string | null;
+  messageId: string;
+  content: string;
+}): Promise<{ messageId: string }> {
+  const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
+  const { message } = await editCollabMessage({
+    baseUrl: account.baseUrl,
+    apiKey: account.apiKey,
+    messageId: params.messageId,
+    content: params.content,
+  });
+  return { messageId: message.id };
+}
+
+export async function handleCollabMessageDelete(params: {
+  cfg: CoreConfig;
+  accountId?: string | null;
+  messageId: string;
+}): Promise<void> {
+  const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
+  await deleteCollabMessage({
+    baseUrl: account.baseUrl,
+    apiKey: account.apiKey,
+    messageId: params.messageId,
   });
 }
