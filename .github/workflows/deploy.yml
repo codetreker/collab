@@ -8,8 +8,8 @@ permissions:
   contents: write
 
 env:
-  REGISTRY: harbor.coretrek.cn
-  IMAGE: harbor.coretrek.cn/coretrek/collab
+  CR_REGISTRY: harbor.coretrek.cn
+  CR_BASE_URL: harbor.coretrek.cn/coretrek
   HARBOR_USER: "robot$coretrek+github-ci"
 
 jobs:
@@ -36,16 +36,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Login to Harbor
-        run: echo "${{ secrets.HARBOR_API_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ env.HARBOR_USER }}" --password-stdin
+        run: echo "${{ secrets.HARBOR_API_TOKEN }}" | docker login ${{ env.CR_REGISTRY }} -u "${{ env.HARBOR_USER }}" --password-stdin
 
       - name: Build and push
         run: |
           docker build \
-            -t ${{ env.IMAGE }}:${{ github.sha }} \
-            -t ${{ env.IMAGE }}:staging \
+            -t ${{ env.CR_BASE_URL }}/collab:${{ github.sha }} \
+            -t ${{ env.CR_BASE_URL }}/collab:staging \
             .
-          docker push ${{ env.IMAGE }}:${{ github.sha }}
-          docker push ${{ env.IMAGE }}:staging
+          docker push ${{ env.CR_BASE_URL }}/collab:${{ github.sha }}
+          docker push ${{ env.CR_BASE_URL }}/collab:staging
 
       - name: Deploy staging
         uses: appleboy/ssh-action@v1
@@ -58,9 +58,9 @@ jobs:
           command_timeout: 5m
           envs: HARBOR_API_TOKEN
           script: |
-            echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
-            docker pull ${{ env.IMAGE }}:${{ github.sha }}
-            docker tag ${{ env.IMAGE }}:${{ github.sha }} collab:staging
+            echo "$HARBOR_API_TOKEN" | docker login ${{ env.CR_REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
+            docker pull ${{ env.CR_BASE_URL }}/collab:${{ github.sha }}
+            docker tag ${{ env.CR_BASE_URL }}/collab:${{ github.sha }} collab:staging
             cd /opt/dockers/collab-staging
             docker compose up -d
             sleep 5
@@ -85,9 +85,9 @@ jobs:
           command_timeout: 5m
           envs: HARBOR_API_TOKEN
           script: |
-            echo "$HARBOR_API_TOKEN" | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
-            docker pull ${{ env.IMAGE }}:${{ github.sha }}
-            docker tag ${{ env.IMAGE }}:${{ github.sha }} collab:prod
+            echo "$HARBOR_API_TOKEN" | docker login ${{ env.CR_REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
+            docker pull ${{ env.CR_BASE_URL }}/collab:${{ github.sha }}
+            docker tag ${{ env.CR_BASE_URL }}/collab:${{ github.sha }} collab:prod
             cd /opt/dockers/collab
             docker compose up -d
             sleep 5
