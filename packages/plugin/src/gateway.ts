@@ -59,29 +59,21 @@ async function runPollLoop(params: {
       consecutiveErrors = 0;
 
       for (const event of result.events) {
-        if (event.kind !== "message") continue;
-        let payload: {
-          id: string;
-          channel_id: string;
-          sender_id: string;
-          sender_name?: string;
-          content: string;
-          content_type: string;
-          created_at: number;
-          mentions?: string[];
-          reply_to_id?: string | null;
-          channel_type?: string;
-        };
+        if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted") continue;
+        let payload: Record<string, unknown>;
         try {
           payload = JSON.parse(event.payload);
         } catch {
           continue;
         }
-        if (payload.sender_id === account.botUserId) continue;
-        const isDmChannel = payload.channel_type === "dm";
-        if (!isDmChannel && account.requireMention) {
-          const mentions: string[] = payload.mentions ?? [];
-          if (!mentions.includes(account.botUserId)) continue;
+        const senderId = payload.sender_id as string | undefined;
+        if (senderId && senderId === account.botUserId) continue;
+        const isDmChannel = (payload.channel_type as string | undefined) === "dm";
+        if (event.kind === "message") {
+          if (!isDmChannel && account.requireMention) {
+            const mentions = (payload.mentions as string[] | undefined) ?? [];
+            if (!mentions.includes(account.botUserId)) continue;
+          }
         }
         await handleCollabInbound({
           channelId: params.channelId,
@@ -90,7 +82,7 @@ async function runPollLoop(params: {
           config: params.config,
           event,
           channelType: isDmChannel ? "dm" : "channel",
-          message: payload,
+          message: payload as Parameters<typeof handleCollabInbound>[0]["message"],
         });
       }
     } catch (error) {

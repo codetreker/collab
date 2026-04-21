@@ -247,19 +247,21 @@ export async function dispatchSSEEvent(params: {
 }): Promise<void> {
   const { account, event } = params;
 
-  if (event.kind !== "message") return;
+  if (event.kind !== "message" && event.kind !== "message_edited" && event.kind !== "message_deleted") return;
 
   let payload: {
-    id: string;
+    id?: string;
+    message_id?: string;
     channel_id: string;
-    sender_id: string;
+    sender_id?: string;
     sender_name?: string;
-    content: string;
-    content_type: string;
-    created_at: number;
+    content?: string;
+    content_type?: string;
+    created_at?: number;
     mentions?: string[];
     reply_to_id?: string | null;
     channel_type?: string;
+    deleted_at?: number;
   };
   try {
     payload = JSON.parse(event.payload);
@@ -267,13 +269,16 @@ export async function dispatchSSEEvent(params: {
     return;
   }
 
-  if (payload.sender_id === account.botUserId) return;
+  const senderId = payload.sender_id;
+  if (senderId && senderId === account.botUserId) return;
 
   const isDmChannel = payload.channel_type === "dm";
 
-  if (!isDmChannel && account.requireMention) {
-    const mentions: string[] = payload.mentions ?? [];
-    if (!mentions.includes(account.botUserId)) return;
+  if (event.kind === "message") {
+    if (!isDmChannel && account.requireMention) {
+      const mentions: string[] = payload.mentions ?? [];
+      if (!mentions.includes(account.botUserId)) return;
+    }
   }
 
   await handleCollabInbound({
@@ -283,7 +288,7 @@ export async function dispatchSSEEvent(params: {
     config: params.config,
     event,
     channelType: isDmChannel ? "dm" : "channel",
-    message: payload,
+    message: payload as Parameters<typeof handleCollabInbound>[0]["message"],
   });
 
   if (event.cursor > 0) {
