@@ -635,10 +635,83 @@ body {
   gap: 12px;
   padding: 6px 20px;
   transition: background 0.1s;
+  position: relative;
 }
 
 .message-item:hover {
   background: var(--bg-message-hover);
+}
+
+.message-actions {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 16px;
+  gap: 2px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px;
+  box-shadow: var(--shadow-sm);
+}
+
+.message-item:hover .message-actions {
+  display: flex;
+}
+
+.message-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.message-action-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.message-edited {
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-left: 4px;
+  cursor: default;
+}
+
+.message-deleted {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.message-edit-container {
+  margin-top: 4px;
+}
+
+.message-edit-textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  font-family: var(--font-family);
+  font-size: 14px;
+  resize: vertical;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.message-edit-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.message-edit-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
 }
 
 .message-avatar {

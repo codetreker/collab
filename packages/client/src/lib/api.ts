@@ -181,6 +181,20 @@ export async function sendMessage(
   return data.message;
 }
 
+export async function editMessage(messageId: string, content: string): Promise<Message> {
+  const data = await request<{ message: Message }>(`/api/v1/messages/${messageId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
+  });
+  return data.message;
+}
+
+export async function deleteMessage(messageId: string): Promise<{ id: string; channel_id: string; deleted_at: number }> {
+  return request<{ id: string; channel_id: string; deleted_at: number }>(`/api/v1/messages/${messageId}`, {
+    method: 'DELETE',
+  });
+}
+
 // ─── Users ──────────────────────────────────────────────
 
 export async function fetchUsers(): Promise<User[]> {

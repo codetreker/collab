@@ -170,6 +170,7 @@ export default function MessageList({ channelId }: Props) {
           message={msg}
           userMap={state.userMap}
           currentUserId={state.currentUser?.id}
+          currentUserRole={state.currentUser?.role}
           onRetry={msg._failed ? handleRetry : undefined}
         />
       ))}

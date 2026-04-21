@@ -1,30 +1,108 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { renderMarkdown } from '../lib/markdown';
 import ReactionBar from './ReactionBar';
+import * as api from '../lib/api';
+import { useAppContext } from '../context/AppContext';
 import type { Message } from '../types';
 
 interface Props {
   message: Message;
   userMap: Map<string, string>;
   currentUserId?: string;
+  currentUserRole?: string;
   onRetry?: (message: Message) => void;
 }
 
-export default function MessageItem({ message, userMap, currentUserId, onRetry }: Props) {
+export default function MessageItem({ message, userMap, currentUserId, currentUserRole, onRetry }: Props) {
+  const { dispatch } = useAppContext();
   const isSystem = message.sender_id === 'system';
   const senderName = isSystem ? '系统' : (message.sender_name ?? userMap.get(message.sender_id) ?? 'Unknown');
   const isOwn = message.sender_id === currentUserId;
+  const isAdmin = currentUserRole === 'admin';
+  const isDeleted = !!message.deleted_at;
   const time = formatTime(message.created_at);
 
   const avatarLetter = senderName[0]?.toUpperCase() ?? '?';
   const avatarColor = stringToColor(message.sender_id);
 
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const renderedContent = useMemo(() => {
-    if (message.content_type === 'image') {
-      return null; // Rendered separately
-    }
+    if (message.content_type === 'image') return null;
     return renderMarkdown(message.content, message.mentions, userMap);
   }, [message.content, message.content_type, message.mentions, userMap]);
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.selectionStart = textareaRef.current.value.length;
+    }
+  }, [editing]);
+
+  const startEdit = useCallback(() => {
+    setEditContent(message.content);
+    setEditing(true);
+  }, [message.content]);
+
+  const cancelEdit = useCallback(() => {
+    setEditing(false);
+    setEditContent('');
+  }, []);
+
+  const saveEdit = useCallback(async () => {
+    const trimmed = editContent.trim();
+    if (!trimmed || trimmed === message.content) {
+      cancelEdit();
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const updated = await api.editMessage(message.id, trimmed);
+      dispatch({
+        type: 'EDIT_MESSAGE',
+        channelId: message.channel_id,
+        messageId: message.id,
+        content: updated.content,
+        editedAt: updated.edited_at!,
+      });
+      setEditing(false);
+    } catch {
+      // keep editing on failure
+    } finally {
+      setEditSaving(false);
+    }
+  }, [editContent, message, dispatch, cancelEdit]);
+
+  const handleEditKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      cancelEdit();
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveEdit();
+    }
+  }, [cancelEdit, saveEdit]);
+
+  const handleDelete = useCallback(async () => {
+    try {
+      const result = await api.deleteMessage(message.id);
+      dispatch({
+        type: 'DELETE_MESSAGE',
+        channelId: message.channel_id,
+        messageId: message.id,
+        deletedAt: result.deleted_at,
+      });
+    } catch {
+      // ignore
+    }
+    setShowDeleteConfirm(false);
+  }, [message.id, message.channel_id, dispatch]);
+
+  const canEdit = isOwn && !isDeleted && !message._pending && !message._failed;
+  const canDelete = (isOwn || isAdmin) && !isDeleted && !message._pending && !message._failed;
 
   if (isSystem) {
     return (
@@ -48,6 +126,11 @@ export default function MessageItem({ message, userMap, currentUserId, onRetry }
         <div className="message-header">
           <span className="message-sender">{senderName}</span>
           <span className="message-time">{time}</span>
+          {message.edited_at && !isDeleted && (
+            <span className="message-edited" title={`已编辑于 ${formatTime(message.edited_at)}`}>
+              (已编辑)
+            </span>
+          )}
           {isOwn && (
             <span className="message-delivery-status">
               {message._pending && '⏳'}
@@ -64,7 +147,24 @@ export default function MessageItem({ message, userMap, currentUserId, onRetry }
           )}
         </div>
         <div className="message-content">
-          {message.content_type === 'image' ? (
+          {isDeleted ? (
+            <div className="message-deleted">此消息已删除</div>
+          ) : editing ? (
+            <div className="message-edit-container">
+              <textarea
+                ref={textareaRef}
+                className="message-edit-textarea"
+                value={editContent}
+                onChange={e => setEditContent(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                disabled={editSaving}
+                rows={2}
+              />
+              <div className="message-edit-hint">
+                Enter 保存 · Esc 取消
+              </div>
+            </div>
+          ) : message.content_type === 'image' ? (
             <ImageContent url={message.content} />
           ) : (
             <div
@@ -73,24 +173,53 @@ export default function MessageItem({ message, userMap, currentUserId, onRetry }
             />
           )}
         </div>
-        {message.reactions && message.reactions.length > 0 ? (
-          <ReactionBar
-            reactions={message.reactions}
-            messageId={message.id}
-            currentUserId={currentUserId}
-            userMap={userMap}
-          />
-        ) : (
-          !message._pending && !message._failed && (
-            <ReactionBar
-              reactions={[]}
-              messageId={message.id}
-              currentUserId={currentUserId}
-              userMap={userMap}
-            />
-          )
+        {!isDeleted && !editing && (
+          <>
+            {message.reactions && message.reactions.length > 0 ? (
+              <ReactionBar
+                reactions={message.reactions}
+                messageId={message.id}
+                currentUserId={currentUserId}
+                userMap={userMap}
+              />
+            ) : (
+              !message._pending && !message._failed && (
+                <ReactionBar
+                  reactions={[]}
+                  messageId={message.id}
+                  currentUserId={currentUserId}
+                  userMap={userMap}
+                />
+              )
+            )}
+          </>
         )}
       </div>
+      {!isDeleted && !editing && (canEdit || canDelete) && (
+        <div className="message-actions">
+          {canEdit && (
+            <button className="message-action-btn" onClick={startEdit} title="编辑">
+              ✏️
+            </button>
+          )}
+          {canDelete && (
+            <button className="message-action-btn message-action-delete" onClick={() => setShowDeleteConfirm(true)} title="删除">
+              🗑️
+            </button>
+          )}
+        </div>
+      )}
+      {showDeleteConfirm && (
+        <div className="message-delete-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="message-delete-dialog" onClick={e => e.stopPropagation()}>
+            <p>确定删除这条消息？</p>
+            <div className="message-delete-dialog-actions">
+              <button className="btn-cancel" onClick={() => setShowDeleteConfirm(false)}>取消</button>
+              <button className="btn-danger" onClick={handleDelete}>删除</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
