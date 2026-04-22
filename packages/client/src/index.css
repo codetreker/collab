@@ -1430,18 +1430,19 @@ body {
   top: 10px;
   left: 10px;
   z-index: 150;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg-sidebar);
   color: var(--text-sidebar);
   font-size: 20px;
   cursor: pointer;
   box-shadow: var(--shadow-md);
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ─── Mobile Responsive ────────────────────────────────── */
@@ -1473,7 +1474,7 @@ body {
   }
 
   .channel-header {
-    padding-left: 52px; /* Space for hamburger */
+    padding-left: 58px;
   }
 
   .message-item {
@@ -1494,6 +1495,35 @@ body {
     bottom: auto;
     top: 8px;
     right: 8px;
+  }
+
+  /* Touch-friendly targets (44px minimum per Apple HIG) */
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .channel-item {
+    min-height: 44px;
+  }
+
+  .online-user-item {
+    min-height: 44px;
+  }
+
+  .btn {
+    min-height: 44px;
+  }
+
+  .reaction-pill {
+    min-height: 36px;
+    padding: 4px 12px;
+  }
+
+  .message-action-btn {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 18px;
   }
 }
 
