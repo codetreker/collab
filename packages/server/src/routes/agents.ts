@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
 import { requirePermission } from '../middleware/permissions.js';
+import { pluginManager } from '../plugin-manager.js';
 import type { User } from '../types.js';
 
 export function registerAgentRoutes(app: FastifyInstance): void {
@@ -194,5 +195,66 @@ export function registerAgentRoutes(app: FastifyInstance): void {
     ).all(id) as { id: number; permission: string; scope: string; granted_by: string | null; granted_at: number }[];
 
     return { agent_id: id, permissions: details.map((d) => d.permission), details };
+  });
+
+  app.get<{
+    Params: { id: string };
+    Querystring: { path?: string };
+  }>('/api/v1/agents/:id/files', async (request, reply) => {
+    const user = request.currentUser;
+    if (!user) return reply.status(401).send({ error: 'Authentication required' });
+
+    const { id } = request.params;
+    const { path } = request.query;
+
+    if (!path || typeof path !== 'string') {
+      return reply.status(400).send({ error: 'path query parameter is required' });
+    }
+
+    const db = getDb();
+    const agent = Q.getUserById(db, id);
+
+    if (!agent || agent.role !== 'agent') {
+      return reply.status(404).send({ error: 'Agent not found' });
+    }
+    if (agent.owner_id !== user.id) {
+      return reply.status(403).send({ error: 'Only the owner can read agent files' });
+    }
+
+    const conn = pluginManager.getConnection(id);
+    if (!conn || conn.ws.readyState !== 1) {
+      return reply.status(503).send({ error: 'agent_offline' });
+    }
+
+    try {
+      const result = await pluginManager.request(id, {
+        action: 'read_file',
+        path,
+      }, 10_000) as Record<string, unknown>;
+
+      if (result.error === 'path_not_allowed') {
+        return reply.status(403).send({ error: 'path_not_allowed' });
+      }
+      if (result.error === 'file_not_found') {
+        return reply.status(404).send({ error: 'file_not_found' });
+      }
+      if (result.error === 'file_too_large') {
+        return reply.status(413).send({ error: 'file_too_large' });
+      }
+      if (result.error) {
+        return reply.status(500).send({ error: String(result.error) });
+      }
+
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('timed out')) {
+        return reply.status(504).send({ error: 'timeout' });
+      }
+      if (msg.includes('not connected') || msg.includes('disconnected')) {
+        return reply.status(503).send({ error: 'agent_offline' });
+      }
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
   });
 }

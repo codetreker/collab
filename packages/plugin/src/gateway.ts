@@ -4,6 +4,7 @@ import { readPersistedCursor, persistCursor } from "./cursor-store.js";
 import { probeSSE, runSSELoop } from "./sse-client.js";
 import { PluginWsClient } from "./ws-client.js";
 import { dispatchSSEEvent } from "./sse-client.js";
+import { readFile } from "./file-access.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
 import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
 
@@ -402,6 +403,14 @@ async function runWsTransport(params: {
       config: params.config,
       event: collabEvent,
     });
+  });
+
+  wsClient.onRequest(async (data) => {
+    const req = data as Record<string, unknown>;
+    if (req.action === 'read_file' && typeof req.path === 'string') {
+      return readFile(req.path);
+    }
+    return { error: 'unknown_action' };
   });
 
   wsClient.connect();
