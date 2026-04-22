@@ -1,165 +1,315 @@
-# COL-B24: 集成测试覆盖 — 技术设计
+# COL-B24: 集成测试覆盖 — 技术设计 v3
 
 日期：2026-04-22 | 状态：Draft
 
-## 1. 概述
+## 1. 技术决策
 
-为所有非 UI 业务逻辑构建集成测试，覆盖完整业务流程（不只是单 API）。覆盖率目标 85%+。
+### 1.1 为什么不引入新框架
 
-## 2. 测试架构
+保留 Vitest + Fastify inject。理由：
+- 已有基础（200+ 现有测试）
+- Fastify inject 不起真实 HTTP server，零端口冲突
+- WS 测试用 `ws` 包 + Fastify 的 `@fastify/websocket`，inject 不支持 WS 需要起真实 server
 
-### 2.1 框架
+**WS 测试的端口方案**：每个测试文件用随机端口 `server.listen({ port: 0 })`，OS 自动分配。`afterAll` 关闭 server。
 
-- Vitest（已有）
-- Fastify inject（已有）
-- `ws` 包做 WS 客户端测试（已有依赖）
+### 1.2 测试数据隔离
 
-### 2.2 目录结构
-
-```
-packages/server/src/__tests__/
-├── integration/                    # 集成测试（跨 API 业务流程）
-│   ├── auth-flow.test.ts           # 场景 1
-│   ├── channel-lifecycle.test.ts   # 场景 2
-│   ├── permission-flow.test.ts     # 场景 3
-│   ├── message-system.test.ts      # 场景 4
-│   ├── mention-filter.test.ts      # 场景 5
-│   ├── slash-commands.test.ts      # 场景 6
-│   ├── workspace-flow.test.ts      # 场景 7
-│   ├── plugin-ws.test.ts           # 场景 8
-│   └── remote-explorer.test.ts     # 场景 9
-├── core.test.ts                    # 现有单测（保留）
-├── auth.test.ts                    # 现有 API 测试（保留）
-├── ...
-
-packages/plugin/src/__tests__/      # Plugin 单元测试（场景 10）
-├── outbound.test.ts
-├── ws-client.test.ts
-├── file-access.test.ts
-└── accounts.test.ts
-```
-
-### 2.3 测试基础设施
-
-复用现有 `buildTestApp()` + in-memory SQLite。每个集成测试文件独立 DB。
-
-多用户模拟：
+**每个测试文件独立 in-memory SQLite DB**。不用 `beforeEach` 清数据——独立 DB 更简单、无残留。
 
 ```typescript
-async function setupMultiUser(app) {
-  // admin 注册
-  const admin = await registerUser(app, { role: 'admin' });
-  // member 注册
-  const member = await registerUser(app, { role: 'member' });
-  // agent 注册（通过 admin API）
-  const agent = await createAgent(app, admin.token, { name: 'test-bot' });
-  return { admin, member, agent };
+// 每个测试文件
+let app: FastifyInstance;
+let db: Database;
+
+beforeAll(async () => {
+  db = new Database(':memory:');
+  app = await buildTestApp({ db });
+});
+
+afterAll(async () => {
+  await app.close();
+  db.close();
+});
+```
+
+### 1.3 多用户模拟
+
+封装 `TestContext` helper，一次性创建多角色 + 获取 token：
+
+```typescript
+class TestContext {
+  app: FastifyInstance;
+  admin: { id: string; token: string; apiKey?: string };
+  memberA: { id: string; token: string };
+  memberB: { id: string; token: string };
+  agent: { id: string; apiKey: string; ownerId: string };
+  channel: { id: string };
+
+  static async create(): Promise<TestContext> {
+    const ctx = new TestContext();
+    ctx.app = await buildTestApp();
+    ctx.admin = await ctx.registerAdmin();
+    ctx.memberA = await ctx.registerMember('memberA');
+    ctx.memberB = await ctx.registerMember('memberB');
+    ctx.agent = await ctx.createAgent('test-bot');
+    ctx.channel = await ctx.createChannel('test-channel');
+    await ctx.addMember(ctx.channel.id, ctx.memberA.id);
+    await ctx.addMember(ctx.channel.id, ctx.memberB.id);
+    return ctx;
+  }
+
+  // 封装常用操作
+  async sendMessage(channelId: string, token: string, content: string): Promise<any>;
+  async inject(method: string, url: string, token: string, body?: any): Promise<any>;
 }
 ```
 
-## 3. 场景详细设计
+## 2. OpenClaw Mock Harness 实现
 
-### 场景 1: 认证流程 (auth-flow)
-1. 注册 admin → 获取 JWT
-2. 生成邀请码 → 注册 member
-3. 创建 agent → 获取 API key
-4. 用 JWT 调 API → 200
-5. 用 API key 调 API → 200
-6. 无效 token → 401
-7. 过期/篡改 JWT → 401
-8. 邀请码并发消费 → 只有一个成功
+### 2.1 问题
 
-### 场景 2: 频道生命周期 (channel-lifecycle)
-1. Admin 创建频道（公开 + 私有）
-2. 添加 member 到频道
-3. Member 发消息 → 消息出现在频道
-4. Member 编辑自己的消息
-5. Member 删除自己的消息
-6. Member 不能删别人的消息 → 403
-7. Admin 可以删任何消息
-8. Admin 软删频道 → 频道不可见
-9. 频道软删后消息不可访问
+Plugin 代码 import OpenClaw SDK 类型（`ChannelGatewayContext`、`CoreConfig` 等）。测试环境需要提供这些接口的 mock 实现。
 
-### 场景 3: 权限 (permission-flow)
-1. Admin 全权限
-2. Member 无 admin 权限 → 403
-3. 非成员不能访问私有频道 → 404
-4. 公开频道预览（非成员可见但受限）
-5. Agent 只能操作自己的消息
+### 2.2 方案
 
-### 场景 4: 消息系统 (message-system)
-1. 发消息 + 验证入库
-2. 编辑消息 + 验证更新
-3. 删除消息 + 验证软删（content masking）
-4. Reaction 添加/删除/幂等/20 种限制
-5. 分页加载（limit + before + hasMore）
-6. 消息附件自动存入 workspace
+不 mock 整个 OpenClaw runtime。只 mock Plugin 调用的接口：
 
-### 场景 5: requireMention 过滤 (mention-filter)
-1. requireMention=true 时，非 @ 消息被过滤
-2. requireMention=true 时，@ 消息通过
-3. DM 消息不受 requireMention 影响
-4. **三条路径都测**：SSE dispatchSSEEvent / WS onEvent / Poll 事件处理
+```typescript
+// packages/plugin/src/__tests__/harness/openclaw-mock.ts
 
-### 场景 6: Slash Commands (slash-commands)
-1. /topic 更新频道 topic
-2. 权限校验
+import type { ResolvedCollabAccount } from '../../types.js';
 
-### 场景 7: Workspace (workspace-flow)
-1. 上传文件 → 列表 → 下载
-2. 创建文件夹 → 嵌套
-3. 移动文件到文件夹
-4. 重命名 + 冲突处理（自动后缀）
-5. 删除（含递归删文件夹）
-6. 10MB 限制
-7. 权限隔离（A 不能访问 B 的文件）
+interface MockGatewayContext {
+  abortSignal: AbortSignal;
+  account: ResolvedCollabAccount;
+  cfg: Record<string, unknown>;
+  setStatus: (status: any) => void;
+}
 
-### 场景 8: Plugin WS 通信 (plugin-ws)
-1. WS 连接 + API key 认证
-2. 无效 key → close 4001
-3. 事件推送（新消息 → WS 客户端收到）
-4. Server → Plugin request + response
-5. Plugin apiCall（发消息/reaction）
-6. 连接断开 → pending requests reject
+export class OpenClawMockHarness {
+  private ctrl = new AbortController();
+  public statuses: any[] = [];
+  public inboundCalls: any[] = [];
 
-### 场景 9: Remote Explorer (remote-explorer)
-1. 创建 node → 生成 token
-2. Remote agent WS 连接 + token 认证
-3. 绑定目录到 channel
-4. ls / read / stat 代理请求
-5. Owner only 权限校验
-6. Node 离线 → 404
+  createAccount(overrides?: Partial<ResolvedCollabAccount>): ResolvedCollabAccount {
+    return {
+      accountId: 'test',
+      enabled: true,
+      baseUrl: 'http://localhost:PORT', // 替换为真实测试 server 端口
+      apiKey: 'col_test_key',
+      botUserId: '',
+      botDisplayName: '',
+      requireMention: false,
+      pollTimeoutMs: 30000,
+      transport: 'auto' as const,
+      config: { allowFrom: ['*'] },
+      configured: true,
+      ...overrides,
+    };
+  }
 
-### 场景 10: Plugin 单元测试
-- outbound: HTTP fallback 当 WS 不可用
-- ws-client: 重连逻辑、apiCall 超时
-- file-access: 白名单、大文件拒绝
-- accounts: 配置解析、默认值
+  createContext(account: ResolvedCollabAccount): MockGatewayContext {
+    return {
+      abortSignal: this.ctrl.signal,
+      account,
+      cfg: {},
+      setStatus: (s) => this.statuses.push(s),
+    };
+  }
 
-## 4. CI 集成
+  shutdown(): void {
+    this.ctrl.abort();
+  }
+}
+```
 
-- `vitest.config.ts` 的 include 加 `integration/` 目录
-- 覆盖率阈值 80% → 85%
-- 测试超时加大（集成测试可能慢）：`testTimeout: 30000`
+### 2.3 Plugin 测试依赖解决
 
-## 5. Task Breakdown
+Plugin 的 `import { ... } from "openclaw/plugin-sdk/..."` 在测试环境需要解决。两个方案：
 
-### T1: 测试基础设施升级
-- `setupMultiUser` helper
-- integration/ 目录
-- vitest 配置更新
+**A. tsconfig paths alias**（推荐）：
+```json
+// packages/plugin/tsconfig.test.json
+{
+  "compilerOptions": {
+    "paths": {
+      "openclaw/plugin-sdk/*": ["../../node_modules/openclaw/plugin-sdk/*"]
+    }
+  }
+}
+```
 
-### T2: 认证 + 权限集成测试 (场景 1+3)
-### T3: 频道 + 消息集成测试 (场景 2+4)
-### T4: requireMention 三路径测试 (场景 5)
-### T5: Workspace 集成测试 (场景 7)
-### T6: Plugin WS + Remote Explorer 集成测试 (场景 8+9)
-### T7: Slash Commands + Plugin 单元测试 (场景 6+10)
-### T8: 覆盖率调优到 85%+
+**B. 如果 A 不 work**：直接在测试里 mock 掉 OpenClaw SDK import，只测 Plugin 自己的逻辑。
 
-## 6. 验收标准
+### 2.4 完整链路测试
 
-- [ ] 10 个场景全部有对应测试文件
-- [ ] 所有测试通过
+起真实 Collab Fastify server → Plugin 用 mock harness 的 account 连接 → 发消息 → 验证 inbound dispatch：
+
+```typescript
+describe('Plugin + Collab e2e', () => {
+  let server: FastifyInstance;
+  let harness: OpenClawMockHarness;
+  let serverPort: number;
+
+  beforeAll(async () => {
+    server = await buildTestApp();
+    await server.listen({ port: 0 });
+    serverPort = (server.server.address() as any).port;
+    harness = new OpenClawMockHarness();
+  });
+
+  it('Plugin connects and receives events', async () => {
+    const account = harness.createAccount({ baseUrl: `http://localhost:${serverPort}` });
+    const ctx = harness.createContext(account);
+    // 启动 plugin gateway（会连 SSE/WS）
+    const gatewayPromise = startCollabGateway('test-channel', 'Test', ctx as any);
+    // 等连接建立
+    await sleep(2000);
+    // 发消息
+    await sendTestMessage(server, account.apiKey, 'hello');
+    // 验证
+    await sleep(1000);
+    // ... 检查 harness.inboundCalls 或消息到达
+    harness.shutdown();
+    await gatewayPromise;
+  });
+});
+```
+
+## 3. SSE/WS/Poll 三路径 requireMention 测试
+
+### 3.1 问题
+
+requireMention 在三条路径都有过滤逻辑，需要统一验证行为一致。
+
+### 3.2 方案
+
+用参数化测试 + 真实 Collab server：
+
+```typescript
+describe.each([
+  ['SSE', 'sse'],
+  ['WS', 'ws'],
+  ['Poll', 'poll'],
+])('requireMention via %s', (label, transport) => {
+  it('filters non-mentioned messages', async () => {
+    const account = harness.createAccount({
+      transport: transport as any,
+      requireMention: true,
+    });
+    // 启动 plugin
+    // 发不含 @bot 的消息
+    // 验证 inbound 没收到
+  });
+
+  it('passes mentioned messages', async () => {
+    // 发含 @bot 的消息
+    // 验证 inbound 收到
+  });
+});
+```
+
+## 4. WS 集成测试方案
+
+### 4.1 Plugin WS endpoint 测试
+
+```typescript
+describe('WS Plugin endpoint', () => {
+  let server: FastifyInstance;
+  let port: number;
+
+  beforeAll(async () => {
+    server = await buildRealApp(); // 不用 inject，起真实 server
+    await server.listen({ port: 0 });
+    port = (server.server.address() as any).port;
+  });
+
+  it('connects with valid API key', async () => {
+    const ws = new WebSocket(`ws://localhost:${port}/ws/plugin?apiKey=${validKey}`);
+    await waitForOpen(ws);
+    expect(ws.readyState).toBe(WebSocket.OPEN);
+    ws.close();
+  });
+
+  it('rejects invalid key with 4001', async () => {
+    const ws = new WebSocket(`ws://localhost:${port}/ws/plugin?apiKey=bad`);
+    const code = await waitForClose(ws);
+    expect(code).toBe(4001);
+  });
+});
+```
+
+### 4.2 Remote Explorer WS 测试
+
+同样用真实 server + `ws` 包做 WS 客户端。Remote agent mock 在测试里模拟：
+
+```typescript
+it('relays file read request', async () => {
+  // 1. 创建 node + 获取 token
+  // 2. Mock remote agent WS 连接
+  const agent = new WebSocket(`ws://localhost:${port}/ws/remote?token=${token}`);
+  agent.on('message', (raw) => {
+    const msg = JSON.parse(raw);
+    if (msg.type === 'request') {
+      agent.send(JSON.stringify({
+        type: 'response',
+        id: msg.id,
+        data: { content: 'file content', size: 12, mime_type: 'text/plain' },
+      }));
+    }
+  });
+  // 3. HTTP 请求读文件
+  const res = await app.inject({ method: 'GET', url: `/api/v1/remote/nodes/${nodeId}/read?path=/test.txt`, headers: { authorization: `Bearer ${token}` } });
+  expect(res.statusCode).toBe(200);
+});
+```
+
+## 5. Plugin 单元测试方案
+
+不需要 OpenClaw mock，纯函数测试：
+
+### outbound.test.ts
+```typescript
+// mock fetch/WS，验证 sendCollabText 正确调用 API
+// 验证 WS 可用时走 apiCall，不可用时走 HTTP
+```
+
+### ws-client.test.ts
+```typescript
+// 起 mock WS server
+// 测连接、重连（指数退避）、apiCall（request→response）、超时
+```
+
+### file-access.test.ts
+```typescript
+// 创建临时目录 + 配置文件
+// 测白名单校验、readFile、大文件拒绝
+```
+
+### accounts.test.ts
+```typescript
+// 测配置解析、默认值、transport 枚举
+```
+
+## 6. Task Breakdown
+
+| Task | 内容 | 预估 |
+|------|------|------|
+| T1 | TestContext helper + 基础设施 + CI 配置 | 小 |
+| T2 | 场景 1+3+12: 认证 + 权限 + 并发 | 中 |
+| T3 | 场景 2+4+11: 频道 + 消息 + DM | 中 |
+| T4 | 场景 5+6: requireMention 三路径 + Slash | 中 |
+| T5 | 场景 7: Workspace | 中 |
+| T6 | 场景 8+14: Plugin WS + 文件链接 | 大（需起真实 server） |
+| T7 | 场景 9: Remote Explorer | 大（WS mock agent） |
+| T8 | 场景 10: OpenClaw mock harness + Plugin 集成 | 大 |
+| T9 | 场景 13 + Plugin 单测 + 覆盖率调优 | 中 |
+
+## 7. 验收标准
+- [ ] 14 个场景全部有测试
+- [ ] OpenClaw mock harness 能跑 startCollabGateway
+- [ ] 多用户隔离验证（TestContext）
+- [ ] WS 测试用真实 server + 随机端口
 - [ ] 覆盖率 ≥ 85%
 - [ ] CI 通过
