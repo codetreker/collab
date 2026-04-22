@@ -1,4 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { Markdown } from 'tiptap-markdown';
 import Picker from '@emoji-mart/react';
 import emojiData from '@emoji-mart/data';
 import { useAppContext } from '../context/AppContext';
@@ -24,7 +27,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   const [text, setText] = useState('');
   const [sendStatus, setSendStatus] = useState<SendStatus>('idle');
   const [uploading, setUploading] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingSent = useRef(0);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -61,14 +63,97 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
   const mention = useMention(mentionUsers);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.style.height = 'auto';
-      ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
-    }
-  }, [text]);
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+      }),
+      Markdown.configure({
+        html: false,
+        transformCopiedText: true,
+        transformPastedText: true,
+      }),
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'tiptap-editor',
+        'data-placeholder': '输入消息... (Ctrl+Enter 发送)',
+      },
+      handleDrop: (_view, event) => {
+        const files = event.dataTransfer?.files;
+        if (files) {
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i]!;
+            if (file.type.startsWith('image/')) {
+              event.preventDefault();
+              uploadAndSend(file);
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      handlePaste: (_view, event) => {
+        const items = event.clipboardData?.items;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i]!;
+            if (item.type.startsWith('image/')) {
+              event.preventDefault();
+              const file = item.getAsFile();
+              if (file) uploadAndSend(file);
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      handleKeyDown: (_view, event) => {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          handleSendRef.current();
+          return true;
+        }
+        return false;
+      },
+    },
+    onUpdate: ({ editor: ed }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mdStorage = (ed.storage as any).markdown as { getMarkdown(): string } | undefined;
+      const newText = mdStorage?.getMarkdown() ?? ed.getText();
+      setText(newText);
+      emitTyping();
+
+      if (slashResolvedUser) {
+        setSlashResolvedUser(undefined);
+      }
+
+      // Mention detection from plain text
+      const plainText = ed.getText();
+      const cursorPos = plainText.length; // approximate
+
+      if (plainText.startsWith('/') && !plainText.includes(' ')) {
+        mention.setVisible(false);
+        return;
+      }
+
+      const slashUserMatch = plainText.match(/^\/(\w+)\s(.*)$/);
+      if (slashUserMatch) {
+        const cmd = commandRegistry.get(slashUserMatch[1]!);
+        if (cmd && cmd.paramType === 'user') {
+          const argText = slashUserMatch[2]!;
+          const q = argText.replace(/^@/, '');
+          mention.handleChange(`@${q}`, q.length + 1);
+          return;
+        }
+      }
+
+      mention.handleChange(plainText, cursorPos);
+    },
+  });
+
+  const handleSendRef = useRef<() => void>(() => {});
 
   const [commandError, setCommandError] = useState<string | null>(null);
 
@@ -100,7 +185,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
     setCommandError(null);
 
-    // Slash command interception
     if (content.startsWith('/')) {
       const spaceIdx = content.indexOf(' ');
       const name = spaceIdx === -1 ? content.slice(1) : content.slice(1, spaceIdx);
@@ -111,7 +195,8 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
           await executeCommand(name, args, slashResolvedUser);
           setText('');
           setSlashResolvedUser(undefined);
-          textareaRef.current?.focus();
+          editor?.commands.clearContent();
+          editor?.commands.focus();
         } catch (err) {
           if (err instanceof CommandError) {
             setCommandError(err.message);
@@ -150,7 +235,8 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     });
 
     setText('');
-    textareaRef.current?.focus();
+    editor?.commands.clearContent();
+    editor?.commands.focus();
 
     sendWsMessage({
       type: 'send_message',
@@ -165,7 +251,11 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId, channelId });
     }, 10_000);
     registerAckTimer(clientMessageId, () => clearTimeout(timer));
-  }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand]);
+  }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand, editor, slashResolvedUser]);
+
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  }, [handleSend]);
 
   const handleSlashSelect = useCallback(async (cmd: CommandDefinition) => {
     if (cmd.paramType === 'none') {
@@ -187,15 +277,18 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         }
       }
       setText('');
+      editor?.commands.clearContent();
       slash.close();
     } else {
-      setText(`/${cmd.name} `);
+      const newText = `/${cmd.name} `;
+      setText(newText);
+      editor?.commands.setContent(newText);
       slash.close();
-      textareaRef.current?.focus();
+      editor?.commands.focus('end');
     }
-  }, [channelId, state.currentUser, dispatch, actions, slash]);
+  }, [channelId, state.currentUser, dispatch, actions, slash, editor]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const handleEditorKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (slash.isActive && slash.filtered.length > 0) {
       if (slash.handleKeyDown(e)) return;
       if (e.key === 'Enter' || e.key === 'Tab') {
@@ -229,33 +322,29 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         return;
       }
     }
-
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }, [slash, handleSlashSelect, mention.visible, mention.filteredUsers, mention.index, handleSend]);
+  }, [slash, handleSlashSelect, mention.visible, mention.filteredUsers, mention.index]);
 
   const handleInsertMention = (user: User) => {
-    const slashMatch = text.match(/^\/(\w+)\s/);
+    const plainText = editor?.getText() ?? '';
+
+    const slashMatch = plainText.match(/^\/(\w+)\s/);
     if (slashMatch) {
       const cmd = commandRegistry.get(slashMatch[1]!);
       if (cmd && cmd.paramType === 'user') {
-        setText(`/${cmd.name} @${user.display_name}`);
+        const newText = `/${cmd.name} @${user.display_name}`;
+        setText(newText);
+        editor?.commands.setContent(newText);
         mention.reset();
         setSlashResolvedUser({ id: user.id, username: user.display_name });
         return;
       }
     }
 
-    const { newText, cursorPos } = mention.insertMention(user, text, textareaRef.current?.selectionStart ?? text.length);
+    const { newText, cursorPos: _cursorPos } = mention.insertMention(user, plainText, plainText.length);
     setText(newText);
+    editor?.commands.setContent(newText);
     mention.reset();
-
-    setTimeout(() => {
-      textareaRef.current?.setSelectionRange(cursorPos, cursorPos);
-      textareaRef.current?.focus();
-    }, 0);
+    editor?.commands.focus('end');
   };
 
   const emitTyping = useCallback(() => {
@@ -266,17 +355,8 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   }, [channelId, sendWsMessage]);
 
   const insertEmojiAtCursor = useCallback((emoji: string) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const newText = text.slice(0, start) + emoji + text.slice(end);
-    setText(newText);
-    requestAnimationFrame(() => {
-      const pos = start + emoji.length;
-      ta.setSelectionRange(pos, pos);
-    });
-  }, [text]);
+    editor?.commands.insertContent(emoji);
+  }, [editor]);
 
   useEffect(() => {
     if (!emojiPickerOpen) return;
@@ -288,74 +368,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [emojiPickerOpen]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setText(value);
-    emitTyping();
-
-    if (slashResolvedUser) {
-      setSlashResolvedUser(undefined);
-    }
-
-    // Slash commands take priority over mentions
-    if (value.startsWith('/') && !value.includes(' ')) {
-      mention.setVisible(false);
-      return;
-    }
-
-    // User-param slash command argument phase
-    const slashUserMatch = value.match(/^\/(\w+)\s(.*)$/);
-    if (slashUserMatch) {
-      const cmd = commandRegistry.get(slashUserMatch[1]!);
-      if (cmd && cmd.paramType === 'user') {
-        const argText = slashUserMatch[2]!;
-        const q = argText.replace(/^@/, '');
-        mention.handleChange(`@${q}`, q.length + 1);
-        return;
-      }
-    }
-
-    // Check for @ mention trigger
-    const cursorPos = e.target.selectionStart;
-    if (!mention.handleChange(value, cursorPos)) {
-      // handleChange returns null when no mention detected — already sets visible=false
-    }
-  };
-
-  // Image upload handling
-  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i]!;
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) await uploadAndSend(file);
-        return;
-      }
-    }
-  }, [channelId]);
-
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer?.files;
-    if (!files) return;
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]!;
-      if (file.type.startsWith('image/')) {
-        await uploadAndSend(file);
-        return;
-      }
-    }
-  }, [channelId]);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
 
   const uploadAndSend = async (file: File) => {
     setUploading(true);
@@ -398,7 +410,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     if (file && file.type.startsWith('image/')) {
       await uploadAndSend(file);
     }
-    // Reset input so same file can be selected again
     e.target.value = '';
   };
 
@@ -411,17 +422,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     }
   };
 
-  // Determine active command for placeholder
-  const activeCommandPlaceholder = (() => {
-    const m = text.match(/^\/(\w+)\s/);
-    if (!m) return null;
-    const cmd = commandRegistry.get(m[1]!);
-    if (cmd && cmd.paramType === 'text' && !text.slice(m[0].length).trim()) {
-      return cmd.placeholder ?? `输入 ${cmd.name} 参数…`;
-    }
-    return null;
-  })();
-
   if (disabled) {
     return (
       <div className="message-input-container">
@@ -433,7 +433,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   }
 
   return (
-    <div className="message-input-container" onDrop={handleDrop} onDragOver={handleDragOver}>
+    <div className="message-input-container">
       <SlashCommandPicker
         commands={slash.filtered}
         visible={slash.isActive}
@@ -480,24 +480,16 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
               onEmojiSelect={(emoji: { native: string }) => {
                 insertEmojiAtCursor(emoji.native);
                 setEmojiPickerOpen(false);
-                textareaRef.current?.focus();
+                editor?.commands.focus();
               }}
               locale="zh"
               previewPosition="none"
             />
           </div>
         )}
-        <textarea
-          ref={textareaRef}
-          className="message-textarea"
-          value={text}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          placeholder={activeCommandPlaceholder ?? "输入消息... (Enter 发送, Shift+Enter 换行)"}
-          rows={1}
-          disabled={sendStatus === 'sending'}
-        />
+        <div className="tiptap-wrapper" onKeyDown={handleEditorKeyDown}>
+          <EditorContent editor={editor} />
+        </div>
         <button
           className="btn btn-primary send-btn"
           onClick={handleSend}
