@@ -1127,6 +1127,29 @@ body {
   text-decoration: underline;
 }
 
+.tiptap-wrapper .tiptap .mention {
+  background: var(--bg-mention);
+  color: var(--text-mention);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-weight: 500;
+  box-decoration-break: clone;
+}
+
+.mention-suggestion-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  right: 16px;
+  z-index: 50;
+  margin-bottom: 4px;
+}
+
+.mention-suggestion-popup .mention-picker {
+  position: static;
+  margin-bottom: 0;
+}
+
 .send-btn {
   flex-shrink: 0;
   margin-bottom: 4px;

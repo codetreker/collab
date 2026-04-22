@@ -1,25 +1,47 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 import Picker from '@emoji-mart/react';
 import emojiData from '@emoji-mart/data';
 import { useAppContext } from '../context/AppContext';
-import MentionPicker from './MentionPicker';
 import SlashCommandPicker from './SlashCommandPicker';
 import { useSlashCommands } from '../hooks/useSlashCommands';
-import { useMention } from '../hooks/useMention';
+import { createMentionExtension } from '../extensions/mention';
 import { commandRegistry, CommandError } from '../commands/registry';
 import type { CommandDefinition, CommandContext } from '../commands/registry';
 import '../commands/builtins';
 import * as api from '../lib/api';
 import { fetchChannelMembers, ApiError } from '../lib/api';
-import type { User, SendStatus } from '../types';
+import type { SendStatus } from '../types';
 
 interface Props {
   channelId: string;
   disabled?: boolean;
   disabledHint?: string;
+}
+
+function getMarkdownFromEditor(ed: { storage: unknown; getText: () => string }): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mdStorage = (ed.storage as any).markdown as { getMarkdown(): string } | undefined;
+  return mdStorage?.getMarkdown() ?? ed.getText();
+}
+
+function extractMentionIds(ed: { getJSON: () => { content?: Array<Record<string, unknown>> } }): string[] {
+  const ids: string[] = [];
+  const walk = (node: Record<string, unknown>) => {
+    if (node.type === 'mention' && typeof (node.attrs as Record<string, unknown>)?.id === 'string') {
+      ids.push((node.attrs as Record<string, string>).id);
+    }
+    if (Array.isArray(node.content)) {
+      for (const child of node.content) walk(child as Record<string, unknown>);
+    }
+  };
+  const json = ed.getJSON();
+  if (json.content) {
+    for (const node of json.content) walk(node as Record<string, unknown>);
+  }
+  return [...new Set(ids)];
 }
 
 export default function MessageInput({ channelId, disabled, disabledHint }: Props) {
@@ -57,11 +79,15 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     return () => { cancelled = true; };
   }, [channelId, isPrivate, membersVersion]);
 
-  const mentionUsers = isPrivate && channelMemberIds
+  const mentionUsersRef = useRef(state.users);
+  mentionUsersRef.current = isPrivate && channelMemberIds
     ? state.users.filter(u => channelMemberIds.has(u.id))
     : state.users;
 
-  const mention = useMention(mentionUsers);
+  const mentionExtension = useMemo(
+    () => createMentionExtension(() => mentionUsersRef.current),
+    [],
+  );
 
   const editor = useEditor({
     extensions: [
@@ -73,6 +99,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         transformCopiedText: true,
         transformPastedText: true,
       }),
+      mentionExtension,
     ],
     content: '',
     editorProps: {
@@ -119,37 +146,13 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       },
     },
     onUpdate: ({ editor: ed }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mdStorage = (ed.storage as any).markdown as { getMarkdown(): string } | undefined;
-      const newText = mdStorage?.getMarkdown() ?? ed.getText();
+      const newText = getMarkdownFromEditor(ed);
       setText(newText);
       emitTyping();
 
       if (slashResolvedUser) {
         setSlashResolvedUser(undefined);
       }
-
-      // Mention detection from plain text
-      const plainText = ed.getText();
-      const cursorPos = plainText.length; // approximate
-
-      if (plainText.startsWith('/') && !plainText.includes(' ')) {
-        mention.setVisible(false);
-        return;
-      }
-
-      const slashUserMatch = plainText.match(/^\/(\w+)\s(.*)$/);
-      if (slashUserMatch) {
-        const cmd = commandRegistry.get(slashUserMatch[1]!);
-        if (cmd && cmd.paramType === 'user') {
-          const argText = slashUserMatch[2]!;
-          const q = argText.replace(/^@/, '');
-          mention.handleChange(`@${q}`, q.length + 1);
-          return;
-        }
-      }
-
-      mention.handleChange(plainText, cursorPos);
     },
   });
 
@@ -180,7 +183,10 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   }, [channelId, state.currentUser, dispatch, actions]);
 
   const handleSend = useCallback(async () => {
-    const content = text.trim();
+    if (!editor) return;
+
+    const markdown = getMarkdownFromEditor(editor);
+    const content = markdown.trim();
     if (!content || sendStatus === 'sending') return;
 
     setCommandError(null);
@@ -195,8 +201,8 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
           await executeCommand(name, args, slashResolvedUser);
           setText('');
           setSlashResolvedUser(undefined);
-          editor?.commands.clearContent();
-          editor?.commands.focus();
+          editor.commands.clearContent();
+          editor.commands.focus();
         } catch (err) {
           if (err instanceof CommandError) {
             setCommandError(err.message);
@@ -210,12 +216,28 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       }
     }
 
-    const mentionIds: string[] = [];
-    const mentionRegex = /<@([^>]+)>/g;
-    let match;
-    while ((match = mentionRegex.exec(content)) !== null) {
-      const userId = match[1]!;
-      if (state.users.some(u => u.id === userId)) mentionIds.push(userId);
+    const mentionIds = extractMentionIds(editor);
+
+    // Replace mention nodes in markdown with <@userId> format
+    let finalContent = content;
+    const json = editor.getJSON();
+    const mentionMap = new Map<string, string>();
+    const walkForLabels = (node: Record<string, unknown>) => {
+      if (node.type === 'mention') {
+        const attrs = node.attrs as Record<string, string>;
+        if (attrs.id && attrs.label) {
+          mentionMap.set(attrs.label, attrs.id);
+        }
+      }
+      if (Array.isArray(node.content)) {
+        for (const child of node.content) walkForLabels(child as Record<string, unknown>);
+      }
+    };
+    if (json.content) {
+      for (const node of json.content) walkForLabels(node as Record<string, unknown>);
+    }
+    for (const [label, id] of mentionMap) {
+      finalContent = finalContent.replace(new RegExp(`@${escapeRegex(label)}`, 'g'), `<@${id}>`);
     }
 
     const clientMessageId = crypto.randomUUID();
@@ -224,7 +246,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       message: {
         clientMessageId,
         channelId,
-        content,
+        content: finalContent,
         contentType: 'text',
         status: 'pending',
         createdAt: Date.now(),
@@ -235,13 +257,13 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     });
 
     setText('');
-    editor?.commands.clearContent();
-    editor?.commands.focus();
+    editor.commands.clearContent();
+    editor.commands.focus();
 
     sendWsMessage({
       type: 'send_message',
       channel_id: channelId,
-      content,
+      content: finalContent,
       content_type: 'text',
       client_message_id: clientMessageId,
       mentions: mentionIds,
@@ -251,7 +273,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId, channelId });
     }, 10_000);
     registerAckTimer(clientMessageId, () => clearTimeout(timer));
-  }, [text, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand, editor, slashResolvedUser]);
+  }, [editor, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand, slashResolvedUser]);
 
   useEffect(() => {
     handleSendRef.current = handleSend;
@@ -298,54 +320,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         return;
       }
     }
-
-    if (mention.visible) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        mention.setIndex(i => Math.min(i + 1, mention.filteredUsers.length - 1));
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        mention.setIndex(i => Math.max(i - 1, 0));
-        return;
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        if (mention.filteredUsers[mention.index]) {
-          handleInsertMention(mention.filteredUsers[mention.index]);
-        }
-        return;
-      }
-      if (e.key === 'Escape') {
-        mention.setVisible(false);
-        return;
-      }
-    }
-  }, [slash, handleSlashSelect, mention.visible, mention.filteredUsers, mention.index]);
-
-  const handleInsertMention = (user: User) => {
-    const plainText = editor?.getText() ?? '';
-
-    const slashMatch = plainText.match(/^\/(\w+)\s/);
-    if (slashMatch) {
-      const cmd = commandRegistry.get(slashMatch[1]!);
-      if (cmd && cmd.paramType === 'user') {
-        const newText = `/${cmd.name} @${user.display_name}`;
-        setText(newText);
-        editor?.commands.setContent(newText);
-        mention.reset();
-        setSlashResolvedUser({ id: user.id, username: user.display_name });
-        return;
-      }
-    }
-
-    const { newText, cursorPos: _cursorPos } = mention.insertMention(user, plainText, plainText.length);
-    setText(newText);
-    editor?.commands.setContent(newText);
-    mention.reset();
-    editor?.commands.focus('end');
-  };
+  }, [slash, handleSlashSelect]);
 
   const emitTyping = useCallback(() => {
     const now = Date.now();
@@ -440,14 +415,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         selectedIndex={slash.selectedIndex}
         onSelect={handleSlashSelect}
       />
-      <MentionPicker
-        users={mentionUsers}
-        query={mention.query}
-        onSelect={handleInsertMention}
-        onDismiss={() => mention.setVisible(false)}
-        visible={mention.visible}
-        selectedIndex={mention.index}
-      />
 
       <div className="message-input-row">
         <button
@@ -509,4 +476,8 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       )}
     </div>
   );
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
