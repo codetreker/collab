@@ -1,6 +1,7 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { renderMarkdown } from '../lib/markdown';
 import ReactionBar from './ReactionBar';
+import EditEditor from './EditEditor';
 import * as api from '../lib/api';
 import { useAppContext } from '../context/AppContext';
 import { useLongPress } from '../hooks/useLongPress';
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export default function MessageItem({ message, userMap, currentUserId, currentUserRole, onRetry }: Props) {
-  const { dispatch } = useAppContext();
+  const { dispatch, state } = useAppContext();
   const isSystem = message.sender_id === 'system';
   const senderName = isSystem ? '系统' : (message.sender_name ?? userMap.get(message.sender_id) ?? 'Unknown');
   const isOwn = message.sender_id === currentUserId;
@@ -27,36 +28,25 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
   const avatarColor = stringToColor(message.sender_id);
 
   const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const renderedContent = useMemo(() => {
     if (message.content_type === 'image') return null;
     return renderMarkdown(message.content, message.mentions, userMap);
   }, [message.content, message.content_type, message.mentions, userMap]);
 
-  useEffect(() => {
-    if (editing && textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.selectionStart = textareaRef.current.value.length;
-    }
-  }, [editing]);
-
   const startEdit = useCallback(() => {
-    setEditContent(message.content);
     setEditing(true);
-  }, [message.content]);
+  }, []);
 
   const cancelEdit = useCallback(() => {
     setEditing(false);
-    setEditContent('');
   }, []);
 
-  const saveEdit = useCallback(async () => {
-    const trimmed = editContent.trim();
+  const saveEdit = useCallback(async (newContent: string) => {
+    const trimmed = newContent.trim();
     if (!trimmed || trimmed === message.content) {
       cancelEdit();
       return;
@@ -77,16 +67,7 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
     } finally {
       setEditSaving(false);
     }
-  }, [editContent, message, dispatch, cancelEdit]);
-
-  const handleEditKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      cancelEdit();
-    } else if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      saveEdit();
-    }
-  }, [cancelEdit, saveEdit]);
+  }, [message, dispatch, cancelEdit]);
 
   const handleDelete = useCallback(async () => {
     try {
@@ -150,20 +131,13 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
           {isDeleted ? (
             <div className="message-deleted">此消息已删除</div>
           ) : editing ? (
-            <div className="message-edit-container">
-              <textarea
-                ref={textareaRef}
-                className="message-edit-textarea"
-                value={editContent}
-                onChange={e => setEditContent(e.target.value)}
-                onKeyDown={handleEditKeyDown}
-                disabled={editSaving}
-                rows={2}
-              />
-              <div className="message-edit-hint">
-                Enter 保存 · Esc 取消
-              </div>
-            </div>
+            <EditEditor
+              initialContent={message.content}
+              onSave={saveEdit}
+              onCancel={cancelEdit}
+              disabled={editSaving}
+              users={state.users}
+            />
           ) : message.content_type === 'image' ? (
             <ImageContent url={message.content} />
           ) : (

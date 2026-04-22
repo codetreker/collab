@@ -1,22 +1,52 @@
-// ─── Markdown rendering with XSS protection ─────────────
-
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+import typescript from 'highlight.js/lib/languages/typescript';
+import python from 'highlight.js/lib/languages/python';
+import css from 'highlight.js/lib/languages/css';
+import json from 'highlight.js/lib/languages/json';
+import bash from 'highlight.js/lib/languages/bash';
+import xml from 'highlight.js/lib/languages/xml';
+import sql from 'highlight.js/lib/languages/sql';
+import markdown from 'highlight.js/lib/languages/markdown';
 
-// Configure marked for safe rendering
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('js', javascript);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('ts', typescript);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('py', python);
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('sh', bash);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('html', xml);
+hljs.registerLanguage('sql', sql);
+hljs.registerLanguage('markdown', markdown);
+hljs.registerLanguage('md', markdown);
+
 marked.setOptions({
-  breaks: true,   // GitHub-flavored line breaks
-  gfm: true,      // GitHub Flavored Markdown
+  breaks: true,
+  gfm: true,
 });
 
-/**
- * Render markdown text to sanitized HTML.
- * Mentions like @username are highlighted.
- */
+const renderer = new marked.Renderer();
+renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
+  const language = lang && hljs.getLanguage(lang) ? lang : undefined;
+  const highlighted = language
+    ? hljs.highlight(text, { language }).value
+    : escapeHtml(text);
+  const langLabel = language ? `<span class="code-lang">${escapeHtml(language)}</span>` : '';
+  return `<pre><code class="hljs${language ? ` language-${escapeHtml(language)}` : ''}">${langLabel}${highlighted}</code></pre>`;
+};
+
+marked.use({ renderer });
+
 export function renderMarkdown(text: string, mentionedUserIds?: string[], userMap?: Map<string, string>): string {
   let processed = text;
 
-  // Replace <@user_id> tokens with highlighted display names
   if (userMap) {
     processed = processed.replace(/<@([^>]+)>/g, (_match, userId: string) => {
       const displayName = userMap.get(userId);
@@ -25,7 +55,6 @@ export function renderMarkdown(text: string, mentionedUserIds?: string[], userMa
     });
   }
 
-  // Backward compat: highlight @displayName for old messages with known mentioned user IDs
   if (mentionedUserIds && mentionedUserIds.length > 0 && userMap) {
     for (const userId of mentionedUserIds) {
       const displayName = userMap.get(userId);
@@ -37,8 +66,7 @@ export function renderMarkdown(text: string, mentionedUserIds?: string[], userMa
   }
 
   const rawHtml = marked.parse(processed) as string;
-  
-  // Sanitize with DOMPurify - allow mention spans
+
   const clean = DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS: [
       'p', 'br', 'strong', 'em', 'del', 'code', 'pre', 'blockquote',
@@ -49,7 +77,6 @@ export function renderMarkdown(text: string, mentionedUserIds?: string[], userMa
     ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'src', 'alt', 'title'],
   });
 
-  // Make all links open in new tab
   return clean.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
 }
 

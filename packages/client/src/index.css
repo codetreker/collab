@@ -757,6 +757,12 @@ body {
   border-color: var(--accent);
 }
 
+.tiptap-edit-wrapper .tiptap {
+  min-height: 60px;
+  max-height: 200px;
+  font-size: 14px;
+}
+
 .message-edit-hint {
   font-size: 11px;
   color: var(--text-secondary);
@@ -898,6 +904,15 @@ body {
   padding: 0;
 }
 
+.message-text pre .code-lang {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .message-text blockquote {
   border-left: 3px solid var(--accent);
   padding-left: 12px;
@@ -1036,6 +1051,158 @@ body {
 
 .message-textarea::placeholder {
   color: var(--text-secondary);
+}
+
+/* ─── Tiptap Editor ───────────────────────────────────── */
+
+.tiptap-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.tiptap-wrapper .tiptap {
+  padding: 10px 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 15px;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.15s;
+  max-height: 200px;
+  min-height: 40px;
+  overflow-y: auto;
+}
+
+.tiptap-wrapper .tiptap:focus {
+  border-color: var(--accent);
+}
+
+.tiptap-wrapper .tiptap p {
+  margin: 0;
+}
+
+.tiptap-wrapper .tiptap p + p {
+  margin-top: 4px;
+}
+
+.tiptap-wrapper .tiptap.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-secondary);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap-wrapper .tiptap code {
+  background: var(--bg-secondary);
+  color: var(--text-code);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.tiptap-wrapper .tiptap pre {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 6px 0;
+  overflow-x: auto;
+}
+
+.tiptap-wrapper .tiptap pre code {
+  background: none;
+  color: var(--text-primary);
+  padding: 0;
+}
+
+.tiptap-wrapper .tiptap blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  margin: 6px 0;
+  color: var(--text-secondary);
+}
+
+.tiptap-wrapper .tiptap ul,
+.tiptap-wrapper .tiptap ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
+.tiptap-wrapper .tiptap strong {
+  font-weight: 700;
+}
+
+.tiptap-wrapper .tiptap a {
+  color: var(--text-link);
+  text-decoration: underline;
+}
+
+.tiptap-wrapper .tiptap .mention {
+  background: var(--bg-mention);
+  color: var(--text-mention);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-weight: 500;
+  box-decoration-break: clone;
+}
+
+.mention-suggestion-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  right: 16px;
+  z-index: 50;
+  margin-bottom: 4px;
+}
+
+.mention-suggestion-popup .mention-picker {
+  position: static;
+  margin-bottom: 0;
+}
+
+/* ─── Toolbar ─────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 4px 0 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.toolbar-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.6;
+  transition: background 0.1s, color 0.1s;
+}
+
+.toolbar-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.toolbar-btn-active {
+  background: var(--bg-secondary);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .send-btn {
@@ -1518,6 +1685,10 @@ body {
   }
 
   .message-textarea {
+    font-size: 16px;
+  }
+
+  .tiptap-wrapper .tiptap {
     font-size: 16px;
   }
 
