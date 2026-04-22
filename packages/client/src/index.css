@@ -1532,6 +1532,66 @@ body {
     min-height: 44px;
     font-size: 18px;
   }
+
+  /* Emoji picker: bottom sheet on mobile */
+  .emoji-picker-popover {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    margin-bottom: 0;
+    z-index: 300;
+  }
+
+  .emoji-picker-popover > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+
+  /* Slash command picker: bottom sheet on mobile */
+  .slash-command-picker {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    max-height: 50vh;
+    border-radius: 12px 12px 0 0;
+    z-index: 300;
+    margin-bottom: 0;
+  }
+
+  /* Mention picker: bottom sheet on mobile */
+  .mention-picker {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    max-height: 50vh;
+    border-radius: 12px 12px 0 0;
+    z-index: 300;
+    margin-bottom: 0;
+  }
+
+  /* Reaction picker: bottom sheet on mobile */
+  .reaction-picker-popover {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    margin-bottom: 0;
+    z-index: 300;
+  }
+
+  .reaction-picker-popover > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
 }
 
 /* ─── Safe area for notch devices ──────────────────────── */
@@ -2125,4 +2185,51 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
+}
+
+/* ─── Mobile Action Sheet ─────────────────────────────── */
+
+.mobile-action-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 500;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.mobile-action-sheet {
+  width: 100%;
+  max-width: 500px;
+  background: var(--bg-primary);
+  border-radius: 12px 12px 0 0;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.mobile-action-sheet-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.mobile-action-sheet-btn:active {
+  background: var(--bg-secondary);
+}
+
+.mobile-action-sheet-danger {
+  color: var(--danger);
+}
+
+.mobile-action-sheet-cancel {
+  border-top: 1px solid var(--border-color);
+  margin-top: 4px;
+  color: var(--text-secondary);
 }
