@@ -444,6 +444,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         users={mentionUsers}
         query={mention.query}
         onSelect={handleInsertMention}
+        onDismiss={() => mention.setVisible(false)}
         visible={mention.visible}
         selectedIndex={mention.index}
       />

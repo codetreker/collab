@@ -5,11 +5,14 @@ interface Props {
   users: User[];
   query: string;
   onSelect: (user: User) => void;
+  onDismiss: () => void;
   visible: boolean;
   selectedIndex: number;
 }
 
-export default function MentionPicker({ users, query, onSelect, visible, selectedIndex }: Props) {
+const isMobile = () => window.innerWidth <= 768;
+
+export default function MentionPicker({ users, query, onSelect, onDismiss, visible, selectedIndex }: Props) {
   if (!visible) return null;
 
   const q = query.toLowerCase();
@@ -22,7 +25,7 @@ export default function MentionPicker({ users, query, onSelect, visible, selecte
 
   if (filtered.length === 0) return null;
 
-  return (
+  const picker = (
     <div className="mention-picker">
       {filtered.map((user, idx) => (
         <button
@@ -46,6 +49,17 @@ export default function MentionPicker({ users, query, onSelect, visible, selecte
       ))}
     </div>
   );
+
+  if (isMobile()) {
+    return (
+      <>
+        <div className="mention-backdrop" onMouseDown={onDismiss} onTouchStart={onDismiss} />
+        {picker}
+      </>
+    );
+  }
+
+  return picker;
 }
 
 function stringToColor(str: string): string {
