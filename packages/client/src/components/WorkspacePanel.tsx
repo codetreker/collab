@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { WorkspaceFile } from '../types';
 import * as api from '../lib/api';
 import { FileViewer } from './FileViewer';
+import MarkdownEditor from './MarkdownEditor';
 
 interface Props {
   channelId: string;
@@ -202,63 +203,13 @@ export default function WorkspacePanel({ channelId }: Props) {
       )}
 
       {editingFile && (
-        <MarkdownEditorModal
-          content={editingFile.content}
+        <MarkdownEditor
+          initialContent={editingFile.content}
           fileName={editingFile.file.name}
           onSave={handleSaveEdit}
           onCancel={() => setEditingFile(null)}
         />
       )}
-    </div>
-  );
-}
-
-function MarkdownEditorModal({
-  content,
-  fileName,
-  onSave,
-  onCancel,
-}: {
-  content: string;
-  fileName: string;
-  onSave: (content: string) => void;
-  onCancel: () => void;
-}) {
-  const [text, setText] = useState(content);
-
-  return (
-    <div className="file-viewer-overlay" onClick={onCancel}>
-      <div className="file-viewer-panel" onClick={e => e.stopPropagation()}>
-        <div className="file-viewer-header">
-          <span className="file-viewer-title">编辑 {fileName}</span>
-          <button className="file-viewer-close" onClick={onCancel}>✕</button>
-        </div>
-        <div className="markdown-editor">
-          <div className="markdown-editor-toolbar">
-            <button className="btn-save" onClick={() => onSave(text)}>保存</button>
-            <button onClick={onCancel}>取消</button>
-          </div>
-          <div className="markdown-editor-content">
-            <textarea
-              value={text}
-              onChange={e => setText(e.target.value)}
-              style={{
-                width: '100%',
-                height: '100%',
-                minHeight: '300px',
-                border: 'none',
-                outline: 'none',
-                resize: 'vertical',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '0.9em',
-                background: 'transparent',
-                color: 'var(--text-primary)',
-                padding: '8px',
-              }}
-            />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
