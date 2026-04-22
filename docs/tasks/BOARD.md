@@ -23,3 +23,9 @@
 | COL-B20 | Channel Workspace | Backlog | 野马 | — | [direction](COL-B20/direction.md) | 频道级文件存储 |
 | COL-B21 | Plugin SSE → WS 升级 | Backlog | 飞马 | — | [direction](COL-B21/direction.md) | 基础设施，双向通信 |
 | COL-B22 | 消息路径文件链接 | Backlog | 野马 | — | [direction](COL-B22/direction.md) | 依赖 B21 |
+
+## Bugs
+
+| ID | Bug | 状态 | Owner | PR | 备注 |
+|----|-----|------|-------|----|------|
+| COL-BUG-01 | 删除消息权限：可以删别人的消息 | Backlog | 野马 | — | 应只允许删自己的消息（admin 除外） |
