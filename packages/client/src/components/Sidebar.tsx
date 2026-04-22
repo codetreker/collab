@@ -10,9 +10,10 @@ interface Props {
   onLogout?: () => void;
   onAdminOpen?: () => void;
   onAgentsOpen?: () => void;
+  onWorkspacesOpen?: () => void;
 }
 
-export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen }: Props) {
+export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen, onWorkspacesOpen }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const canCreateChannel = useCan('channel.create');
@@ -252,6 +253,15 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen }
                 onClick={onAgentsOpen}
               >
                 🤖
+              </button>
+            )}
+            {onWorkspacesOpen && (
+              <button
+                className="icon-btn"
+                title="Workspaces"
+                onClick={onWorkspacesOpen}
+              >
+                📂
               </button>
             )}
           </div>
