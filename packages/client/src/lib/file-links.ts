@@ -1,4 +1,4 @@
-export const FILE_PATH_RE = /(?:^|\s)(\/(?:[a-zA-Z0-9._-]+\/)*[a-zA-Z0-9._-]+\.[a-zA-Z0-9]+)(?=\s|$|[,.)}\]])/g;
+export const FILE_PATH_RE = /(?:^|\s)(\.{0,2}\/(?:[a-zA-Z0-9._-]+\/)*[a-zA-Z0-9._-]+\.[a-zA-Z0-9]+|(?:[a-zA-Z0-9._-]+\/)+[a-zA-Z0-9._-]+\.[a-zA-Z0-9]+)(?=\s|$|[,.)}\]])/g;
 
 export interface FileLinkSegment {
   type: 'text' | 'path';
