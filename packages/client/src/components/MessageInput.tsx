@@ -6,6 +6,7 @@ import Picker from '@emoji-mart/react';
 import emojiData from '@emoji-mart/data';
 import { useAppContext } from '../context/AppContext';
 import SlashCommandPicker from './SlashCommandPicker';
+import Toolbar from './Toolbar';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { createMentionExtension } from '../extensions/mention';
 import { commandRegistry, CommandError } from '../commands/registry';
@@ -416,6 +417,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         onSelect={handleSlashSelect}
       />
 
+      <Toolbar editor={editor} />
       <div className="message-input-row">
         <button
           className="icon-btn upload-btn"
