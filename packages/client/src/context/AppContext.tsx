@@ -448,7 +448,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (stateRef.current.loadingMessages.has(channelId)) return;
     dispatch({ type: 'SET_LOADING_MESSAGES', channelId, loading: true });
     try {
-      const { messages, has_more } = await api.fetchMessages(channelId, { limit: 50 });
+      const { messages, has_more } = await api.fetchMessages(channelId, { limit: 100 });
       dispatch({ type: 'SET_MESSAGES', channelId, messages, hasMore: has_more });
     } finally {
       dispatch({ type: 'SET_LOADING_MESSAGES', channelId, loading: false });
