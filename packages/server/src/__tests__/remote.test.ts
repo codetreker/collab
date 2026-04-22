@@ -573,6 +573,26 @@ describe('Remote REST API – extra edge cases', () => {
     expect(res.statusCode).toBe(503);
   });
 
+  it('returns 504 on timeout from read', async () => {
+    const uid = seedAdmin(testDb);
+    const { id: nodeId } = seedNode(testDb, uid);
+    mockRemoteNodeManager.isOnline.mockReturnValue(true);
+    mockRemoteNodeManager.request.mockRejectedValue(new Error('timed out'));
+
+    const res = await inject('GET', `/api/v1/remote/nodes/${nodeId}/read?path=/tmp`, uid);
+    expect(res.statusCode).toBe(504);
+  });
+
+  it('returns 500 on unknown error from read', async () => {
+    const uid = seedAdmin(testDb);
+    const { id: nodeId } = seedNode(testDb, uid);
+    mockRemoteNodeManager.isOnline.mockReturnValue(true);
+    mockRemoteNodeManager.request.mockRejectedValue(new Error('unexpected'));
+
+    const res = await inject('GET', `/api/v1/remote/nodes/${nodeId}/read?path=/tmp`, uid);
+    expect(res.statusCode).toBe(500);
+  });
+
   it('returns 400 on generic error field from read', async () => {
     const uid = seedAdmin(testDb);
     const { id: nodeId } = seedNode(testDb, uid);
