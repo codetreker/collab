@@ -16,7 +16,7 @@ export function registerMessageRoutes(app: FastifyInstance): void {
     const { channelId } = request.params;
     const before = request.query.before ? parseInt(request.query.before, 10) : undefined;
     const after = request.query.after ? parseInt(request.query.after, 10) : undefined;
-    const limit = request.query.limit ? Math.min(parseInt(request.query.limit, 10), 100) : 50;
+    const limit = request.query.limit ? Math.min(parseInt(request.query.limit, 10), 200) : 100;
 
     const db = getDb();
     const channel = Q.getChannel(db, channelId);
