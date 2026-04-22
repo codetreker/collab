@@ -10,6 +10,10 @@
 | ID | Bug | 状态 | Owner | PR | 备注 |
 |----|-----|------|-------|----|------|
 | COL-BUG-001 | 删除消息权限：用户能删别人的消息 | In Progress | 战马 | — | 只允许删自己的（admin 除外） |
+| COL-BUG-002 | 文件路径没有变成可点击链接 | Backlog | 飞马 | — | B22 需求，prod 上路径未自动链接化 |
+| COL-BUG-003 | 亮色主题下侧边栏和 Workspace 仍是暗色 | Backlog | 飞马 | — | CSS 主题变量未覆盖 |
+| COL-BUG-004 | Enter/Ctrl+Enter 键位对调 | Backlog | 飞马 | — | 应 Enter=发送、Ctrl+Enter=换行（和其它 IM 一致） |
+| COL-BUG-005 | Markdown 渲染异常 | Backlog | 飞马 | — | 输入框和聊天历史 Markdown 渲染不对 |
 
 ## Features
 
@@ -25,3 +29,4 @@
 | COL-B13 | DB 操作改用 ORM | Backlog | 飞马 | — | — | 技术债 |
 | COL-B15 | Collab Plugin Skill | Backlog | 野马 | — | — | 教 Agent 怎么用 Collab 功能 |
 | COL-B19 | Remote Explorer | Backlog | 野马 | — | [direction](COL-B19/direction.md) | 远程文件浏览，只读 v1 |
+| COL-B23 | 聊天记录分页加载 | Backlog | 野马 | — | — | 初始加载最近100条，往上滚动增量加载 |
