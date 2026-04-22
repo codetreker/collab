@@ -5,6 +5,7 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConnectionStatus from './ConnectionStatus';
 import ChannelMembersModal from './ChannelMembersModal';
+import WorkspacePanel from './WorkspacePanel';
 import { useVisualViewport } from '../hooks/useVisualViewport';
 import type { Message } from '../types';
 
@@ -18,6 +19,7 @@ export default function ChannelView({ channelId }: Props) {
   const [showMembers, setShowMembers] = useState(false);
   const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
   const [joining, setJoining] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chat' | 'workspace'>('chat');
   const keyboardHeight = useVisualViewport();
 
   const channel = state.channels.find(c => c.id === channelId);
@@ -113,32 +115,44 @@ export default function ChannelView({ channelId }: Props) {
           </>
         )}
       </div>
-      {isPublicPreview && (
-        <div className="preview-banner">
-          你正在预览 <strong>#{channel!.name}</strong>
+      {!isDm && isMember && !isPublicPreview && (
+        <div className="channel-view-tabs">
+          <button className={`channel-view-tab${activeTab === 'chat' ? ' active' : ''}`} onClick={() => setActiveTab('chat')}>聊天</button>
+          <button className={`channel-view-tab${activeTab === 'workspace' ? ' active' : ''}`} onClick={() => setActiveTab('workspace')}>Workspace</button>
         </div>
       )}
-      <ConnectionStatus state={connectionState} />
-      {isPublicPreview ? (
-        <>
-          <MessageList channelId={channelId} previewMessages={previewMessages} />
-          <div className="preview-join-container">
-            <button
-              className="btn btn-primary preview-join-btn"
-              onClick={handleJoin}
-              disabled={joining}
-            >
-              {joining ? '加入中...' : '加入频道'}
-            </button>
-          </div>
-        </>
+      {activeTab === 'workspace' && !isDm && isMember && !isPublicPreview ? (
+        <WorkspacePanel channelId={channelId} />
       ) : (
         <>
-          <MessageList channelId={channelId} />
-          {!isDm && channel?.visibility === 'private' && state.currentUser?.role === 'admin' && !isMember ? (
-            <MessageInput channelId={channelId} disabled disabledHint="你不是此频道成员，无法发送消息。请先将自己添加为成员。" />
+          {isPublicPreview && (
+            <div className="preview-banner">
+              你正在预览 <strong>#{channel!.name}</strong>
+            </div>
+          )}
+          <ConnectionStatus state={connectionState} />
+          {isPublicPreview ? (
+            <>
+              <MessageList channelId={channelId} previewMessages={previewMessages} />
+              <div className="preview-join-container">
+                <button
+                  className="btn btn-primary preview-join-btn"
+                  onClick={handleJoin}
+                  disabled={joining}
+                >
+                  {joining ? '加入中...' : '加入频道'}
+                </button>
+              </div>
+            </>
           ) : (
-            <MessageInput channelId={channelId} />
+            <>
+              <MessageList channelId={channelId} />
+              {!isDm && channel?.visibility === 'private' && state.currentUser?.role === 'admin' && !isMember ? (
+                <MessageInput channelId={channelId} disabled disabledHint="你不是此频道成员，无法发送消息。请先将自己添加为成员。" />
+              ) : (
+                <MessageInput channelId={channelId} />
+              )}
+            </>
           )}
         </>
       )}
