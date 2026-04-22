@@ -4,9 +4,9 @@
 [data-theme='light'] {
   --bg-primary: #ffffff;
   --bg-secondary: #f5f6fa;
-  --bg-sidebar: #1e1e2e;
-  --bg-sidebar-hover: #2a2a3e;
-  --bg-sidebar-active: #353550;
+  --bg-sidebar: #f0f1f5;
+  --bg-sidebar-hover: #e2e4ea;
+  --bg-sidebar-active: #d5d8e0;
   --bg-input: #ffffff;
   --bg-message-hover: #f8f9fa;
   --bg-mention: #5865f2;
@@ -17,8 +17,8 @@
 
   --text-primary: #1a1a2e;
   --text-secondary: #6c757d;
-  --text-sidebar: #cdd6f4;
-  --text-sidebar-dim: #8a8fb0;
+  --text-sidebar: #1a1a2e;
+  --text-sidebar-dim: #6c757d;
   --text-mention: #ffffff;
   --text-link: #5865f2;
   --text-code: #d63384;
