@@ -11,9 +11,10 @@ interface Props {
   onAdminOpen?: () => void;
   onAgentsOpen?: () => void;
   onWorkspacesOpen?: () => void;
+  onRemoteNodesOpen?: () => void;
 }
 
-export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen, onWorkspacesOpen }: Props) {
+export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen, onWorkspacesOpen, onRemoteNodesOpen }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const canCreateChannel = useCan('channel.create');
@@ -262,6 +263,15 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen, 
                 onClick={onWorkspacesOpen}
               >
                 📂
+              </button>
+            )}
+            {state.currentUser.role !== 'agent' && onRemoteNodesOpen && (
+              <button
+                className="icon-btn"
+                title="Remote Nodes"
+                onClick={onRemoteNodesOpen}
+              >
+                🖥️
               </button>
             )}
           </div>
