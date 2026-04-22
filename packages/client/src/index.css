@@ -2869,3 +2869,22 @@ body {
   min-height: 300px;
   outline: none;
 }
+
+/* ─── File Link ─────────────────────────────────────────── */
+
+.file-link {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.file-link:hover {
+  text-decoration-style: solid;
+}
+
+.file-link-loading {
+  opacity: 0.6;
+  cursor: wait;
+}

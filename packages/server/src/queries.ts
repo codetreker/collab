@@ -193,7 +193,7 @@ export function softDeleteChannel(db: Database.Database, id: string): boolean {
 
 export function listUsers(db: Database.Database): User[] {
   return db
-    .prepare('SELECT id, display_name, role, avatar_url, require_mention, created_at FROM users WHERE deleted_at IS NULL AND disabled = 0 ORDER BY created_at ASC')
+    .prepare('SELECT id, display_name, role, avatar_url, require_mention, owner_id, created_at FROM users WHERE deleted_at IS NULL AND disabled = 0 ORDER BY created_at ASC')
     .all() as User[];
 }
 

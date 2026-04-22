@@ -19,6 +19,7 @@ export interface User {
   display_name: string;
   role: 'admin' | 'member' | 'agent';
   avatar_url: string | null;
+  owner_id?: string | null;
   created_at: number;
 }
 

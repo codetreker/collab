@@ -486,6 +486,19 @@ export async function addAgentToChannel(channelId: string, agentId: string): Pro
   });
 }
 
+// ─── Agent Files ──────────────────────────────────────────
+
+export interface AgentFileResponse {
+  content: string;
+  size: number;
+  mime_type: string;
+  error?: undefined;
+}
+
+export async function getAgentFile(agentId: string, path: string): Promise<AgentFileResponse> {
+  return request<AgentFileResponse>(`/api/v1/agents/${agentId}/files?path=${encodeURIComponent(path)}`);
+}
+
 // ─── Workspace ────────────────────────────────────────
 
 export async function listWorkspaceFiles(channelId: string, parentId?: string): Promise<WorkspaceFile[]> {
