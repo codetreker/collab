@@ -3,6 +3,7 @@ import { renderMarkdown } from '../lib/markdown';
 import ReactionBar from './ReactionBar';
 import * as api from '../lib/api';
 import { useAppContext } from '../context/AppContext';
+import { useLongPress } from '../hooks/useLongPress';
 import type { Message } from '../types';
 
 interface Props {
@@ -29,6 +30,7 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
   const [editContent, setEditContent] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const renderedContent = useMemo(() => {
@@ -98,6 +100,10 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
   const canEdit = isOwn && !isDeleted && !message._pending && !message._failed;
   const canDelete = (isOwn || isAdmin) && !isDeleted && !message._pending && !message._failed;
 
+  const longPressHandlers = useLongPress(() => {
+    if (canEdit || canDelete) setMobileActionsOpen(true);
+  });
+
   if (isSystem) {
     return (
       <div className="message-item message-system">
@@ -112,7 +118,7 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
   }
 
   return (
-    <div className={`message-item ${isOwn ? 'message-own' : ''}`}>
+    <div className={`message-item ${isOwn ? 'message-own' : ''}`} {...longPressHandlers}>
       <div className="message-avatar" style={{ backgroundColor: avatarColor }}>
         {avatarLetter}
       </div>
@@ -211,6 +217,25 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
               <button className="btn-cancel" onClick={() => setShowDeleteConfirm(false)}>取消</button>
               <button className="btn-danger" onClick={handleDelete}>删除</button>
             </div>
+          </div>
+        </div>
+      )}
+      {mobileActionsOpen && (
+        <div className="mobile-action-sheet-overlay" onClick={() => setMobileActionsOpen(false)}>
+          <div className="mobile-action-sheet" onClick={e => e.stopPropagation()}>
+            {canEdit && (
+              <button className="mobile-action-sheet-btn" onClick={() => { setMobileActionsOpen(false); startEdit(); }}>
+                ✏️ 编辑
+              </button>
+            )}
+            {canDelete && (
+              <button className="mobile-action-sheet-btn mobile-action-sheet-danger" onClick={() => { setMobileActionsOpen(false); setShowDeleteConfirm(true); }}>
+                🗑️ 删除
+              </button>
+            )}
+            <button className="mobile-action-sheet-btn mobile-action-sheet-cancel" onClick={() => setMobileActionsOpen(false)}>
+              取消
+            </button>
           </div>
         </div>
       )}
