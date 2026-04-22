@@ -1016,6 +1016,27 @@ export function deleteWorkspaceFile(
   return db.prepare('DELETE FROM workspace_files WHERE id = ?').run(fileId).changes > 0;
 }
 
+export function renameWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+  newName: string,
+): WorkspaceFile {
+  const file = getWorkspaceFile(db, fileId);
+  if (!file) throw new Error('File not found');
+
+  const siblings = getSiblingNames(db, file.user_id, file.channel_id, file.parent_id ?? null)
+    .filter(n => n !== file.name);
+
+  if (siblings.includes(newName)) {
+    throw new Error('CONFLICT');
+  }
+
+  db.prepare(
+    "UPDATE workspace_files SET name = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(newName, fileId);
+  return db.prepare('SELECT * FROM workspace_files WHERE id = ?').get(fileId) as WorkspaceFile;
+}
+
 export function updateWorkspaceFileContent(
   db: Database.Database,
   fileId: string,

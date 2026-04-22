@@ -555,6 +555,14 @@ export async function moveWorkspaceFile(channelId: string, fileId: string, paren
   return data.file;
 }
 
+export async function renameWorkspaceFile(channelId: string, fileId: string, name: string): Promise<WorkspaceFile> {
+  const data = await request<{ file: WorkspaceFile }>(`/api/v1/channels/${channelId}/workspace/files/${fileId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+  return data.file;
+}
+
 export async function fetchAllWorkspaces(): Promise<WorkspaceFile[]> {
   const data = await request<{ files: WorkspaceFile[] }>('/api/v1/workspaces');
   return data.files;

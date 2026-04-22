@@ -95,6 +95,17 @@ export default function WorkspacePanel({ channelId }: Props) {
     loadFiles();
   };
 
+  const handleRename = async (file: WorkspaceFile) => {
+    const newName = prompt('重命名为：', file.name);
+    if (!newName?.trim() || newName.trim() === file.name) return;
+    try {
+      await api.renameWorkspaceFile(channelId, file.id, newName.trim());
+      loadFiles();
+    } catch (err: any) {
+      alert(err?.message?.includes('409') ? '同名文件已存在' : '重命名失败');
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent, file: WorkspaceFile) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, file });
@@ -187,6 +198,9 @@ export default function WorkspacePanel({ channelId }: Props) {
               打开
             </div>
           )}
+          <div className="workspace-context-menu-item" onClick={() => { handleRename(contextMenu.file); setContextMenu(null); }}>
+            重命名
+          </div>
           <div className="workspace-context-menu-item danger" onClick={() => { handleDelete(contextMenu.file); setContextMenu(null); }}>
             删除
           </div>

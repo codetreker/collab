@@ -166,6 +166,38 @@ export function registerWorkspaceRoutes(app: FastifyInstance): void {
     return { file: updated };
   });
 
+  // Rename file/folder
+  app.patch<{
+    Params: { channelId: string; id: string };
+    Body: { name: string };
+  }>('/api/v1/channels/:channelId/workspace/files/:id', async (request, reply) => {
+    const userId = request.currentUser?.id;
+    if (!userId) return reply.status(401).send({ error: 'Authentication required' });
+
+    const { channelId, id } = request.params;
+    const { name } = request.body ?? {};
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return reply.status(400).send({ error: 'Name is required' });
+    }
+
+    const db = getDb();
+    const file = Q.getWorkspaceFile(db, id);
+    if (!file || file.user_id !== userId || file.channel_id !== channelId) {
+      return reply.status(404).send({ error: 'File not found' });
+    }
+
+    try {
+      const updated = Q.renameWorkspaceFile(db, id, name.trim());
+      return { file: updated };
+    } catch (err: any) {
+      if (err.message === 'CONFLICT') {
+        return reply.status(409).send({ error: 'A file with that name already exists' });
+      }
+      throw err;
+    }
+  });
+
   // Delete file
   app.delete<{
     Params: { channelId: string; id: string };

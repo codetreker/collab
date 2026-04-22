@@ -12,19 +12,33 @@ export default function WorkspaceManager({ onBack }: Props) {
   const [loading, setLoading] = useState(true);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<WorkspaceFile | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: WorkspaceFile } | null>(null);
 
-  useEffect(() => {
+  const reload = () => {
     api.fetchAllWorkspaces().then(f => {
       setFiles(f);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { reload(); }, []);
 
   const channels = [...new Map(files.map(f => [f.channel_id, f.channel_name ?? f.channel_id])).entries()];
   const filteredFiles = selectedChannel ? files.filter(f => f.channel_id === selectedChannel) : files;
 
+  const handleRename = async (file: WorkspaceFile) => {
+    const newName = prompt('重命名为：', file.name);
+    if (!newName?.trim() || newName.trim() === file.name) return;
+    try {
+      await api.renameWorkspaceFile(file.channel_id, file.id, newName.trim());
+      reload();
+    } catch (err: any) {
+      alert(err?.message?.includes('409') ? '同名文件已存在' : '重命名失败');
+    }
+  };
+
   return (
-    <div className="workspace-manager">
+    <div className="workspace-manager" onClick={() => setContextMenu(null)}>
       <div className="workspace-manager-sidebar">
         <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <button className="workspace-btn" onClick={onBack}>← 返回</button>
@@ -58,6 +72,7 @@ export default function WorkspaceManager({ onBack }: Props) {
                 key={file.id}
                 className="workspace-file-item"
                 onClick={() => !file.is_directory && setSelectedFile(file)}
+                onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, file }); }}
               >
                 <span className="workspace-file-icon">{file.is_directory ? '📁' : '📄'}</span>
                 <span className="workspace-file-name">{file.name}</span>
@@ -72,6 +87,16 @@ export default function WorkspaceManager({ onBack }: Props) {
           </div>
         )}
       </div>
+      {contextMenu && (
+        <div
+          className="workspace-context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <div className="workspace-context-menu-item" onClick={() => { handleRename(contextMenu.file); setContextMenu(null); }}>
+            重命名
+          </div>
+        </div>
+      )}
       {selectedFile && (
         <FileViewer
           file={selectedFile}
