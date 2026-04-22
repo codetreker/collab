@@ -80,7 +80,7 @@ importers:
         version: 22.19.17
       openclaw:
         specifier: file:/home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw
-        version: file:../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@napi-rs/canvas@0.1.99)(@types/express@5.0.6)(apache-arrow@18.1.0)(hono@4.12.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+        version: file:../../../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@napi-rs/canvas@0.1.99)(@types/express@5.0.6)(apache-arrow@18.1.0)(hono@4.12.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -3961,8 +3961,8 @@ packages:
       zod:
         optional: true
 
-  openclaw@file:../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw:
-    resolution: {directory: ../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw, type: directory}
+  openclaw@file:../../../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw:
+    resolution: {directory: ../../../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw, type: directory}
     engines: {node: '>=22.14.0'}
     hasBin: true
     peerDependencies:
@@ -9607,7 +9607,7 @@ snapshots:
       ws: 8.20.0
       zod: 4.3.6
 
-  openclaw@file:../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@napi-rs/canvas@0.1.99)(@types/express@5.0.6)(apache-arrow@18.1.0)(hono@4.12.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3):
+  openclaw@file:../../../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@napi-rs/canvas@0.1.99)(@types/express@5.0.6)(apache-arrow@18.1.0)(hono@4.12.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3):
     dependencies:
       '@agentclientprotocol/sdk': 0.18.2(zod@4.3.6)
       '@anthropic-ai/vertex-sdk': 0.15.0(zod@4.3.6)

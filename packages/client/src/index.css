@@ -939,6 +939,7 @@ body {
   padding: 0 4px;
   border-radius: 3px;
   font-weight: 500;
+  cursor: default;
 }
 
 /* Image messages */
