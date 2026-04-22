@@ -21,3 +21,5 @@
 | COL-B18 | 富文本/Markdown 输入 | Backlog | 野马 | — | 输入框支持 Markdown 预览或富文本编辑 |
 | COL-B19 | Remote Explorer | Backlog | 野马 | — | 远程文件浏览，方向文档 `docs/tasks/COL-B19/direction.md` |
 | COL-B20 | Channel Workspace | Backlog | 野马 | — | 频道级文件存储，方向文档 `docs/tasks/COL-B20/direction.md` |
+| COL-B21 | Plugin SSE → WS 升级 | Backlog | 飞马 | — | 基础设施：Plugin 连接从 SSE 升级到 WebSocket |
+| COL-B22 | 消息路径文件链接 | Backlog | 野马 | — | 依赖 B21，Agent 消息中文件路径自动变可点击链接 |
