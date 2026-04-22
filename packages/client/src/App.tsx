@@ -9,6 +9,7 @@ import RegisterPage from './components/RegisterPage';
 import UserPicker from './components/UserPicker';
 import AdminPage from './components/AdminPage';
 import AgentManager from './components/AgentManager';
+import WorkspaceManager from './components/WorkspaceManager';
 import { useWebSocket } from './hooks/useWebSocket';
 import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
@@ -24,6 +25,7 @@ function AppInner() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
+  const [showWorkspaces, setShowWorkspaces] = useState(false);
 
   // Wire sendWsMessage into context
   useEffect(() => {
@@ -160,7 +162,7 @@ function AppInner() {
         {isMobile && sidebarOpen && (
           <div className="sidebar-overlay" onClick={closeSidebar} />
         )}
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} />
       </div>
 
       <div className="main-content">
@@ -168,6 +170,8 @@ function AppInner() {
           <AdminPage onBack={() => setShowAdmin(false)} />
         ) : showAgents ? (
           <AgentManager onBack={() => setShowAgents(false)} />
+        ) : showWorkspaces ? (
+          <WorkspaceManager onBack={() => setShowWorkspaces(false)} />
         ) : state.currentChannelId ? (
           <ChannelView channelId={state.currentChannelId} />
         ) : (

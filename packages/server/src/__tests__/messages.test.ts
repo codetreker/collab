@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import Database from 'better-sqlite3';
 import {
   createTestDb, seedAdmin, seedMember, seedChannel,
@@ -53,6 +56,7 @@ describe('Messages API', () => {
   afterAll(async () => { await app.close(); });
 
   beforeEach(() => {
+    testDb.exec('DELETE FROM workspace_files');
     testDb.exec('DELETE FROM message_reactions');
     testDb.exec('DELETE FROM mentions');
     testDb.exec('DELETE FROM invite_codes');
@@ -107,6 +111,74 @@ describe('Messages API', () => {
     it('returns 404 for non-existent channel', async () => {
       const res = await inject('POST', '/api/v1/channels/no-such/messages', memberId, { content: 'hi' });
       expect(res.statusCode).toBe(404);
+    });
+
+    describe('attachment auto-save to workspace', () => {
+      let uploadDir: string;
+
+      beforeEach(() => {
+        uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-'));
+        process.env.UPLOAD_DIR = uploadDir;
+        process.env.WORKSPACE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
+        testDb.exec('DELETE FROM workspace_files');
+      });
+
+      it('auto-saves image attachment to workspace_files', async () => {
+        const filename = 'photo.png';
+        fs.writeFileSync(path.join(uploadDir, filename), Buffer.from('fakepng'));
+
+        const res = await inject('POST', `/api/v1/channels/${channelId}/messages`, memberId, {
+          content: `/uploads/${filename}`,
+          content_type: 'image',
+        });
+        expect(res.statusCode).toBe(201);
+
+        const row = testDb.prepare(
+          'SELECT * FROM workspace_files WHERE channel_id = ? AND source = ?',
+        ).get(channelId, 'message_attachment') as any;
+        expect(row).toBeTruthy();
+        expect(row.mime_type).toBe('image/png');
+        expect(row.size_bytes).toBe(7);
+        expect(row.source_message_id).toBe(JSON.parse(res.body).message.id);
+      });
+
+      it('creates attachments folder and resolves name conflicts', async () => {
+        const filename = 'dup.jpg';
+        fs.writeFileSync(path.join(uploadDir, filename), Buffer.from('img1'));
+
+        const res1 = await inject('POST', `/api/v1/channels/${channelId}/messages`, memberId, {
+          content: `/uploads/${filename}`,
+          content_type: 'image',
+        });
+        expect(res1.statusCode).toBe(201);
+
+        fs.writeFileSync(path.join(uploadDir, filename), Buffer.from('img2'));
+        const res2 = await inject('POST', `/api/v1/channels/${channelId}/messages`, memberId, {
+          content: `/uploads/${filename}`,
+          content_type: 'image',
+        });
+        expect(res2.statusCode).toBe(201);
+
+        const rows = testDb.prepare(
+          'SELECT name FROM workspace_files WHERE channel_id = ? AND source = ? AND is_directory = 0',
+        ).all(channelId, 'message_attachment') as any[];
+        expect(rows.length).toBe(2);
+        const names = rows.map((r: any) => r.name);
+        expect(new Set(names).size).toBe(2);
+      });
+
+      it('skips auto-save when upload file does not exist', async () => {
+        const res = await inject('POST', `/api/v1/channels/${channelId}/messages`, memberId, {
+          content: '/uploads/nonexistent.png',
+          content_type: 'image',
+        });
+        expect(res.statusCode).toBe(201);
+
+        const row = testDb.prepare(
+          'SELECT * FROM workspace_files WHERE channel_id = ? AND source = ?',
+        ).get(channelId, 'message_attachment');
+        expect(row).toBeUndefined();
+      });
     });
   });
 

@@ -1,7 +1,8 @@
 import Database from 'better-sqlite3';
 import crypto from 'node:crypto';
+import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Channel, User, Message, EventRow, Mention, EventKind, InviteCode } from './types.js';
+import type { Channel, User, Message, EventRow, Mention, EventKind, InviteCode, WorkspaceFile } from './types.js';
 
 // ─── Channels ───────────────────────────────────────────
 
@@ -917,4 +918,177 @@ export function getReactionCountForMessage(
     'SELECT COUNT(DISTINCT emoji) AS cnt FROM message_reactions WHERE message_id = ?',
   ).get(messageId) as { cnt: number };
   return row.cnt;
+}
+
+// ─── Workspace Files ──────────────────────────────────
+
+export function listWorkspaceFiles(
+  db: Database.Database,
+  userId: string,
+  channelId: string,
+  parentId: string | null = null,
+): WorkspaceFile[] {
+  if (parentId) {
+    return db.prepare(
+      'SELECT * FROM workspace_files WHERE user_id = ? AND channel_id = ? AND parent_id = ? ORDER BY is_directory DESC, name ASC',
+    ).all(userId, channelId, parentId) as WorkspaceFile[];
+  }
+  return db.prepare(
+    'SELECT * FROM workspace_files WHERE user_id = ? AND channel_id = ? AND parent_id IS NULL ORDER BY is_directory DESC, name ASC',
+  ).all(userId, channelId) as WorkspaceFile[];
+}
+
+export function getWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+): WorkspaceFile | undefined {
+  return db.prepare('SELECT * FROM workspace_files WHERE id = ?').get(fileId) as WorkspaceFile | undefined;
+}
+
+export function getSiblingNames(
+  db: Database.Database,
+  userId: string,
+  channelId: string,
+  parentId: string | null,
+): string[] {
+  let rows: { name: string }[];
+  if (parentId) {
+    rows = db.prepare(
+      'SELECT name FROM workspace_files WHERE user_id = ? AND channel_id = ? AND parent_id = ?',
+    ).all(userId, channelId, parentId) as { name: string }[];
+  } else {
+    rows = db.prepare(
+      'SELECT name FROM workspace_files WHERE user_id = ? AND channel_id = ? AND parent_id IS NULL',
+    ).all(userId, channelId) as { name: string }[];
+  }
+  return rows.map(r => r.name);
+}
+
+export function resolveConflict(name: string, existing: string[]): string {
+  if (!existing.includes(name)) return name;
+  const ext = path.extname(name);
+  const base = path.basename(name, ext);
+  let i = 1;
+  while (existing.includes(`${base} (${i})${ext}`)) i++;
+  return `${base} (${i})${ext}`;
+}
+
+export function insertWorkspaceFile(
+  db: Database.Database,
+  file: {
+    id: string;
+    userId: string;
+    channelId: string;
+    parentId: string | null;
+    name: string;
+    isDirectory: boolean;
+    mimeType: string | null;
+    sizeBytes: number;
+    source?: string;
+    sourceMessageId?: string | null;
+  },
+): WorkspaceFile {
+  db.prepare(
+    `INSERT INTO workspace_files (id, user_id, channel_id, parent_id, name, is_directory, mime_type, size_bytes, source, source_message_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    file.id, file.userId, file.channelId, file.parentId,
+    file.name, file.isDirectory ? 1 : 0, file.mimeType,
+    file.sizeBytes, file.source ?? 'upload', file.sourceMessageId ?? null,
+  );
+  return db.prepare('SELECT * FROM workspace_files WHERE id = ?').get(file.id) as WorkspaceFile;
+}
+
+export function deleteWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+): boolean {
+  const file = getWorkspaceFile(db, fileId);
+  if (!file) return false;
+
+  if (file.is_directory) {
+    const children = db.prepare('SELECT id, is_directory FROM workspace_files WHERE parent_id = ?').all(fileId) as { id: string; is_directory: number }[];
+    for (const child of children) {
+      deleteWorkspaceFile(db, child.id);
+    }
+  }
+
+  return db.prepare('DELETE FROM workspace_files WHERE id = ?').run(fileId).changes > 0;
+}
+
+export function renameWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+  newName: string,
+): WorkspaceFile {
+  const file = getWorkspaceFile(db, fileId);
+  if (!file) throw new Error('File not found');
+
+  const siblings = getSiblingNames(db, file.user_id, file.channel_id, file.parent_id ?? null)
+    .filter(n => n !== file.name);
+
+  if (siblings.includes(newName)) {
+    throw new Error('CONFLICT');
+  }
+
+  db.prepare(
+    "UPDATE workspace_files SET name = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(newName, fileId);
+  return db.prepare('SELECT * FROM workspace_files WHERE id = ?').get(fileId) as WorkspaceFile;
+}
+
+export function updateWorkspaceFileContent(
+  db: Database.Database,
+  fileId: string,
+  sizeBytes: number,
+): void {
+  db.prepare(
+    "UPDATE workspace_files SET size_bytes = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(sizeBytes, fileId);
+}
+
+export function mkdirWorkspace(
+  db: Database.Database,
+  userId: string,
+  channelId: string,
+  parentId: string | null,
+  name: string,
+): WorkspaceFile {
+  const siblings = getSiblingNames(db, userId, channelId, parentId);
+  const resolvedName = resolveConflict(name, siblings);
+  const id = crypto.randomBytes(16).toString('hex');
+  return insertWorkspaceFile(db, {
+    id, userId, channelId, parentId,
+    name: resolvedName, isDirectory: true, mimeType: null, sizeBytes: 0,
+  });
+}
+
+export function moveWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+  newParentId: string | null,
+): WorkspaceFile | undefined {
+  const file = getWorkspaceFile(db, fileId);
+  if (!file) return undefined;
+
+  const siblings = getSiblingNames(db, file.user_id, file.channel_id, newParentId);
+  const resolvedName = resolveConflict(file.name, siblings);
+
+  db.prepare(
+    "UPDATE workspace_files SET parent_id = ?, name = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(newParentId, resolvedName, fileId);
+  return getWorkspaceFile(db, fileId);
+}
+
+export function getAllWorkspaceFiles(
+  db: Database.Database,
+  userId: string,
+): (WorkspaceFile & { channel_name: string })[] {
+  return db.prepare(
+    `SELECT wf.*, c.name AS channel_name
+     FROM workspace_files wf
+     JOIN channels c ON c.id = wf.channel_id
+     WHERE wf.user_id = ? AND c.deleted_at IS NULL
+     ORDER BY c.name, wf.is_directory DESC, wf.name ASC`,
+  ).all(userId) as (WorkspaceFile & { channel_name: string })[];
 }

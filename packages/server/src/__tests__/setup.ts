@@ -130,6 +130,26 @@ export function createTestDb(): Database.Database {
       ON message_reactions(message_id, user_id, emoji);
     CREATE INDEX IF NOT EXISTS idx_reactions_message
       ON message_reactions(message_id);
+
+    CREATE TABLE IF NOT EXISTS workspace_files (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      channel_id TEXT NOT NULL REFERENCES channels(id),
+      parent_id TEXT REFERENCES workspace_files(id),
+      name TEXT NOT NULL,
+      is_directory INTEGER NOT NULL DEFAULT 0,
+      mime_type TEXT,
+      size_bytes INTEGER DEFAULT 0,
+      source TEXT DEFAULT 'upload',
+      source_message_id TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(user_id, channel_id, parent_id, name)
+    );
+    CREATE INDEX IF NOT EXISTS idx_workspace_files_user_channel
+      ON workspace_files(user_id, channel_id);
+    CREATE INDEX IF NOT EXISTS idx_workspace_files_parent
+      ON workspace_files(parent_id);
   `);
 
   return db;

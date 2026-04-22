@@ -1,6 +1,6 @@
 // ─── REST API client ─────────────────────────────────────
 
-import type { Channel, Message, User, AdminUser, DmChannel } from '../types';
+import type { Channel, Message, User, AdminUser, DmChannel, WorkspaceFile } from '../types';
 
 const BASE = '';  // Same origin via Vite proxy in dev, or same server in prod
 
@@ -484,4 +484,86 @@ export async function addAgentToChannel(channelId: string, agentId: string): Pro
     method: 'POST',
     body: JSON.stringify({ user_id: agentId }),
   });
+}
+
+// ─── Workspace ────────────────────────────────────────
+
+export async function listWorkspaceFiles(channelId: string, parentId?: string): Promise<WorkspaceFile[]> {
+  const qs = parentId ? `?parentId=${parentId}` : '';
+  const data = await request<{ files: WorkspaceFile[] }>(`/api/v1/channels/${channelId}/workspace${qs}`);
+  return data.files;
+}
+
+export async function uploadWorkspaceFile(channelId: string, file: File, parentId?: string): Promise<WorkspaceFile> {
+  const form = new FormData();
+  form.append('file', file);
+  const qs = parentId ? `?parentId=${parentId}` : '';
+  const data = await request<{ file: WorkspaceFile }>(`/api/v1/channels/${channelId}/workspace/upload${qs}`, {
+    method: 'POST',
+    body: form,
+  });
+  return data.file;
+}
+
+export async function downloadWorkspaceFile(channelId: string, fileId: string): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (import.meta.env.DEV && currentUserId) {
+    headers['X-Dev-User-Id'] = currentUserId;
+  }
+  const res = await fetch(`/api/v1/channels/${channelId}/workspace/files/${fileId}`, {
+    headers,
+    credentials: 'include',
+  });
+  if (!res.ok) throw new ApiError(res.status, 'Download failed');
+  return res;
+}
+
+export async function updateWorkspaceFile(channelId: string, fileId: string, content: string): Promise<WorkspaceFile> {
+  const data = await request<{ file: WorkspaceFile }>(`/api/v1/channels/${channelId}/workspace/files/${fileId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
+  });
+  return data.file;
+}
+
+export async function deleteWorkspaceFile(channelId: string, fileId: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (import.meta.env.DEV && currentUserId) {
+    headers['X-Dev-User-Id'] = currentUserId;
+  }
+  const res = await fetch(`/api/v1/channels/${channelId}/workspace/files/${fileId}`, {
+    method: 'DELETE',
+    headers,
+    credentials: 'include',
+  });
+  if (!res.ok) throw new ApiError(res.status, 'Delete failed');
+}
+
+export async function mkdirWorkspace(channelId: string, name: string, parentId?: string): Promise<WorkspaceFile> {
+  const data = await request<{ file: WorkspaceFile }>(`/api/v1/channels/${channelId}/workspace/mkdir`, {
+    method: 'POST',
+    body: JSON.stringify({ name, parentId }),
+  });
+  return data.file;
+}
+
+export async function moveWorkspaceFile(channelId: string, fileId: string, parentId: string | null): Promise<WorkspaceFile> {
+  const data = await request<{ file: WorkspaceFile }>(`/api/v1/channels/${channelId}/workspace/files/${fileId}/move`, {
+    method: 'POST',
+    body: JSON.stringify({ parentId }),
+  });
+  return data.file;
+}
+
+export async function renameWorkspaceFile(channelId: string, fileId: string, name: string): Promise<WorkspaceFile> {
+  const data = await request<{ file: WorkspaceFile }>(`/api/v1/channels/${channelId}/workspace/files/${fileId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+  return data.file;
+}
+
+export async function fetchAllWorkspaces(): Promise<WorkspaceFile[]> {
+  const data = await request<{ files: WorkspaceFile[] }>('/api/v1/workspaces');
+  return data.files;
 }

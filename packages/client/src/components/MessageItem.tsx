@@ -34,7 +34,13 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
 
   const renderedContent = useMemo(() => {
     if (message.content_type === 'image') return null;
-    return renderMarkdown(message.content, message.mentions, userMap);
+    let html = renderMarkdown(message.content, message.mentions, userMap);
+    html = html.replace(
+      /\[workspace:([a-f0-9]+):([^\]]+)\]/g,
+      (_match, fileId: string, fileName: string) =>
+        `<span class="workspace-ref-card" data-file-id="${fileId}"><span class="workspace-ref-card-name">📎 ${fileName}</span></span>`,
+    );
+    return html;
   }, [message.content, message.content_type, message.mentions, userMap]);
 
   const startEdit = useCallback(() => {

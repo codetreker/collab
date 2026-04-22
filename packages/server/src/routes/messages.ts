@@ -1,7 +1,11 @@
 import type { FastifyInstance } from 'fastify';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
 import { requirePermission } from '../middleware/permissions.js';
+import { writeWorkspaceFileData } from './workspace.js';
 
 export function registerMessageRoutes(app: FastifyInstance): void {
   // Get messages for a channel
@@ -122,6 +126,42 @@ export function registerMessageRoutes(app: FastifyInstance): void {
       type: 'new_message',
       message,
     });
+
+    if (ct === 'image' && content.startsWith('/uploads/')) {
+      try {
+        const uploadDir = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'data', 'uploads');
+        const uploadFilename = content.replace('/uploads/', '');
+        const uploadPath = path.join(uploadDir, uploadFilename);
+        if (fs.existsSync(uploadPath)) {
+          const attachmentsFolder = Q.mkdirWorkspace(db, senderId, channelId, null, 'attachments');
+          const buffer = fs.readFileSync(uploadPath);
+          const ext = path.extname(uploadFilename);
+          const mimeMap: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
+          const mime = mimeMap[ext] ?? 'application/octet-stream';
+          const fileId = crypto.randomBytes(16).toString('hex');
+          const fileName = `${message.id.slice(0, 8)}${ext}`;
+
+          const siblings = Q.getSiblingNames(db, senderId, channelId, attachmentsFolder.id);
+          const resolvedName = Q.resolveConflict(fileName, siblings);
+
+          await writeWorkspaceFileData(senderId, channelId, fileId, buffer);
+          Q.insertWorkspaceFile(db, {
+            id: fileId,
+            userId: senderId,
+            channelId,
+            parentId: attachmentsFolder.id,
+            name: resolvedName,
+            isDirectory: false,
+            mimeType: mime,
+            sizeBytes: buffer.length,
+            source: 'message_attachment',
+            sourceMessageId: message.id,
+          });
+        }
+      } catch {
+        // Non-critical: don't fail message send
+      }
+    }
 
     return reply.status(201).send({ message });
   });
