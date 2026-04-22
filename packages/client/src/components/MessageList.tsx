@@ -144,6 +144,10 @@ export default function MessageList({ channelId, previewMessages }: Props) {
         </div>
       )}
 
+      {!hasMore && messages.length > 0 && (
+        <div className="no-more-messages">已到最早消息</div>
+      )}
+
       {isLoading && allMessages.length === 0 && (
         <div className="message-skeleton">
           {[1, 2, 3].map(i => (

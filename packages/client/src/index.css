@@ -614,6 +614,13 @@ body {
   font-size: 13px;
 }
 
+.no-more-messages {
+  text-align: center;
+  padding: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
 .empty-channel {
   display: flex;
   flex-direction: column;
