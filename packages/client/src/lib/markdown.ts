@@ -20,7 +20,7 @@ export function renderMarkdown(text: string, mentionedUserIds?: string[], userMa
   if (userMap) {
     processed = processed.replace(/<@([^>]+)>/g, (_match, userId: string) => {
       const displayName = userMap.get(userId);
-      if (displayName) return `<span class="mention">@${escapeHtml(displayName)}</span>`;
+      if (displayName) return `<span class="mention" title="${escapeHtml(userId)}">@${escapeHtml(displayName)}</span>`;
       return `@${escapeHtml(userId)}`;
     });
   }

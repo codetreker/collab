@@ -5,6 +5,7 @@ import { useAppContext } from '../context/AppContext';
 import MentionPicker from './MentionPicker';
 import SlashCommandPicker from './SlashCommandPicker';
 import { useSlashCommands } from '../hooks/useSlashCommands';
+import { useMention } from '../hooks/useMention';
 import { commandRegistry, CommandError } from '../commands/registry';
 import type { CommandDefinition, CommandContext } from '../commands/registry';
 import '../commands/builtins';
@@ -30,11 +31,6 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Mention state
-  const [mentionQuery, setMentionQuery] = useState('');
-  const [mentionVisible, setMentionVisible] = useState(false);
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const [mentionStart, setMentionStart] = useState(-1);
   const [slashResolvedUser, setSlashResolvedUser] = useState<{ id: string; username: string } | undefined>();
 
   const channel = state.channels.find(c => c.id === channelId);
@@ -63,9 +59,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     ? state.users.filter(u => channelMemberIds.has(u.id))
     : state.users;
 
-  const filteredUsers = mentionUsers.filter(u =>
-    u.display_name.toLowerCase().includes(mentionQuery.toLowerCase()),
-  );
+  const mention = useMention(mentionUsers);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -212,26 +206,26 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       }
     }
 
-    if (mentionVisible) {
+    if (mention.visible) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setMentionIndex(i => Math.min(i + 1, filteredUsers.length - 1));
+        mention.setIndex(i => Math.min(i + 1, mention.filteredUsers.length - 1));
         return;
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setMentionIndex(i => Math.max(i - 1, 0));
+        mention.setIndex(i => Math.max(i - 1, 0));
         return;
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
-        if (filteredUsers[mentionIndex]) {
-          insertMention(filteredUsers[mentionIndex]);
+        if (mention.filteredUsers[mention.index]) {
+          handleInsertMention(mention.filteredUsers[mention.index]);
         }
         return;
       }
       if (e.key === 'Escape') {
-        setMentionVisible(false);
+        mention.setVisible(false);
         return;
       }
     }
@@ -240,34 +234,26 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       e.preventDefault();
       handleSend();
     }
-  }, [slash, handleSlashSelect, mentionVisible, filteredUsers, mentionIndex, handleSend]);
+  }, [slash, handleSlashSelect, mention.visible, mention.filteredUsers, mention.index, handleSend]);
 
-  const insertMention = (user: User) => {
+  const handleInsertMention = (user: User) => {
     const slashMatch = text.match(/^\/(\w+)\s/);
     if (slashMatch) {
       const cmd = commandRegistry.get(slashMatch[1]!);
       if (cmd && cmd.paramType === 'user') {
         setText(`/${cmd.name} @${user.display_name}`);
-        setMentionVisible(false);
-        setMentionQuery('');
-        setMentionIndex(0);
+        mention.reset();
         setSlashResolvedUser({ id: user.id, username: user.display_name });
         return;
       }
     }
 
-    const before = text.slice(0, mentionStart);
-    const after = text.slice(textareaRef.current?.selectionStart ?? text.length);
-    const mentionToken = `<@${user.id}>`;
-    const newText = `${before}${mentionToken} ${after}`;
+    const { newText, cursorPos } = mention.insertMention(user, text, textareaRef.current?.selectionStart ?? text.length);
     setText(newText);
-    setMentionVisible(false);
-    setMentionQuery('');
-    setMentionIndex(0);
+    mention.reset();
 
     setTimeout(() => {
-      const pos = before.length + mentionToken.length + 1;
-      textareaRef.current?.setSelectionRange(pos, pos);
+      textareaRef.current?.setSelectionRange(cursorPos, cursorPos);
       textareaRef.current?.focus();
     }, 0);
   };
@@ -314,7 +300,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
     // Slash commands take priority over mentions
     if (value.startsWith('/') && !value.includes(' ')) {
-      setMentionVisible(false);
+      mention.setVisible(false);
       return;
     }
 
@@ -324,34 +310,17 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       const cmd = commandRegistry.get(slashUserMatch[1]!);
       if (cmd && cmd.paramType === 'user') {
         const argText = slashUserMatch[2]!;
-        const query = argText.replace(/^@/, '');
-        setMentionStart(value.indexOf(argText));
-        setMentionQuery(query);
-        setMentionVisible(true);
-        setMentionIndex(0);
+        const q = argText.replace(/^@/, '');
+        mention.handleChange(`@${q}`, q.length + 1);
         return;
       }
     }
 
     // Check for @ mention trigger
     const cursorPos = e.target.selectionStart;
-    const textBeforeCursor = value.slice(0, cursorPos);
-    const atIndex = textBeforeCursor.lastIndexOf('@');
-
-    if (atIndex >= 0) {
-      const charBefore = atIndex > 0 ? textBeforeCursor[atIndex - 1] : ' ';
-      if (charBefore === ' ' || charBefore === '\n' || atIndex === 0) {
-        const query = textBeforeCursor.slice(atIndex + 1);
-        if (!query.includes(' ')) {
-          setMentionStart(atIndex);
-          setMentionQuery(query);
-          setMentionVisible(true);
-          setMentionIndex(0);
-          return;
-        }
-      }
+    if (!mention.handleChange(value, cursorPos)) {
+      // handleChange returns null when no mention detected — already sets visible=false
     }
-    setMentionVisible(false);
   };
 
   // Image upload handling
@@ -473,10 +442,11 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       />
       <MentionPicker
         users={mentionUsers}
-        query={mentionQuery}
-        onSelect={insertMention}
-        visible={mentionVisible}
-        selectedIndex={mentionIndex}
+        query={mention.query}
+        onSelect={handleInsertMention}
+        onDismiss={() => mention.setVisible(false)}
+        visible={mention.visible}
+        selectedIndex={mention.index}
       />
 
       <div className="message-input-row">
