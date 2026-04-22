@@ -212,6 +212,7 @@ function EditUserModal({ user, onClose, onUpdated }: { user: AdminUser; onClose:
   const [displayName, setDisplayName] = useState(user.display_name);
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(user.role);
+  const [requireMention, setRequireMention] = useState(user.require_mention ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -220,10 +221,11 @@ function EditUserModal({ user, onClose, onUpdated }: { user: AdminUser; onClose:
     setSaving(true);
     setError('');
     try {
-      const data: Record<string, string> = {};
+      const data: Record<string, string | boolean> = {};
       if (displayName !== user.display_name) data.display_name = displayName;
       if (password) data.password = password;
       if (role !== user.role) data.role = role;
+      if (role === 'agent' && requireMention !== (user.require_mention ?? false)) data.require_mention = requireMention;
       await updateAdminUser(user.id, data);
       onUpdated();
     } catch (err) {
@@ -248,6 +250,12 @@ function EditUserModal({ user, onClose, onUpdated }: { user: AdminUser; onClose:
               <option value="agent">agent</option>
             </select>
           </label>
+          {role === 'agent' && (
+            <label className="checkbox-label">
+              <input type="checkbox" checked={requireMention} onChange={e => setRequireMention(e.target.checked)} />
+              仅 @mention 时响应
+            </label>
+          )}
           {error && <div className="admin-form-error">{error}</div>}
           <div className="form-actions">
             <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
