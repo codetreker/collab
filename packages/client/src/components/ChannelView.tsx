@@ -5,6 +5,7 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConnectionStatus from './ConnectionStatus';
 import ChannelMembersModal from './ChannelMembersModal';
+import { useVisualViewport } from '../hooks/useVisualViewport';
 import type { Message } from '../types';
 
 interface Props {
@@ -17,6 +18,7 @@ export default function ChannelView({ channelId }: Props) {
   const [showMembers, setShowMembers] = useState(false);
   const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
   const [joining, setJoining] = useState(false);
+  const keyboardHeight = useVisualViewport();
 
   const channel = state.channels.find(c => c.id === channelId);
   const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
@@ -44,7 +46,7 @@ export default function ChannelView({ channelId }: Props) {
 
   if (!channel && !dmChannel) {
     return (
-      <div className="channel-view">
+      <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100vh - ${keyboardHeight}px)` } : undefined}>
         <div className="channel-empty">
           频道未找到
         </div>
@@ -84,7 +86,7 @@ export default function ChannelView({ channelId }: Props) {
   };
 
   return (
-    <div className="channel-view">
+    <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100vh - ${keyboardHeight}px)` } : undefined}>
       <div className="channel-header">
         <div className="channel-header-info">
           <h2 className="channel-title">{headerTitle}</h2>

@@ -1483,8 +1483,15 @@ body {
 
   .message-input-container {
     padding: 8px 12px 12px;
-    /* Account for mobile keyboard */
     padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .message-textarea {
+    font-size: 16px;
+  }
+
+  .message-content {
+    font-size: 14px;
   }
 
   .message-image {
