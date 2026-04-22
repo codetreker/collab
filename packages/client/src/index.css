@@ -155,7 +155,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .sidebar-title {
@@ -202,7 +202,7 @@ body {
 }
 
 .channel-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-color);
   border-radius: 2px;
 }
 
@@ -282,15 +282,15 @@ body {
   padding: 1px 6px;
   margin-left: auto;
   flex-shrink: 0;
-  background: var(--surface1);
+  background: var(--bg-sidebar-hover);
   border-radius: 4px;
-  color: var(--subtext0);
+  color: var(--text-sidebar-dim);
 }
 
 .channel-group-label {
   font-size: 11px;
   font-weight: 600;
-  color: var(--subtext0);
+  color: var(--text-sidebar-dim);
   padding: 8px 16px 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -298,8 +298,8 @@ body {
 
 .preview-banner {
   padding: 8px 16px;
-  background: var(--surface1);
-  color: var(--subtext0);
+  background: var(--bg-sidebar-hover);
+  color: var(--text-sidebar-dim);
   font-size: 13px;
   text-align: center;
   border-bottom: 1px solid var(--border-color);
@@ -336,7 +336,7 @@ body {
 
 .channel-create-form {
   padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -344,7 +344,7 @@ body {
 
 .channel-create-form .input-field {
   background: var(--bg-sidebar-hover);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
   color: var(--text-sidebar);
 }
 
@@ -381,7 +381,7 @@ body {
 
 .online-users {
   padding: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--border-color);
   max-height: 200px;
   overflow-y: auto;
 }
@@ -438,7 +438,7 @@ body {
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-sidebar-hover);
   color: var(--text-sidebar-dim);
   font-weight: 600;
 }
@@ -447,7 +447,7 @@ body {
 
 .sidebar-footer {
   padding: 12px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--border-color);
 }
 
 .current-user {
@@ -2138,7 +2138,7 @@ body {
   width: 180px;
   min-width: 180px;
   background: var(--bg-secondary);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   padding: 16px 0;
@@ -2194,7 +2194,7 @@ body {
 
 .admin-card {
   background: var(--bg-primary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
@@ -2260,7 +2260,7 @@ body {
 
 .agent-card {
   background: var(--bg-primary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
