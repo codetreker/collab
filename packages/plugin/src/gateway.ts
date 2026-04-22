@@ -389,6 +389,15 @@ async function runWsTransport(params: {
 
   wsClient.onEvent((event, data) => {
     const payload = data as Record<string, unknown>;
+
+    if (event === "message") {
+      const isDmChannel = (payload.channel_type as string | undefined) === "dm";
+      if (!isDmChannel && account.requireMention) {
+        const mentions = (payload.mentions as string[] | undefined) ?? [];
+        if (!mentions.includes(account.botUserId)) return;
+      }
+    }
+
     const collabEvent: CollabEvent = {
       cursor: 0,
       kind: event as CollabEvent["kind"],
