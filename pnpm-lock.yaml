@@ -138,6 +138,9 @@ importers:
       uuid:
         specifier: ^11.0.0
         version: 11.1.0
+      ws:
+        specifier: ^8.20.0
+        version: 8.20.0
     devDependencies:
       '@types/bcryptjs':
         specifier: ^3.0.0

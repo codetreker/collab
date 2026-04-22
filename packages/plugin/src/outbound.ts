@@ -1,7 +1,8 @@
 import { resolveCollabAccount } from "./accounts.js";
 import { sendCollabMessage, createOrGetCollabDm, addCollabReaction, removeCollabReaction, editCollabMessage, deleteCollabMessage } from "./api-client.js";
 import { parseCollabTarget } from "./inbound.js";
-import type { CoreConfig } from "./types.js";
+import { getWsClient } from "./ws-util.js";
+import type { CoreConfig, CollabMessage } from "./types.js";
 
 export async function sendCollabText(params: {
   cfg: CoreConfig;
@@ -16,12 +17,41 @@ export async function sendCollabText(params: {
   let channelId = parsed.channelId;
 
   if (parsed.chatType === 'dm' && parsed.userId) {
-    const { channel } = await createOrGetCollabDm({
-      baseUrl: account.baseUrl,
-      apiKey: account.apiKey,
-      userId: parsed.userId,
-    });
-    channelId = channel.id;
+    const wsClient = getWsClient(account);
+    if (wsClient) {
+      try {
+        const res = await wsClient.apiCall('POST', `/api/v1/dm/${encodeURIComponent(parsed.userId)}`) as { status: number; body: { channel: { id: string } } };
+        channelId = res.body.channel.id;
+      } catch {
+        const { channel } = await createOrGetCollabDm({
+          baseUrl: account.baseUrl,
+          apiKey: account.apiKey,
+          userId: parsed.userId,
+        });
+        channelId = channel.id;
+      }
+    } else {
+      const { channel } = await createOrGetCollabDm({
+        baseUrl: account.baseUrl,
+        apiKey: account.apiKey,
+        userId: parsed.userId,
+      });
+      channelId = channel.id;
+    }
+  }
+
+  const wsClient = getWsClient(account);
+  if (wsClient) {
+    try {
+      const res = await wsClient.apiCall('POST', `/api/v1/channels/${encodeURIComponent(channelId)}/messages`, {
+        content: params.text,
+        content_type: 'text',
+        reply_to_id: params.replyToId == null ? undefined : String(params.replyToId),
+      }) as { status: number; body: { message: CollabMessage } };
+      return { to: params.to, messageId: res.body.message.id };
+    } catch {
+      // fall through to HTTP
+    }
   }
 
   const { message } = await sendCollabMessage({
@@ -46,6 +76,18 @@ export async function handleCollabReaction(params: {
   emoji: string;
 }): Promise<void> {
   const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
+
+  const wsClient = getWsClient(account);
+  if (wsClient) {
+    const method = params.type === "add_reaction" ? "PUT" : "DELETE";
+    try {
+      await wsClient.apiCall(method, `/api/v1/messages/${encodeURIComponent(params.messageId)}/reactions`, { emoji: params.emoji });
+      return;
+    } catch {
+      // fall through to HTTP
+    }
+  }
+
   const fn = params.type === "add_reaction" ? addCollabReaction : removeCollabReaction;
   await fn({
     baseUrl: account.baseUrl,
@@ -62,6 +104,17 @@ export async function handleCollabMessageEdit(params: {
   content: string;
 }): Promise<{ messageId: string }> {
   const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
+
+  const wsClient = getWsClient(account);
+  if (wsClient) {
+    try {
+      const res = await wsClient.apiCall('PUT', `/api/v1/messages/${encodeURIComponent(params.messageId)}`, { content: params.content }) as { status: number; body: { message: CollabMessage } };
+      return { messageId: res.body.message.id };
+    } catch {
+      // fall through to HTTP
+    }
+  }
+
   const { message } = await editCollabMessage({
     baseUrl: account.baseUrl,
     apiKey: account.apiKey,
@@ -77,6 +130,17 @@ export async function handleCollabMessageDelete(params: {
   messageId: string;
 }): Promise<void> {
   const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
+
+  const wsClient = getWsClient(account);
+  if (wsClient) {
+    try {
+      await wsClient.apiCall('DELETE', `/api/v1/messages/${encodeURIComponent(params.messageId)}`);
+      return;
+    } catch {
+      // fall through to HTTP
+    }
+  }
+
   await deleteCollabMessage({
     baseUrl: account.baseUrl,
     apiKey: account.apiKey,

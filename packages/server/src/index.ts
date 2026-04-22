@@ -22,6 +22,7 @@ import { registerDmRoutes } from './routes/dm.js';
 import { registerAgentRoutes } from './routes/agents.js';
 import { registerReactionRoutes } from './routes/reactions.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
+import { registerWsPluginRoutes } from './routes/ws-plugin.js';
 import * as Q from './queries.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +76,7 @@ async function main(): Promise<void> {
       url.startsWith('/uploads/') ||
       url === '/ws' ||
       url.startsWith('/ws?') ||
+      url.startsWith('/ws/plugin') ||
       url === '/' ||
       url === '/favicon.ico' ||
       (!url.startsWith('/api/') && !url.startsWith('/ws'))
@@ -117,6 +119,7 @@ async function main(): Promise<void> {
 
   // WebSocket
   registerWebSocket(app);
+  registerWsPluginRoutes(app);
 
   // Serve frontend static files (built client)
   const clientDistPath = path.resolve(__dirname, '../../client/dist');
