@@ -27,22 +27,20 @@ hljs.registerLanguage('sql', sql);
 hljs.registerLanguage('markdown', markdown);
 hljs.registerLanguage('md', markdown);
 
-marked.setOptions({
+marked.use({
   breaks: true,
   gfm: true,
+  renderer: {
+    code({ text, lang }: { text: string; lang?: string }) {
+      const language = lang && hljs.getLanguage(lang) ? lang : undefined;
+      const highlighted = language
+        ? hljs.highlight(text, { language }).value
+        : escapeHtml(text);
+      const langLabel = language ? `<span class="code-lang">${escapeHtml(language)}</span>` : '';
+      return `<pre><code class="hljs${language ? ` language-${escapeHtml(language)}` : ''}">${langLabel}${highlighted}</code></pre>`;
+    },
+  },
 });
-
-const renderer = new marked.Renderer();
-renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
-  const language = lang && hljs.getLanguage(lang) ? lang : undefined;
-  const highlighted = language
-    ? hljs.highlight(text, { language }).value
-    : escapeHtml(text);
-  const langLabel = language ? `<span class="code-lang">${escapeHtml(language)}</span>` : '';
-  return `<pre><code class="hljs${language ? ` language-${escapeHtml(language)}` : ''}">${langLabel}${highlighted}</code></pre>`;
-};
-
-marked.use({ renderer });
 
 export function renderMarkdown(text: string, mentionedUserIds?: string[], userMap?: Map<string, string>): string {
   let processed = text;
