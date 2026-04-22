@@ -92,3 +92,18 @@ export interface Mention {
   user_id: string;
   channel_id: string;
 }
+
+export interface WorkspaceFile {
+  id: string;
+  user_id: string;
+  channel_id: string;
+  parent_id: string | null;
+  name: string;
+  is_directory: number;
+  mime_type: string | null;
+  size_bytes: number;
+  source: 'upload' | 'message_attachment';
+  source_message_id: string | null;
+  created_at: string;
+  updated_at: string;
+}

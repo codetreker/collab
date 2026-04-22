@@ -21,6 +21,7 @@ import { registerAdminRoutes } from './routes/admin.js';
 import { registerDmRoutes } from './routes/dm.js';
 import { registerAgentRoutes } from './routes/agents.js';
 import { registerReactionRoutes } from './routes/reactions.js';
+import { registerWorkspaceRoutes } from './routes/workspace.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
 import { registerWsPluginRoutes } from './routes/ws-plugin.js';
 import * as Q from './queries.js';
@@ -115,6 +116,7 @@ async function main(): Promise<void> {
   registerAdminRoutes(app);
   registerAgentRoutes(app);
   registerReactionRoutes(app);
+  registerWorkspaceRoutes(app);
   registerDmRoutes(app);
 
   // WebSocket
