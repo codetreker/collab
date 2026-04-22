@@ -16,3 +16,5 @@
 | COL-B11 | 画布 + 文档协作 | Backlog | 野马 | — | |
 | COL-B13 | DB 操作改用 ORM | Backlog | 飞马 | — | 技术债 |
 | COL-B15 | Collab Plugin Skill | Backlog | 野马 | — | 教 Agent 怎么用 Collab 功能 |
+| COL-B16 | 移动端适配 + PWA | Backlog | 野马 | — | 响应式布局 + manifest + service worker |
+| COL-B16 | 移动端适配 + PWA | Backlog | 野马 | — | 响应式 + manifest + 汉堡菜单 |
