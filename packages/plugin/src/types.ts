@@ -1,6 +1,6 @@
 // ─── Plugin Config Types ─────────────────────────────────
 
-export type CollabTransport = "auto" | "sse" | "poll";
+export type CollabTransport = "auto" | "sse" | "poll" | "ws";
 
 export type CollabAccountConfig = {
   name?: string;

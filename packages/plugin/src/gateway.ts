@@ -2,8 +2,10 @@ import { fetchBotIdentity, pollCollabEvents } from "./api-client.js";
 import { handleCollabInbound, handleCollabReactionInbound } from "./inbound.js";
 import { readPersistedCursor, persistCursor } from "./cursor-store.js";
 import { probeSSE, runSSELoop } from "./sse-client.js";
+import { PluginWsClient } from "./ws-client.js";
+import { dispatchSSEEvent } from "./sse-client.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
-import type { CoreConfig, ResolvedCollabAccount } from "./types.js";
+import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
 
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 30_000;
@@ -202,7 +204,16 @@ export async function startCollabGateway(
   const cfg = ctx.cfg as CoreConfig;
 
   try {
-    if (transport === "poll") {
+    if (transport === "ws") {
+      console.log(`[collab-plugin] transport=ws`);
+      await runWsTransport({
+        channelId,
+        channelLabel,
+        account,
+        config: cfg,
+        ctx,
+      });
+    } else if (transport === "poll") {
       console.log(`[collab-plugin] transport=poll (forced)`);
       const cursorRef = { value: cursor };
       const sessionCtrl = new AbortController();
@@ -358,4 +369,56 @@ async function runAutoOrSse(params: {
     }
     if (result.reason === "aborted") return;
   }
+}
+
+async function runWsTransport(params: {
+  channelId: string;
+  channelLabel: string;
+  account: ResolvedCollabAccount;
+  config: CoreConfig;
+  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+}): Promise<void> {
+  const { account, ctx } = params;
+
+  const wsClient = new PluginWsClient({
+    serverUrl: account.baseUrl,
+    apiKey: account.apiKey,
+    signal: ctx.abortSignal,
+  });
+
+  wsClient.onEvent((event, data) => {
+    const payload = data as Record<string, unknown>;
+    const collabEvent: CollabEvent = {
+      cursor: 0,
+      kind: event as CollabEvent["kind"],
+      channel_id: (payload.channel_id as string) ?? "",
+      payload: JSON.stringify(data),
+      created_at: Date.now(),
+    };
+    void dispatchSSEEvent({
+      channelId: params.channelId,
+      channelLabel: params.channelLabel,
+      account,
+      config: params.config,
+      event: collabEvent,
+    });
+  });
+
+  wsClient.connect();
+
+  // Store the client on the account for outbound to use
+  (account as Record<string, unknown>).__wsClient = wsClient;
+
+  await new Promise<void>((resolve) => {
+    ctx.abortSignal.addEventListener("abort", () => {
+      wsClient.close();
+      resolve();
+    }, { once: true });
+    if (ctx.abortSignal.aborted) {
+      wsClient.close();
+      resolve();
+    }
+  });
+
+  (account as Record<string, unknown>).__wsClient = undefined;
 }
