@@ -479,4 +479,107 @@ describe('WS Remote endpoint', () => {
     await new Promise(r => setTimeout(r, 100));
     expect(mockRemoteNodeManager.unregister).toHaveBeenCalledWith(nodeId);
   });
+
+  it('ignores response message without id', async () => {
+    const uid = seedAdmin(testDb);
+    const { token } = seedNode(testDb, uid);
+
+    const ws = await connectWs(`token=${token}`);
+    ws.send(JSON.stringify({ type: 'response', data: { ok: true } }));
+    await new Promise(r => setTimeout(r, 50));
+    expect(mockRemoteNodeManager.resolveResponse).not.toHaveBeenCalled();
+    ws.close();
+  });
+
+  it('forwards error field from response messages', async () => {
+    const uid = seedAdmin(testDb);
+    const { token } = seedNode(testDb, uid);
+
+    const ws = await connectWs(`token=${token}`);
+    ws.send(JSON.stringify({ type: 'response', id: 'req_err', data: null, error: 'something broke' }));
+    await new Promise(r => setTimeout(r, 50));
+    expect(mockRemoteNodeManager.resolveResponse).toHaveBeenCalledWith('req_err', null, 'something broke');
+    ws.close();
+  });
+
+  it('calls unregister when socket errors and closes', async () => {
+    const uid = seedAdmin(testDb);
+    const { id: nodeId, token } = seedNode(testDb, uid);
+
+    const ws = await connectWs(`token=${token}`);
+    ws.terminate();
+    await new Promise(r => setTimeout(r, 150));
+    expect(mockRemoteNodeManager.unregister).toHaveBeenCalledWith(nodeId);
+  });
+});
+
+// ─── Additional REST edge cases ─────────────────────
+
+describe('Remote REST API – extra edge cases', () => {
+  beforeAll(async () => {
+    testDb = createTestDb();
+    addRemoteTables(testDb);
+    app = Fastify({ logger: false });
+    app.addHook('onRequest', async (request, reply) => {
+      if (request.url.startsWith('/api/v1/auth/')) return;
+      await authMiddleware(request, reply);
+    });
+    registerRemoteRoutes(app);
+    await app.ready();
+  });
+
+  afterAll(async () => { await app.close(); });
+  beforeEach(() => {
+    cleanTables();
+    vi.clearAllMocks();
+  });
+
+  it('returns 503 on disconnected error from ls', async () => {
+    const uid = seedAdmin(testDb);
+    const { id: nodeId } = seedNode(testDb, uid);
+    mockRemoteNodeManager.isOnline.mockReturnValue(true);
+    mockRemoteNodeManager.request.mockRejectedValue(new Error('not connected'));
+
+    const res = await inject('GET', `/api/v1/remote/nodes/${nodeId}/ls?path=/tmp`, uid);
+    expect(res.statusCode).toBe(503);
+  });
+
+  it('returns 500 on unknown error from ls', async () => {
+    const uid = seedAdmin(testDb);
+    const { id: nodeId } = seedNode(testDb, uid);
+    mockRemoteNodeManager.isOnline.mockReturnValue(true);
+    mockRemoteNodeManager.request.mockRejectedValue(new Error('unexpected'));
+
+    const res = await inject('GET', `/api/v1/remote/nodes/${nodeId}/ls?path=/tmp`, uid);
+    expect(res.statusCode).toBe(500);
+  });
+
+  it('returns 400 when read path is missing', async () => {
+    const uid = seedAdmin(testDb);
+    const { id: nodeId } = seedNode(testDb, uid);
+    mockRemoteNodeManager.isOnline.mockReturnValue(true);
+
+    const res = await inject('GET', `/api/v1/remote/nodes/${nodeId}/read`, uid);
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 503 on disconnected error from read', async () => {
+    const uid = seedAdmin(testDb);
+    const { id: nodeId } = seedNode(testDb, uid);
+    mockRemoteNodeManager.isOnline.mockReturnValue(true);
+    mockRemoteNodeManager.request.mockRejectedValue(new Error('disconnected'));
+
+    const res = await inject('GET', `/api/v1/remote/nodes/${nodeId}/read?path=/tmp`, uid);
+    expect(res.statusCode).toBe(503);
+  });
+
+  it('returns 400 on generic error field from read', async () => {
+    const uid = seedAdmin(testDb);
+    const { id: nodeId } = seedNode(testDb, uid);
+    mockRemoteNodeManager.isOnline.mockReturnValue(true);
+    mockRemoteNodeManager.request.mockResolvedValue({ error: 'some_other_error' });
+
+    const res = await inject('GET', `/api/v1/remote/nodes/${nodeId}/read?path=/tmp`, uid);
+    expect(res.statusCode).toBe(400);
+  });
 });
