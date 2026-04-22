@@ -18,5 +18,7 @@
 | COL-B15 | Collab Plugin Skill | Backlog | 野马 | — | 教 Agent 怎么用 Collab 功能 |
 | COL-B16 | 移动端适配 + PWA | Backlog | 野马 | — | 响应式布局 + manifest + service worker |
 | COL-B17 | @mention 输入过滤 | Backlog | 野马 | — | 输入 @ 后键盘过滤成员（ID + 名字匹配） |
+| COL-B18 | 富文本/Markdown 输入 | Backlog | 野马 | — | 输入框支持 Markdown 预览或富文本编辑 |
 | COL-B16 | 移动端适配 + PWA | Backlog | 野马 | — | 响应式 + manifest + 汉堡菜单 |
 | COL-B17 | @mention 输入过滤 | Backlog | 野马 | — | 输入 @ 后键盘过滤成员（ID + 名字匹配） |
+| COL-B18 | 富文本/Markdown 输入 | Backlog | 野马 | — | 输入框支持 Markdown 预览或富文本编辑 |
