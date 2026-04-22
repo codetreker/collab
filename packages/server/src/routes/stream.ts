@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
 import type { User } from '../types.js';
+import { pluginManager } from '../plugin-manager.js';
 
 const JWT_SECRET = process.env.JWT_SECRET ?? '';
 const HEARTBEAT_MS = 15_000;
@@ -376,6 +377,51 @@ export async function notifySSEClients(): Promise<void> {
       }
     } catch {
       removeSSEClient(client);
+    }
+  }
+
+  notifyPluginWsClients();
+}
+
+const pluginCursors = new Map<string, number>();
+
+function notifyPluginWsClients(): void {
+  const db = getDb();
+  const agentIds = pluginManager.getConnectedAgentIds();
+
+  for (const agentId of agentIds) {
+    const conn = pluginManager.getConnection(agentId);
+    if (!conn || conn.ws.readyState !== 1) {
+      pluginCursors.delete(agentId);
+      continue;
+    }
+
+    let cursor = pluginCursors.get(agentId);
+    if (cursor == null) {
+      cursor = Q.getLatestCursor(db);
+      pluginCursors.set(agentId, cursor);
+      continue;
+    }
+
+    const channelIds = Q.getUserChannelIds(db, conn.userId);
+    const changeKinds = Array.from(CHANNEL_CHANGE_KINDS);
+
+    try {
+      const events = Q.getEventsSinceWithChanges(db, cursor, 100, channelIds, changeKinds);
+      for (const ev of events) {
+        let payload: Record<string, unknown>;
+        try {
+          payload = JSON.parse(ev.payload) as Record<string, unknown>;
+        } catch {
+          pluginCursors.set(agentId, ev.cursor);
+          continue;
+        }
+
+        pluginManager.pushEvent(agentId, ev.kind, payload);
+        pluginCursors.set(agentId, ev.cursor);
+      }
+    } catch {
+      /* ignore */
     }
   }
 }
