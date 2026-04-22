@@ -12,6 +12,7 @@ import AgentManager from './components/AgentManager';
 import { useWebSocket } from './hooks/useWebSocket';
 import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
+import 'highlight.js/styles/github.css';
 
 function AppInner() {
   const { state, actions, dispatch, setSendWsMessage, setRegisterAckTimer } = useAppContext();
