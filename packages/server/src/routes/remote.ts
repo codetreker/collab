@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
+import { remoteNodeManager } from '../remote-node-manager.js';
 
 export function registerRemoteRoutes(app: FastifyInstance): void {
   // ─── Node CRUD ──────────────────────────────────────
@@ -116,5 +117,89 @@ export function registerRemoteRoutes(app: FastifyInstance): void {
     const db = getDb();
     const bindings = Q.listChannelRemoteBindings(db, request.params.channelId, userId);
     return { bindings };
+  });
+
+  // ─── File Proxy (via RemoteNodeManager) ─────────────
+
+  app.get<{
+    Params: { nodeId: string };
+    Querystring: { path?: string };
+  }>('/api/v1/remote/nodes/:nodeId/ls', async (request, reply) => {
+    const userId = request.currentUser?.id;
+    if (!userId) return reply.status(401).send({ error: 'Authentication required' });
+
+    const db = getDb();
+    const node = Q.getRemoteNode(db, request.params.nodeId);
+    if (!node) return reply.status(404).send({ error: 'Node not found' });
+    if (node.user_id !== userId) return reply.status(403).send({ error: 'Forbidden' });
+
+    if (!remoteNodeManager.isOnline(node.id)) {
+      return reply.status(503).send({ error: 'node_offline' });
+    }
+
+    const targetPath = request.query.path;
+    if (!targetPath) return reply.status(400).send({ error: 'path query parameter is required' });
+
+    try {
+      const result = await remoteNodeManager.request(node.id, { action: 'ls', path: targetPath }, 10_000) as Record<string, unknown>;
+      if (result.error) {
+        return reply.status(result.error === 'path_not_allowed' ? 403 : 400).send({ error: result.error });
+      }
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('timed out')) return reply.status(504).send({ error: 'timeout' });
+      if (msg.includes('not connected') || msg.includes('disconnected')) return reply.status(503).send({ error: 'node_offline' });
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  app.get<{
+    Params: { nodeId: string };
+    Querystring: { path?: string };
+  }>('/api/v1/remote/nodes/:nodeId/read', async (request, reply) => {
+    const userId = request.currentUser?.id;
+    if (!userId) return reply.status(401).send({ error: 'Authentication required' });
+
+    const db = getDb();
+    const node = Q.getRemoteNode(db, request.params.nodeId);
+    if (!node) return reply.status(404).send({ error: 'Node not found' });
+    if (node.user_id !== userId) return reply.status(403).send({ error: 'Forbidden' });
+
+    if (!remoteNodeManager.isOnline(node.id)) {
+      return reply.status(503).send({ error: 'node_offline' });
+    }
+
+    const targetPath = request.query.path;
+    if (!targetPath) return reply.status(400).send({ error: 'path query parameter is required' });
+
+    try {
+      const result = await remoteNodeManager.request(node.id, { action: 'read', path: targetPath }, 10_000) as Record<string, unknown>;
+      if (result.error === 'path_not_allowed') return reply.status(403).send({ error: 'path_not_allowed' });
+      if (result.error === 'file_not_found') return reply.status(404).send({ error: 'file_not_found' });
+      if (result.error === 'file_too_large') return reply.status(413).send({ error: 'file_too_large' });
+      if (result.error) return reply.status(400).send({ error: result.error });
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('timed out')) return reply.status(504).send({ error: 'timeout' });
+      if (msg.includes('not connected') || msg.includes('disconnected')) return reply.status(503).send({ error: 'node_offline' });
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  // Node online status
+  app.get<{
+    Params: { nodeId: string };
+  }>('/api/v1/remote/nodes/:nodeId/status', async (request, reply) => {
+    const userId = request.currentUser?.id;
+    if (!userId) return reply.status(401).send({ error: 'Authentication required' });
+
+    const db = getDb();
+    const node = Q.getRemoteNode(db, request.params.nodeId);
+    if (!node) return reply.status(404).send({ error: 'Node not found' });
+    if (node.user_id !== userId) return reply.status(403).send({ error: 'Forbidden' });
+
+    return { online: remoteNodeManager.isOnline(node.id) };
   });
 }
