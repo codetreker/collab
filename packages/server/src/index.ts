@@ -24,6 +24,7 @@ import { registerReactionRoutes } from './routes/reactions.js';
 import { registerWorkspaceRoutes } from './routes/workspace.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
 import { registerWsPluginRoutes } from './routes/ws-plugin.js';
+import { registerRemoteRoutes } from './routes/remote.js';
 import * as Q from './queries.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -117,6 +118,7 @@ async function main(): Promise<void> {
   registerAgentRoutes(app);
   registerReactionRoutes(app);
   registerWorkspaceRoutes(app);
+  registerRemoteRoutes(app);
   registerDmRoutes(app);
 
   // WebSocket
