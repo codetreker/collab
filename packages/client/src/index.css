@@ -621,6 +621,31 @@ body {
   font-size: 13px;
 }
 
+.new-message-btn {
+  position: sticky;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: block;
+  margin: 0 auto;
+  padding: 8px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  animation: slideUp 0.2s ease-out;
+  z-index: 10;
+  transition: background 0.15s;
+}
+
+.new-message-btn:hover {
+  background: var(--accent-hover);
+}
+
 .empty-channel {
   display: flex;
   flex-direction: column;

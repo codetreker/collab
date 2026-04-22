@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import MessageItem from './MessageItem';
 import TypingIndicator from './TypingIndicator';
@@ -36,6 +36,8 @@ export default function MessageList({ channelId, previewMessages }: Props) {
   const isAtBottom = useRef(true);
   const isInitialLoad = useRef(true);
   const loadingOlder = useRef(false);
+  const [showNewMsgBtn, setShowNewMsgBtn] = useState(false);
+  const prevMessageCount = useRef(0);
 
   const messages = previewMessages ?? (state.messages.get(channelId) ?? []);
   const pending = previewMessages ? [] : (state.pendingMessages.get(channelId) ?? []);
@@ -72,6 +74,28 @@ export default function MessageList({ channelId, previewMessages }: Props) {
     }
   }, [allMessages]);
 
+  // Show floating button when new messages arrive while scrolled up
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      prevMessageCount.current = allMessages.length;
+      return;
+    }
+    if (allMessages.length > prevMessageCount.current && !isAtBottom.current) {
+      setShowNewMsgBtn(true);
+    }
+    prevMessageCount.current = allMessages.length;
+  }, [allMessages.length]);
+
+  // Reset new-message button on channel switch
+  useEffect(() => {
+    setShowNewMsgBtn(false);
+  }, [channelId]);
+
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowNewMsgBtn(false);
+  }, []);
+
   const handleScroll = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -79,6 +103,10 @@ export default function MessageList({ channelId, previewMessages }: Props) {
     // Check if at bottom (within 50px tolerance)
     const { scrollTop, scrollHeight, clientHeight } = container;
     isAtBottom.current = scrollHeight - scrollTop - clientHeight < 50;
+
+    if (isAtBottom.current) {
+      setShowNewMsgBtn(false);
+    }
 
     // Load older messages when scrolled to top
     if (scrollTop < 100 && hasMore && !isLoading) {
@@ -182,6 +210,12 @@ export default function MessageList({ channelId, previewMessages }: Props) {
 
       <TypingIndicator channelId={channelId} />
       <div ref={bottomRef} />
+
+      {showNewMsgBtn && (
+        <button className="new-message-btn" onClick={scrollToBottom}>
+          ↓ 新消息
+        </button>
+      )}
     </div>
   );
 }
