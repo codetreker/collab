@@ -280,6 +280,29 @@ function initSchema(db: Database.Database): void {
         ON workspace_files(parent_id);
     `);
 
+    // Migration: B19 — remote_nodes + remote_bindings tables
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS remote_nodes (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        machine_name TEXT NOT NULL,
+        connection_token TEXT NOT NULL UNIQUE,
+        last_seen_at TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_remote_nodes_user ON remote_nodes(user_id);
+
+      CREATE TABLE IF NOT EXISTS remote_bindings (
+        id TEXT PRIMARY KEY,
+        node_id TEXT NOT NULL REFERENCES remote_nodes(id) ON DELETE CASCADE,
+        channel_id TEXT NOT NULL REFERENCES channels(id),
+        path TEXT NOT NULL,
+        label TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(node_id, channel_id, path)
+      );
+    `);
+
     const dmChannels = db.prepare(
       `SELECT c.id, c.name FROM channels c
        WHERE c.type = 'dm'

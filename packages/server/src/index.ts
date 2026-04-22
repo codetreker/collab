@@ -24,6 +24,8 @@ import { registerReactionRoutes } from './routes/reactions.js';
 import { registerWorkspaceRoutes } from './routes/workspace.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
 import { registerWsPluginRoutes } from './routes/ws-plugin.js';
+import { registerRemoteRoutes } from './routes/remote.js';
+import { registerWsRemoteRoutes } from './routes/ws-remote.js';
 import * as Q from './queries.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -78,6 +80,7 @@ async function main(): Promise<void> {
       url === '/ws' ||
       url.startsWith('/ws?') ||
       url.startsWith('/ws/plugin') ||
+      url.startsWith('/ws/remote') ||
       url === '/' ||
       url === '/favicon.ico' ||
       (!url.startsWith('/api/') && !url.startsWith('/ws'))
@@ -117,11 +120,13 @@ async function main(): Promise<void> {
   registerAgentRoutes(app);
   registerReactionRoutes(app);
   registerWorkspaceRoutes(app);
+  registerRemoteRoutes(app);
   registerDmRoutes(app);
 
   // WebSocket
   registerWebSocket(app);
   registerWsPluginRoutes(app);
+  registerWsRemoteRoutes(app);
 
   // Serve frontend static files (built client)
   const clientDistPath = path.resolve(__dirname, '../../client/dist');

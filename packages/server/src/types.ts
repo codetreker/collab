@@ -93,6 +93,24 @@ export interface Mention {
   channel_id: string;
 }
 
+export interface RemoteNode {
+  id: string;
+  user_id: string;
+  machine_name: string;
+  connection_token: string;
+  last_seen_at: string | null;
+  created_at: string;
+}
+
+export interface RemoteBinding {
+  id: string;
+  node_id: string;
+  channel_id: string;
+  path: string;
+  label: string | null;
+  created_at: string;
+}
+
 export interface WorkspaceFile {
   id: string;
   user_id: string;

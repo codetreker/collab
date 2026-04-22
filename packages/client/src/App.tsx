@@ -10,6 +10,7 @@ import UserPicker from './components/UserPicker';
 import AdminPage from './components/AdminPage';
 import AgentManager from './components/AgentManager';
 import WorkspaceManager from './components/WorkspaceManager';
+import NodeManager from './components/NodeManager';
 import { useWebSocket } from './hooks/useWebSocket';
 import { setDevUserId, fetchMe, ApiError } from './lib/api';
 import './index.css';
@@ -26,6 +27,7 @@ function AppInner() {
   const [showRegister, setShowRegister] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
   const [showWorkspaces, setShowWorkspaces] = useState(false);
+  const [showRemoteNodes, setShowRemoteNodes] = useState(false);
 
   // Wire sendWsMessage into context
   useEffect(() => {
@@ -162,7 +164,7 @@ function AppInner() {
         {isMobile && sidebarOpen && (
           <div className="sidebar-overlay" onClick={closeSidebar} />
         )}
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
       </div>
 
       <div className="main-content">
@@ -172,6 +174,8 @@ function AppInner() {
           <AgentManager onBack={() => setShowAgents(false)} />
         ) : showWorkspaces ? (
           <WorkspaceManager onBack={() => setShowWorkspaces(false)} />
+        ) : showRemoteNodes ? (
+          <NodeManager onBack={() => setShowRemoteNodes(false)} />
         ) : state.currentChannelId ? (
           <ChannelView channelId={state.currentChannelId} />
         ) : (

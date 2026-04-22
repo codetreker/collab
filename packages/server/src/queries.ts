@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Channel, User, Message, EventRow, Mention, EventKind, InviteCode, WorkspaceFile } from './types.js';
+import type { Channel, User, Message, EventRow, Mention, EventKind, InviteCode, WorkspaceFile, RemoteNode, RemoteBinding } from './types.js';
 
 // ─── Channels ───────────────────────────────────────────
 
@@ -1091,4 +1091,109 @@ export function getAllWorkspaceFiles(
      WHERE wf.user_id = ? AND c.deleted_at IS NULL
      ORDER BY c.name, wf.is_directory DESC, wf.name ASC`,
   ).all(userId) as (WorkspaceFile & { channel_name: string })[];
+}
+
+// ─── Remote Nodes ────────────────────────────────────
+
+export function createRemoteNode(
+  db: Database.Database,
+  userId: string,
+  machineName: string,
+): RemoteNode {
+  const id = uuidv4();
+  const token = `rn_${crypto.randomBytes(32).toString('hex')}`;
+  db.prepare(
+    'INSERT INTO remote_nodes (id, user_id, machine_name, connection_token) VALUES (?, ?, ?, ?)',
+  ).run(id, userId, machineName, token);
+  return db.prepare('SELECT * FROM remote_nodes WHERE id = ?').get(id) as RemoteNode;
+}
+
+export function listRemoteNodes(
+  db: Database.Database,
+  userId: string,
+): RemoteNode[] {
+  return db.prepare(
+    'SELECT * FROM remote_nodes WHERE user_id = ? ORDER BY created_at DESC',
+  ).all(userId) as RemoteNode[];
+}
+
+export function getRemoteNode(
+  db: Database.Database,
+  nodeId: string,
+): RemoteNode | undefined {
+  return db.prepare('SELECT * FROM remote_nodes WHERE id = ?').get(nodeId) as RemoteNode | undefined;
+}
+
+export function getRemoteNodeByToken(
+  db: Database.Database,
+  token: string,
+): RemoteNode | undefined {
+  return db.prepare('SELECT * FROM remote_nodes WHERE connection_token = ?').get(token) as RemoteNode | undefined;
+}
+
+export function deleteRemoteNode(
+  db: Database.Database,
+  nodeId: string,
+): boolean {
+  return db.prepare('DELETE FROM remote_nodes WHERE id = ?').run(nodeId).changes > 0;
+}
+
+export function updateRemoteNodeLastSeen(
+  db: Database.Database,
+  nodeId: string,
+): void {
+  db.prepare("UPDATE remote_nodes SET last_seen_at = datetime('now') WHERE id = ?").run(nodeId);
+}
+
+// ─── Remote Bindings ─────────────────────────────────
+
+export function createRemoteBinding(
+  db: Database.Database,
+  nodeId: string,
+  channelId: string,
+  remotePath: string,
+  label: string | null = null,
+): RemoteBinding {
+  const id = uuidv4();
+  db.prepare(
+    'INSERT INTO remote_bindings (id, node_id, channel_id, path, label) VALUES (?, ?, ?, ?, ?)',
+  ).run(id, nodeId, channelId, remotePath, label);
+  return db.prepare('SELECT * FROM remote_bindings WHERE id = ?').get(id) as RemoteBinding;
+}
+
+export function listRemoteBindings(
+  db: Database.Database,
+  nodeId: string,
+): RemoteBinding[] {
+  return db.prepare(
+    'SELECT * FROM remote_bindings WHERE node_id = ? ORDER BY created_at DESC',
+  ).all(nodeId) as RemoteBinding[];
+}
+
+export function deleteRemoteBinding(
+  db: Database.Database,
+  bindingId: string,
+): boolean {
+  return db.prepare('DELETE FROM remote_bindings WHERE id = ?').run(bindingId).changes > 0;
+}
+
+export function listChannelRemoteBindings(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): (RemoteBinding & { machine_name: string; node_user_id: string })[] {
+  return db.prepare(
+    `SELECT rb.*, rn.machine_name, rn.user_id AS node_user_id
+     FROM remote_bindings rb
+     JOIN remote_nodes rn ON rn.id = rb.node_id
+     WHERE rb.channel_id = ? AND rn.user_id = ?
+     ORDER BY rb.created_at DESC`,
+  ).all(channelId, userId) as (RemoteBinding & { machine_name: string; node_user_id: string })[];
+}
+
+export function getRemoteBinding(
+  db: Database.Database,
+  bindingId: string,
+): RemoteBinding | undefined {
+  return db.prepare('SELECT * FROM remote_bindings WHERE id = ?').get(bindingId) as RemoteBinding | undefined;
 }

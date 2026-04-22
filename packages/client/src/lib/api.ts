@@ -580,3 +580,92 @@ export async function fetchAllWorkspaces(): Promise<WorkspaceFile[]> {
   const data = await request<{ files: WorkspaceFile[] }>('/api/v1/workspaces');
   return data.files;
 }
+
+// ─── Remote Nodes ─────────────────────────────────────
+
+export interface RemoteNode {
+  id: string;
+  user_id: string;
+  machine_name: string;
+  connection_token: string;
+  last_seen_at: string | null;
+  created_at: string;
+}
+
+export interface RemoteBinding {
+  id: string;
+  node_id: string;
+  channel_id: string;
+  path: string;
+  label: string | null;
+  created_at: string;
+  machine_name?: string;
+  node_user_id?: string;
+}
+
+export interface RemoteDirEntry {
+  name: string;
+  isDirectory: boolean;
+  size: number;
+  mtime: string;
+}
+
+export async function fetchRemoteNodes(): Promise<RemoteNode[]> {
+  const data = await request<{ nodes: RemoteNode[] }>('/api/v1/remote/nodes');
+  return data.nodes;
+}
+
+export async function createRemoteNode(machineName: string): Promise<RemoteNode> {
+  const data = await request<{ node: RemoteNode }>('/api/v1/remote/nodes', {
+    method: 'POST',
+    body: JSON.stringify({ machine_name: machineName }),
+  });
+  return data.node;
+}
+
+export async function deleteRemoteNode(nodeId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/remote/nodes/${nodeId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchRemoteBindings(nodeId: string): Promise<RemoteBinding[]> {
+  const data = await request<{ bindings: RemoteBinding[] }>(`/api/v1/remote/nodes/${nodeId}/bindings`);
+  return data.bindings;
+}
+
+export async function createRemoteBinding(
+  nodeId: string,
+  channelId: string,
+  path: string,
+  label?: string,
+): Promise<RemoteBinding> {
+  const data = await request<{ binding: RemoteBinding }>(`/api/v1/remote/nodes/${nodeId}/bindings`, {
+    method: 'POST',
+    body: JSON.stringify({ channel_id: channelId, path, label }),
+  });
+  return data.binding;
+}
+
+export async function deleteRemoteBinding(nodeId: string, bindingId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/remote/nodes/${nodeId}/bindings/${bindingId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchChannelRemoteBindings(channelId: string): Promise<RemoteBinding[]> {
+  const data = await request<{ bindings: RemoteBinding[] }>(`/api/v1/channels/${channelId}/remote-bindings`);
+  return data.bindings;
+}
+
+export async function remoteLs(nodeId: string, path: string): Promise<{ entries: RemoteDirEntry[] }> {
+  return request<{ entries: RemoteDirEntry[] }>(`/api/v1/remote/nodes/${nodeId}/ls?path=${encodeURIComponent(path)}`);
+}
+
+export async function remoteReadFile(nodeId: string, path: string): Promise<{ content: string; mimeType: string; size: number }> {
+  return request<{ content: string; mimeType: string; size: number }>(`/api/v1/remote/nodes/${nodeId}/read?path=${encodeURIComponent(path)}`);
+}
+
+export async function fetchRemoteNodeStatus(nodeId: string): Promise<{ online: boolean }> {
+  return request<{ online: boolean }>(`/api/v1/remote/nodes/${nodeId}/status`);
+}
