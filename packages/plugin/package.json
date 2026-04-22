@@ -14,7 +14,7 @@
     "openclaw": "file:/home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw"
   },
   "peerDependencies": {
-    "openclaw": ">=2026.4.16"
+    "openclaw": ">=2026.4.15"
   },
   "peerDependenciesMeta": {
     "openclaw": {
@@ -23,7 +23,7 @@
   },
   "openclaw": {
     "extensions": [
-      "./index.ts"
+      "./dist/index.js"
     ],
     "channel": {
       "id": "collab",
