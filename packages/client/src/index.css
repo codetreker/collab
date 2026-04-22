@@ -1102,6 +1102,17 @@ body {
   font-weight: 500;
 }
 
+.mention-id {
+  color: var(--text-sidebar-dim);
+  font-size: 0.85em;
+  margin-left: 4px;
+}
+
+.mention-status-icon {
+  font-size: 0.85em;
+  margin-right: 4px;
+}
+
 /* ─── Slash Command Picker ────────────────────────────── */
 
 .slash-command-picker {
