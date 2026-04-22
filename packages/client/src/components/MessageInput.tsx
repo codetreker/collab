@@ -106,7 +106,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     editorProps: {
       attributes: {
         class: 'tiptap-editor',
-        'data-placeholder': '输入消息... (Ctrl+Enter 发送)',
+        'data-placeholder': '输入消息... (Enter 发送, Ctrl+Enter 换行)',
       },
       handleDrop: (_view, event) => {
         const files = event.dataTransfer?.files;
@@ -138,7 +138,10 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
         return false;
       },
       handleKeyDown: (_view, event) => {
-        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          if (event.ctrlKey || event.metaKey) {
+            return false;
+          }
           event.preventDefault();
           handleSendRef.current();
           return true;
