@@ -1,7 +1,9 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { renderMarkdown } from '../lib/markdown';
+import { parseFileLinks } from '../lib/file-links';
 import ReactionBar from './ReactionBar';
 import EditEditor from './EditEditor';
+import FileLink from './FileLink';
 import * as api from '../lib/api';
 import { useAppContext } from '../context/AppContext';
 import { useLongPress } from '../hooks/useLongPress';
@@ -42,6 +44,10 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
     );
     return html;
   }, [message.content, message.content_type, message.mentions, userMap]);
+
+  const senderUser = state.users.find(u => u.id === message.sender_id);
+  const isAgentOwner = senderUser?.role === 'agent' && senderUser.owner_id === currentUserId;
+  const agentId = isAgentOwner ? message.sender_id : null;
 
   const startEdit = useCallback(() => {
     setEditing(true);
@@ -146,6 +152,8 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
             />
           ) : message.content_type === 'image' ? (
             <ImageContent url={message.content} />
+          ) : agentId ? (
+            <MessageTextWithFileLinks html={renderedContent!} rawContent={message.content} agentId={agentId} />
           ) : (
             <div
               className="message-text"
@@ -218,6 +226,31 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function MessageTextWithFileLinks({ html, rawContent, agentId }: { html: string; rawContent: string; agentId: string }) {
+  const segments = parseFileLinks(rawContent);
+  const hasPaths = segments.some(s => s.type === 'path');
+
+  if (!hasPaths) {
+    return <div className="message-text" dangerouslySetInnerHTML={{ __html: html }} />;
+  }
+
+  const paths = segments.filter(s => s.type === 'path').map(s => s.value);
+  const escaped = paths.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`(${escaped.join('|')})`);
+  const htmlParts = html.split(re);
+  const pathSetLower = new Set(paths);
+
+  return (
+    <div className="message-text">
+      {htmlParts.map((part, i) =>
+        pathSetLower.has(part)
+          ? <FileLink key={i} path={part} agentId={agentId} />
+          : <span key={i} dangerouslySetInnerHTML={{ __html: part }} />
       )}
     </div>
   );
