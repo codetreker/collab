@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import * as api from '../lib/api';
+import { useToast } from './Toast';
 import { RemoteFileViewer } from './RemoteFileViewer';
 
 interface Props {
@@ -10,28 +11,31 @@ interface Props {
 export default function FileLink({ path, agentId }: Props) {
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<api.AgentFileResponse | null>(null);
+  const [disabled, setDisabled] = useState(false);
+  const { showToast } = useToast();
 
   const handleClick = async () => {
-    if (loading) return;
+    if (loading || disabled) return;
     setLoading(true);
     try {
       const res = await api.getAgentFile(agentId, path);
       setFile(res);
     } catch (err) {
       const status = err instanceof api.ApiError ? err.status : 0;
-      const message = err instanceof api.ApiError ? err.message : 'Unknown error';
+      const errorCode = err instanceof api.ApiError ? err.message : '';
       if (status === 503) {
-        alert('Agent 离线，无法读取文件');
+        showToast('Agent 离线，无法读取文件');
+        setDisabled(true);
       } else if (status === 504) {
-        alert('文件读取超时');
-      } else if (status === 403) {
-        alert(message === 'path_not_allowed' ? '该路径不在允许读取范围' : message);
+        showToast('文件读取超时');
+      } else if (status === 403 && errorCode === 'path_not_allowed') {
+        showToast('该路径不在允许读取范围');
       } else if (status === 404) {
-        alert('文件不存在');
+        showToast('文件不存在');
       } else if (status === 413) {
-        alert('文件过大，无法预览');
+        showToast('文件过大，无法预览');
       } else {
-        alert(`读取失败: ${message}`);
+        showToast(`读取失败: ${errorCode}`);
       }
     } finally {
       setLoading(false);
@@ -39,11 +43,12 @@ export default function FileLink({ path, agentId }: Props) {
   };
 
   const fileName = path.split('/').pop() ?? path;
+  const className = `file-link${loading ? ' file-link-loading' : ''}${disabled ? ' file-link-disabled' : ''}`;
 
   return (
     <>
       <span
-        className={`file-link ${loading ? 'file-link-loading' : ''}`}
+        className={className}
         onClick={handleClick}
         title={path}
       >
