@@ -4,8 +4,7 @@ import {
   createTestDb, seedAdmin, seedMember, seedAgent, seedChannel,
   addChannelMember, grantPermission, authCookie,
 } from './setup.js';
-import { connectWS, waitForMessage, waitForClose, sleep, closeWsAndWait } from './ws-helpers.js';
-import { WebSocket } from 'ws';
+import { connectWS, waitForMessage, closeWsAndWait } from './ws-helpers.js';
 
 let testDb: Database.Database;
 
@@ -13,15 +12,6 @@ vi.mock('../db.js', () => ({
   getDb: () => testDb,
   closeDb: () => {},
 }));
-
-const wsMock = vi.hoisted(() => ({
-  broadcastToChannel: vi.fn(),
-  broadcastToUser: vi.fn(),
-  getOnlineUserIds: vi.fn(() => []),
-  unsubscribeUserFromChannel: vi.fn(),
-}));
-
-vi.mock('../ws.js', () => wsMock);
 
 import { buildFullApp } from './setup.js';
 import type { FastifyInstance } from 'fastify';
@@ -34,10 +24,8 @@ let agentId: string;
 let agentApiKey: string;
 let channelId: string;
 
-function inject(method: string, url: string, userId: string) {
-  return app.inject({
-    method: method as any,
-    url,
+function get(path: string, userId: string) {
+  return fetch(`http://127.0.0.1:${port}${path}`, {
     headers: { cookie: authCookie(userId) },
   });
 }
@@ -81,9 +69,10 @@ describe('File link via agent (integration)', () => {
         }
       });
 
-      const res = await inject('GET', `/api/v1/agents/${agentId}/files?path=/workspace/test.ts`, ownerId);
-      expect(res.statusCode).toBe(200);
-      expect(res.json().content).toBe('file-content-here');
+      const res = await get(`/api/v1/agents/${agentId}/files?path=/workspace/test.ts`, ownerId);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.content).toBe('file-content-here');
     } finally {
       await closeWsAndWait(agentWs);
     }
@@ -92,17 +81,18 @@ describe('File link via agent (integration)', () => {
   it('non-owner gets 403', async () => {
     const agentWs = await connectWS(port, '/ws/plugin', { apiKey: agentApiKey });
     try {
-      const res = await inject('GET', `/api/v1/agents/${agentId}/files?path=/workspace/test.ts`, nonOwnerId);
-      expect(res.statusCode).toBe(403);
+      const res = await get(`/api/v1/agents/${agentId}/files?path=/workspace/test.ts`, nonOwnerId);
+      expect(res.status).toBe(403);
     } finally {
       await closeWsAndWait(agentWs);
     }
   });
 
   it('agent offline returns 503', async () => {
-    const res = await inject('GET', `/api/v1/agents/${agentId}/files?path=/workspace/test.ts`, ownerId);
-    expect(res.statusCode).toBe(503);
-    expect(res.json().error).toBe('agent_offline');
+    const res = await get(`/api/v1/agents/${agentId}/files?path=/workspace/test.ts`, ownerId);
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe('agent_offline');
   });
 
   it('path_not_allowed returns 403', async () => {
@@ -119,16 +109,17 @@ describe('File link via agent (integration)', () => {
         }
       });
 
-      const res = await inject('GET', `/api/v1/agents/${agentId}/files?path=/etc/passwd`, ownerId);
-      expect(res.statusCode).toBe(403);
-      expect(res.json().error).toBe('path_not_allowed');
+      const res = await get(`/api/v1/agents/${agentId}/files?path=/etc/passwd`, ownerId);
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.error).toBe('path_not_allowed');
     } finally {
       await closeWsAndWait(agentWs);
     }
   });
 
   it('missing path returns 400', async () => {
-    const res = await inject('GET', `/api/v1/agents/${agentId}/files`, ownerId);
-    expect(res.statusCode).toBe(400);
+    const res = await get(`/api/v1/agents/${agentId}/files`, ownerId);
+    expect(res.status).toBe(400);
   });
 });
