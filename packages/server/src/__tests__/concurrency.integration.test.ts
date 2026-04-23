@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import {
-  createTestDb, seedAdmin, seedMember, seedChannel,
+  createTestDb, seedAdmin, seedChannel,
   addChannelMember, seedMessage, seedInviteCode, authCookie,
 } from './setup.js';
 
@@ -12,25 +12,20 @@ vi.mock('../db.js', () => ({
   closeDb: () => {},
 }));
 
-const wsMock = vi.hoisted(() => ({
-  broadcastToChannel: vi.fn(),
-  broadcastToUser: vi.fn(),
-  getOnlineUserIds: vi.fn(() => []),
-  unsubscribeUserFromChannel: vi.fn(),
-}));
-
-vi.mock('../ws.js', () => wsMock);
-
 import { buildFullApp } from './setup.js';
 import type { FastifyInstance } from 'fastify';
 
 let app: FastifyInstance;
+let port: number;
 
 describe('Concurrency (integration)', () => {
   beforeAll(async () => {
     testDb = createTestDb();
     app = await buildFullApp();
-    await app.ready();
+    await app.listen({ port: 0, host: '127.0.0.1' });
+    const addr = app.server.address();
+    if (typeof addr === 'string' || !addr) throw new Error('unexpected address');
+    port = addr.port;
   });
 
   afterAll(async () => {
@@ -43,26 +38,26 @@ describe('Concurrency (integration)', () => {
     seedInviteCode(testDb, adminId, 'CONCURRENT5');
 
     const attempts = Array.from({ length: 5 }, (_, i) =>
-      app.inject({
+      fetch(`http://127.0.0.1:${port}/api/v1/auth/register`, {
         method: 'POST',
-        url: '/api/v1/auth/register',
-        payload: {
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
           invite_code: 'CONCURRENT5',
           email: `conc${i}@test.com`,
           password: 'password123',
           display_name: `ConcUser${i}`,
-        },
-      }),
+        }),
+      }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) })),
     );
 
     const results = await Promise.all(attempts);
-    const successes = results.filter((r) => r.statusCode === 201);
-    const failures = results.filter((r) => r.statusCode !== 201);
+    const successes = results.filter((r) => r.status === 201);
+    const failures = results.filter((r) => r.status !== 201);
 
     expect(successes).toHaveLength(1);
     expect(failures).toHaveLength(4);
     failures.forEach((r) => {
-      expect([404, 409]).toContain(r.statusCode);
+      expect([404, 409]).toContain(r.status);
     });
   });
 
@@ -73,16 +68,15 @@ describe('Concurrency (integration)', () => {
     const msgId = seedMessage(testDb, channelId, adminId, 'original');
 
     const edits = Array.from({ length: 5 }, (_, i) =>
-      app.inject({
+      fetch(`http://127.0.0.1:${port}/api/v1/messages/${msgId}`, {
         method: 'PUT',
-        url: `/api/v1/messages/${msgId}`,
-        headers: { cookie: authCookie(adminId) },
-        payload: { content: `edit-${i}` },
-      }),
+        headers: { 'content-type': 'application/json', cookie: authCookie(adminId) },
+        body: JSON.stringify({ content: `edit-${i}` }),
+      }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) })),
     );
 
     const results = await Promise.all(edits);
-    const successes = results.filter((r) => r.statusCode === 200);
+    const successes = results.filter((r) => r.status === 200);
     expect(successes.length).toBeGreaterThanOrEqual(1);
 
     const row = testDb.prepare('SELECT content, edited_at FROM messages WHERE id = ?').get(msgId) as any;
