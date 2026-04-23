@@ -116,14 +116,13 @@ describe('完整聊天 + WS 推送', () => {
 
 文件：`agent-human-e2e.test.ts`
 
-> **apiKey 传递方式**：当前 Plugin WS 路由从 query string 读取 apiKey，但 **query string 不安全**（URL 会被日志/CDN 记录）。
-> **COL-BUG-006 将 WS 认证改为 HTTP header**（`Authorization: Bearer <apiKey>`）。修复后 `connectWS` 需改为传 headers：
+> **apiKey 传递方式**：Plugin WS 认证通过 HTTP header `Authorization: Bearer <apiKey>`（COL-BUG-006 修复后）。
+> `connectWS` 传递 headers 而非 query string：
 > ```typescript
-> const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/plugin`, {
->   headers: { authorization: `Bearer ${agentApiKey}` },
+> const ws = await connectWS(port, '/ws/plugin', {
+>   headers: { authorization: `Bearer ${apiKey}` },
 > });
 > ```
-> 在 BUG-006 修复前，测试暂时仍用 query string 方式。
 
 ```typescript
 describe('Agent-Human 完整往返', () => {
@@ -131,7 +130,7 @@ describe('Agent-Human 完整往返', () => {
   // agent 用 Plugin WS 连接 (/ws/plugin?apiKey=xxx)
 
   it('人发 @agent 消息 → Plugin WS 收到 message + mention 事件', async () => {
-    const pluginWs = await connectWS(port, '/ws/plugin', { apiKey: agentApiKey });
+    const pluginWs = await connectWS(port, '/ws/plugin', { headers: { authorization: `Bearer ${agentApiKey}` } });
     wsConnections.push(pluginWs);
     await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminToken, {
       content: `hey <@${agentId}>`, mentions: [agentId],
@@ -146,7 +145,7 @@ describe('Agent-Human 完整往返', () => {
     const humanWs = await connectAuthWS(port, adminToken);
     await subscribeToChannel(humanWs, channelId);
     wsConnections.push(humanWs);
-    const pluginWs = await connectWS(port, '/ws/plugin', { apiKey: agentApiKey });
+    const pluginWs = await connectWS(port, '/ws/plugin', { headers: { authorization: `Bearer ${agentApiKey}` } });
     wsConnections.push(pluginWs);
     pluginWs.send(JSON.stringify({
       type: 'apiCall', id: 'reply-1',
@@ -158,7 +157,7 @@ describe('Agent-Human 完整往返', () => {
   });
 
   it('不 @ agent 的消息 → 收到 message 但无 mention 事件', async () => {
-    const pluginWs = await connectWS(port, '/ws/plugin', { apiKey: agentApiKey });
+    const pluginWs = await connectWS(port, '/ws/plugin', { headers: { authorization: `Bearer ${agentApiKey}` } });
     wsConnections.push(pluginWs);
     await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminToken, { content: 'no mention' });
     const msgs = await collectMessages(pluginWs, 2000);
@@ -760,7 +759,7 @@ describe('Token 轮换中的 WS', () => {
   // setup: admin + agent with apiKey, channel
 
   it('rotate-api-key → 旧 WS 连接收到关闭码 4001', async () => {
-    const pluginWs = await connectWS(port, '/ws/plugin', { apiKey: oldApiKey });
+    const pluginWs = await connectWS(port, '/ws/plugin', { headers: { authorization: `Bearer ${oldApiKey}` } });
     wsConnections.push(pluginWs);
     const closePromise = new Promise<number>((resolve) => {
       pluginWs.on('close', (code) => resolve(code));
@@ -772,13 +771,13 @@ describe('Token 轮换中的 WS', () => {
   });
 
   it('新 key 重连成功', async () => {
-    const newWs = await connectWS(port, '/ws/plugin', { apiKey: newApiKey });
+    const newWs = await connectWS(port, '/ws/plugin', { headers: { authorization: `Bearer ${newApiKey}` } });
     wsConnections.push(newWs);
     expect(newWs.readyState).toBe(1); // OPEN
   });
 
   it('旧 key 重连失败', async () => {
-    await expect(connectWS(port, '/ws/plugin', { apiKey: oldApiKey }))
+    await expect(connectWS(port, '/ws/plugin', { headers: { authorization: `Bearer ${oldApiKey}` } }))
       .rejects.toThrow();
   });
 });
