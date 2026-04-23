@@ -263,7 +263,9 @@ export class TestContext {
   }
 }
 
-export async function buildFullApp(testDb: Database.Database): Promise<FastifyInstance> {
+// Routes obtain DB via `import { getDb } from '../db.js'` — callers must vi.mock('../db.js')
+// to inject the test DB before calling this function.
+export async function buildFullApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
   await app.register(fastifyWebsocket);
   await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 } });

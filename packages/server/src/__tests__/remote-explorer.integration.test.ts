@@ -76,7 +76,7 @@ describe('Remote Explorer (integration)', () => {
   beforeAll(async () => {
     testDb = createTestDb();
     addRemoteTables(testDb);
-    app = await buildFullApp(testDb);
+    app = await buildFullApp();
     await app.listen({ port: 0, host: '127.0.0.1' });
     const addr = app.server.address();
     if (typeof addr === 'string' || !addr) throw new Error('unexpected address');

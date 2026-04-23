@@ -29,7 +29,7 @@ let app: FastifyInstance;
 describe('Concurrency (integration)', () => {
   beforeAll(async () => {
     testDb = createTestDb();
-    app = await buildFullApp(testDb);
+    app = await buildFullApp();
     await app.ready();
   });
 
