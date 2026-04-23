@@ -116,8 +116,14 @@ describe('完整聊天 + WS 推送', () => {
 
 文件：`agent-human-e2e.test.ts`
 
-> **apiKey 传递方式**：Plugin WS 路由（`ws-plugin.ts`）通过 `url.searchParams.get('apiKey')` 从 query string 读取 apiKey。
-> `connectWS(port, '/ws/plugin', { apiKey })` 会将 query 拼接为 `/ws/plugin?apiKey=xxx`，与服务端一致。
+> **apiKey 传递方式**：当前 Plugin WS 路由从 query string 读取 apiKey，但 **query string 不安全**（URL 会被日志/CDN 记录）。
+> **COL-BUG-006 将 WS 认证改为 HTTP header**（`Authorization: Bearer <apiKey>`）。修复后 `connectWS` 需改为传 headers：
+> ```typescript
+> const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/plugin`, {
+>   headers: { authorization: `Bearer ${agentApiKey}` },
+> });
+> ```
+> 在 BUG-006 修复前，测试暂时仍用 query string 方式。
 
 ```typescript
 describe('Agent-Human 完整往返', () => {
