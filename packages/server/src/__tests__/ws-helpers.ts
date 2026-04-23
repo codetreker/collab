@@ -55,6 +55,13 @@ export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export async function closeWsAndWait(ws: import('ws').WebSocket): Promise<void> {
+  if (ws.readyState === ws.CLOSED) return;
+  ws.close();
+  await waitForClose(ws).catch(() => {});
+  await sleep(50);
+}
+
 export async function collectMessages(
   ws: WebSocket,
   timeoutMs: number,

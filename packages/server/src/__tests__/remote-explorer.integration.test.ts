@@ -5,7 +5,7 @@ import {
   createTestDb, seedAdmin, seedMember, seedChannel,
   addChannelMember, authCookie,
 } from './setup.js';
-import { connectWS, waitForMessage, waitForClose, sleep } from './ws-helpers.js';
+import { connectWS, waitForMessage, waitForClose, sleep, closeWsAndWait } from './ws-helpers.js';
 import { WebSocket } from 'ws';
 
 let testDb: Database.Database;
@@ -60,13 +60,6 @@ let port: number;
 let userAId: string;
 let userBId: string;
 let channelId: string;
-
-async function closeWsAndWait(ws: WebSocket): Promise<void> {
-  if (ws.readyState === WebSocket.CLOSED) return;
-  ws.close();
-  await waitForClose(ws).catch(() => {});
-  await sleep(50);
-}
 
 function inject(method: string, url: string, userId: string, body?: unknown) {
   return app.inject({
