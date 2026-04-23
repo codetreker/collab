@@ -30,4 +30,5 @@
 | COL-B15 | Collab Plugin Skill | Backlog | 野马 | — | — | 教 Agent 怎么用 Collab 功能 |
 | COL-B19 | Remote Explorer | Backlog | 野马 | — | [direction](COL-B19/direction.md) | 远程文件浏览，只读 v1 |
 | COL-B23 | 聊天记录分页加载 | Backlog | 野马 | — | — | 初始加载最近100条，往上滚动增量加载 |
-| COL-B24 | 集成测试覆盖 | Discussion | 野马 | — | [prd](COL-B24/prd.md) | 14 个场景，覆盖率 85%+ |
+| COL-B24 | 集成测试覆盖 | In Progress | 战马 | [#95](https://github.com/codetreker/collab/pull/95) | [prd](COL-B24/prd.md) [design](COL-B24/design.md) | 真实 server 模式重构中 |
+| COL-B25 | 复杂场景集成测试 | Ready | 战马 | — | [prd](COL-B25/prd.md) | 8 个跨模块端到端场景，B24 重构后开始 |
