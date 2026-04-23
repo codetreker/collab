@@ -15,6 +15,10 @@
 | COL-BUG-004 | Enter/Ctrl+Enter 键位对调 | Backlog | 飞马 | — | 应 Enter=发送、Ctrl+Enter=换行（和其它 IM 一致） |
 | COL-BUG-005 | Markdown 渲染异常 | Backlog | 飞马 | — | 输入框和聊天历史 Markdown 渲染不对 |
 | COL-BUG-006 | WS apiKey 从 query string 读取不安全 | Ready | 战马 | — | ws-plugin.ts 改为读 Authorization header，建军指出 |
+| COL-BUG-007 | 通用 WS 认证 token 从 query string 读取 | Ready | 战马 | — | ws.ts:26 searchParams.get('token')，改为 Authorization header |
+| COL-BUG-008 | Remote Node WS token 从 query string 读取 | Ready | 战马 | — | ws-remote.ts:16 searchParams.get('token')，改为 Authorization header |
+| COL-BUG-009 | SSE stream api_key 从 query string 读取 | Ready | 战马 | — | stream.ts:120 query.api_key，改为 Authorization header |
+| COL-BUG-010 | Dev 模式 WS 绕过认证 | Backlog | 飞马 | — | ws.ts:54 NODE_ENV=development 时 query user_id 直接认证，需确保 prod 不启用 |
 
 ## Features
 
