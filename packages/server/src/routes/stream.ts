@@ -390,6 +390,7 @@ const pluginCursors = new Map<string, number>();
 function notifyPluginWsClients(): void {
   const db = getDb();
   const agentIds = pluginManager.getConnectedAgentIds();
+  console.log('[DEBUG notifyPluginWsClients] agentIds:', agentIds);
 
   for (const agentId of agentIds) {
     const conn = pluginManager.getConnection(agentId);
@@ -402,6 +403,7 @@ function notifyPluginWsClients(): void {
     if (cursor == null) {
       cursor = Q.getLatestCursor(db);
       pluginCursors.set(agentId, cursor);
+      console.log('[DEBUG] initialized cursor for', agentId, '=', cursor);
       continue;
     }
 
@@ -410,6 +412,7 @@ function notifyPluginWsClients(): void {
 
     try {
       const events = Q.getEventsSinceWithChanges(db, cursor, 100, channelIds, changeKinds);
+      console.log('[DEBUG] events for', agentId, 'since cursor', cursor, ':', events.length, 'channelIds:', channelIds);
       for (const ev of events) {
         let payload: Record<string, unknown>;
         try {

@@ -10,7 +10,7 @@ export function connectWS(port: number, path: string, queryOrOpts?: Record<strin
   let headers: Record<string, string> | undefined;
 
   if (queryOrOpts && 'headers' in queryOrOpts) {
-    headers = queryOrOpts.headers;
+    headers = (queryOrOpts as ConnectWSOpts).headers;
   } else if (queryOrOpts) {
     qs = '?' + new URLSearchParams(queryOrOpts as Record<string, string>).toString();
   }
