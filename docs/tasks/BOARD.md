@@ -14,10 +14,10 @@
 | COL-BUG-003 | 亮色主题下侧边栏和 Workspace 仍是暗色 | Backlog | 飞马 | — | CSS 主题变量未覆盖 |
 | COL-BUG-004 | Enter/Ctrl+Enter 键位对调 | Backlog | 飞马 | — | 应 Enter=发送、Ctrl+Enter=换行（和其它 IM 一致） |
 | COL-BUG-005 | Markdown 渲染异常 | Backlog | 飞马 | — | 输入框和聊天历史 Markdown 渲染不对 |
-| COL-BUG-006 | WS apiKey 从 query string 读取不安全 | Ready | 战马 | — | ws-plugin.ts 改为读 Authorization header，建军指出 |
-| COL-BUG-007 | 通用 WS 认证 token 从 query string 读取 | Ready | 战马 | — | ws.ts:26 searchParams.get('token')，改为 Authorization header |
-| COL-BUG-008 | Remote Node WS token 从 query string 读取 | Ready | 战马 | — | ws-remote.ts:16 searchParams.get('token')，改为 Authorization header |
-| COL-BUG-009 | SSE stream api_key 从 query string 读取 | Ready | 战马 | — | stream.ts:120 query.api_key，改为 Authorization header |
+| COL-BUG-006 | WS apiKey 从 query string 读取不安全 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | ws-plugin.ts 改为读 Authorization header |
+| COL-BUG-007 | 通用 WS 认证 token 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | ws.ts 改为 Authorization header |
+| COL-BUG-008 | Remote Node WS token 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | ws-remote.ts 改为 Authorization header |
+| COL-BUG-009 | SSE stream api_key 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | stream.ts 改为 Authorization header |
 | COL-BUG-010 | Dev 模式 WS 绕过认证 | Backlog | 飞马 | — | ws.ts:54 NODE_ENV=development 时 query user_id 直接认证，需确保 prod 不启用 |
 
 ## Features
@@ -35,5 +35,5 @@
 | COL-B15 | Collab Plugin Skill | Backlog | 野马 | — | — | 教 Agent 怎么用 Collab 功能 |
 | COL-B19 | Remote Explorer | Backlog | 野马 | — | [direction](COL-B19/direction.md) | 远程文件浏览，只读 v1 |
 | COL-B23 | 聊天记录分页加载 | Backlog | 野马 | — | — | 初始加载最近100条，往上滚动增量加载 |
-| COL-B24 | 集成测试覆盖 | In Progress | 战马 | [#95](https://github.com/codetreker/collab/pull/95) | [prd](COL-B24/prd.md) [design](COL-B24/design.md) | 真实 server 模式重构中 |
-| COL-B25 | 复杂场景集成测试 | Ready | 战马 | — | [prd](COL-B25/prd.md) | 8 个跨模块端到端场景，B24 重构后开始 |
+| COL-B24 | 集成测试覆盖 | Done | 战马 | [#95](https://github.com/codetreker/collab/pull/95) | [prd](COL-B24/prd.md) [design](COL-B24/design.md) | 真实 server 模式，313 tests |
+| COL-B25 | 复杂场景集成测试 | Done | 战马 | [#101](https://github.com/codetreker/collab/pull/101) | [prd](COL-B25/prd.md) [design](COL-B25/design.md) | 20 个端到端场景，408 tests |
