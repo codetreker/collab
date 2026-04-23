@@ -19,6 +19,7 @@
 | COL-BUG-008 | Remote Node WS token 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | ws-remote.ts 改为 Authorization header |
 | COL-BUG-009 | SSE stream api_key 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | stream.ts 改为 Authorization header |
 | COL-BUG-010 | Dev 模式 WS 绕过认证 | Backlog | 飞马 | — | ws.ts:54 NODE_ENV=development 时 query user_id 直接认证，需确保 prod 不启用 |
+| COL-BUG-011 | iOS PWA 顶部 safe area 重叠 | Ready | 战马 | — | Tab 栏被 iOS 状态栏盖住，点不到。需加 viewport-fit=cover + padding-top: env(safe-area-inset-top) |
 
 ## Features
 
