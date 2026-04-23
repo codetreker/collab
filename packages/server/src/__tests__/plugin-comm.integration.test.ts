@@ -15,12 +15,14 @@ vi.mock('../db.js', () => ({
   closeDb: () => {},
 }));
 
-vi.mock('../ws.js', () => ({
+const wsMock = vi.hoisted(() => ({
   broadcastToChannel: vi.fn(),
   broadcastToUser: vi.fn(),
   getOnlineUserIds: vi.fn(() => []),
   unsubscribeUserFromChannel: vi.fn(),
 }));
+
+vi.mock('../ws.js', () => wsMock);
 
 import { buildFullApp } from './setup.js';
 import type { FastifyInstance } from 'fastify';
@@ -143,6 +145,10 @@ describe('Plugin communication (integration)', () => {
   });
 
   it('message event pushed to connected plugin WS', async () => {
+    // True WS fan-out cannot be tested here because broadcastToChannel is mocked
+    // (real WS upgrade connections don't share the broadcast registry with inject).
+    // Instead we verify the spy was called with correct channel and event shape.
+    wsMock.broadcastToChannel.mockClear();
     const ws = await connectWS(port, '/ws/plugin', { apiKey: agentApiKey });
     try {
       ws.send(JSON.stringify({
@@ -156,6 +162,11 @@ describe('Plugin communication (integration)', () => {
       }));
       const response = await waitForMessage(ws, (m) => m.type === 'api_response' && m.id === 'req-push');
       expect(response.data.status).toBe(201);
+
+      expect(wsMock.broadcastToChannel).toHaveBeenCalledWith(
+        channelId,
+        expect.objectContaining({ type: 'new_message' }),
+      );
     } finally {
       await closeWsAndWait(ws);
     }

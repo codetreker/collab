@@ -15,12 +15,14 @@ vi.mock('../db.js', () => ({
   closeDb: () => {},
 }));
 
-vi.mock('../ws.js', () => ({
+const wsMock = vi.hoisted(() => ({
   broadcastToChannel: vi.fn(),
   broadcastToUser: vi.fn(),
   getOnlineUserIds: vi.fn(() => []),
   unsubscribeUserFromChannel: vi.fn(),
 }));
+
+vi.mock('../ws.js', () => wsMock);
 
 import { buildFullApp } from './setup.js';
 import type { FastifyInstance } from 'fastify';
