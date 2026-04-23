@@ -101,6 +101,7 @@ body {
 .app {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -143,11 +144,13 @@ body {
 .sidebar {
   width: var(--sidebar-width);
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg-sidebar);
   color: var(--text-sidebar);
   overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .sidebar-header {
@@ -499,6 +502,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
 .channel-header {
@@ -506,7 +510,8 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  height: var(--header-height);
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-primary);
   flex-shrink: 0;
@@ -1844,15 +1849,14 @@ body {
 }
 
 /* ─── Safe area for notch devices ──────────────────────── */
+/* env() returns 0 when unsupported — no @supports wrapper needed */
 
-@supports (padding-top: env(safe-area-inset-top)) {
-  .sidebar {
-    padding-top: env(safe-area-inset-top);
-  }
+.hamburger-btn {
+  top: calc(10px + env(safe-area-inset-top, 0px));
+}
 
-  .message-input-container {
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-  }
+.message-input-container {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
 }
 
 /* ─── Login Page ─────────────────────────────────────── */
