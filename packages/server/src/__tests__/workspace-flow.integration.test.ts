@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import {
   createTestDb, seedAdmin, seedMember, seedChannel,
-  addChannelMember, authCookie,
+  addChannelMember, authCookie, TestContext,
 } from './setup.js';
 
 let testDb: Database.Database;
@@ -25,19 +25,7 @@ import { registerWorkspaceRoutes } from '../routes/workspace.js';
 import { authMiddleware } from '../auth.js';
 
 let app: FastifyInstance;
-let adminId: string;
-let memberAId: string;
-let memberBId: string;
-let channelId: string;
-
-function inject(method: string, url: string, userId?: string, payload?: unknown) {
-  return app.inject({
-    method: method as any,
-    url,
-    payload: payload as any,
-    headers: userId ? { cookie: authCookie(userId) } : {},
-  });
-}
+let ctx: TestContext;
 
 function uploadFile(url: string, userId: string, filename: string, content: Buffer | string) {
   const boundary = '----TestBoundary';
@@ -62,6 +50,7 @@ function uploadFile(url: string, userId: string, filename: string, content: Buff
 
 describe('Workspace flow (integration)', () => {
   beforeAll(async () => {
+    // Workspace needs multipart, so we build a custom app instead of TestContext
     testDb = createTestDb();
     app = Fastify({ logger: false });
     await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 } });
@@ -72,26 +61,29 @@ describe('Workspace flow (integration)', () => {
     registerWorkspaceRoutes(app);
     await app.ready();
 
-    adminId = seedAdmin(testDb, 'WsAdmin');
-    memberAId = seedMember(testDb, 'WsMemberA');
-    memberBId = seedMember(testDb, 'WsMemberB');
-    channelId = seedChannel(testDb, adminId, 'ws-ch');
-    addChannelMember(testDb, channelId, adminId);
-    addChannelMember(testDb, channelId, memberAId);
-    addChannelMember(testDb, channelId, memberBId);
+    ctx = new TestContext();
+    ctx.db = testDb;
+    ctx.app = app;
+    ctx.admin = { id: seedAdmin(testDb, 'WsAdmin'), token: '' };
+    ctx.admin.token = authCookie(ctx.admin.id);
+    ctx.memberA = { id: seedMember(testDb, 'WsMemberA'), token: '' };
+    ctx.memberA.token = authCookie(ctx.memberA.id);
+    ctx.memberB = { id: seedMember(testDb, 'WsMemberB'), token: '' };
+    ctx.memberB.token = authCookie(ctx.memberB.id);
+    ctx.channel = { id: seedChannel(testDb, ctx.admin.id, 'ws-ch') };
+    addChannelMember(testDb, ctx.channel.id, ctx.admin.id);
+    addChannelMember(testDb, ctx.channel.id, ctx.memberA.id);
+    addChannelMember(testDb, ctx.channel.id, ctx.memberB.id);
   });
 
-  afterAll(async () => {
-    await app.close();
-    testDb.close();
-  });
+  afterAll(() => ctx.close());
 
   let uploadedFileId: string;
 
   it('upload file → 201 + file metadata', async () => {
     const res = await uploadFile(
-      `/api/v1/channels/${channelId}/workspace/upload`,
-      memberAId, 'test.txt', 'hello',
+      `/api/v1/channels/${ctx.channel.id}/workspace/upload`,
+      ctx.memberA.id, 'test.txt', 'hello',
     );
     expect(res.statusCode).toBe(201);
     expect(res.json().file.name).toBe('test.txt');
@@ -99,40 +91,40 @@ describe('Workspace flow (integration)', () => {
   });
 
   it('list files → user isolation (memberA sees own, memberB sees none)', async () => {
-    const r1 = await inject('GET', `/api/v1/channels/${channelId}/workspace`, memberAId);
+    const r1 = await ctx.inject('GET', `/api/v1/channels/${ctx.channel.id}/workspace`, ctx.memberA.token);
     expect(r1.json().files.length).toBeGreaterThan(0);
-    const r2 = await inject('GET', `/api/v1/channels/${channelId}/workspace`, memberBId);
+    const r2 = await ctx.inject('GET', `/api/v1/channels/${ctx.channel.id}/workspace`, ctx.memberB.token);
     expect(r2.json().files.length).toBe(0);
   });
 
   it('rename file → 200 + new name', async () => {
-    const res = await inject('PATCH', `/api/v1/channels/${channelId}/workspace/files/${uploadedFileId}`, memberAId, { name: 'renamed.txt' });
+    const res = await ctx.inject('PATCH', `/api/v1/channels/${ctx.channel.id}/workspace/files/${uploadedFileId}`, ctx.memberA.token, { name: 'renamed.txt' });
     expect(res.statusCode).toBe(200);
     expect(res.json().file.name).toBe('renamed.txt');
   });
 
   it('duplicate filename → auto-resolved', async () => {
     await uploadFile(
-      `/api/v1/channels/${channelId}/workspace/upload`,
-      memberAId, 'dup.txt', 'a',
+      `/api/v1/channels/${ctx.channel.id}/workspace/upload`,
+      ctx.memberA.id, 'dup.txt', 'a',
     );
     const res = await uploadFile(
-      `/api/v1/channels/${channelId}/workspace/upload`,
-      memberAId, 'dup.txt', 'b',
+      `/api/v1/channels/${ctx.channel.id}/workspace/upload`,
+      ctx.memberA.id, 'dup.txt', 'b',
     );
     expect(res.statusCode).toBe(201);
     expect(res.json().file.name).not.toBe('dup.txt');
   });
 
   it('mkdir + nested mkdir + delete folder', async () => {
-    const r1 = await inject('POST', `/api/v1/channels/${channelId}/workspace/mkdir`, memberAId, { name: 'docs' });
+    const r1 = await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/workspace/mkdir`, ctx.memberA.token, { name: 'docs' });
     expect(r1.statusCode).toBe(201);
     const folderId = r1.json().file.id;
 
-    const r2 = await inject('POST', `/api/v1/channels/${channelId}/workspace/mkdir`, memberAId, { name: 'sub', parentId: folderId });
+    const r2 = await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/workspace/mkdir`, ctx.memberA.token, { name: 'sub', parentId: folderId });
     expect(r2.statusCode).toBe(201);
 
-    const r3 = await inject('DELETE', `/api/v1/channels/${channelId}/workspace/files/${folderId}`, memberAId);
+    const r3 = await ctx.inject('DELETE', `/api/v1/channels/${ctx.channel.id}/workspace/files/${folderId}`, ctx.memberA.token);
     expect(r3.statusCode).toBe(204);
   });
 
@@ -140,39 +132,39 @@ describe('Workspace flow (integration)', () => {
 
   it('download file → 200 + correct content', async () => {
     const upRes = await uploadFile(
-      `/api/v1/channels/${channelId}/workspace/upload`,
-      memberAId, 'download-me.txt', 'download content',
+      `/api/v1/channels/${ctx.channel.id}/workspace/upload`,
+      ctx.memberA.id, 'download-me.txt', 'download content',
     );
     const fId = upRes.json().file.id;
-    const res = await inject('GET', `/api/v1/channels/${channelId}/workspace/files/${fId}`, memberAId);
+    const res = await ctx.inject('GET', `/api/v1/channels/${ctx.channel.id}/workspace/files/${fId}`, ctx.memberA.token);
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain('download content');
   });
 
   it('move file to folder → 200 + parent_id updated', async () => {
-    const folderRes = await inject('POST', `/api/v1/channels/${channelId}/workspace/mkdir`, memberAId, { name: 'target-folder' });
+    const folderRes = await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/workspace/mkdir`, ctx.memberA.token, { name: 'target-folder' });
     const folderId = folderRes.json().file.id;
 
     const upRes = await uploadFile(
-      `/api/v1/channels/${channelId}/workspace/upload`,
-      memberAId, 'move-me.txt', 'move',
+      `/api/v1/channels/${ctx.channel.id}/workspace/upload`,
+      ctx.memberA.id, 'move-me.txt', 'move',
     );
     const fileId = upRes.json().file.id;
 
-    const res = await inject('POST', `/api/v1/channels/${channelId}/workspace/files/${fileId}/move`, memberAId, { parentId: folderId });
+    const res = await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/workspace/files/${fileId}/move`, ctx.memberA.token, { parentId: folderId });
     expect(res.statusCode).toBe(200);
     expect(res.json().file.parent_id).toBe(folderId);
   });
 
   it('delete file → 204 + removed from list', async () => {
     const upRes = await uploadFile(
-      `/api/v1/channels/${channelId}/workspace/upload`,
-      memberAId, 'delete-me.txt', 'delete',
+      `/api/v1/channels/${ctx.channel.id}/workspace/upload`,
+      ctx.memberA.id, 'delete-me.txt', 'delete',
     );
     const fId = upRes.json().file.id;
-    const res = await inject('DELETE', `/api/v1/channels/${channelId}/workspace/files/${fId}`, memberAId);
+    const res = await ctx.inject('DELETE', `/api/v1/channels/${ctx.channel.id}/workspace/files/${fId}`, ctx.memberA.token);
     expect(res.statusCode).toBe(204);
-    const file = testDb.prepare('SELECT * FROM workspace_files WHERE id = ?').get(fId);
+    const file = ctx.db.prepare('SELECT * FROM workspace_files WHERE id = ?').get(fId);
     expect(file).toBeUndefined();
   });
 });

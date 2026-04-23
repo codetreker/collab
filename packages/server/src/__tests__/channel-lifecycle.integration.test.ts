@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import {
   createTestDb, seedAdmin, seedMember, seedChannel, seedMessage,
-  addChannelMember, authCookie, grantPermission,
+  addChannelMember, authCookie, grantPermission, TestContext,
 } from './setup.js';
 
 let testDb: Database.Database;
@@ -19,96 +19,64 @@ vi.mock('../ws.js', () => ({
   unsubscribeUserFromChannel: vi.fn(),
 }));
 
-import Fastify, { type FastifyInstance } from 'fastify';
 import { registerChannelRoutes } from '../routes/channels.js';
 import { registerMessageRoutes } from '../routes/messages.js';
 import { registerDmRoutes } from '../routes/dm.js';
-import { authMiddleware } from '../auth.js';
 
-let app: FastifyInstance;
-let adminId: string;
-let memberAId: string;
-let memberBId: string;
-let channelId: string;
-
-function inject(method: string, url: string, userId?: string, payload?: unknown) {
-  return app.inject({
-    method: method as any,
-    url,
-    payload: payload as any,
-    headers: userId ? { cookie: authCookie(userId) } : {},
-  });
-}
+let ctx: TestContext;
 
 describe('Channel lifecycle (integration)', () => {
   beforeAll(async () => {
-    testDb = createTestDb();
-    app = Fastify({ logger: false });
-    app.addHook('onRequest', async (request, reply) => {
-      if (request.url.startsWith('/api/v1/auth/')) return;
-      await authMiddleware(request, reply);
+    ctx = await TestContext.create({
+      routes: [registerChannelRoutes, registerMessageRoutes, registerDmRoutes],
     });
-    registerChannelRoutes(app);
-    registerMessageRoutes(app);
-    registerDmRoutes(app);
-    await app.ready();
-
-    adminId = seedAdmin(testDb, 'LifeAdmin');
-    memberAId = seedMember(testDb, 'LifeMemberA');
-    memberBId = seedMember(testDb, 'LifeMemberB');
-    grantPermission(testDb, memberAId, 'message.send');
-    grantPermission(testDb, memberBId, 'message.send');
-    channelId = seedChannel(testDb, adminId, 'life-ch');
-    addChannelMember(testDb, channelId, adminId);
-    addChannelMember(testDb, channelId, memberAId);
-    addChannelMember(testDb, channelId, memberBId);
+    testDb = ctx.db;
+    grantPermission(ctx.db, ctx.memberA.id, 'message.send');
+    grantPermission(ctx.db, ctx.memberB.id, 'message.send');
   });
 
-  afterAll(async () => {
-    await app.close();
-    testDb.close();
-  });
+  afterAll(() => ctx.close());
 
   it('admin creates public channel → 201', async () => {
-    const res = await inject('POST', '/api/v1/channels', adminId, { name: 'pub-life', visibility: 'public' });
+    const res = await ctx.inject('POST', '/api/v1/channels', ctx.admin.token, { name: 'pub-life', visibility: 'public' });
     expect(res.statusCode).toBe(201);
     expect(res.json().channel.visibility).toBe('public');
   });
 
   it('admin creates private channel → 201', async () => {
-    const res = await inject('POST', '/api/v1/channels', adminId, { name: 'priv-life', visibility: 'private' });
+    const res = await ctx.inject('POST', '/api/v1/channels', ctx.admin.token, { name: 'priv-life', visibility: 'private' });
     expect(res.statusCode).toBe(201);
     expect(res.json().channel.visibility).toBe('private');
   });
 
   it('member joins public channel → 200', async () => {
-    const chId = seedChannel(testDb, adminId, 'join-life');
-    const res = await inject('POST', `/api/v1/channels/${chId}/join`, memberAId);
+    const chId = seedChannel(ctx.db, ctx.admin.id, 'join-life');
+    const res = await ctx.inject('POST', `/api/v1/channels/${chId}/join`, ctx.memberA.token);
     expect(res.statusCode).toBe(200);
   });
 
   it('member sends message in channel → 201', async () => {
-    const res = await inject('POST', `/api/v1/channels/${channelId}/messages`, memberAId, { content: 'hello world' });
+    const res = await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/messages`, ctx.memberA.token, { content: 'hello world' });
     expect(res.statusCode).toBe(201);
     expect(res.json().message.content).toBe('hello world');
   });
 
   it('soft delete channel → member 403, admin 200', async () => {
-    const chId = seedChannel(testDb, adminId, 'del-life');
-    addChannelMember(testDb, chId, adminId);
-    addChannelMember(testDb, chId, memberAId);
-    const res1 = await inject('DELETE', `/api/v1/channels/${chId}`, memberAId);
+    const chId = seedChannel(ctx.db, ctx.admin.id, 'del-life');
+    addChannelMember(ctx.db, chId, ctx.admin.id);
+    addChannelMember(ctx.db, chId, ctx.memberA.id);
+    const res1 = await ctx.inject('DELETE', `/api/v1/channels/${chId}`, ctx.memberA.token);
     expect(res1.statusCode).toBe(403);
-    const res2 = await inject('DELETE', `/api/v1/channels/${chId}`, adminId);
+    const res2 = await ctx.inject('DELETE', `/api/v1/channels/${chId}`, ctx.admin.token);
     expect(res2.statusCode).toBe(200);
   });
 
   it('public channel preview → recent messages only', async () => {
-    const chId = seedChannel(testDb, adminId, 'preview-life');
+    const chId = seedChannel(ctx.db, ctx.admin.id, 'preview-life');
     const now = Date.now();
-    seedMessage(testDb, chId, adminId, 'recent', now - 3600_000);
-    seedMessage(testDb, chId, adminId, 'old', now - 25 * 3600_000);
-    const res = await inject('GET', `/api/v1/channels/${chId}/preview`, memberBId);
+    seedMessage(ctx.db, chId, ctx.admin.id, 'recent', now - 3600_000);
+    seedMessage(ctx.db, chId, ctx.admin.id, 'old', now - 25 * 3600_000);
+    const res = await ctx.inject('GET', `/api/v1/channels/${chId}/preview`, ctx.memberB.token);
     expect(res.statusCode).toBe(200);
     const msgs = res.json().messages;
     expect(msgs.some((m: any) => m.content === 'recent')).toBe(true);
@@ -116,31 +84,31 @@ describe('Channel lifecycle (integration)', () => {
   });
 
   it('multi-channel isolation → messages do not leak', async () => {
-    const chA = seedChannel(testDb, adminId, 'iso-a');
-    const chB = seedChannel(testDb, adminId, 'iso-b');
-    addChannelMember(testDb, chA, adminId);
-    addChannelMember(testDb, chB, adminId);
-    seedMessage(testDb, chA, adminId, 'msg-in-A');
-    const res = await inject('GET', `/api/v1/channels/${chB}/messages`, adminId);
+    const chA = seedChannel(ctx.db, ctx.admin.id, 'iso-a');
+    const chB = seedChannel(ctx.db, ctx.admin.id, 'iso-b');
+    addChannelMember(ctx.db, chA, ctx.admin.id);
+    addChannelMember(ctx.db, chB, ctx.admin.id);
+    seedMessage(ctx.db, chA, ctx.admin.id, 'msg-in-A');
+    const res = await ctx.inject('GET', `/api/v1/channels/${chB}/messages`, ctx.admin.token);
     const msgs = res.json().messages || [];
     expect(msgs.find((m: any) => m.content === 'msg-in-A')).toBeUndefined();
   });
 
   it('DM creation → only participants can see', async () => {
-    const res = await inject('POST', `/api/v1/dm/${memberBId}`, memberAId);
+    const res = await ctx.inject('POST', `/api/v1/dm/${ctx.memberB.id}`, ctx.memberA.token);
     expect(res.statusCode).toBe(200);
     const dmChannelId = res.json().channel.id;
-    const res2 = await inject('GET', `/api/v1/channels/${dmChannelId}`, memberBId);
+    const res2 = await ctx.inject('GET', `/api/v1/channels/${dmChannelId}`, ctx.memberB.token);
     expect(res2.statusCode).toBe(200);
   });
 
   it('kick member → removed user cannot access channel', async () => {
-    const chId = seedChannel(testDb, adminId, 'kick-life');
-    addChannelMember(testDb, chId, adminId);
-    addChannelMember(testDb, chId, memberAId);
-    const res1 = await inject('DELETE', `/api/v1/channels/${chId}/members/${memberAId}`, adminId);
+    const chId = seedChannel(ctx.db, ctx.admin.id, 'kick-life');
+    addChannelMember(ctx.db, chId, ctx.admin.id);
+    addChannelMember(ctx.db, chId, ctx.memberA.id);
+    const res1 = await ctx.inject('DELETE', `/api/v1/channels/${chId}/members/${ctx.memberA.id}`, ctx.admin.token);
     expect(res1.statusCode).toBe(200);
-    const member = testDb.prepare('SELECT * FROM channel_members WHERE channel_id = ? AND user_id = ?').get(chId, memberAId);
+    const member = ctx.db.prepare('SELECT * FROM channel_members WHERE channel_id = ? AND user_id = ?').get(chId, ctx.memberA.id);
     expect(member).toBeUndefined();
   });
 });

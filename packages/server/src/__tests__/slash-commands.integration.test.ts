@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import {
   createTestDb, seedAdmin, seedMember, seedChannel,
-  addChannelMember, authCookie, grantPermission,
+  addChannelMember, authCookie, grantPermission, TestContext,
 } from './setup.js';
 
 let testDb: Database.Database;
@@ -19,92 +19,62 @@ vi.mock('../ws.js', () => ({
   unsubscribeUserFromChannel: vi.fn(),
 }));
 
-import Fastify, { type FastifyInstance } from 'fastify';
 import { registerChannelRoutes } from '../routes/channels.js';
 import { registerDmRoutes } from '../routes/dm.js';
-import { authMiddleware } from '../auth.js';
 
-let app: FastifyInstance;
-let adminId: string;
-let memberAId: string;
-let memberBId: string;
-let channelId: string;
-
-function inject(method: string, url: string, userId?: string, payload?: unknown) {
-  return app.inject({
-    method: method as any,
-    url,
-    payload: payload as any,
-    headers: userId ? { cookie: authCookie(userId) } : {},
-  });
-}
+let ctx: TestContext;
 
 describe('Slash commands (integration)', () => {
   beforeAll(async () => {
-    testDb = createTestDb();
-    app = Fastify({ logger: false });
-    app.addHook('onRequest', async (request, reply) => {
-      if (request.url.startsWith('/api/v1/auth/')) return;
-      await authMiddleware(request, reply);
+    ctx = await TestContext.create({
+      routes: [registerChannelRoutes, registerDmRoutes],
     });
-    registerChannelRoutes(app);
-    registerDmRoutes(app);
-    await app.ready();
-
-    adminId = seedAdmin(testDb, 'SlashAdmin');
-    memberAId = seedMember(testDb, 'SlashMemberA');
-    memberBId = seedMember(testDb, 'SlashMemberB');
-    channelId = seedChannel(testDb, adminId, 'slash-ch');
-    addChannelMember(testDb, channelId, adminId);
-    addChannelMember(testDb, channelId, memberAId);
+    testDb = ctx.db;
   });
 
-  afterAll(async () => {
-    await app.close();
-    testDb.close();
-  });
+  afterAll(() => ctx.close());
 
   it('/topic → updates channel topic', async () => {
-    const res = await inject('PUT', `/api/v1/channels/${channelId}/topic`, memberAId, { topic: 'New Topic Here' });
+    const res = await ctx.inject('PUT', `/api/v1/channels/${ctx.channel.id}/topic`, ctx.memberA.token, { topic: 'New Topic Here' });
     expect(res.statusCode).toBe(200);
-    const ch = testDb.prepare('SELECT topic FROM channels WHERE id = ?').get(channelId) as any;
+    const ch = ctx.db.prepare('SELECT topic FROM channels WHERE id = ?').get(ctx.channel.id) as any;
     expect(ch.topic).toBe('New Topic Here');
   });
 
   it('/invite → admin adds member to channel', async () => {
-    const invCh = seedChannel(testDb, adminId, 'invite-slash');
-    addChannelMember(testDb, invCh, adminId);
-    const res = await inject('POST', `/api/v1/channels/${invCh}/members`, adminId, { user_id: memberBId });
+    const invCh = seedChannel(ctx.db, ctx.admin.id, 'invite-slash');
+    addChannelMember(ctx.db, invCh, ctx.admin.id);
+    const res = await ctx.inject('POST', `/api/v1/channels/${invCh}/members`, ctx.admin.token, { user_id: ctx.memberB.id });
     expect(res.statusCode).toBe(201);
-    const member = testDb.prepare('SELECT * FROM channel_members WHERE channel_id = ? AND user_id = ?').get(invCh, memberBId);
+    const member = ctx.db.prepare('SELECT * FROM channel_members WHERE channel_id = ? AND user_id = ?').get(invCh, ctx.memberB.id);
     expect(member).toBeDefined();
   });
 
   it('/leave → member leaves channel', async () => {
-    const leaveCh = seedChannel(testDb, adminId, 'leave-slash');
-    addChannelMember(testDb, leaveCh, memberAId);
-    const res = await inject('POST', `/api/v1/channels/${leaveCh}/leave`, memberAId);
+    const leaveCh = seedChannel(ctx.db, ctx.admin.id, 'leave-slash');
+    addChannelMember(ctx.db, leaveCh, ctx.memberA.id);
+    const res = await ctx.inject('POST', `/api/v1/channels/${leaveCh}/leave`, ctx.memberA.token);
     expect(res.statusCode).toBe(200);
-    const member = testDb.prepare('SELECT * FROM channel_members WHERE channel_id = ? AND user_id = ?').get(leaveCh, memberAId);
+    const member = ctx.db.prepare('SELECT * FROM channel_members WHERE channel_id = ? AND user_id = ?').get(leaveCh, ctx.memberA.id);
     expect(member).toBeUndefined();
   });
 
   it('/dm → creates DM channel between two users', async () => {
-    const res = await inject('POST', `/api/v1/dm/${memberBId}`, memberAId);
+    const res = await ctx.inject('POST', `/api/v1/dm/${ctx.memberB.id}`, ctx.memberA.token);
     expect(res.statusCode).toBe(200);
     expect(res.json().channel).toBeDefined();
-    expect(res.json().peer.id).toBe(memberBId);
+    expect(res.json().peer.id).toBe(ctx.memberB.id);
   });
 
   it('/join → member joins public channel', async () => {
-    const joinCh = seedChannel(testDb, adminId, 'join-slash');
-    const res = await inject('POST', `/api/v1/channels/${joinCh}/join`, memberAId);
+    const joinCh = seedChannel(ctx.db, ctx.admin.id, 'join-slash');
+    const res = await ctx.inject('POST', `/api/v1/channels/${joinCh}/join`, ctx.memberA.token);
     expect(res.statusCode).toBe(200);
   });
 
   it('non-member cannot set topic → 403', async () => {
-    const privCh = seedChannel(testDb, adminId, 'topic-deny-slash', 'private');
-    const res = await inject('PUT', `/api/v1/channels/${privCh}/topic`, memberBId, { topic: 'nope' });
+    const privCh = seedChannel(ctx.db, ctx.admin.id, 'topic-deny-slash', 'private');
+    const res = await ctx.inject('PUT', `/api/v1/channels/${privCh}/topic`, ctx.memberB.token, { topic: 'nope' });
     expect(res.statusCode).toBe(403);
   });
 });
