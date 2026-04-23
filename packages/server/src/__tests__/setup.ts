@@ -319,7 +319,7 @@ export async function buildFullApp(): Promise<FastifyInstance> {
   return app;
 }
 
-export async function httpJson(port: number, method: string, path: string, cookie: string, body?: unknown) {
+export async function httpJson(port: number, method: string, path: string, cookie: string, body?: unknown): Promise<{ status: number; json: any; text: string; headers: Headers }> {
   const res = await fetch(`http://127.0.0.1:${port}${path}`, {
     method,
     headers: {
@@ -331,5 +331,5 @@ export async function httpJson(port: number, method: string, path: string, cooki
   const text = await res.text();
   let json: any;
   try { json = JSON.parse(text); } catch { json = undefined; }
-  return { status: res.statusCode ?? res.status, json, text, headers: res.headers };
+  return { status: res.status, json, text, headers: res.headers };
 }

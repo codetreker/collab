@@ -67,7 +67,7 @@ describe('requireMention – message delivery (SSE, Poll, WS)', () => {
       body: JSON.stringify({ api_key: agentApiKey, cursor: beforeCursor, timeout_ms: 2000 }),
     });
     expect(pollRes.status).toBe(200);
-    const body = await pollRes.json();
+    const body = await pollRes.json() as any;
     const msgEvents = body.events.filter((e: any) => e.kind === 'message');
     expect(msgEvents.length).toBeGreaterThanOrEqual(1);
     const found = msgEvents.some((e: any) => {
@@ -93,7 +93,7 @@ describe('requireMention – message delivery (SSE, Poll, WS)', () => {
       body: JSON.stringify({ api_key: agentApiKey, cursor: beforeCursor, timeout_ms: 2000 }),
     });
     expect(pollRes.status).toBe(200);
-    const body = await pollRes.json();
+    const body = await pollRes.json() as any;
 
     const msgEvents = body.events.filter((e: any) => e.kind === 'message');
     expect(msgEvents.length).toBeGreaterThanOrEqual(2);

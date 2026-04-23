@@ -71,7 +71,7 @@ describe('File link via agent (integration)', () => {
 
       const res = await get(`/api/v1/agents/${agentId}/files?path=/workspace/test.ts`, ownerId);
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.content).toBe('file-content-here');
     } finally {
       await closeWsAndWait(agentWs);
@@ -91,7 +91,7 @@ describe('File link via agent (integration)', () => {
   it('agent offline returns 503', async () => {
     const res = await get(`/api/v1/agents/${agentId}/files?path=/workspace/test.ts`, ownerId);
     expect(res.status).toBe(503);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.error).toBe('agent_offline');
   });
 
@@ -111,7 +111,7 @@ describe('File link via agent (integration)', () => {
 
       const res = await get(`/api/v1/agents/${agentId}/files?path=/etc/passwd`, ownerId);
       expect(res.status).toBe(403);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.error).toBe('path_not_allowed');
     } finally {
       await closeWsAndWait(agentWs);

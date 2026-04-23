@@ -92,7 +92,7 @@ describe('Remote Explorer (integration)', () => {
   it('register Node → 201', async () => {
     const res = await httpPost('/api/v1/remote/nodes', userAId, { machine_name: 'test-laptop' });
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.node.machine_name).toBe('test-laptop');
     expect(body.node.connection_token).toBeDefined();
   });
@@ -130,7 +130,7 @@ describe('Remote Explorer (integration)', () => {
 
       const res = await httpGet(`/api/v1/remote/nodes/${node.id}/ls?path=/home/user`, userAId);
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.entries).toHaveLength(1);
     } finally {
       await closeWsAndWait(agentWs);
@@ -141,7 +141,7 @@ describe('Remote Explorer (integration)', () => {
     const node = seedNode(testDb, userAId, 'offline-laptop');
     const res = await httpGet(`/api/v1/remote/nodes/${node.id}/ls?path=/home`, userAId);
     expect(res.status).toBe(503);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.error).toBe('node_offline');
   });
 
@@ -154,20 +154,20 @@ describe('Remote Explorer (integration)', () => {
   it('list nodes → returns only own nodes', async () => {
     const resA = await httpGet('/api/v1/remote/nodes', userAId);
     expect(resA.status).toBe(200);
-    const nodesA = (await resA.json()).nodes;
+    const nodesA = (await resA.json() as any).nodes;
     expect(nodesA.length).toBeGreaterThan(0);
     expect(nodesA.every((n: any) => n.user_id === userAId)).toBe(true);
 
     const resB = await httpGet('/api/v1/remote/nodes', userBId);
     expect(resB.status).toBe(200);
-    expect((await resB.json()).nodes).toHaveLength(0);
+    expect((await resB.json() as any).nodes).toHaveLength(0);
   });
 
   it('node status endpoint → returns online state', async () => {
     const node = seedNode(testDb, userAId, 'status-laptop');
     const res = await httpGet(`/api/v1/remote/nodes/${node.id}/status`, userAId);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.online).toBe(false);
   });
 });

@@ -60,7 +60,7 @@ describe('Workspace flow (integration)', () => {
   it('upload file → 201 + file metadata', async () => {
     const res = await uploadFile(channelId, memberAId, 'test.txt', 'hello');
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.file.name).toBe('test.txt');
     uploadedFileId = body.file.id;
   });
@@ -82,7 +82,7 @@ describe('Workspace flow (integration)', () => {
     await uploadFile(channelId, memberAId, 'dup.txt', 'a');
     const res = await uploadFile(channelId, memberAId, 'dup.txt', 'b');
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.file.name).not.toBe('dup.txt');
   });
 
@@ -100,7 +100,7 @@ describe('Workspace flow (integration)', () => {
 
   it('download file → 200 + correct content', async () => {
     const upRes = await uploadFile(channelId, memberAId, 'download-me.txt', 'download content');
-    const fId = (await upRes.json()).file.id;
+    const fId = (await upRes.json() as any).file.id;
     const r = await httpJson(port, 'GET', `/api/v1/channels/${channelId}/workspace/files/${fId}`, authCookie(memberAId));
     expect(r.status).toBe(200);
     expect(r.text).toContain('download content');
@@ -111,7 +111,7 @@ describe('Workspace flow (integration)', () => {
     const folderId = folderRes.json.file.id;
 
     const upRes = await uploadFile(channelId, memberAId, 'move-me.txt', 'move');
-    const fileId = (await upRes.json()).file.id;
+    const fileId = (await upRes.json() as any).file.id;
 
     const r = await httpJson(port, 'POST', `/api/v1/channels/${channelId}/workspace/files/${fileId}/move`, authCookie(memberAId), { parentId: folderId });
     expect(r.status).toBe(200);
@@ -120,7 +120,7 @@ describe('Workspace flow (integration)', () => {
 
   it('delete file → 204 + removed from list', async () => {
     const upRes = await uploadFile(channelId, memberAId, 'delete-me.txt', 'delete');
-    const fId = (await upRes.json()).file.id;
+    const fId = (await upRes.json() as any).file.id;
     const r = await httpJson(port, 'DELETE', `/api/v1/channels/${channelId}/workspace/files/${fId}`, authCookie(memberAId));
     expect(r.status).toBe(204);
     const file = testDb.prepare('SELECT * FROM workspace_files WHERE id = ?').get(fId);
