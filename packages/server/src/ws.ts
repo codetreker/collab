@@ -21,14 +21,26 @@ function extractCollabCookie(cookieHeader: string | undefined): string | undefin
 async function authenticateWsRequest(request: { headers: Record<string, string | string[] | undefined>; url: string }): Promise<User | undefined> {
   const db = getDb();
 
-  // 1. Check token query param (agent/API key auth)
+  // 1. Check Authorization header (agent/API key auth)
+  const authHeader = request.headers.authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const user = Q.getUserByApiKey(db, token);
+    if (user) {
+      if (user.deleted_at || user.disabled) return undefined;
+      console.log(`[ws] Authenticated via API key (header): ${user.id}`);
+      return user;
+    }
+  }
+
+  // Deprecated: query string token (will be removed in a future version)
   const url = new URL(request.url, `http://${(request.headers.host as string) ?? 'localhost'}`);
   const token = url.searchParams.get('token');
   if (token) {
     const user = Q.getUserByApiKey(db, token);
     if (user) {
       if (user.deleted_at || user.disabled) return undefined;
-      console.log(`[ws] Authenticated via API key: ${user.id}`);
+      console.warn(`[ws] Authenticated via deprecated query string token: ${user.id}`);
       return user;
     }
   }
