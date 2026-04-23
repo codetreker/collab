@@ -19,22 +19,25 @@ export function connectWS(port: number, path: string, query?: Record<string, str
   });
 }
 
-export function connectAuthWS(port: number, cookie: string): Promise<WebSocket> {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { headers: { cookie } });
+export async function connectAuthWS(port: number, cookie: string): Promise<WebSocket> {
+  const ws = await new Promise<WebSocket>((resolve, reject) => {
+    const sock = new WebSocket(`ws://127.0.0.1:${port}/ws`, { headers: { cookie } });
     const timeout = setTimeout(() => {
-      ws.terminate();
+      sock.terminate();
       reject(new Error('WS connect timeout'));
     }, 5000);
-    ws.on('open', () => {
+    sock.on('open', () => {
       clearTimeout(timeout);
-      resolve(ws);
+      resolve(sock);
     });
-    ws.on('error', (err) => {
+    sock.on('error', (err) => {
       clearTimeout(timeout);
       reject(err);
     });
   });
+  ws.send(JSON.stringify({ type: 'ping' }));
+  await waitForMessage(ws, (m) => m.type === 'pong');
+  return ws;
 }
 
 export async function subscribeToChannel(ws: WebSocket, channelId: string): Promise<void> {

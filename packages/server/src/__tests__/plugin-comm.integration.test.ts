@@ -3,9 +3,9 @@ import Database from 'better-sqlite3';
 import http from 'node:http';
 import {
   createTestDb, seedAdmin, seedAgent, seedChannel,
-  addChannelMember, seedMessage, grantPermission,
+  addChannelMember, seedMessage, grantPermission, authCookie,
 } from './setup.js';
-import { connectWS, waitForMessage, waitForClose, sleep, closeWsAndWait } from './ws-helpers.js';
+import { connectWS, connectAuthWS, subscribeToChannel, waitForMessage, waitForClose, closeWsAndWait, collectMessages } from './ws-helpers.js';
 import { WebSocket } from 'ws';
 
 let testDb: Database.Database;
@@ -14,15 +14,6 @@ vi.mock('../db.js', () => ({
   getDb: () => testDb,
   closeDb: () => {},
 }));
-
-const wsMock = vi.hoisted(() => ({
-  broadcastToChannel: vi.fn(),
-  broadcastToUser: vi.fn(),
-  getOnlineUserIds: vi.fn(() => []),
-  unsubscribeUserFromChannel: vi.fn(),
-}));
-
-vi.mock('../ws.js', () => wsMock);
 
 import { buildFullApp } from './setup.js';
 import type { FastifyInstance } from 'fastify';
@@ -144,34 +135,6 @@ describe('Plugin communication (integration)', () => {
     }
   });
 
-  it('message event pushed to connected plugin WS', async () => {
-    // True WS fan-out cannot be tested here because broadcastToChannel is mocked
-    // (real WS upgrade connections don't share the broadcast registry with inject).
-    // Instead we verify the spy was called with correct channel and event shape.
-    wsMock.broadcastToChannel.mockClear();
-    const ws = await connectWS(port, '/ws/plugin', { apiKey: agentApiKey });
-    try {
-      ws.send(JSON.stringify({
-        type: 'api_request',
-        id: 'req-push',
-        data: {
-          method: 'POST',
-          path: `/api/v1/channels/${channelId}/messages`,
-          body: { content: 'trigger event' },
-        },
-      }));
-      const response = await waitForMessage(ws, (m) => m.type === 'api_response' && m.id === 'req-push');
-      expect(response.data.status).toBe(201);
-
-      expect(wsMock.broadcastToChannel).toHaveBeenCalledWith(
-        channelId,
-        expect.objectContaining({ type: 'new_message' }),
-      );
-    } finally {
-      await closeWsAndWait(ws);
-    }
-  });
-
   it('WS api_request → edit message → 200', async () => {
     const ws = await connectWS(port, '/ws/plugin', { apiKey: agentApiKey });
     try {
@@ -248,4 +211,38 @@ describe('Plugin communication (integration)', () => {
       await closeWsAndWait(ws2);
     }
   });
+
+  it('message via plugin WS → broadcast received by subscribed WS client', async () => {
+    const listenerWs = await connectAuthWS(port, authCookie(adminId));
+    try {
+      await subscribeToChannel(listenerWs, channelId);
+
+      const pluginWs = await connectWS(port, '/ws/plugin', { apiKey: agentApiKey });
+      try {
+        const collected = collectMessages(listenerWs, 2000);
+
+        pluginWs.send(JSON.stringify({
+          type: 'api_request',
+          id: 'req-push',
+          data: {
+            method: 'POST',
+            path: `/api/v1/channels/${channelId}/messages`,
+            body: { content: 'trigger event' },
+          },
+        }));
+
+        const apiRes = await waitForMessage(pluginWs, (m) => m.type === 'api_response' && m.id === 'req-push');
+        expect(apiRes.data.status).toBe(201);
+
+        const msgs = await collected;
+        const broadcast = msgs.find((m: any) => m.type === 'new_message' && m.message?.content === 'trigger event');
+        expect(broadcast).toBeDefined();
+        expect(broadcast.message.content).toBe('trigger event');
+      } finally {
+        await closeWsAndWait(pluginWs);
+      }
+    } finally {
+      await closeWsAndWait(listenerWs);
+    }
+  }, 10_000);
 });
