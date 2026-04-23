@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
@@ -342,4 +345,14 @@ export async function httpJson(port: number, method: string, path: string, cooki
   let json: any;
   try { json = JSON.parse(text); } catch { json = undefined; }
   return { status: res.status, json, text, headers: res.headers };
+}
+
+export function createTmpDir(prefix = 'collab-test-'): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+}
+
+export function removeTmpDir(dir: string): void {
+  try {
+    fs.rmSync(dir, { recursive: true, force: true });
+  } catch {}
 }
