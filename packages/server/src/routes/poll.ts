@@ -50,12 +50,22 @@ export function registerPollRoutes(app: FastifyInstance): void {
   }>('/api/v1/poll', async (request, reply) => {
     const { api_key, cursor, since_id, timeout_ms = 30000, channel_ids } = request.body ?? {};
 
-    if (!api_key || typeof api_key !== 'string') {
+    const authHeader = request.headers.authorization;
+    let effectiveApiKey: string | undefined;
+    if (authHeader?.startsWith('Bearer ')) {
+      effectiveApiKey = authHeader.slice(7);
+    }
+    // Deprecated: api_key in request body (will be removed in a future version)
+    if (!effectiveApiKey && api_key && typeof api_key === 'string') {
+      effectiveApiKey = api_key;
+    }
+
+    if (!effectiveApiKey) {
       return reply.status(401).send({ error: 'API key is required' });
     }
 
     const db = getDb();
-    const user = Q.getUserByApiKey(db, api_key);
+    const user = Q.getUserByApiKey(db, effectiveApiKey);
     if (!user) {
       return reply.status(401).send({ error: 'Invalid API key' });
     }

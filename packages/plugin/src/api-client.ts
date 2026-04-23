@@ -102,7 +102,6 @@ export class CollabApiClient {
       "POST",
       "/api/v1/poll",
       {
-        api_key: this.apiKey,
         cursor,
         timeout_ms: timeoutMs,
         channel_ids: channelIds,
@@ -264,7 +263,6 @@ export async function pollCollabEvents(params: {
     "POST",
     "/api/v1/poll",
     {
-      api_key: params.apiKey,
       cursor: params.cursor,
       timeout_ms: params.timeoutMs,
       channel_ids: params.channelIds,

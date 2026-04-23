@@ -67,9 +67,11 @@ export class PluginWsClient {
 
     const base = this.serverUrl.replace(/\/$/, "");
     const wsBase = base.replace(/^http/, "ws");
-    const url = `${wsBase}/ws/plugin?apiKey=${encodeURIComponent(this.apiKey)}`;
+    const url = `${wsBase}/ws/plugin`;
 
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(url, {
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+    } as unknown as string[]);
     this.ws = ws;
 
     ws.addEventListener("open", () => {
