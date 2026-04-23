@@ -5,7 +5,7 @@ import {
   createTestDb, seedAdmin, seedMember, seedChannel,
   addChannelMember, authCookie,
 } from './setup.js';
-import { connectWS, waitForMessage, waitForClose, sleep, closeWsAndWait } from './ws-helpers.js';
+import { connectWS, waitForMessage, waitForClose, closeWsAndWait } from './ws-helpers.js';
 import { WebSocket } from 'ws';
 
 let testDb: Database.Database;
@@ -14,15 +14,6 @@ vi.mock('../db.js', () => ({
   getDb: () => testDb,
   closeDb: () => {},
 }));
-
-const wsMock = vi.hoisted(() => ({
-  broadcastToChannel: vi.fn(),
-  broadcastToUser: vi.fn(),
-  getOnlineUserIds: vi.fn(() => []),
-  unsubscribeUserFromChannel: vi.fn(),
-}));
-
-vi.mock('../ws.js', () => wsMock);
 
 import { buildFullApp } from './setup.js';
 import type { FastifyInstance } from 'fastify';
@@ -63,12 +54,17 @@ let userAId: string;
 let userBId: string;
 let channelId: string;
 
-function inject(method: string, url: string, userId: string, body?: unknown) {
-  return app.inject({
-    method: method as any,
-    url,
-    payload: body as any,
+function httpGet(path: string, userId: string) {
+  return fetch(`http://127.0.0.1:${port}${path}`, {
     headers: { cookie: authCookie(userId) },
+  });
+}
+
+function httpPost(path: string, userId: string, body?: unknown) {
+  return fetch(`http://127.0.0.1:${port}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: authCookie(userId) },
+    body: body ? JSON.stringify(body) : undefined,
   });
 }
 
@@ -94,9 +90,9 @@ describe('Remote Explorer (integration)', () => {
   });
 
   it('register Node → 201', async () => {
-    const res = await inject('POST', '/api/v1/remote/nodes', userAId, { machine_name: 'test-laptop' });
-    expect(res.statusCode).toBe(201);
-    const body = res.json();
+    const res = await httpPost('/api/v1/remote/nodes', userAId, { machine_name: 'test-laptop' });
+    expect(res.status).toBe(201);
+    const body = await res.json();
     expect(body.node.machine_name).toBe('test-laptop');
     expect(body.node.connection_token).toBeDefined();
   });
@@ -132,9 +128,10 @@ describe('Remote Explorer (integration)', () => {
         }
       });
 
-      const res = await inject('GET', `/api/v1/remote/nodes/${node.id}/ls?path=/home/user`, userAId);
-      expect(res.statusCode).toBe(200);
-      expect(res.json().entries).toHaveLength(1);
+      const res = await httpGet(`/api/v1/remote/nodes/${node.id}/ls?path=/home/user`, userAId);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.entries).toHaveLength(1);
     } finally {
       await closeWsAndWait(agentWs);
     }
@@ -142,33 +139,35 @@ describe('Remote Explorer (integration)', () => {
 
   it('node offline → 503', async () => {
     const node = seedNode(testDb, userAId, 'offline-laptop');
-    const res = await inject('GET', `/api/v1/remote/nodes/${node.id}/ls?path=/home`, userAId);
-    expect(res.statusCode).toBe(503);
-    expect(res.json().error).toBe('node_offline');
+    const res = await httpGet(`/api/v1/remote/nodes/${node.id}/ls?path=/home`, userAId);
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe('node_offline');
   });
 
   it('non-owner → 403', async () => {
     const node = seedNode(testDb, userAId, 'private-laptop');
-    const res = await inject('GET', `/api/v1/remote/nodes/${node.id}/ls?path=/home`, userBId);
-    expect(res.statusCode).toBe(403);
+    const res = await httpGet(`/api/v1/remote/nodes/${node.id}/ls?path=/home`, userBId);
+    expect(res.status).toBe(403);
   });
 
   it('list nodes → returns only own nodes', async () => {
-    const resA = await inject('GET', '/api/v1/remote/nodes', userAId);
-    expect(resA.statusCode).toBe(200);
-    const nodesA = resA.json().nodes;
+    const resA = await httpGet('/api/v1/remote/nodes', userAId);
+    expect(resA.status).toBe(200);
+    const nodesA = (await resA.json()).nodes;
     expect(nodesA.length).toBeGreaterThan(0);
     expect(nodesA.every((n: any) => n.user_id === userAId)).toBe(true);
 
-    const resB = await inject('GET', '/api/v1/remote/nodes', userBId);
-    expect(resB.statusCode).toBe(200);
-    expect(resB.json().nodes).toHaveLength(0);
+    const resB = await httpGet('/api/v1/remote/nodes', userBId);
+    expect(resB.status).toBe(200);
+    expect((await resB.json()).nodes).toHaveLength(0);
   });
 
   it('node status endpoint → returns online state', async () => {
     const node = seedNode(testDb, userAId, 'status-laptop');
-    const res = await inject('GET', `/api/v1/remote/nodes/${node.id}/status`, userAId);
-    expect(res.statusCode).toBe(200);
-    expect(res.json().online).toBe(false);
+    const res = await httpGet(`/api/v1/remote/nodes/${node.id}/status`, userAId);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.online).toBe(false);
   });
 });
