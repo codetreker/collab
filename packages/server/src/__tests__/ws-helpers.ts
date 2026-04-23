@@ -1,9 +1,22 @@
+import http from 'node:http';
 import { WebSocket } from 'ws';
 
-export function connectWS(port: number, path: string, query?: Record<string, string>): Promise<WebSocket> {
-  const qs = query ? '?' + new URLSearchParams(query).toString() : '';
+export interface ConnectWSOpts {
+  headers?: Record<string, string>;
+}
+
+export function connectWS(port: number, path: string, queryOrOpts?: Record<string, string> | ConnectWSOpts): Promise<WebSocket> {
+  let qs = '';
+  let headers: Record<string, string> | undefined;
+
+  if (queryOrOpts && 'headers' in queryOrOpts) {
+    headers = (queryOrOpts as ConnectWSOpts).headers;
+  } else if (queryOrOpts) {
+    qs = '?' + new URLSearchParams(queryOrOpts as Record<string, string>).toString();
+  }
+
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}${path}${qs}`);
+    const ws = new WebSocket(`ws://127.0.0.1:${port}${path}${qs}`, { headers });
     const timeout = setTimeout(() => {
       ws.terminate();
       reject(new Error('WS connect timeout'));
@@ -15,6 +28,72 @@ export function connectWS(port: number, path: string, query?: Record<string, str
     ws.on('error', (err) => {
       clearTimeout(timeout);
       reject(err);
+    });
+  });
+}
+
+export function connectPluginWS(port: number, apiKey: string): Promise<WebSocket> {
+  return connectWS(port, '/ws/plugin', { headers: { authorization: `Bearer ${apiKey}` } });
+}
+
+export interface SSEEvent {
+  event?: string;
+  id?: string;
+  data?: string;
+  parsed?: any;
+}
+
+export function collectSSEEvents(
+  port: number,
+  apiKey: string,
+  opts: { timeoutMs?: number; filter?: (ev: SSEEvent) => boolean; count?: number } = {},
+): Promise<SSEEvent[]> {
+  const { timeoutMs = 5000, filter, count } = opts;
+  return new Promise((resolve, reject) => {
+    const events: SSEEvent[] = [];
+    const timer = setTimeout(() => {
+      req.destroy();
+      resolve(events);
+    }, timeoutMs);
+
+    const req = http.get(
+      `http://127.0.0.1:${port}/api/v1/stream`,
+      { headers: { authorization: `Bearer ${apiKey}` } },
+      (res) => {
+        let buf = '';
+        res.on('data', (chunk: Buffer) => {
+          buf += chunk.toString();
+          const blocks = buf.split('\n\n');
+          buf = blocks.pop()!;
+          for (const block of blocks) {
+            if (!block.trim()) continue;
+            const ev: SSEEvent = {};
+            for (const line of block.split('\n')) {
+              if (line.startsWith('event:')) ev.event = line.slice(6).trim();
+              else if (line.startsWith('id:')) ev.id = line.slice(3).trim();
+              else if (line.startsWith('data:')) {
+                ev.data = line.slice(5).trim();
+                try { ev.parsed = JSON.parse(ev.data); } catch {}
+              }
+            }
+            if (!filter || filter(ev)) {
+              events.push(ev);
+              if (count && events.length >= count) {
+                clearTimeout(timer);
+                res.destroy();
+                resolve(events);
+                return;
+              }
+            }
+          }
+        });
+        res.on('error', () => {});
+      },
+    );
+    req.on('error', (err) => {
+      clearTimeout(timer);
+      if (events.length > 0) resolve(events);
+      else reject(err);
     });
   });
 }
