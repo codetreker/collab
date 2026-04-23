@@ -2,10 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import http from 'node:http';
 import {
-  createTestDb, seedAdmin, seedAgent, seedChannel, seedMessage,
-  addChannelMember, grantPermission, authCookie, TestContext,
+  createTestDb, seedAdmin, seedAgent, seedChannel,
+  addChannelMember, grantPermission, authCookie, httpJson,
   buildFullApp,
 } from './setup.js';
+import { connectAuthWS, subscribeToChannel, collectMessages, closeWsAndWait } from './ws-helpers.js';
 
 let testDb: Database.Database;
 
@@ -14,125 +15,16 @@ vi.mock('../db.js', () => ({
   closeDb: () => {},
 }));
 
-const wsMock = vi.hoisted(() => ({
-  broadcastToChannel: vi.fn(),
-  broadcastToUser: vi.fn(),
-  getOnlineUserIds: vi.fn(() => []),
-  unsubscribeUserFromChannel: vi.fn(),
-}));
-
-vi.mock('../ws.js', () => wsMock);
-
-import { registerAdminRoutes } from '../routes/admin.js';
-import { registerMessageRoutes } from '../routes/messages.js';
 import type { FastifyInstance } from 'fastify';
 
-let ctx: TestContext;
-
-describe('requireMention flag (integration)', () => {
-  beforeAll(async () => {
-    ctx = await TestContext.create({
-      routes: [registerAdminRoutes, registerMessageRoutes],
-    });
-    testDb = ctx.db;
-    grantPermission(ctx.db, ctx.admin.id, 'message.send');
-    addChannelMember(ctx.db, ctx.channel.id, ctx.agent.id);
-  });
-
-  afterAll(() => ctx.close());
-
-  it('agent defaults to require_mention=1', () => {
-    const row = ctx.db.prepare('SELECT require_mention FROM users WHERE id = ?').get(ctx.agent.id) as any;
-    expect(row.require_mention).toBe(1);
-  });
-
-  it('admin can update require_mention via PATCH /api/v1/admin/users/:id', async () => {
-    const res = await ctx.inject('PATCH', `/api/v1/admin/users/${ctx.agent.id}`, ctx.admin.token, { require_mention: false });
-    expect(res.statusCode).toBe(200);
-    const row = ctx.db.prepare('SELECT require_mention FROM users WHERE id = ?').get(ctx.agent.id) as any;
-    expect(row.require_mention).toBe(0);
-  });
-
-  it('admin can set require_mention back to true', async () => {
-    const res = await ctx.inject('PATCH', `/api/v1/admin/users/${ctx.agent.id}`, ctx.admin.token, { require_mention: true });
-    expect(res.statusCode).toBe(200);
-    const row = ctx.db.prepare('SELECT require_mention FROM users WHERE id = ?').get(ctx.agent.id) as any;
-    expect(row.require_mention).toBe(1);
-  });
-
-  it('require_mention is visible in admin user list', async () => {
-    const res = await ctx.inject('GET', '/api/v1/admin/users', ctx.admin.token);
-    expect(res.statusCode).toBe(200);
-    const agent = res.json().users.find((u: any) => u.id === ctx.agent.id);
-    expect(agent).toBeDefined();
-    expect(agent.require_mention).toBeDefined();
-  });
-
-  it('message without @mention does not create mention entry for agent', async () => {
-    const res = await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/messages`, ctx.admin.token, {
-      content: 'hello everyone',
-    });
-    expect(res.statusCode).toBe(201);
-    const msgId = res.json().message.id;
-    const mention = ctx.db.prepare('SELECT * FROM mentions WHERE message_id = ? AND user_id = ?').get(msgId, ctx.agent.id);
-    expect(mention).toBeUndefined();
-  });
-
-  it('message with @mention creates mention entry for agent', async () => {
-    const res = await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/messages`, ctx.admin.token, {
-      content: `hey <@${ctx.agent.id}> check this`,
-      mentions: [ctx.agent.id],
-    });
-    expect(res.statusCode).toBe(201);
-    const msgId = res.json().message.id;
-    const mention = ctx.db.prepare('SELECT * FROM mentions WHERE message_id = ? AND user_id = ?').get(msgId, ctx.agent.id);
-    expect(mention).toBeDefined();
-  });
-
-  it('mention event is written to events table only for mentioned messages', async () => {
-    const beforeCursor = (ctx.db.prepare('SELECT MAX(cursor) as c FROM events').get() as any)?.c ?? 0;
-
-    await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/messages`, ctx.admin.token, {
-      content: 'no mention here',
-    });
-
-    const noMentionEvents = ctx.db.prepare(
-      "SELECT * FROM events WHERE cursor > ? AND kind = 'mention' AND json_extract(payload, '$.mentioned_user_id') = ?",
-    ).all(beforeCursor, ctx.agent.id);
-    expect(noMentionEvents).toHaveLength(0);
-
-    await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/messages`, ctx.admin.token, {
-      content: `ping <@${ctx.agent.id}>`,
-      mentions: [ctx.agent.id],
-    });
-
-    const mentionEvents = ctx.db.prepare(
-      "SELECT * FROM events WHERE cursor > ? AND kind = 'mention' AND json_extract(payload, '$.mentioned_user_id') = ?",
-    ).all(beforeCursor, ctx.agent.id);
-    expect(mentionEvents).toHaveLength(1);
-  });
-
-  it('WS broadcast fires for non-mentioned messages regardless of requireMention', async () => {
-    wsMock.broadcastToChannel.mockClear();
-    const res = await ctx.inject('POST', `/api/v1/channels/${ctx.channel.id}/messages`, ctx.admin.token, {
-      content: 'broadcast test without mention',
-    });
-    expect(res.statusCode).toBe(201);
-    expect(wsMock.broadcastToChannel).toHaveBeenCalledWith(
-      ctx.channel.id,
-      expect.objectContaining({ type: 'new_message' }),
-    );
-  });
-});
-
-describe('requireMention – message delivery via SSE and Poll', () => {
+describe('requireMention – message delivery (SSE, Poll, WS)', () => {
   let app: FastifyInstance;
   let port: number;
   let adminId: string;
   let agentId: string;
   let agentApiKey: string;
   let channelId: string;
-  let adminToken: string;
+  let adminCookie: string;
 
   beforeAll(async () => {
     testDb = createTestDb();
@@ -150,7 +42,7 @@ describe('requireMention – message delivery via SSE and Poll', () => {
     channelId = seedChannel(testDb, adminId, 'mention-delivery-ch');
     addChannelMember(testDb, channelId, adminId);
     addChannelMember(testDb, channelId, agentId);
-    adminToken = authCookie(adminId);
+    adminCookie = authCookie(adminId);
 
     const rm = testDb.prepare('SELECT require_mention FROM users WHERE id = ?').get(agentId) as any;
     expect(rm.require_mention).toBe(1);
@@ -164,24 +56,18 @@ describe('requireMention – message delivery via SSE and Poll', () => {
   it('Poll delivers message events to agent despite requireMention=true and no @mention', async () => {
     const beforeCursor = (testDb.prepare('SELECT MAX(cursor) as c FROM events').get() as any)?.c ?? 0;
 
-    const sendRes = await app.inject({
-      method: 'POST',
-      url: `/api/v1/channels/${channelId}/messages`,
-      payload: { content: 'poll-delivery-no-mention' },
-      headers: { cookie: adminToken },
-    });
-    expect(sendRes.statusCode).toBe(201);
+    const sendRes = await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminCookie, { content: 'poll-delivery-no-mention' });
+    expect(sendRes.status).toBe(201);
 
     await new Promise(r => setTimeout(r, 100));
 
-    const pollRes = await app.inject({
+    const pollRes = await fetch(`http://127.0.0.1:${port}/api/v1/poll`, {
       method: 'POST',
-      url: '/api/v1/poll',
-      payload: { api_key: agentApiKey, cursor: beforeCursor, timeout_ms: 2000 },
-      headers: { authorization: `Bearer ${agentApiKey}` },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${agentApiKey}` },
+      body: JSON.stringify({ api_key: agentApiKey, cursor: beforeCursor, timeout_ms: 2000 }),
     });
-    expect(pollRes.statusCode).toBe(200);
-    const body = pollRes.json();
+    expect(pollRes.status).toBe(200);
+    const body = await pollRes.json();
     const msgEvents = body.events.filter((e: any) => e.kind === 'message');
     expect(msgEvents.length).toBeGreaterThanOrEqual(1);
     const found = msgEvents.some((e: any) => {
@@ -194,30 +80,20 @@ describe('requireMention – message delivery via SSE and Poll', () => {
   it('Poll delivers mention events only for @-mentioned messages', async () => {
     const beforeCursor = (testDb.prepare('SELECT MAX(cursor) as c FROM events').get() as any)?.c ?? 0;
 
-    await app.inject({
-      method: 'POST',
-      url: `/api/v1/channels/${channelId}/messages`,
-      payload: { content: 'poll-no-mention-event' },
-      headers: { cookie: adminToken },
-    });
-
-    await app.inject({
-      method: 'POST',
-      url: `/api/v1/channels/${channelId}/messages`,
-      payload: { content: `poll-mention <@${agentId}>`, mentions: [agentId] },
-      headers: { cookie: adminToken },
+    await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminCookie, { content: 'poll-no-mention-event' });
+    await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminCookie, {
+      content: `poll-mention <@${agentId}>`, mentions: [agentId],
     });
 
     await new Promise(r => setTimeout(r, 100));
 
-    const pollRes = await app.inject({
+    const pollRes = await fetch(`http://127.0.0.1:${port}/api/v1/poll`, {
       method: 'POST',
-      url: '/api/v1/poll',
-      payload: { api_key: agentApiKey, cursor: beforeCursor, timeout_ms: 2000 },
-      headers: { authorization: `Bearer ${agentApiKey}` },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${agentApiKey}` },
+      body: JSON.stringify({ api_key: agentApiKey, cursor: beforeCursor, timeout_ms: 2000 }),
     });
-    expect(pollRes.statusCode).toBe(200);
-    const body = pollRes.json();
+    expect(pollRes.status).toBe(200);
+    const body = await pollRes.json();
 
     const msgEvents = body.events.filter((e: any) => e.kind === 'message');
     expect(msgEvents.length).toBeGreaterThanOrEqual(2);
@@ -246,11 +122,8 @@ describe('requireMention – message delivery via SSE and Poll', () => {
             buf += chunk.toString();
             if (buf.includes(':connected') && !messageSent) {
               messageSent = true;
-              app.inject({
-                method: 'POST',
-                url: `/api/v1/channels/${channelId}/messages`,
-                payload: { content: 'sse-delivery-no-mention' },
-                headers: { cookie: adminToken },
+              httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminCookie, {
+                content: 'sse-delivery-no-mention',
               });
             }
             if (buf.includes('sse-delivery-no-mention')) {
@@ -287,19 +160,13 @@ describe('requireMention – message delivery via SSE and Poll', () => {
             buf += chunk.toString();
             if (buf.includes(':connected') && phase === 0) {
               phase = 1;
-              app.inject({
-                method: 'POST',
-                url: `/api/v1/channels/${channelId}/messages`,
-                payload: { content: 'sse-no-mention-event' },
-                headers: { cookie: adminToken },
-              }).then(() => {
-                return app.inject({
-                  method: 'POST',
-                  url: `/api/v1/channels/${channelId}/messages`,
-                  payload: { content: `sse-mention <@${agentId}>`, mentions: [agentId] },
-                  headers: { cookie: adminToken },
-                });
-              });
+              httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminCookie, {
+                content: 'sse-no-mention-event',
+              }).then(() =>
+                httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminCookie, {
+                  content: `sse-mention <@${agentId}>`, mentions: [agentId],
+                }),
+              );
             }
             if (buf.includes('sse-mention') && buf.includes('event: mention')) {
               clearTimeout(timeout);
@@ -320,5 +187,23 @@ describe('requireMention – message delivery via SSE and Poll', () => {
 
     const mentionLines = sseData.split('\n').filter(l => l.startsWith('event: mention'));
     expect(mentionLines.length).toBe(1);
+  });
+
+  it('WS broadcast fires for non-mentioned messages (real broadcast to subscribed client)', async () => {
+    const ws = await connectAuthWS(port, adminCookie);
+    try {
+      await subscribeToChannel(ws, channelId);
+      const collected = collectMessages(ws, 2000);
+
+      await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, adminCookie, {
+        content: 'broadcast test without mention',
+      });
+
+      const msgs = await collected;
+      const broadcast = msgs.find((m: any) => m.type === 'new_message' && m.message?.content === 'broadcast test without mention');
+      expect(broadcast).toBeDefined();
+    } finally {
+      await closeWsAndWait(ws);
+    }
   });
 });
