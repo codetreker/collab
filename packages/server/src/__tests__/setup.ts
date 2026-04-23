@@ -1,6 +1,9 @@
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyWebsocket from '@fastify/websocket';
+import fastifyMultipart from '@fastify/multipart';
 
 const JWT_SECRET = 'test-secret-for-vitest';
 
@@ -12,9 +15,9 @@ export function authCookie(userId: string, email?: string): string {
   return `collab_token=${makeToken(userId, email)}`;
 }
 
-export function seedMessage(db: Database.Database, channelId: string, senderId: string, content = 'hello', createdAt?: number): string {
+export function seedMessage(db: Database.Database, channelId: string, senderId: string, content = 'hello', createdAt?: number, type = 'text'): string {
   const id = uuidv4();
-  db.prepare('INSERT INTO messages (id, channel_id, sender_id, content, content_type, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, channelId, senderId, content, 'text', createdAt ?? Date.now());
+  db.prepare('INSERT INTO messages (id, channel_id, sender_id, content, content_type, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, channelId, senderId, content, type, createdAt ?? Date.now());
   return id;
 }
 
@@ -194,4 +197,118 @@ export function grantPermission(db: Database.Database, userId: string, permissio
 
 export function addChannelMember(db: Database.Database, channelId: string, userId: string): void {
   db.prepare('INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at) VALUES (?, ?, ?)').run(channelId, userId, Date.now());
+}
+
+export class TestContext {
+  app!: FastifyInstance;
+  db!: Database.Database;
+  admin!: { id: string; token: string };
+  memberA!: { id: string; token: string };
+  memberB!: { id: string; token: string };
+  agent!: { id: string; apiKey: string; ownerId: string };
+  channel!: { id: string };
+
+  static async create(opts?: {
+    routes?: ((app: FastifyInstance) => void) | ((app: FastifyInstance) => void)[];
+  }): Promise<TestContext> {
+    const ctx = new TestContext();
+    ctx.db = createTestDb();
+
+    ctx.app = Fastify({ logger: false });
+
+    const { authMiddleware } = await import('../auth.js');
+    ctx.app.addHook('onRequest', async (request, reply) => {
+      if (request.url.startsWith('/api/v1/auth/')) return;
+      await authMiddleware(request, reply);
+    });
+
+    if (opts?.routes) {
+      const routeFns = Array.isArray(opts.routes) ? opts.routes : [opts.routes];
+      for (const fn of routeFns) {
+        fn(ctx.app);
+      }
+    }
+
+    await ctx.app.ready();
+
+    ctx.admin = { id: seedAdmin(ctx.db), token: '' };
+    ctx.admin.token = authCookie(ctx.admin.id);
+    ctx.memberA = { id: seedMember(ctx.db, 'MemberA'), token: '' };
+    ctx.memberA.token = authCookie(ctx.memberA.id);
+    ctx.memberB = { id: seedMember(ctx.db, 'MemberB'), token: '' };
+    ctx.memberB.token = authCookie(ctx.memberB.id);
+    ctx.agent = { id: seedAgent(ctx.db, ctx.admin.id), apiKey: '', ownerId: ctx.admin.id };
+    const row = ctx.db.prepare('SELECT api_key FROM users WHERE id = ?').get(ctx.agent.id) as { api_key: string };
+    ctx.agent.apiKey = row.api_key;
+    ctx.channel = { id: seedChannel(ctx.db, ctx.admin.id) };
+    addChannelMember(ctx.db, ctx.channel.id, ctx.admin.id);
+    addChannelMember(ctx.db, ctx.channel.id, ctx.memberA.id);
+    addChannelMember(ctx.db, ctx.channel.id, ctx.memberB.id);
+
+    return ctx;
+  }
+
+  async inject(method: string, url: string, token: string, body?: unknown) {
+    return this.app.inject({
+      method: method as any,
+      url,
+      payload: body as any,
+      headers: { cookie: token },
+    });
+  }
+
+  async close() {
+    await this.app.close();
+    this.db.close();
+  }
+}
+
+export async function buildFullApp(testDb: Database.Database): Promise<FastifyInstance> {
+  const app = Fastify({ logger: false });
+  await app.register(fastifyWebsocket);
+  await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 } });
+
+  const { authMiddleware, registerAuthRoutes } = await import('../auth.js');
+  app.addHook('onRequest', async (request, reply) => {
+    const url = request.url;
+    if (
+      url.startsWith('/api/v1/auth/') ||
+      url === '/ws' || url.startsWith('/ws?') ||
+      url.startsWith('/ws/plugin') ||
+      url.startsWith('/ws/remote')
+    ) return;
+    await authMiddleware(request, reply);
+  });
+
+  const { registerChannelRoutes } = await import('../routes/channels.js');
+  const { registerMessageRoutes } = await import('../routes/messages.js');
+  const { registerUserRoutes } = await import('../routes/users.js');
+  const { registerAdminRoutes } = await import('../routes/admin.js');
+  const { registerAgentRoutes } = await import('../routes/agents.js');
+  const { registerReactionRoutes } = await import('../routes/reactions.js');
+  const { registerDmRoutes } = await import('../routes/dm.js');
+  const { registerWorkspaceRoutes } = await import('../routes/workspace.js');
+  const { registerRemoteRoutes } = await import('../routes/remote.js');
+  const { registerWsPluginRoutes } = await import('../routes/ws-plugin.js');
+  const { registerWsRemoteRoutes } = await import('../routes/ws-remote.js');
+  const { registerPollRoutes } = await import('../routes/poll.js');
+  const { registerStreamRoutes } = await import('../routes/stream.js');
+
+  registerAuthRoutes(app);
+  registerChannelRoutes(app);
+  registerMessageRoutes(app);
+  registerUserRoutes(app);
+  registerAdminRoutes(app);
+  registerAgentRoutes(app);
+  registerReactionRoutes(app);
+  registerDmRoutes(app);
+  registerWorkspaceRoutes(app);
+  registerRemoteRoutes(app);
+  registerWsPluginRoutes(app);
+  registerWsRemoteRoutes(app);
+  registerPollRoutes(app);
+  registerStreamRoutes(app);
+
+  await app.ready();
+  return app;
 }
