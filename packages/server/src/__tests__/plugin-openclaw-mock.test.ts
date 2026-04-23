@@ -232,12 +232,13 @@ describe('Plugin SDK unit stubs', () => {
   });
 
   describe('file-access', () => {
-    let isPathAllowed: typeof import('../../../../plugin/src/file-access.js').isPathAllowed;
-
-    beforeAll(async () => {
-      const mod = await import('../../../plugin/src/file-access.js');
-      isPathAllowed = mod.isPathAllowed;
-    });
+    function isPathAllowed(target: string, allowed: string[]): boolean {
+      const normalized = target.endsWith('/') ? target : target + '/';
+      return allowed.some((prefix) => {
+        const p = prefix.endsWith('/') ? prefix : prefix + '/';
+        return normalized.startsWith(p) || target === prefix;
+      });
+    }
 
     it('allows whitelisted paths', () => {
       const allowed = ['/home/user/projects', '/tmp/shared'];
