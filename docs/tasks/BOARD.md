@@ -14,6 +14,7 @@
 | COL-BUG-003 | 亮色主题下侧边栏和 Workspace 仍是暗色 | Backlog | 飞马 | — | CSS 主题变量未覆盖 |
 | COL-BUG-004 | Enter/Ctrl+Enter 键位对调 | Backlog | 飞马 | — | 应 Enter=发送、Ctrl+Enter=换行（和其它 IM 一致） |
 | COL-BUG-005 | Markdown 渲染异常 | Backlog | 飞马 | — | 输入框和聊天历史 Markdown 渲染不对 |
+| COL-BUG-006 | WS apiKey 从 query string 读取不安全 | Ready | 战马 | — | ws-plugin.ts 改为读 Authorization header，建军指出 |
 
 ## Features
 
