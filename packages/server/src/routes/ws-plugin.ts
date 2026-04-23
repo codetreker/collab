@@ -13,8 +13,16 @@ interface WsPluginMessage {
 
 export function registerWsPluginRoutes(app: FastifyInstance): void {
   app.get('/ws/plugin', { websocket: true }, (socket, request) => {
-    const url = new URL(request.url, `http://${(request.headers.host as string) ?? 'localhost'}`);
-    const apiKey = url.searchParams.get('apiKey');
+    const authHeader = request.headers.authorization;
+    let apiKey: string | null = null;
+    if (authHeader?.startsWith('Bearer ')) {
+      apiKey = authHeader.slice(7);
+    }
+    // Deprecated: query string apiKey (will be removed in a future version)
+    if (!apiKey) {
+      const url = new URL(request.url, `http://${(request.headers.host as string) ?? 'localhost'}`);
+      apiKey = url.searchParams.get('apiKey');
+    }
 
     if (!apiKey) {
       socket.close(4001, 'Missing apiKey');

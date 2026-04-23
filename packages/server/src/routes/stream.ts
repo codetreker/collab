@@ -117,8 +117,10 @@ function authenticate(request: FastifyRequest): User | null {
     }
   }
 
+  // Deprecated: query string api_key (will be removed in a future version)
   const q = request.query as { api_key?: string } | undefined;
   if (q?.api_key && typeof q.api_key === 'string') {
+    console.warn('[stream] Authenticated via deprecated query string api_key');
     const user = Q.getUserByApiKey(db, q.api_key);
     if (user) {
       if (user.deleted_at || user.disabled) return null;

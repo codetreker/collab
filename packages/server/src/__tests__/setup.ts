@@ -153,6 +153,16 @@ export function createTestDb(): Database.Database {
       ON workspace_files(user_id, channel_id);
     CREATE INDEX IF NOT EXISTS idx_workspace_files_parent
       ON workspace_files(parent_id);
+
+    CREATE TABLE IF NOT EXISTS remote_nodes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      machine_name TEXT NOT NULL,
+      connection_token TEXT NOT NULL UNIQUE,
+      last_seen_at TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_remote_nodes_user ON remote_nodes(user_id);
   `);
 
   return db;

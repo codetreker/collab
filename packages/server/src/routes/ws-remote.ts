@@ -12,8 +12,16 @@ interface WsRemoteMessage {
 
 export function registerWsRemoteRoutes(app: FastifyInstance): void {
   app.get('/ws/remote', { websocket: true }, (socket, request) => {
-    const url = new URL(request.url, `http://${(request.headers.host as string) ?? 'localhost'}`);
-    const token = url.searchParams.get('token');
+    const authHeader = request.headers.authorization;
+    let token: string | null = null;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+    // Deprecated: query string token (will be removed in a future version)
+    if (!token) {
+      const url = new URL(request.url, `http://${(request.headers.host as string) ?? 'localhost'}`);
+      token = url.searchParams.get('token');
+    }
 
     if (!token) {
       socket.close(4001, 'Missing token');
