@@ -295,6 +295,7 @@ export async function buildFullApp(): Promise<FastifyInstance> {
   const { registerWsRemoteRoutes } = await import('../routes/ws-remote.js');
   const { registerPollRoutes } = await import('../routes/poll.js');
   const { registerStreamRoutes } = await import('../routes/stream.js');
+  const ws = await import('../ws.js');
 
   registerAuthRoutes(app);
   registerChannelRoutes(app);
@@ -310,7 +311,25 @@ export async function buildFullApp(): Promise<FastifyInstance> {
   registerWsRemoteRoutes(app);
   registerPollRoutes(app);
   registerStreamRoutes(app);
+  if ('registerWebSocket' in ws) {
+    (ws as any).registerWebSocket(app);
+  }
 
   await app.ready();
   return app;
+}
+
+export async function httpJson(port: number, method: string, path: string, cookie: string, body?: unknown) {
+  const res = await fetch(`http://127.0.0.1:${port}${path}`, {
+    method,
+    headers: {
+      ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+      cookie,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let json: any;
+  try { json = JSON.parse(text); } catch { json = undefined; }
+  return { status: res.statusCode ?? res.status, json, text, headers: res.headers };
 }

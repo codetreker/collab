@@ -19,6 +19,29 @@ export function connectWS(port: number, path: string, query?: Record<string, str
   });
 }
 
+export function connectAuthWS(port: number, cookie: string): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, { headers: { cookie } });
+    const timeout = setTimeout(() => {
+      ws.terminate();
+      reject(new Error('WS connect timeout'));
+    }, 5000);
+    ws.on('open', () => {
+      clearTimeout(timeout);
+      resolve(ws);
+    });
+    ws.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+  });
+}
+
+export async function subscribeToChannel(ws: WebSocket, channelId: string): Promise<void> {
+  ws.send(JSON.stringify({ type: 'subscribe', channel_id: channelId }));
+  await waitForMessage(ws, (m) => m.type === 'subscribed' && m.channel_id === channelId);
+}
+
 export function waitForMessage(
   ws: WebSocket,
   filter?: (msg: any) => boolean,
