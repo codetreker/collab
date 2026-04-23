@@ -53,7 +53,7 @@ RUN pnpm install --frozen-lockfile --filter @collab/server --filter @collab/clie
 ```dockerfile
 # ── Build stage ──
 ARG BASE_TAG=latest
-FROM harbor.codetrek.cn/library/collab-base:${BASE_TAG} AS builder
+FROM cr.codetrek.work/default/collab-base:${BASE_TAG} AS builder
 WORKDIR /build
 
 COPY packages/ packages/
@@ -62,7 +62,7 @@ RUN pnpm --filter @collab/server build
 
 # ── Production stage ──
 ARG BASE_TAG=latest
-FROM harbor.codetrek.cn/library/collab-base:${BASE_TAG}
+FROM cr.codetrek.work/default/collab-base:${BASE_TAG}
 WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
@@ -95,13 +95,13 @@ CMD ["node", "packages/server/dist/index.js"]
   run: |
     BASE_HASH=$(cat Dockerfile.base pnpm-lock.yaml | sha256sum | cut -c1-8)
     echo "base_hash=$BASE_HASH" >> "$GITHUB_OUTPUT"
-    if docker pull ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} 2>/dev/null; then
+    if docker pull ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH} 2>/dev/null; then
       echo "✅ Base image exists, skipping build"
     else
       echo "🔨 Building base image..."
       docker build -f Dockerfile.base \
-        -t ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} .
-      docker push ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH}
+        -t ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH} .
+      docker push ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH}
     fi
   id: base
 

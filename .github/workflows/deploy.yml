@@ -8,7 +8,7 @@ permissions:
 
 env:
   REGISTRY: ${{ vars.REGISTRY }}
-  IMAGE: library/collab
+  IMAGE: default/collab
   HARBOR_USER: ${{ vars.HARBOR_USER }}
 
 jobs:
@@ -48,15 +48,15 @@ jobs:
         run: |
           BASE_HASH=$(cat Dockerfile.base pnpm-lock.yaml | sha256sum | cut -c1-8)
           echo "base_hash=$BASE_HASH" >> "$GITHUB_OUTPUT"
-          if docker pull ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} 2>/dev/null; then
+          if docker pull ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH} 2>/dev/null; then
             echo "✅ Base image exists, skipping build"
           else
             echo "🔨 Building base image..."
             docker build -f Dockerfile.base \
-              -t ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} .
-            docker push ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH}
+              -t ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH} .
+            docker push ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH}
           fi
-          docker tag ${{ env.REGISTRY }}/library/collab-base:${BASE_HASH} collab-base:${BASE_HASH}
+          docker tag ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH} collab-base:${BASE_HASH}
 
       - name: Build and push
         run: |
@@ -93,9 +93,9 @@ jobs:
       - name: Tag prod via Harbor API
         run: |
           curl -sf -u '${{ env.HARBOR_USER }}:${{ secrets.HARBOR_API_TOKEN }}' \
-            -X DELETE 'https://${{ env.REGISTRY }}/api/v2.0/projects/library/repositories/collab/artifacts/prod/tags/prod' || true
+            -X DELETE 'https://${{ env.REGISTRY }}/api/v2.0/projects/default/repositories/collab/artifacts/prod/tags/prod' || true
           curl -sf -u '${{ env.HARBOR_USER }}:${{ secrets.HARBOR_API_TOKEN }}' \
-            -X POST 'https://${{ env.REGISTRY }}/api/v2.0/projects/library/repositories/collab/artifacts/${{ needs.deploy-staging.outputs.build_tag }}/tags' \
+            -X POST 'https://${{ env.REGISTRY }}/api/v2.0/projects/default/repositories/collab/artifacts/${{ needs.deploy-staging.outputs.build_tag }}/tags' \
             -H 'Content-Type: application/json' \
             -d '{"name":"prod"}'
 
