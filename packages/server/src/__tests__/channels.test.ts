@@ -96,6 +96,18 @@ describe('Channels API', () => {
       expect(res.statusCode).toBe(400);
     });
 
+    it('rejects topic over 250 chars on create', async () => {
+      const adminId = seedAdmin(testDb);
+      const res = await inject('POST', '/api/v1/channels', adminId, { name: 'longtopic', topic: 'x'.repeat(251) });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('rejects invalid visibility on create', async () => {
+      const adminId = seedAdmin(testDb);
+      const res = await inject('POST', '/api/v1/channels', adminId, { name: 'badvis', visibility: 'secret' });
+      expect(res.statusCode).toBe(400);
+    });
+
     it('creates a private channel with members', async () => {
       const adminId = seedAdmin(testDb);
       const memberId = seedMember(testDb, 'Bob');
@@ -157,6 +169,79 @@ describe('Channels API', () => {
     });
   });
 
+  describe('GET /api/v1/channels/:channelId/preview', () => {
+    it('returns preview for public channel', async () => {
+      const adminId = seedAdmin(testDb);
+      const chId = seedChannel(testDb, adminId, 'preview-ch');
+      const res = await inject('GET', `/api/v1/channels/${chId}/preview`, adminId);
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.channel).toBeDefined();
+      expect(body.messages).toBeDefined();
+    });
+
+    it('returns 404 for private channel preview', async () => {
+      const adminId = seedAdmin(testDb);
+      const chId = seedChannel(testDb, adminId, 'priv-preview', 'private');
+      const res = await inject('GET', `/api/v1/channels/${chId}/preview`, adminId);
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('returns 401 without auth', async () => {
+      const adminId = seedAdmin(testDb);
+      const chId = seedChannel(testDb, adminId, 'noauth-preview');
+      const res = await inject('GET', `/api/v1/channels/${chId}/preview`);
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('returns 404 for non-existent channel', async () => {
+      const adminId = seedAdmin(testDb);
+      const res = await inject('GET', '/api/v1/channels/no-such/preview', adminId);
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('PUT /api/v1/channels/:channelId/topic', () => {
+    it('member can set topic', async () => {
+      const adminId = seedAdmin(testDb);
+      const memberId = seedMember(testDb, 'TopicMember');
+      const chId = seedChannel(testDb, adminId, 'topic-set');
+      addChannelMember(testDb, chId, memberId);
+      const res = await inject('PUT', `/api/v1/channels/${chId}/topic`, memberId, { topic: 'new topic' });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).channel.topic).toBe('new topic');
+    });
+
+    it('non-member gets 403', async () => {
+      const adminId = seedAdmin(testDb);
+      const memberId = seedMember(testDb, 'NoTopic');
+      const chId = seedChannel(testDb, adminId, 'topic-no');
+      const res = await inject('PUT', `/api/v1/channels/${chId}/topic`, memberId, { topic: 'nope' });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('returns 400 without topic', async () => {
+      const adminId = seedAdmin(testDb);
+      const chId = seedChannel(testDb, adminId, 'topic-bad');
+      addChannelMember(testDb, chId, adminId);
+      const res = await inject('PUT', `/api/v1/channels/${chId}/topic`, adminId, {});
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('returns 404 for non-existent channel', async () => {
+      const adminId = seedAdmin(testDb);
+      const res = await inject('PUT', '/api/v1/channels/no-such/topic', adminId, { topic: 'x' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('returns 401 without auth', async () => {
+      const adminId = seedAdmin(testDb);
+      const chId = seedChannel(testDb, adminId, 'topic-noauth');
+      const res = await inject('PUT', `/api/v1/channels/${chId}/topic`, undefined, { topic: 'x' });
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
   describe('PUT /api/v1/channels/:channelId', () => {
     it('member can update topic if member of channel', async () => {
       const adminId = seedAdmin(testDb);
@@ -181,6 +266,34 @@ describe('Channels API', () => {
       const chId = seedChannel(testDb, memberId, 'vis-ch');
       const res = await inject('PUT', `/api/v1/channels/${chId}`, memberId, { visibility: 'private' });
       expect(res.statusCode).toBe(403);
+    });
+
+    it('rejects topic over 250 chars', async () => {
+      const adminId = seedAdmin(testDb);
+      const chId = seedChannel(testDb, adminId, 'long-topic');
+      addChannelMember(testDb, chId, adminId);
+      const res = await inject('PUT', `/api/v1/channels/${chId}`, adminId, { topic: 'x'.repeat(251) });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('rejects invalid visibility value', async () => {
+      const adminId = seedAdmin(testDb);
+      const chId = seedChannel(testDb, adminId, 'bad-vis');
+      const res = await inject('PUT', `/api/v1/channels/${chId}`, adminId, { visibility: 'secret' });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('returns 404 for non-existent channel', async () => {
+      const adminId = seedAdmin(testDb);
+      const res = await inject('PUT', '/api/v1/channels/no-such', adminId, { topic: 'x' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('rejects invalid name', async () => {
+      const adminId = seedAdmin(testDb);
+      const chId = seedChannel(testDb, adminId, 'name-ch');
+      const res = await inject('PUT', `/api/v1/channels/${chId}`, adminId, { name: '' });
+      expect(res.statusCode).toBe(400);
     });
 
     it('cannot make general private', async () => {

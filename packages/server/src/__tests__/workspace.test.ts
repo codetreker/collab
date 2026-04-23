@@ -296,6 +296,46 @@ describe('Workspace API', () => {
     });
   });
 
+  describe('PUT /api/v1/channels/:channelId/workspace/files/:id (update content)', () => {
+    it('updates file content', async () => {
+      const { userId, channelId } = setup();
+      const up = await uploadFile(`/api/v1/channels/${channelId}/workspace/upload`, userId, 'edit.md', 'original');
+      const fileId = JSON.parse(up.body).file.id;
+      const res = await inject('PUT', `/api/v1/channels/${channelId}/workspace/files/${fileId}`, userId, { content: 'updated content' });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).file.size_bytes).toBe(Buffer.byteLength('updated content'));
+    });
+
+    it('returns 404 for non-existent file', async () => {
+      const { userId, channelId } = setup();
+      const res = await inject('PUT', `/api/v1/channels/${channelId}/workspace/files/nope`, userId, { content: 'x' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('returns 400 when content missing', async () => {
+      const { userId, channelId } = setup();
+      const up = await uploadFile(`/api/v1/channels/${channelId}/workspace/upload`, userId, 'e.md', 'x');
+      const fileId = JSON.parse(up.body).file.id;
+      const res = await inject('PUT', `/api/v1/channels/${channelId}/workspace/files/${fileId}`, userId, {});
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('GET /api/v1/workspaces', () => {
+    it('returns files across channels', async () => {
+      const { userId, channelId } = setup();
+      await uploadFile(`/api/v1/channels/${channelId}/workspace/upload`, userId, 'cross.txt', 'data');
+      const res = await inject('GET', '/api/v1/workspaces', userId);
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).files.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('returns 401 without auth', async () => {
+      const res = await inject('GET', '/api/v1/workspaces');
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
   describe('permissions', () => {
     it('returns 403 for non-member on list', async () => {
       const { channelId } = setup();
