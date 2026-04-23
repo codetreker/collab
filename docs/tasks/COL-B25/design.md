@@ -116,6 +116,9 @@ describe('完整聊天 + WS 推送', () => {
 
 文件：`agent-human-e2e.test.ts`
 
+> **apiKey 传递方式**：Plugin WS 路由（`ws-plugin.ts`）通过 `url.searchParams.get('apiKey')` 从 query string 读取 apiKey。
+> `connectWS(port, '/ws/plugin', { apiKey })` 会将 query 拼接为 `/ws/plugin?apiKey=xxx`，与服务端一致。
+
 ```typescript
 describe('Agent-Human 完整往返', () => {
   // setup: admin(人) + agent(bot), channel, agent addChannelMember
@@ -242,13 +245,17 @@ describe('SSE/WS/Poll 三通道一致性', () => {
     const { json } = await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, memberAToken, { content: 'consistency-test' });
     const msgId = json.message.id;
 
-    // WS 验证
-    const wsEvent = await waitForMessage(ws, (m) => m.type === 'new_message' && m.payload?.content === 'consistency-test');
+    // WS 验证（超时与 SSE 对齐为 8000ms）
+    const wsEvent = await waitForMessage(ws, (m) => m.type === 'new_message' && m.payload?.content === 'consistency-test', 8000);
     expect(wsEvent.payload.id).toBe(msgId);
 
-    // SSE 验证
-    const sseData = await ssePromise;
-    expect(sseData).toContain(msgId);
+    // SSE 验证：解析 data: 行为 JSON，与 WS payload 做结构性比较
+    const sseRaw = await ssePromise;
+    const sseLines = (sseRaw as string).split('\n').filter((l: string) => l.startsWith('data:'));
+    const ssePayload = JSON.parse(sseLines[sseLines.length - 1].replace(/^data:\s*/, ''));
+    expect(ssePayload.id || ssePayload.payload?.id).toBe(msgId);
+    expect(ssePayload.content || ssePayload.payload?.content).toBe('consistency-test');
+    expect(ssePayload.sender_id || ssePayload.payload?.sender_id).toBe(memberAId);
 
     // Poll 验证
     const pollRes = await httpJson(port, 'POST', '/api/v1/poll', agentToken, { api_key: agentApiKey, cursor: 0, timeout_ms: 2000 });
@@ -258,45 +265,42 @@ describe('SSE/WS/Poll 三通道一致性', () => {
 });
 ```
 
-### 3.5 场景 5：Remote Explorer 端到端（P1）
+### 3.5 场景 5：Remote Explorer 复合流程（P1）
 
 文件：`remote-explorer-e2e.test.ts`
 
+> **注意**：B24 `remote-explorer.integration.test.ts` 已覆盖注册、WS 连接、单次读文件、offline 503、非 owner 403 等基础 case。
+> B25 不重复这些独立 case，而是测试一个连贯的多步复合流程。
+
 ```typescript
-describe('Remote Explorer 端到端', () => {
-  // setup: admin + node registration + remote agent WS
+describe('Remote Explorer 复合流程', () => {
+  // setup: admin + memberA, channel
+  let nodeId: string, nodeToken: string;
+  let agentWs: import('ws').WebSocket;
 
-  it('注册 Node → 获取 token → Remote Agent WS 连接成功', async () => {
-    const { json } = await httpJson(port, 'POST', '/api/v1/remote/nodes', adminToken, {
-      name: 'test-machine', channelId, directory: '/home/user',
+  it('注册→绑定→列目录→读文件→断连→重连→再读：完整生命周期', async () => {
+    // Step 1: 注册 Node
+    const { json: reg } = await httpJson(port, 'POST', '/api/v1/remote/nodes', adminToken, {
+      name: 'lifecycle-machine', channelId, directory: '/home/user',
     });
-    expect(json.token).toBeDefined();
-    nodeToken = json.token;
-    nodeId = json.id;
-    const agentWs = await connectWS(port, '/ws/remote', { token: nodeToken });
-    wsConnections.push(agentWs);
-    expect(agentWs.readyState).toBe(1); // OPEN
-  });
+    expect(reg.token).toBeDefined();
+    nodeToken = reg.token;
+    nodeId = reg.id;
 
-  it('通过 API 列目录 → Remote Agent 转发 → 返回文件列表', async () => {
-    // agent WS 响应 list 请求
+    // Step 2: Remote Agent WS 连接
+    agentWs = await connectWS(port, '/ws/remote', { token: nodeToken });
+    wsConnections.push(agentWs);
+    expect(agentWs.readyState).toBe(1);
+
+    // Step 3: Agent 响应 list + read 请求
     agentWs.on('message', (raw) => {
       const msg = JSON.parse(raw.toString());
       if (msg.type === 'request' && msg.action === 'list') {
         agentWs.send(JSON.stringify({
           type: 'response', id: msg.id,
-          data: { entries: [{ name: 'file.txt', type: 'file', size: 100 }] },
+          data: { entries: [{ name: 'file.txt', type: 'file', size: 100 }, { name: 'sub', type: 'directory', size: 0 }] },
         }));
       }
-    });
-    const { status, json } = await httpJson(port, 'GET', `/api/v1/remote/nodes/${nodeId}/list?path=/`, adminToken);
-    expect(status).toBe(200);
-    expect(json.entries[0].name).toBe('file.txt');
-  });
-
-  it('读文件 → Remote Agent 转发 → 返回文件内容', async () => {
-    agentWs.on('message', (raw) => {
-      const msg = JSON.parse(raw.toString());
       if (msg.type === 'request' && msg.action === 'read') {
         agentWs.send(JSON.stringify({
           type: 'response', id: msg.id,
@@ -304,52 +308,73 @@ describe('Remote Explorer 端到端', () => {
         }));
       }
     });
-    const { status, json } = await httpJson(port, 'GET', `/api/v1/remote/nodes/${nodeId}/read?path=/file.txt`, adminToken);
-    expect(status).toBe(200);
-    expect(json.content).toBe('hello world');
-  });
 
-  it('Agent 断开 → 读文件返回 503', async () => {
+    // Step 4: 列目录
+    const { status: listStatus, json: listJson } = await httpJson(port, 'GET', `/api/v1/remote/nodes/${nodeId}/list?path=/`, adminToken);
+    expect(listStatus).toBe(200);
+    expect(listJson.entries).toHaveLength(2);
+
+    // Step 5: 读文件
+    const { status: readStatus, json: readJson } = await httpJson(port, 'GET', `/api/v1/remote/nodes/${nodeId}/read?path=/file.txt`, adminToken);
+    expect(readStatus).toBe(200);
+    expect(readJson.content).toBe('hello world');
+
+    // Step 6: 断连 → 503
     await closeWsAndWait(agentWs);
-    const { status } = await httpJson(port, 'GET', `/api/v1/remote/nodes/${nodeId}/read?path=/file.txt`, adminToken);
-    expect(status).toBe(503);
-  });
+    const { status: offlineStatus } = await httpJson(port, 'GET', `/api/v1/remote/nodes/${nodeId}/read?path=/file.txt`, adminToken);
+    expect(offlineStatus).toBe(503);
 
-  it('非 owner 访问 → 403', async () => {
-    const { status } = await httpJson(port, 'GET', `/api/v1/remote/nodes/${nodeId}/list?path=/`, memberAToken);
-    expect(status).toBe(403);
+    // Step 7: 重连 → 再读成功
+    const agentWs2 = await connectWS(port, '/ws/remote', { token: nodeToken });
+    wsConnections.push(agentWs2);
+    agentWs2.on('message', (raw) => {
+      const msg = JSON.parse(raw.toString());
+      if (msg.type === 'request' && msg.action === 'read') {
+        agentWs2.send(JSON.stringify({
+          type: 'response', id: msg.id,
+          data: { content: 'hello again', size: 11, mime_type: 'text/plain' },
+        }));
+      }
+    });
+    const { status: reconnectStatus, json: reconnectJson } = await httpJson(port, 'GET', `/api/v1/remote/nodes/${nodeId}/read?path=/file.txt`, adminToken);
+    expect(reconnectStatus).toBe(200);
+    expect(reconnectJson.content).toBe('hello again');
   });
 });
 ```
 
-### 3.6 场景 6：Workspace + 消息联动（P1）
+### 3.6 场景 6：Workspace 消息引用附件 + 下载验证（P1）
 
 文件：`workspace-message-e2e.test.ts`
 
+> **注意**：B24 `workspace-flow.integration.test.ts` 已覆盖 upload → list（user isolation）→ rename 基础 case。
+> B25 仅测试 B24 未覆盖的部分：消息引用附件 + 下载内容一致性验证。
+
 ```typescript
-describe('Workspace + 消息联动', () => {
-  it('发带附件消息 → 附件自动存入 Workspace', async () => {
+describe('Workspace 消息引用附件 + 下载验证', () => {
+  let fileId: string;
+
+  it('上传文件 → 发消息引用 → 下载内容一致', async () => {
     // 上传文件
     const { json: file } = await httpJson(port, 'POST', `/api/v1/channels/${channelId}/workspace/upload`, memberAToken, {
       name: 'report.txt', content: Buffer.from('report data').toString('base64'), mime_type: 'text/plain',
     });
+    fileId = file.id;
+
     // 发消息引用文件
-    await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, memberAToken, { content: `See file: ${file.id}` });
-    // 验证 Workspace 列表可见
-    const { json: ws } = await httpJson(port, 'GET', `/api/v1/channels/${channelId}/workspace`, memberAToken);
-    expect(ws.files.some((f: any) => f.name === 'report.txt')).toBe(true);
-  });
+    const { json: msg } = await httpJson(port, 'POST', `/api/v1/channels/${channelId}/messages`, memberAToken, {
+      content: `See file: ${fileId}`,
+    });
+    expect(msg.message.content).toContain(fileId);
 
-  it('下载文件内容一致', async () => {
-    const { json: ws } = await httpJson(port, 'GET', `/api/v1/channels/${channelId}/workspace`, memberAToken);
-    const fileId = ws.files[0].id;
+    // 下载并验证内容一致
     const { json: dl } = await httpJson(port, 'GET', `/api/v1/channels/${channelId}/workspace/${fileId}/download`, memberAToken);
-    expect(dl.content || dl.data).toBeDefined();
-  });
-
-  it('其他用户看不到（多用户隔离）', async () => {
-    const { json: ws } = await httpJson(port, 'GET', `/api/v1/channels/${channelId}/workspace`, memberBToken);
-    expect(ws.files.filter((f: any) => f.name === 'report.txt')).toHaveLength(0);
+    const content = dl.content || dl.data;
+    expect(content).toBeDefined();
+    // base64 解码后应与原始内容一致
+    if (typeof content === 'string' && content.length < 1000) {
+      expect(Buffer.from(content, 'base64').toString()).toBe('report data');
+    }
   });
 });
 ```
@@ -882,6 +907,18 @@ describe('消息 Reaction + WS 双向', () => {
 
 | Task | 场景 | 文件 | 优先级 | 预估 |
 |------|------|------|--------|------|
+| **T0: P0 场景 1-4** | | | | |
+| T0.1 | 场景 1：完整聊天 + WS 推送 | `chat-lifecycle-e2e.test.ts` | P0 | 1.5h |
+| T0.2 | 场景 2：Agent-Human 完整往返 | `agent-human-e2e.test.ts` | P0 | 1.5h |
+| T0.3 | 场景 3：权限动态变化 + WS 隔离 | `permission-ws-e2e.test.ts` | P0 | 1.5h |
+| T0.4 | 场景 4：SSE/WS/Poll 三通道一致性 | `three-channel-consistency-e2e.test.ts` | P0 | 2h |
+| **T0b: P1 场景 5-10** | | | | |
+| T0b.1 | 场景 5：Remote Explorer 复合流程 | `remote-explorer-e2e.test.ts` | P1 | 1.5h |
+| T0b.2 | 场景 6：Workspace 消息引用附件 + 下载 | `workspace-message-e2e.test.ts` | P1 | 1h |
+| T0b.3 | 场景 7：分页 + 实时消息共存 | `pagination-realtime-e2e.test.ts` | P1 | 1h |
+| T0b.4 | 场景 8：DM 完整链路 | `dm-lifecycle-e2e.test.ts` | P1 | 1h |
+| T0b.5 | 场景 9：Slash Commands + WS 推送 | `slash-ws-e2e.test.ts` | P1 | 1h |
+| T0b.6 | 场景 10：公开频道预览 + 加入 | `public-preview-e2e.test.ts` | P1 | 1h |
 | **T1: P1 场景 11-12** | | | | |
 | T1.1 | 场景 11：多设备同一用户 | `multi-device-e2e.test.ts` | P1 | 1h |
 | T1.2 | 场景 12：DM + 公开 + 私有隔离交叉 | `channel-isolation-e2e.test.ts` | P1 | 1.5h |
@@ -898,7 +935,7 @@ describe('消息 Reaction + WS 双向', () => {
 | T5.1 | 场景 19：Workspace 文件并发上传 | `workspace-concurrent-upload-e2e.test.ts` | P2 | 1h |
 | T5.2 | 场景 20：消息 Reaction + WS 双向 | `reaction-bidirectional-e2e.test.ts` | P2 | 1h |
 
-**总计预估：11.5h**
+**总计预估：22h**（场景 1-10: 10.5h + 场景 11-20: 11.5h）
 
 ## 5. 验收标准
 
