@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Database from 'better-sqlite3';
-import { createTestDb, seedAdmin, seedInviteCode, seedChannel, seedAgent, authCookie } from './setup.js';
+import { createTestDb, seedAdmin, seedMember, seedInviteCode, seedChannel, seedAgent, authCookie } from './setup.js';
 
 let testDb: Database.Database;
 
@@ -66,10 +66,10 @@ describe('Auth flow (integration)', () => {
   });
 
   it('register → already used invite code → 404', async () => {
-    const adminId = testDb.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").get() as { id: string };
-    seedInviteCode(testDb, adminId.id, 'USED001');
-    const memberId = testDb.prepare("SELECT id FROM users WHERE display_name='FlowUser'").get() as { id: string };
-    testDb.prepare('UPDATE invite_codes SET used_by = ?, used_at = ? WHERE code = ?').run(memberId.id, Date.now(), 'USED001');
+    const admin = seedAdmin(testDb, 'UsedCodeAdmin');
+    seedInviteCode(testDb, admin, 'USED001');
+    const memberId = seedMember(testDb, 'UsedCodeUser');
+    testDb.prepare('UPDATE invite_codes SET used_by = ?, used_at = ? WHERE code = ?').run(memberId, Date.now(), 'USED001');
 
     const res = await app.inject({
       method: 'POST',
@@ -80,20 +80,38 @@ describe('Auth flow (integration)', () => {
   });
 
   it('login → correct password → 200 + JWT cookie', async () => {
+    const admin = seedAdmin(testDb, 'LoginAdmin');
+    seedInviteCode(testDb, admin, 'LOGIN001');
+    seedChannel(testDb, admin, 'login-general');
+    await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { invite_code: 'LOGIN001', email: 'login@test.com', password: 'password123', display_name: 'LoginUser' },
+    });
+
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      payload: { email: 'flow@test.com', password: 'password123' },
+      payload: { email: 'login@test.com', password: 'password123' },
     });
     expect(res.statusCode).toBe(200);
     expect(res.headers['set-cookie']).toContain('collab_token=');
   });
 
   it('login → wrong password → 401', async () => {
+    const admin = seedAdmin(testDb, 'WrongPwAdmin');
+    seedInviteCode(testDb, admin, 'WRONGPW001');
+    seedChannel(testDb, admin, 'wrongpw-general');
+    await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { invite_code: 'WRONGPW001', email: 'wrongpw@test.com', password: 'password123', display_name: 'WrongPwUser' },
+    });
+
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      payload: { email: 'flow@test.com', password: 'wrongpass' },
+      payload: { email: 'wrongpw@test.com', password: 'wrongpass' },
     });
     expect(res.statusCode).toBe(401);
   });
