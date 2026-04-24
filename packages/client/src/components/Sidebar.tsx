@@ -203,21 +203,15 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
         )}
       </div>
 
-      {sortedDms.length > 0 && (
-        <div className="dm-list">
-          <div className="online-header">私信</div>
-          {sortedDms.map(dm => (
-            <DmItem
-              key={dm.id}
-              dm={dm}
-              active={dm.id === state.currentChannelId}
-              onClick={() => handleSelect(dm.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      <OnlineUsers />
+      <MergedDmList
+        dms={sortedDms}
+        currentChannelId={state.currentChannelId}
+        onlineUserIds={state.onlineUserIds}
+        users={state.users}
+        currentUserId={state.currentUser?.id}
+        onSelectDm={handleSelect}
+        onOpenDm={actions.openDm}
+      />
 
       {state.currentUser && (
         <div className="sidebar-footer">
@@ -305,7 +299,7 @@ function ChannelItem({ channel, active, onClick }: { channel: Channel; active: b
   );
 }
 
-function DmItem({ dm, active, onClick }: { dm: DmChannel; active: boolean; onClick: () => void }) {
+function DmItem({ dm, active, online, onClick }: { dm: DmChannel; active: boolean; online: boolean; onClick: () => void }) {
   return (
     <button
       className={`channel-item ${active ? 'channel-item-active' : ''}`}
@@ -313,6 +307,7 @@ function DmItem({ dm, active, onClick }: { dm: DmChannel; active: boolean; onCli
     >
       <span className="user-avatar-small dm-avatar">
         {dm.peer.display_name[0]?.toUpperCase()}
+        {online && <span className="online-dot avatar-status" />}
       </span>
       <span className="channel-name">{dm.peer.display_name}</span>
       {dm.unread_count > 0 && (
@@ -322,26 +317,44 @@ function DmItem({ dm, active, onClick }: { dm: DmChannel; active: boolean; onCli
   );
 }
 
-function OnlineUsers() {
-  const { state, actions } = useAppContext();
-  const onlineUsers = state.users.filter(u => state.onlineUserIds.has(u.id) && u.id !== state.currentUser?.id);
+function MergedDmList({ dms, currentChannelId, onlineUserIds, users, currentUserId, onSelectDm, onOpenDm }: {
+  dms: DmChannel[];
+  currentChannelId: string | null;
+  onlineUserIds: Set<string>;
+  users: { id: string; display_name: string; role: string }[];
+  currentUserId?: string;
+  onSelectDm: (id: string) => void;
+  onOpenDm: (userId: string) => void;
+}) {
+  const dmPeerIds = new Set(dms.map(dm => dm.peer.id));
+  const onlineOnly = users.filter(u => onlineUserIds.has(u.id) && u.id !== currentUserId && !dmPeerIds.has(u.id));
 
-  if (onlineUsers.length === 0) return null;
+  if (dms.length === 0 && onlineOnly.length === 0) return null;
 
   return (
-    <div className="online-users">
-      <div className="online-header">
-        在线 — {onlineUsers.length}
-      </div>
-      {onlineUsers.map(user => (
+    <div className="dm-list">
+      <div className="online-header">私信</div>
+      {dms.map(dm => (
+        <DmItem
+          key={dm.id}
+          dm={dm}
+          active={dm.id === currentChannelId}
+          online={onlineUserIds.has(dm.peer.id)}
+          onClick={() => onSelectDm(dm.id)}
+        />
+      ))}
+      {onlineOnly.map(user => (
         <button
           key={user.id}
-          className="online-user-item"
-          onClick={() => actions.openDm(user.id)}
+          className="channel-item online-only-item"
+          onClick={() => onOpenDm(user.id)}
           title={`私信 ${user.display_name}`}
         >
-          <span className="online-dot" />
-          <span className="online-user-name">{user.display_name}</span>
+          <span className="user-avatar-small dm-avatar">
+            {user.display_name[0]?.toUpperCase()}
+            <span className="online-dot avatar-status" />
+          </span>
+          <span className="channel-name">{user.display_name}</span>
           {user.role === 'agent' && <span className="user-badge">Bot</span>}
         </button>
       ))}

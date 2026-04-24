@@ -470,6 +470,18 @@ body {
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
+  position: relative;
+}
+
+.avatar-status {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--bg-sidebar);
+  border-radius: 50%;
+  background: #3ba55d;
 }
 
 .user-name-small {
