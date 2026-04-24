@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import {
   fetchAgents,
+  fetchAgent,
   createAgent,
   deleteAgent,
   rotateAgentApiKey,
@@ -108,6 +109,8 @@ function AgentCard({
   const [permissions, setPermissions] = useState<PermissionDetail[]>([]);
   const [loadingPerms, setLoadingPerms] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+  const [visibleKey, setVisibleKey] = useState<string | null>(null);
+  const [loadingKey, setLoadingKey] = useState(false);
   const [joinChannelId, setJoinChannelId] = useState('');
 
   const loadPerms = useCallback(async () => {
@@ -124,10 +127,27 @@ function AgentCard({
     if (expanded) loadPerms();
   }, [expanded, loadPerms]);
 
+  const handleShowKey = async () => {
+    if (visibleKey) {
+      setVisibleKey(null);
+      return;
+    }
+    setLoadingKey(true);
+    try {
+      const data = await fetchAgent(agent.id);
+      setVisibleKey(data.api_key ?? null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setLoadingKey(false);
+    }
+  };
+
   const handleRotateKey = async () => {
     try {
       const key = await rotateAgentApiKey(agent.id);
       setNewKey(key);
+      setVisibleKey(key);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed');
     }
@@ -180,15 +200,25 @@ function AgentCard({
           {/* API Key */}
           <div style={{ marginBottom: 12 }}>
             <strong>API Key</strong>
-            {newKey ? (
+            {(newKey || visibleKey) ? (
               <div className="api-key-box">
-                {newKey}
-                <button className="btn-icon" onClick={() => navigator.clipboard.writeText(newKey)} title="Copy">📋</button>
+                {newKey || visibleKey}
+                <button className="btn-icon" onClick={() => navigator.clipboard.writeText((newKey || visibleKey)!)} title="Copy">📋</button>
               </div>
             ) : (
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>API key is only shown at creation. Use rotate to get a new one.</p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                API key is hidden.
+                <button className="btn btn-sm" style={{ marginLeft: 8 }} onClick={handleShowKey} disabled={loadingKey}>
+                  {loadingKey ? 'Loading...' : 'Show'}
+                </button>
+              </p>
             )}
-            <button className="btn btn-sm" onClick={handleRotateKey}>Rotate API Key</button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {visibleKey && !newKey && (
+                <button className="btn btn-sm" onClick={() => setVisibleKey(null)}>Hide</button>
+              )}
+              <button className="btn btn-sm" onClick={handleRotateKey}>Rotate API Key</button>
+            </div>
           </div>
 
           {/* Permissions */}
@@ -232,10 +262,12 @@ function AgentCard({
 
 function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [displayName, setDisplayName] = useState('');
+  const [agentId, setAgentId] = useState('');
   const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set(['message.send']));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [createdId, setCreatedId] = useState<string | null>(null);
 
   const togglePerm = (perm: string) => {
     setSelectedPerms(prev => {
@@ -251,9 +283,14 @@ function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreat
     setSaving(true);
     setError('');
     try {
-      const agent = await createAgent(displayName.trim(), [...selectedPerms]);
-      if (agent.api_key) setCreatedKey(agent.api_key);
-      else onCreated();
+      const trimmedId = agentId.trim() || undefined;
+      const agent = await createAgent(displayName.trim(), [...selectedPerms], trimmedId);
+      if (agent.api_key) {
+        setCreatedKey(agent.api_key);
+        setCreatedId(agent.id);
+      } else {
+        onCreated();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -266,7 +303,8 @@ function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreat
       <div className="admin-modal" onClick={() => { onCreated(); }}>
         <div className="admin-modal-content" onClick={e => e.stopPropagation()}>
           <h3>Agent Created</h3>
-          <p>Save this API key now — it won't be shown again.</p>
+          {createdId && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Agent ID: <code>{createdId}</code></p>}
+          <p>Copy this API key. You can also view it later from the agent details.</p>
           <div className="api-key-box">
             {createdKey}
             <button className="btn-icon" onClick={() => navigator.clipboard.writeText(createdKey)} title="Copy">📋</button>
@@ -287,6 +325,17 @@ function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreat
           <label>
             Display Name
             <input className="input-field" value={displayName} onChange={e => setDisplayName(e.target.value)} required autoFocus />
+          </label>
+          <label style={{ marginTop: 8, display: 'block' }}>
+            Agent ID <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>(optional — auto-generated if empty)</span>
+            <input
+              className="input-field"
+              value={agentId}
+              onChange={e => setAgentId(e.target.value)}
+              placeholder="e.g. my-bot-01"
+              pattern="^[a-zA-Z0-9][\w-]{0,62}[a-zA-Z0-9]$"
+              title="2-64 characters: letters, digits, hyphens, underscores"
+            />
           </label>
           <div style={{ margin: '12px 0' }}>
             <strong style={{ fontSize: 14 }}>Permissions</strong>

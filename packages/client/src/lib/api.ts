@@ -447,11 +447,16 @@ export async function fetchAgents(): Promise<Agent[]> {
   return data.agents;
 }
 
-export async function createAgent(displayName: string, permissions?: string[]): Promise<Agent> {
+export async function createAgent(displayName: string, permissions?: string[], id?: string): Promise<Agent> {
   const data = await request<{ agent: Agent }>('/api/v1/agents', {
     method: 'POST',
-    body: JSON.stringify({ display_name: displayName, permissions }),
+    body: JSON.stringify({ display_name: displayName, permissions, ...(id ? { id } : {}) }),
   });
+  return data.agent;
+}
+
+export async function fetchAgent(id: string): Promise<Agent> {
+  const data = await request<{ agent: Agent }>(`/api/v1/agents/${id}`);
   return data.agent;
 }
 
