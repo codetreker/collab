@@ -519,7 +519,7 @@ body {
 
 .channel-header-info {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   min-width: 0;
 }
@@ -1866,7 +1866,7 @@ body {
 /* env() returns 0 when unsupported — no @supports wrapper needed */
 
 .hamburger-btn {
-  top: calc(10px + env(safe-area-inset-top, 0px));
+  top: calc(4px + env(safe-area-inset-top, 0px));
 }
 
 /* ─── Login Page ─────────────────────────────────────── */
