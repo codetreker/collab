@@ -1,8 +1,18 @@
 {
-  "name": "@collab/plugin",
+  "name": "@codetreker/collab-openclaw-plugin",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
+  "files": ["dist"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codetreker/collab.git",
+    "directory": "packages/plugins/openclaw"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit"
