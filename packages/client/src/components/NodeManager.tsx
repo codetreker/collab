@@ -167,10 +167,11 @@ function NodeDetail({ node, online, channels, onDelete }: {
     setCopied(false);
   }, [loadBindings]);
 
-  const startCmd = `npx @collab/remote-agent --server wss://collab.codetrek.cn --token ${node.connection_token} --dirs /path/to/dir`;
+  const startCmd = `npx @collab/remote-agent --server wss://collab.codetrek.cn --token ${showToken ? node.connection_token : '••••••••'} --dirs /path/to/dir`;
+  const fullCmd = `npx @collab/remote-agent --server wss://collab.codetrek.cn --token ${node.connection_token} --dirs /path/to/dir`;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(startCmd);
+    navigator.clipboard.writeText(fullCmd);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -260,7 +261,7 @@ function NodeDetail({ node, online, channels, onDelete }: {
       </div>
 
       <div className="node-detail-section">
-        <button className="btn btn-sm btn-danger" onClick={onDelete}>删除 Node</button>
+        <button className="btn btn-sm btn-danger" onClick={onDelete}>Delete</button>
       </div>
     </div>
   );

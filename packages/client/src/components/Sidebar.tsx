@@ -7,6 +7,7 @@ import type { Channel, DmChannel } from '../types';
 
 interface Props {
   onClose?: () => void;
+  onChannelSelect?: () => void;
   onLogout?: () => void;
   onAdminOpen?: () => void;
   onAgentsOpen?: () => void;
@@ -14,7 +15,7 @@ interface Props {
   onRemoteNodesOpen?: () => void;
 }
 
-export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen, onWorkspacesOpen, onRemoteNodesOpen }: Props) {
+export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpen, onAgentsOpen, onWorkspacesOpen, onRemoteNodesOpen }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const canCreateChannel = useCan('channel.create');
@@ -31,6 +32,7 @@ export default function Sidebar({ onClose, onLogout, onAdminOpen, onAgentsOpen, 
 
   const handleSelect = (channelId: string) => {
     actions.selectChannel(channelId);
+    onChannelSelect?.();
     onClose?.();
   };
 
