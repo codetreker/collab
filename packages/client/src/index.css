@@ -470,6 +470,18 @@ body {
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
+  position: relative;
+}
+
+.avatar-status {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--bg-sidebar);
+  border-radius: 50%;
+  background: #3ba55d;
 }
 
 .user-name-small {
@@ -519,7 +531,7 @@ body {
 
 .channel-header-info {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   min-width: 0;
 }
@@ -596,7 +608,7 @@ body {
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 0;
+  padding: 8px 0;
   scroll-behavior: auto;
 }
 
@@ -718,8 +730,8 @@ body {
 
 .message-item {
   display: flex;
-  gap: 12px;
-  padding: 6px 20px;
+  gap: 10px;
+  padding: 4px 20px;
   transition: background 0.1s;
   position: relative;
 }
@@ -910,7 +922,7 @@ body {
 /* Markdown content styling */
 
 .message-text p {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .message-text p:last-child {
@@ -930,8 +942,8 @@ body {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  padding: 12px;
-  margin: 6px 0;
+  padding: 10px;
+  margin: 4px 0;
   overflow-x: auto;
 }
 
@@ -1714,12 +1726,13 @@ body {
   }
 
   .message-item {
-    padding: 6px 12px;
+    padding: 3px 10px;
+    gap: 8px;
   }
 
   .message-input-container {
-    padding: 8px 12px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    padding: 6px 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
   }
 
   .message-textarea {
@@ -1732,6 +1745,18 @@ body {
 
   .message-content {
     font-size: 14px;
+  }
+
+  .message-text pre {
+    padding: 8px;
+    margin: 3px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .message-text blockquote {
+    margin: 3px 0;
+    padding-left: 8px;
   }
 
   .message-image {
@@ -1763,8 +1788,9 @@ body {
   }
 
   .reaction-pill {
-    min-height: 36px;
-    padding: 4px 12px;
+    min-height: 32px;
+    padding: 2px 8px;
+    font-size: 12px;
   }
 
   .message-action-btn {
@@ -1853,7 +1879,7 @@ body {
 /* env() returns 0 when unsupported — no @supports wrapper needed */
 
 .hamburger-btn {
-  top: calc(10px + env(safe-area-inset-top, 0px));
+  top: calc(4px + env(safe-area-inset-top, 0px));
 }
 
 /* ─── Login Page ─────────────────────────────────────── */
@@ -2328,21 +2354,21 @@ body {
 .reaction-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 3px;
+  margin-top: 2px;
   position: relative;
 }
 
 .reaction-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: 3px;
+  padding: 1px 6px;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -2364,6 +2390,17 @@ body {
 
 .reaction-add:hover {
   opacity: 1;
+}
+
+.reaction-add-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.message-item:hover .reaction-add-hidden {
+  opacity: 0.6;
+  pointer-events: auto;
 }
 
 .reaction-picker-popover {

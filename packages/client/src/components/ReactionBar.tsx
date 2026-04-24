@@ -60,7 +60,7 @@ export default function ReactionBar({ reactions, messageId, currentUserId, userM
       <div className="reaction-bar reaction-bar-empty">
         <button
           ref={addBtnRef}
-          className="reaction-pill reaction-add"
+          className="reaction-pill reaction-add reaction-add-hidden"
           onClick={() => setPickerOpen(v => !v)}
           title="添加表情"
         >
