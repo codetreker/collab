@@ -10,8 +10,25 @@ export interface MentionSuggestionItem {
   role: string;
 }
 
-export function createMentionExtension(getUsersFn: () => User[]) {
-  return Mention.configure({
+const MentionWithMarkdown = Mention.extend({
+  addStorage() {
+    return {
+      ...(this.parent?.() ?? {}),
+      markdown: {
+        serialize(state: { write(s: string): void }, node: { attrs: { id: string } }) {
+          state.write(`<@${node.attrs.id}>`);
+        },
+        parse: {},
+      },
+    };
+  },
+});
+
+export function createMentionExtension(
+  getUsersFn: () => User[],
+  activeRef?: { current: boolean },
+) {
+  return MentionWithMarkdown.configure({
     HTMLAttributes: {
       class: 'mention',
     },
@@ -38,6 +55,7 @@ export function createMentionExtension(getUsersFn: () => User[]) {
 
         return {
           onStart: (props: SuggestionProps<MentionSuggestionItem>) => {
+            if (activeRef) activeRef.current = true;
             popup = document.createElement('div');
             popup.className = 'mention-suggestion-popup';
             const container = props.decorationNode?.closest('.message-input-container');
@@ -67,6 +85,7 @@ export function createMentionExtension(getUsersFn: () => User[]) {
             return component?.ref?.onKeyDown(props) ?? false;
           },
           onExit: () => {
+            if (activeRef) activeRef.current = false;
             popup?.remove();
             component?.destroy();
             popup = null;
