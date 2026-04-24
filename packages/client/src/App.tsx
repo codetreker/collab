@@ -160,10 +160,10 @@ function AppInner() {
         </button>
       )}
 
+      {isMobile && sidebarOpen && (
+        <div className="sidebar-overlay" onClick={closeSidebar} />
+      )}
       <div className={`sidebar-wrapper ${isMobile ? (sidebarOpen ? 'sidebar-open' : 'sidebar-closed') : ''}`}>
-        {isMobile && sidebarOpen && (
-          <div className="sidebar-overlay" onClick={closeSidebar} />
-        )}
         <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
       </div>
 
