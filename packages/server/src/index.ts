@@ -25,6 +25,7 @@ import { registerWorkspaceRoutes } from './routes/workspace.js';
 import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './ws.js';
 import { registerWsPluginRoutes } from './routes/ws-plugin.js';
 import { registerRemoteRoutes } from './routes/remote.js';
+import { registerCommandRoutes } from './routes/commands.js';
 import { registerWsRemoteRoutes } from './routes/ws-remote.js';
 import * as Q from './queries.js';
 
@@ -122,6 +123,7 @@ async function main(): Promise<void> {
   registerWorkspaceRoutes(app);
   registerRemoteRoutes(app);
   registerDmRoutes(app);
+  registerCommandRoutes(app);
 
   // WebSocket
   registerWebSocket(app);

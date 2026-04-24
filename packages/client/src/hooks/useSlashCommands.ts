@@ -1,14 +1,27 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { commandRegistry } from '../commands/registry';
-import type { CommandDefinition } from '../commands/registry';
+import type { CommandDefinition, RemoteCommand, CommandGroup } from '../commands/registry';
 
 interface UseSlashCommandsReturn {
   isActive: boolean;
-  filtered: CommandDefinition[];
+  filtered: CommandGroup[];
+  totalCount: number;
   selectedIndex: number;
+  selectedItem: CommandDefinition | RemoteCommand | undefined;
   handleKeyDown: (e: React.KeyboardEvent) => boolean;
   close: () => void;
   setSelectedIndex: (i: number) => void;
+}
+
+function getItemAtFlatIndex(groups: CommandGroup[], index: number): CommandDefinition | RemoteCommand | undefined {
+  let offset = 0;
+  for (const group of groups) {
+    if (index < offset + group.items.length) {
+      return group.items[index - offset];
+    }
+    offset += group.items.length;
+  }
+  return undefined;
 }
 
 export function useSlashCommands(text: string): UseSlashCommandsReturn {
@@ -23,12 +36,21 @@ export function useSlashCommands(text: string): UseSlashCommandsReturn {
     [isActive, prefix],
   );
 
+  const totalCount = useMemo(
+    () => filtered.reduce((sum, g) => sum + g.items.length, 0),
+    [filtered],
+  );
+
+  const selectedItem = useMemo(
+    () => getItemAtFlatIndex(filtered, selectedIndex),
+    [filtered, selectedIndex],
+  );
+
   const close = useCallback(() => {
     setDismissed(true);
     setSelectedIndex(0);
   }, []);
 
-  // Reset dismissed when text changes back to non-slash or empty
   useEffect(() => {
     if (!text.startsWith('/') || text === '') {
       setDismissed(false);
@@ -38,11 +60,11 @@ export function useSlashCommands(text: string): UseSlashCommandsReturn {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent): boolean => {
-      if (!isActive || filtered.length === 0) return false;
+      if (!isActive || totalCount === 0) return false;
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex(i => Math.min(i + 1, filtered.length - 1));
+        setSelectedIndex(i => Math.min(i + 1, totalCount - 1));
         return true;
       }
       if (e.key === 'ArrowUp') {
@@ -57,8 +79,8 @@ export function useSlashCommands(text: string): UseSlashCommandsReturn {
       }
       return false;
     },
-    [isActive, filtered.length, close],
+    [isActive, totalCount, close],
   );
 
-  return { isActive, filtered, selectedIndex, handleKeyDown, close, setSelectedIndex };
+  return { isActive, filtered, totalCount, selectedIndex, selectedItem, handleKeyDown, close, setSelectedIndex };
 }

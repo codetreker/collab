@@ -308,6 +308,7 @@ export async function buildFullApp(): Promise<FastifyInstance> {
   const { registerWsRemoteRoutes } = await import('../routes/ws-remote.js');
   const { registerPollRoutes } = await import('../routes/poll.js');
   const { registerStreamRoutes } = await import('../routes/stream.js');
+  const { registerCommandRoutes } = await import('../routes/commands.js');
   const ws = await import('../ws.js');
 
   registerAuthRoutes(app);
@@ -324,6 +325,7 @@ export async function buildFullApp(): Promise<FastifyInstance> {
   registerWsRemoteRoutes(app);
   registerPollRoutes(app);
   registerStreamRoutes(app);
+  registerCommandRoutes(app);
   if ('registerWebSocket' in ws) {
     (ws as any).registerWebSocket(app);
   }

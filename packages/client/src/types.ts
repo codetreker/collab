@@ -39,7 +39,7 @@ export interface Message {
   sender_id: string;
   sender_name?: string;
   content: string;
-  content_type: 'text' | 'image';
+  content_type: 'text' | 'image' | 'command';
   reply_to_id: string | null;
   created_at: number;
   edited_at: number | null;
@@ -64,7 +64,7 @@ export interface PendingMessage {
   clientMessageId: string;
   channelId: string;
   content: string;
-  contentType: 'text' | 'image';
+  contentType: 'text' | 'image' | 'command';
   status: 'pending' | 'failed';
   createdAt: number;
   senderName: string;

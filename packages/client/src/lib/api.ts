@@ -221,6 +221,18 @@ export async function fetchMe(): Promise<User> {
   return data.user;
 }
 
+export async function getChannel(channelId: string): Promise<{ channel: Channel }> {
+  return request<{ channel: Channel }>(`/api/v1/channels/${channelId}`);
+}
+
+export async function updateProfile(data: { display_name?: string }): Promise<User> {
+  const res = await request<{ user: User }>('/api/v1/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return res.user;
+}
+
 // ─── Online ─────────────────────────────────────────────
 
 export async function fetchOnlineUsers(): Promise<string[]> {
@@ -673,4 +685,29 @@ export async function remoteReadFile(nodeId: string, path: string): Promise<{ co
 
 export async function fetchRemoteNodeStatus(nodeId: string): Promise<{ online: boolean }> {
   return request<{ online: boolean }>(`/api/v1/remote/nodes/${nodeId}/status`);
+}
+
+// ─── Commands ──────────────────────────────────────────
+
+export interface AgentCommandInfo {
+  agent_id: string;
+  agent_name: string;
+  commands: Array<{
+    name: string;
+    description: string;
+    usage: string;
+    params: Array<{ name: string; type: string; required?: boolean; placeholder?: string }>;
+  }>;
+}
+
+export interface CommandsResponse {
+  builtin: Array<{ name: string; description: string; usage: string }>;
+  agent: AgentCommandInfo[];
+}
+
+export async function listCommands(channelId?: string): Promise<CommandsResponse> {
+  const params = new URLSearchParams();
+  if (channelId) params.set('channelId', channelId);
+  const qs = params.toString();
+  return request<CommandsResponse>(`/api/v1/commands${qs ? `?${qs}` : ''}`);
 }
