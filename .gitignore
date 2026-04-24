@@ -11,3 +11,4 @@ data/
 *.tsbuildinfo
 .env
 coverage/
+node_modules
