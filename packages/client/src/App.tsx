@@ -119,6 +119,13 @@ function AppInner() {
     setSidebarOpen(false);
   }, []);
 
+  const closeAllViews = useCallback(() => {
+    setShowAdmin(false);
+    setShowAgents(false);
+    setShowWorkspaces(false);
+    setShowRemoteNodes(false);
+  }, []);
+
   const handleLogin = useCallback(() => {
     setAuthenticated(true);
   }, []);
@@ -164,7 +171,7 @@ function AppInner() {
         <div className="sidebar-overlay" onClick={closeSidebar} />
       )}
       <div className={`sidebar-wrapper ${isMobile ? (sidebarOpen ? 'sidebar-open' : 'sidebar-closed') : ''}`}>
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
       </div>
 
       <div className="main-content">
