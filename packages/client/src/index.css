@@ -1763,8 +1763,9 @@ body {
   }
 
   .reaction-pill {
-    min-height: 36px;
-    padding: 4px 12px;
+    min-height: 32px;
+    padding: 2px 8px;
+    font-size: 12px;
   }
 
   .message-action-btn {
@@ -2328,21 +2329,21 @@ body {
 .reaction-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 3px;
+  margin-top: 2px;
   position: relative;
 }
 
 .reaction-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: 3px;
+  padding: 1px 6px;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -2364,6 +2365,17 @@ body {
 
 .reaction-add:hover {
   opacity: 1;
+}
+
+.reaction-add-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.message-item:hover .reaction-add-hidden {
+  opacity: 0.6;
+  pointer-events: auto;
 }
 
 .reaction-picker-popover {
