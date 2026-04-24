@@ -45,6 +45,8 @@ marked.use({
 export function renderMarkdown(text: string, mentionedUserIds?: string[], userMap?: Map<string, string>): string {
   let processed = text;
 
+  processed = processed.replace(/\\\n/g, '\n');
+
   // Unescape fenced code block delimiters that prosemirror-markdown escapes
   // when the user types backticks as plain text instead of using a codeBlock node
   processed = processed.replace(/^\\`\\`\\`(\w*)$/gm, '```$1');
