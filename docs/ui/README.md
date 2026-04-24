@@ -16,6 +16,7 @@
 | 7 | [Remote Explorer 页面](remote.md) | `remote.md` |
 | 8 | [公开频道预览](preview.md) | `preview.md` |
 | 9 | [DM 页面](dm.md) | `dm.md` |
+| 10 | [Slash Commands](slash-commands.md) | `slash-commands.md` |
 
 ## 附录：设计说明
 
