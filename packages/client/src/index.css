@@ -1036,7 +1036,8 @@ body {
 
 .message-input-container {
   position: relative;
-  padding: 12px 20px 16px;
+  padding: 12px 20px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border-color);
   background: var(--bg-primary);
   flex-shrink: 0;
@@ -1717,8 +1718,8 @@ body {
   }
 
   .message-input-container {
-    padding: 8px 12px 12px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding: 8px 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
 
   .message-textarea {
@@ -1853,10 +1854,6 @@ body {
 
 .hamburger-btn {
   top: calc(10px + env(safe-area-inset-top, 0px));
-}
-
-.message-input-container {
-  padding-bottom: 16px;
 }
 
 /* ─── Login Page ─────────────────────────────────────── */
