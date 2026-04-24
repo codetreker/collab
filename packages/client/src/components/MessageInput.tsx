@@ -85,8 +85,10 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     ? state.users.filter(u => channelMemberIds.has(u.id))
     : state.users;
 
+  const mentionActiveRef = useRef(false);
+
   const mentionExtension = useMemo(
-    () => createMentionExtension(() => mentionUsersRef.current),
+    () => createMentionExtension(() => mentionUsersRef.current, mentionActiveRef),
     [],
   );
 
@@ -142,6 +144,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
           if (event.ctrlKey || event.metaKey) {
             return false;
           }
+          if (mentionActiveRef.current) return false;
           event.preventDefault();
           handleSendRef.current();
           return true;
