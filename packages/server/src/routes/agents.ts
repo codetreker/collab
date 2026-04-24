@@ -9,19 +9,33 @@ import type { User } from '../types.js';
 
 export function registerAgentRoutes(app: FastifyInstance): void {
   app.post<{
-    Body: { display_name: string; avatar_url?: string; permissions?: string[] };
+    Body: { display_name: string; avatar_url?: string; permissions?: string[]; id?: string };
   }>('/api/v1/agents', { preHandler: [requirePermission('agent.manage')] }, async (request, reply) => {
     const user = request.currentUser;
     if (!user) return reply.status(401).send({ error: 'Authentication required' });
     if (user.role === 'agent') return reply.status(403).send({ error: 'Agents cannot create agents' });
 
-    const { display_name, avatar_url } = request.body ?? {};
+    const { display_name, avatar_url, id: customId } = request.body ?? {};
     if (!display_name || typeof display_name !== 'string' || !display_name.trim()) {
       return reply.status(400).send({ error: 'display_name is required' });
     }
 
+    if (customId !== undefined) {
+      if (typeof customId !== 'string' || !/^[a-zA-Z0-9][\w-]{0,62}[a-zA-Z0-9]$/.test(customId)) {
+        return reply.status(400).send({ error: 'id must be 2-64 alphanumeric/hyphen/underscore characters, starting and ending with alphanumeric' });
+      }
+    }
+
     const db = getDb();
-    const id = uuidv4();
+
+    if (customId) {
+      const existing = Q.getUserById(db, customId);
+      if (existing) {
+        return reply.status(409).send({ error: 'An agent with this ID already exists' });
+      }
+    }
+
+    const id = customId || uuidv4();
     const apiKey = `col_${crypto.randomBytes(32).toString('hex')}`;
 
     const txn = db.transaction(() => {

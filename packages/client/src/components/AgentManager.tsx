@@ -232,10 +232,12 @@ function AgentCard({
 
 function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [displayName, setDisplayName] = useState('');
+  const [agentId, setAgentId] = useState('');
   const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set(['message.send']));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [createdId, setCreatedId] = useState<string | null>(null);
 
   const togglePerm = (perm: string) => {
     setSelectedPerms(prev => {
@@ -251,9 +253,14 @@ function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreat
     setSaving(true);
     setError('');
     try {
-      const agent = await createAgent(displayName.trim(), [...selectedPerms]);
-      if (agent.api_key) setCreatedKey(agent.api_key);
-      else onCreated();
+      const trimmedId = agentId.trim() || undefined;
+      const agent = await createAgent(displayName.trim(), [...selectedPerms], trimmedId);
+      if (agent.api_key) {
+        setCreatedKey(agent.api_key);
+        setCreatedId(agent.id);
+      } else {
+        onCreated();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -266,6 +273,7 @@ function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreat
       <div className="admin-modal" onClick={() => { onCreated(); }}>
         <div className="admin-modal-content" onClick={e => e.stopPropagation()}>
           <h3>Agent Created</h3>
+          {createdId && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Agent ID: <code>{createdId}</code></p>}
           <p>Save this API key now — it won't be shown again.</p>
           <div className="api-key-box">
             {createdKey}
@@ -287,6 +295,17 @@ function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreat
           <label>
             Display Name
             <input className="input-field" value={displayName} onChange={e => setDisplayName(e.target.value)} required autoFocus />
+          </label>
+          <label style={{ marginTop: 8, display: 'block' }}>
+            Agent ID <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>(optional — auto-generated if empty)</span>
+            <input
+              className="input-field"
+              value={agentId}
+              onChange={e => setAgentId(e.target.value)}
+              placeholder="e.g. my-bot-01"
+              pattern="^[a-zA-Z0-9][\w-]{0,62}[a-zA-Z0-9]$"
+              title="2-64 characters: letters, digits, hyphens, underscores"
+            />
           </label>
           <div style={{ margin: '12px 0' }}>
             <strong style={{ fontSize: 14 }}>Permissions</strong>
