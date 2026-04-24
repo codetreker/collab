@@ -91,6 +91,37 @@ export function registerAgentRoutes(app: FastifyInstance): void {
     };
   });
 
+  app.get<{
+    Params: { id: string };
+  }>('/api/v1/agents/:id', async (request, reply) => {
+    const user = request.currentUser;
+    if (!user) return reply.status(401).send({ error: 'Authentication required' });
+
+    const { id } = request.params;
+    const db = getDb();
+    const agent = Q.getUserById(db, id);
+
+    if (!agent || agent.role !== 'agent' || agent.deleted_at) {
+      return reply.status(404).send({ error: 'Agent not found' });
+    }
+    if (user.role !== 'admin' && agent.owner_id !== user.id) {
+      return reply.status(403).send({ error: 'Permission denied' });
+    }
+
+    return {
+      agent: {
+        id: agent.id,
+        display_name: agent.display_name,
+        role: agent.role,
+        avatar_url: agent.avatar_url,
+        owner_id: agent.owner_id,
+        created_at: agent.created_at,
+        disabled: agent.disabled,
+        api_key: agent.api_key,
+      },
+    };
+  });
+
   app.delete<{
     Params: { id: string };
   }>('/api/v1/agents/:id', async (request, reply) => {

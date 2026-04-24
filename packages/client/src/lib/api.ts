@@ -455,6 +455,11 @@ export async function createAgent(displayName: string, permissions?: string[], i
   return data.agent;
 }
 
+export async function fetchAgent(id: string): Promise<Agent> {
+  const data = await request<{ agent: Agent }>(`/api/v1/agents/${id}`);
+  return data.agent;
+}
+
 export async function deleteAgent(id: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/agents/${id}`, {
     method: 'DELETE',

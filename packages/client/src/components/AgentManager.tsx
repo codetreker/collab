@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import {
   fetchAgents,
+  fetchAgent,
   createAgent,
   deleteAgent,
   rotateAgentApiKey,
@@ -108,6 +109,8 @@ function AgentCard({
   const [permissions, setPermissions] = useState<PermissionDetail[]>([]);
   const [loadingPerms, setLoadingPerms] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+  const [visibleKey, setVisibleKey] = useState<string | null>(null);
+  const [loadingKey, setLoadingKey] = useState(false);
   const [joinChannelId, setJoinChannelId] = useState('');
 
   const loadPerms = useCallback(async () => {
@@ -124,10 +127,27 @@ function AgentCard({
     if (expanded) loadPerms();
   }, [expanded, loadPerms]);
 
+  const handleShowKey = async () => {
+    if (visibleKey) {
+      setVisibleKey(null);
+      return;
+    }
+    setLoadingKey(true);
+    try {
+      const data = await fetchAgent(agent.id);
+      setVisibleKey(data.api_key ?? null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setLoadingKey(false);
+    }
+  };
+
   const handleRotateKey = async () => {
     try {
       const key = await rotateAgentApiKey(agent.id);
       setNewKey(key);
+      setVisibleKey(key);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed');
     }
@@ -180,15 +200,25 @@ function AgentCard({
           {/* API Key */}
           <div style={{ marginBottom: 12 }}>
             <strong>API Key</strong>
-            {newKey ? (
+            {(newKey || visibleKey) ? (
               <div className="api-key-box">
-                {newKey}
-                <button className="btn-icon" onClick={() => navigator.clipboard.writeText(newKey)} title="Copy">📋</button>
+                {newKey || visibleKey}
+                <button className="btn-icon" onClick={() => navigator.clipboard.writeText((newKey || visibleKey)!)} title="Copy">📋</button>
               </div>
             ) : (
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>API key is only shown at creation. Use rotate to get a new one.</p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                API key is hidden.
+                <button className="btn btn-sm" style={{ marginLeft: 8 }} onClick={handleShowKey} disabled={loadingKey}>
+                  {loadingKey ? 'Loading...' : 'Show'}
+                </button>
+              </p>
             )}
-            <button className="btn btn-sm" onClick={handleRotateKey}>Rotate API Key</button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {visibleKey && !newKey && (
+                <button className="btn btn-sm" onClick={() => setVisibleKey(null)}>Hide</button>
+              )}
+              <button className="btn btn-sm" onClick={handleRotateKey}>Rotate API Key</button>
+            </div>
           </div>
 
           {/* Permissions */}
@@ -274,7 +304,7 @@ function CreateAgentModal({ onClose, onCreated }: { onClose: () => void; onCreat
         <div className="admin-modal-content" onClick={e => e.stopPropagation()}>
           <h3>Agent Created</h3>
           {createdId && <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Agent ID: <code>{createdId}</code></p>}
-          <p>Save this API key now — it won't be shown again.</p>
+          <p>Copy this API key. You can also view it later from the agent details.</p>
           <div className="api-key-box">
             {createdKey}
             <button className="btn-icon" onClick={() => navigator.clipboard.writeText(createdKey)} title="Copy">📋</button>
