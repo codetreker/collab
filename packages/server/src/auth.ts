@@ -82,8 +82,8 @@ export async function authMiddleware(
     return reply.status(401).send({ error: 'Invalid API key' });
   }
 
-  // 3. Dev mode bypass
-  if (process.env.NODE_ENV === 'development') {
+  // 3. Dev mode bypass (explicit opt-in only)
+  if (process.env.NODE_ENV === 'development' && process.env.DEV_AUTH_BYPASS === 'true') {
     const devUserId = request.headers['x-dev-user-id'] as string | undefined;
     if (devUserId) {
       const user = getUserById(db, devUserId);
