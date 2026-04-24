@@ -128,12 +128,39 @@ Response 200:
       "commands": [
         { "name": "deploy", "description": "部署到指定环境", "usage": "/deploy <env>", "param_type": "text" }
       ]
+    },
+    {
+      "agent_id": "agent-warhorse",
+      "agent_name": "Warhorse",
+      "commands": [
+        { "name": "deploy", "description": "部署前端", "usage": "/deploy <branch>", "param_type": "text" }
+      ]
     }
   ]
 }
 ```
 
 ### 3. 命令执行流程
+
+#### 同名命令解析策略
+
+不同 Agent 可以注册同名命令。前端按 Agent 分组显示：
+
+```
+── 内置 ──
+/help    显示所有可用命令
+/status  显示频道状态
+...
+── Pegasus ──
+/deploy  部署到指定环境
+/search  搜索代码
+── Warhorse ──
+/deploy  部署前端
+```
+
+- **唯一命令**：直接输入 `/search args` 回车即执行，不弹选择
+- **同名命令**：命令面板显示所有匹配，用户点选确定哪个 Agent
+- **内置优先**：内置命令始终优先于 Agent 命令
 
 ```
 用户输入 "/deploy staging"
@@ -143,7 +170,11 @@ Response 200:
     │
     ├─ 内置命令 → 本地执行（/help /leave /topic /invite /dm /status /clear /nick）
     │
-    └─ Agent 命令 → POST /api/v1/channels/:channelId/messages
+    ├─ 唯一 Agent 命令 → 直接执行
+    │
+    ├─ 多个 Agent 同名 → 弹面板让用户选择 Agent
+    │
+    └─ 选定 Agent 后 → POST /api/v1/channels/:channelId/messages
         {
           "content": "{\"command\":\"deploy\",\"args\":\"staging\",\"invoker_id\":\"user-123\"}",
           "content_type": "command",
@@ -188,18 +219,21 @@ class CommandRegistry {
     }
   }
 
-  resolve(name: string): { type: 'builtin', cmd: CommandDefinition } 
-    | { type: 'remote', cmd: RemoteCommand } 
+  resolve(name: string): 
+    | { type: 'builtin', cmd: CommandDefinition } 
+    | { type: 'remote', cmd: RemoteCommand }   // 唯一匹配
+    | { type: 'ambiguous', cmds: RemoteCommand[] } // 多个 Agent 同名
     | null {
     const builtin = this.builtins.get(name);
     if (builtin) return { type: 'builtin', cmd: builtin };
-    const remote = this.remoteCommands.get(name);
-    if (remote) return { type: 'remote', cmd: remote };
+    const matches = this.remoteByName.get(name) ?? [];
+    if (matches.length === 1) return { type: 'remote', cmd: matches[0] };
+    if (matches.length > 1) return { type: 'ambiguous', cmds: matches };
     return null;
   }
 
-  search(prefix: string): Array<CommandDefinition | RemoteCommand> {
-    // 合并内置和远程，按名称排序
+  search(prefix: string): Array<{ group: string; items: (CommandDefinition | RemoteCommand)[] }> {
+    // 按组返回：内置组 + 每个 Agent 一组
   }
 }
 ```
