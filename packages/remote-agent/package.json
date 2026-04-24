@@ -1,8 +1,18 @@
 {
-  "name": "@collab/remote-agent",
+  "name": "@codetreker/collab-remote-agent",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
+  "files": ["dist"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codetreker/collab.git",
+    "directory": "packages/remote-agent"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "collab-remote-agent": "dist/index.js"
   },
