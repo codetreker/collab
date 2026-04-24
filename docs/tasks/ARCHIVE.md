@@ -2,33 +2,45 @@
 
 > 已完成的任务从 BOARD.md 移到这里。
 
-| ID | 任务 | 完成日期 | Owner | PR |
-|----|------|----------|-------|----|
-| COL-P5 | P5 聊天 UX 增强（typing/emoji/reactions/已送达） | 2026-04-21 | 战马 | #31 |
-| COL-P5-PRD | P5 PRD | 2026-04-21 | 野马 | — |
-| COL-P5-Design | P5 技术设计（2 轮 review） | 2026-04-21 | 飞马 | #30 |
-| COL-P1 | P1 Agent 归属 + 权限系统 + Admin 后台 | 2026-04-21 | 战马 | #4 |
-| COL-P1-FIX | P1 Bug 修复（SPA fallback + 删除幂等 + UX） | 2026-04-21 | 战马 | #19-#22 |
-| COL-P1-PRD | PRD v3 | 2026-04-20 | 野马 | — |
-| COL-P1-Design | P1 技术设计（2 轮 review） | 2026-04-20 | 飞马 | — |
-| COL-P6-PRD | P6 PRD | 2026-04-21 | 野马 | — |
-| COL-P6-Design | P6 技术设计（2 轮 review） | 2026-04-21 | 飞马 | #33 |
-| COL-CI | CI/CD Pipeline（Harbor + GitHub Actions） | 2026-04-21 | 飞马 | #13-#29 |
-| COL-SSE | SSE 推送改造 | 2026-04-20 | 战马 | #3 |
-| COL-MEMBER | 频道成员管理 | 2026-04-20 | 战马 | #2 |
-| COL-V1 | v1 基础功能（Phase 1-4） | 2026-04-19 | 战马 | #1 |
-| COL-Direction | 产品方向文档 | 2026-04-20 | 野马 | — |
-| COL-P6 | P6 Slash Commands（/help /invite /leave /topic /dm） | 2026-04-21 | 战马 | #35 |
-| COL-B04 | 多用户注册（邀请码 + 原子 claim） | 2026-04-21 | 战马 | #37, #38 |
-| COL-B10 | 消息编辑/删除 | 2026-04-21 | 战马 | #39 |
-| COL-B02 | 频道删除 UX | 2026-04-21 | 战马 | #40 |
-| COL-B03 | 公开频道预览 | 2026-04-21 | 战马 | #41 |
-| COL-B14 | Plugin Reactions（outbound + SSE） | 2026-04-21 | 战马 | #42 |
-| COL-B12 | 测试覆盖度 80%+（CI 检查） | 2026-04-21 | 战马 | #43, #44, #45 |
-| COL-DOCS | 文档目录整理（docs/tasks/规范化） | 2026-04-21 | 飞马 | #36 |
-| COL-B16 | 移动端适配 + PWA | 2026-04-22 | 战马 | #58 |
-| COL-B17 | @mention 输入过滤 | 2026-04-22 | 战马 | #60 |
-| COL-B18 | 富文本/Markdown 输入（Tiptap） | 2026-04-22 | 战马 | #62 |
-| COL-B21 | Plugin SSE → WS 升级 | 2026-04-22 | 战马 | #67 |
-| COL-B20 | Channel Workspace | 2026-04-22 | 战马 | #70 |
-| COL-B22 | 消息路径文件链接 | 2026-04-22 | 战马 | #73 |
+## Bugs (Done)
+
+| ID | Bug | Owner | PR | 备注 |
+|----|-----|-------|----|------|
+| COL-BUG-001 | 删除消息权限 | 战马 | — | 代码已有正确权限控制，不可复现 |
+| COL-BUG-002 | 文件路径链接化 | 烈马 | [#119](https://github.com/codetreker/collab/pull/119) | 移除 agentId 条件 |
+| COL-BUG-003 | 亮色主题 CSS | 战马 | — | 不可复现 |
+| COL-BUG-004 | Enter/Ctrl+Enter 键位 | 战马 | — | 不可复现 |
+| COL-BUG-005 | Markdown 代码块渲染 | 战马 | [#105](https://github.com/codetreker/collab/pull/105) | Tiptap hardBreak |
+| COL-BUG-006 | WS apiKey query string | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | → Authorization header |
+| COL-BUG-007 | WS token query string | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | → Authorization header |
+| COL-BUG-008 | Remote WS token query string | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | → Authorization header |
+| COL-BUG-009 | SSE api_key query string | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | → Authorization header |
+| COL-BUG-010 | Dev 模式 WS 绕过认证 | 战马 | [#121](https://github.com/codetreker/collab/pull/121) | 双条件 opt-in |
+| COL-BUG-011 | iOS PWA 顶部 safe area | 战马 | [#104](https://github.com/codetreker/collab/pull/104) | viewport-fit + padding-top |
+| COL-BUG-012 | iOS PWA 底部留白 | 战马 | [#110](https://github.com/codetreker/collab/pull/110) | safe-area padding |
+| COL-BUG-013 | 窄屏边栏点外不关闭 | 战马 | [#109](https://github.com/codetreker/collab/pull/109) | overlay z-index |
+| COL-BUG-014 | 非聊天页面点频道不切回 | 战马 | [#109](https://github.com/codetreker/collab/pull/109) | closeAllViews |
+| COL-BUG-015 | Remote Node token 明文 | 战马 | [#109](https://github.com/codetreker/collab/pull/109) | token 遮掩 |
+| COL-BUG-016 | btn-danger CSS 冲突 | 战马 | [#112](https://github.com/codetreker/collab/pull/112) | PR #111 引入 |
+| COL-BUG-017 | Agent 自定义 ID | 战马 | [#113](https://github.com/codetreker/collab/pull/113) | AdminPage customId |
+| COL-BUG-018 | Mention 纯文本 | 战马 | [#114](https://github.com/codetreker/collab/pull/114) | MentionWithMarkdown |
+| COL-BUG-019 | @ 选人回车发送 | 战马 | [#114](https://github.com/codetreker/collab/pull/114) | mentionActiveRef |
+
+## UX 优化 (Done)
+
+| ID | 优化 | Owner | PR | 备注 |
+|----|------|-------|----|------|
+| UX-001 | Reaction 占空间太大 | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | hover + badge 缩小 |
+| UX-002 | 代码块边框太宽 | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | padding 收紧 |
+| UX-003 | 汉堡按钮不对齐 | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | align-items |
+| UX-004 | 整体布局松散 | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | 间距收紧 |
+| UX-005 | 私信+在线列表重复 | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | 合并 + 绿色点 |
+
+## Features (Done)
+
+| ID | 任务 | Owner | PR | 文档 | 备注 |
+|----|------|-------|----|------|------|
+| COL-B15 | Collab Plugin Skill | 飞马 | [#122](https://github.com/codetreker/collab/pull/122) | [prd](COL-B15/prd.md) | Plugin 内置 skill |
+| COL-B23 | 聊天记录分页加载 | 战马 | [#81](https://github.com/codetreker/collab/pull/81) | — | 初始加载最近100条 |
+| COL-B24 | 集成测试覆盖 | 战马 | [#95](https://github.com/codetreker/collab/pull/95) | [prd](COL-B24/prd.md) [design](COL-B24/design.md) | 真实 server，313 tests |
+| COL-B25 | 复杂场景集成测试 | 战马 | [#101](https://github.com/codetreker/collab/pull/101) | [prd](COL-B25/prd.md) [design](COL-B25/design.md) | 20 场景，408 tests |
