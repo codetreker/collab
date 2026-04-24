@@ -12,18 +12,32 @@
 | COL-BUG-001 | 删除消息权限：用户能删别人的消息 | In Progress | 战马 | — | 只允许删自己的（admin 除外） |
 | COL-BUG-002 | 文件路径没有变成可点击链接 | Backlog | 飞马 | — | B22 需求，prod 上路径未自动链接化 |
 | COL-BUG-003 | 亮色主题下侧边栏和 Workspace 仍是暗色 | Backlog | 飞马 | — | CSS 主题变量未覆盖 |
-| COL-BUG-004 | Enter/Ctrl+Enter 键位对调 | Backlog | 飞马 | — | 应 Enter=发送、Ctrl+Enter=换行（和其它 IM 一致） |
-| COL-BUG-005 | Markdown 渲染异常 | Backlog | 飞马 | — | 输入框和聊天历史 Markdown 渲染不对 |
-| COL-BUG-006 | WS apiKey 从 query string 读取不安全 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | ws-plugin.ts 改为读 Authorization header |
-| COL-BUG-007 | 通用 WS 认证 token 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | ws.ts 改为 Authorization header |
-| COL-BUG-008 | Remote Node WS token 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | ws-remote.ts 改为 Authorization header |
-| COL-BUG-009 | SSE stream api_key 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | stream.ts 改为 Authorization header |
-| COL-BUG-010 | Dev 模式 WS 绕过认证 | Backlog | 飞马 | — | ws.ts:54 NODE_ENV=development 时 query user_id 直接认证，需确保 prod 不启用 |
-| COL-BUG-011 | iOS PWA 顶部 safe area 重叠 | Done | 战马 | [#104](https://github.com/codetreker/collab/pull/104) | Tab 栏被 iOS 状态栏盖住 |
-| COL-BUG-012 | iOS PWA 底部留白 | Done | 战马 | [#107](https://github.com/codetreker/collab/pull/107) | safe-area-inset-bottom 双重计算 |
-| COL-BUG-013 | 窄屏浮动边栏点外不关闭 | Ready | 战马 | — | 缺 overlay 点击事件 |
-| COL-BUG-014 | 非聊天页面点频道不切回聊天 | Ready | 战马 | — | Settings/Agents/Workspace/Remote 页面堆叠不互斥 |
-| COL-BUG-015 | Remote Node token 明文暴露 + 删除按钮无文字 | Ready | 战马 | — | 启动命令里 token 明文；红色按钮缺“删除 Node”文字 |
+| COL-BUG-004 | Enter/Ctrl+Enter 键位对调 | Backlog | 飞马 | — | 应 Enter=发送、Ctrl+Enter=换行 |
+| COL-BUG-005 | Markdown 代码块渲染 | Done | 战马 | [#105](https://github.com/codetreker/collab/pull/105) | Tiptap hardBreak 导致正则失败 |
+| COL-BUG-006 | WS apiKey query string | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | 改为 Authorization header |
+| COL-BUG-007 | 通用 WS token query string | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | 改为 Authorization header |
+| COL-BUG-008 | Remote WS token query string | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | 改为 Authorization header |
+| COL-BUG-009 | SSE api_key query string | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | 改为 Authorization header |
+| COL-BUG-010 | Dev 模式 WS 绕过认证 | Backlog | 飞马 | — | NODE_ENV=development 时绕过 |
+| COL-BUG-011 | iOS PWA 顶部 safe area | Done | 战马 | [#104](https://github.com/codetreker/collab/pull/104) | viewport-fit + padding-top |
+| COL-BUG-012 | iOS PWA 底部留白 | Done | 战马 | [#110](https://github.com/codetreker/collab/pull/110) | safe-area padding 修正 |
+| COL-BUG-013 | 窄屏边栏点外不关闭 | Done | 战马 | [#109](https://github.com/codetreker/collab/pull/109) | overlay z-index 修复 |
+| COL-BUG-014 | 非聊天页面点频道不切回 | Done | 战马 | [#109](https://github.com/codetreker/collab/pull/109) | closeAllViews 回调 |
+| COL-BUG-015 | Remote Node token 明文 + 删除按钮无文字 | Done | 战马 | [#109](https://github.com/codetreker/collab/pull/109) | token 遮掩 + "Delete" 文字 |
+| COL-BUG-016 | btn-danger 红字红底文字不可见 | Done | 战马 | [#112](https://github.com/codetreker/collab/pull/112) | PR #111 引入的 CSS 冲突 |
+| COL-BUG-017 | Agent 不能指定自定义 ID | Done | 战马 | [#113](https://github.com/codetreker/collab/pull/113) | PR #4 删了 AdminPage customId |
+| COL-BUG-018 | Mention 显示 [mention] 纯文本 | Done | 战马 | [#114](https://github.com/codetreker/collab/pull/114) | tiptap-markdown 不识别 Mention node |
+| COL-BUG-019 | @ 选人回车直接发送 | Done | 战马 | [#114](https://github.com/codetreker/collab/pull/114) | mentionActiveRef 守卫 Enter |
+
+## UX 优化
+
+| ID | 优化 | 状态 | Owner | PR | 备注 |
+|----|------|------|-------|----|------|
+| UX-001 | Reaction 占空间太大 | Done | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | hover 显示 + badge 缩小 |
+| UX-002 | 代码块边框太宽 | Done | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | padding 收紧 |
+| UX-003 | 汉堡按钮不对齐 | Done | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | align-items center |
+| UX-004 | 整体布局松散 | Done | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | 间距收紧 |
+| UX-005 | 私信+在线列表重复 | Done | 战马 | [#111](https://github.com/codetreker/collab/pull/111) | 合并 + 绿色状态点 |
 
 ## Features
 
@@ -39,6 +53,6 @@
 | COL-B13 | DB 操作改用 ORM | Backlog | 飞马 | — | — | 技术债 |
 | COL-B15 | Collab Plugin Skill | Backlog | 野马 | — | — | 教 Agent 怎么用 Collab 功能 |
 | COL-B19 | Remote Explorer | Backlog | 野马 | — | [direction](COL-B19/direction.md) | 远程文件浏览，只读 v1 |
-| COL-B23 | 聊天记录分页加载 | Backlog | 野马 | — | — | 初始加载最近100条，往上滚动增量加载 |
-| COL-B24 | 集成测试覆盖 | Done | 战马 | [#95](https://github.com/codetreker/collab/pull/95) | [prd](COL-B24/prd.md) [design](COL-B24/design.md) | 真实 server 模式，313 tests |
-| COL-B25 | 复杂场景集成测试 | Done | 战马 | [#101](https://github.com/codetreker/collab/pull/101) | [prd](COL-B25/prd.md) [design](COL-B25/design.md) | 20 个端到端场景，408 tests |
+| COL-B23 | 聊天记录分页加载 | Backlog | 野马 | — | — | 初始加载最近100条 |
+| COL-B24 | 集成测试覆盖 | Done | 战马 | [#95](https://github.com/codetreker/collab/pull/95) | [prd](COL-B24/prd.md) [design](COL-B24/design.md) | 真实 server 模式 |
+| COL-B25 | 复杂场景集成测试 | Done | 战马 | [#101](https://github.com/codetreker/collab/pull/101) | [prd](COL-B25/prd.md) [design](COL-B25/design.md) | 20 个端到端场景 |
