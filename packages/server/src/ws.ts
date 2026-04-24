@@ -61,8 +61,8 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
     }
   }
 
-  // 3. Dev mode bypass
-  if (process.env.NODE_ENV === 'development') {
+  // 3. Dev mode bypass (explicit opt-in only)
+  if (process.env.NODE_ENV === 'development' && process.env.DEV_AUTH_BYPASS === 'true') {
     const devUserId = url.searchParams.get('user_id');
     if (devUserId) {
       const user = Q.getUserById(db, devUserId);
