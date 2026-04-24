@@ -19,7 +19,11 @@
 | COL-BUG-008 | Remote Node WS token 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | ws-remote.ts 改为 Authorization header |
 | COL-BUG-009 | SSE stream api_key 从 query string 读取 | Done | 战马 | [#100](https://github.com/codetreker/collab/pull/100) | stream.ts 改为 Authorization header |
 | COL-BUG-010 | Dev 模式 WS 绕过认证 | Backlog | 飞马 | — | ws.ts:54 NODE_ENV=development 时 query user_id 直接认证，需确保 prod 不启用 |
-| COL-BUG-011 | iOS PWA 顶部 safe area 重叠 | Ready | 战马 | — | Tab 栏被 iOS 状态栏盖住，点不到。需加 viewport-fit=cover + padding-top: env(safe-area-inset-top) |
+| COL-BUG-011 | iOS PWA 顶部 safe area 重叠 | Done | 战马 | [#104](https://github.com/codetreker/collab/pull/104) | Tab 栏被 iOS 状态栏盖住 |
+| COL-BUG-012 | iOS PWA 底部留白 | Done | 战马 | [#107](https://github.com/codetreker/collab/pull/107) | safe-area-inset-bottom 双重计算 |
+| COL-BUG-013 | 窄屏浮动边栏点外不关闭 | Ready | 战马 | — | 缺 overlay 点击事件 |
+| COL-BUG-014 | 非聊天页面点频道不切回聊天 | Ready | 战马 | — | Settings/Agents/Workspace/Remote 页面堆叠不互斥 |
+| COL-BUG-015 | Remote Node token 明文暴露 + 删除按钮无文字 | Ready | 战马 | — | 启动命令里 token 明文；红色按钮缺“删除 Node”文字 |
 
 ## Features
 
