@@ -261,7 +261,7 @@ function NodeDetail({ node, online, channels, onDelete }: {
       </div>
 
       <div className="node-detail-section">
-        <button className="btn btn-sm btn-danger" onClick={onDelete}>删除 Node</button>
+        <button className="btn btn-sm btn-danger" onClick={onDelete}>Delete</button>
       </div>
     </div>
   );
