@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { leaveChannel, joinChannel, fetchChannelPreview } from '../lib/api';
+import { leaveChannel, joinChannel, fetchChannelPreview, listCommands } from '../lib/api';
+import { commandRegistry } from '../commands/registry';
+import type { RemoteCommand } from '../commands/registry';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConnectionStatus from './ConnectionStatus';
@@ -45,6 +47,43 @@ export default function ChannelView({ channelId }: Props) {
 
   useEffect(() => {
     setShowMembers(false);
+  }, [channelId]);
+
+  // Load slash commands on mount / channelId change + WS live-reload
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCommands = async () => {
+      try {
+        const data = await listCommands(channelId);
+        if (cancelled) return;
+        const remoteCommands: RemoteCommand[] = data.agent.flatMap(a =>
+          a.commands.map(c => ({ ...c, agentId: a.agent_id, agentName: a.agent_name }))
+        );
+        commandRegistry.setRemoteCommands(remoteCommands);
+      } catch (err) {
+        console.warn('[commands] Failed to load commands:', err);
+      }
+    };
+
+    loadCommands();
+
+    // Debounce WS commands_updated events (300ms) to avoid broadcast storms
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    const handleCommandsUpdated = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadCommands();
+      }, 300);
+    };
+
+    window.addEventListener('commands_updated', handleCommandsUpdated);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('commands_updated', handleCommandsUpdated);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   }, [channelId]);
 
   if (!channel && !dmChannel) {

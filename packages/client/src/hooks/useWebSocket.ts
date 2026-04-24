@@ -320,6 +320,10 @@ export function useWebSocket() {
         });
         break;
       }
+      case 'commands_updated': {
+        window.dispatchEvent(new CustomEvent('commands_updated'));
+        break;
+      }
       case 'error':
         console.warn('[ws] Server error:', data.message);
         break;
