@@ -3316,17 +3316,6 @@ body {
   color: var(--text-secondary);
   flex: 1;
 }
-
-.btn-danger {
-  color: var(--danger);
-  border-color: var(--danger);
-}
-
-.btn-danger:hover {
-  background: var(--danger);
-  color: white;
-}
-
 @media (max-width: 768px) {
   .node-manager-content {
     flex-direction: column;
