@@ -152,13 +152,8 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
             />
           ) : message.content_type === 'image' ? (
             <ImageContent url={message.content} />
-          ) : agentId ? (
-            <MessageTextWithFileLinks html={renderedContent!} rawContent={message.content} agentId={agentId} />
           ) : (
-            <div
-              className="message-text"
-              dangerouslySetInnerHTML={{ __html: renderedContent! }}
-            />
+            <MessageTextWithFileLinks html={renderedContent!} rawContent={message.content} agentId={agentId} />
           )}
         </div>
         {!isDeleted && !editing && (
@@ -231,7 +226,7 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
   );
 }
 
-function MessageTextWithFileLinks({ html, rawContent, agentId }: { html: string; rawContent: string; agentId: string }) {
+function MessageTextWithFileLinks({ html, rawContent, agentId }: { html: string; rawContent: string; agentId: string | null }) {
   const segments = parseFileLinks(rawContent);
   const hasPaths = segments.some(s => s.type === 'path');
 
