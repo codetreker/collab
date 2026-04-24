@@ -5,7 +5,7 @@ import { RemoteFileViewer } from './RemoteFileViewer';
 
 interface Props {
   path: string;
-  agentId: string;
+  agentId: string | null;
 }
 
 export default function FileLink({ path, agentId }: Props) {
@@ -15,7 +15,7 @@ export default function FileLink({ path, agentId }: Props) {
   const { showToast } = useToast();
 
   const handleClick = async () => {
-    if (loading || disabled) return;
+    if (!agentId || loading || disabled) return;
     setLoading(true);
     try {
       const res = await api.getAgentFile(agentId, path);
