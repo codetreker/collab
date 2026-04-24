@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { renderMarkdown } from '../lib/markdown';
 import { parseFileLinks } from '../lib/file-links';
 import ReactionBar from './ReactionBar';
@@ -7,6 +7,8 @@ import FileLink from './FileLink';
 import * as api from '../lib/api';
 import { useAppContext } from '../context/AppContext';
 import { useLongPress } from '../hooks/useLongPress';
+import CommandResultCard from './CommandResultCard';
+import { trackCommand, getCommandStatus } from '../hooks/useCommandTracking';
 import type { Message } from '../types';
 
 interface Props {
@@ -34,8 +36,25 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
+  const commandData = useMemo(() => {
+    if (message.content_type !== 'command') return null;
+    try { return JSON.parse(message.content) as { command: string; params?: string }; }
+    catch { return null; }
+  }, [message.content, message.content_type]);
+
+  const [commandStatus, setCommandStatus] = useState(() => getCommandStatus(message.id));
+
+  useEffect(() => {
+    if (message.content_type !== 'command') return;
+    trackCommand(message.id);
+    const interval = setInterval(() => {
+      setCommandStatus(getCommandStatus(message.id));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [message.id, message.content_type]);
+
   const renderedContent = useMemo(() => {
-    if (message.content_type === 'image') return null;
+    if (message.content_type === 'image' || message.content_type === 'command') return null;
     let html = renderMarkdown(message.content, message.mentions, userMap);
     html = html.replace(
       /\[workspace:([a-f0-9]+):([^\]]+)\]/g,
@@ -150,6 +169,11 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
               disabled={editSaving}
               users={state.users}
             />
+          ) : message.content_type === 'command' && commandData ? (
+            <div className="message-command">
+              <div className="message-command-label">⚡ {commandData.command}{commandData.params ? ` ${commandData.params}` : ''}</div>
+              {commandStatus && <CommandResultCard status={commandStatus} />}
+            </div>
           ) : message.content_type === 'image' ? (
             <ImageContent url={message.content} />
           ) : (

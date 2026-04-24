@@ -10,7 +10,8 @@ import Toolbar from './Toolbar';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { createMentionExtension } from '../extensions/mention';
 import { commandRegistry, CommandError } from '../commands/registry';
-import type { CommandDefinition, CommandContext } from '../commands/registry';
+import type { CommandDefinition, RemoteCommand, CommandContext } from '../commands/registry';
+import { isRemoteCommand } from './SlashCommandPicker';
 import '../commands/builtins';
 import * as api from '../lib/api';
 import { fetchChannelMembers, ApiError } from '../lib/api';
@@ -286,7 +287,15 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
     handleSendRef.current = handleSend;
   }, [handleSend]);
 
-  const handleSlashSelect = useCallback(async (cmd: CommandDefinition) => {
+  const handleSlashSelect = useCallback(async (cmd: CommandDefinition | RemoteCommand) => {
+    if (isRemoteCommand(cmd)) {
+      const newText = `/${cmd.name} `;
+      setText(newText);
+      editor?.commands.setContent(newText);
+      slash.close();
+      editor?.commands.focus('end');
+      return;
+    }
     if (cmd.paramType === 'none') {
       const ctx: CommandContext = {
         channelId,
@@ -318,11 +327,11 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   }, [channelId, state.currentUser, dispatch, actions, slash, editor]);
 
   const handleEditorKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (slash.isActive && slash.filtered.length > 0) {
+    if (slash.isActive && slash.totalCount > 0) {
       if (slash.handleKeyDown(e)) return;
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
-        const cmd = slash.filtered[slash.selectedIndex];
+        const cmd = slash.selectedItem;
         if (cmd) handleSlashSelect(cmd);
         return;
       }
@@ -417,10 +426,11 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
   return (
     <div className="message-input-container">
       <SlashCommandPicker
-        commands={slash.filtered}
+        groups={slash.filtered}
         visible={slash.isActive}
         selectedIndex={slash.selectedIndex}
         onSelect={handleSlashSelect}
+        onClose={slash.close}
       />
 
       <Toolbar editor={editor} />

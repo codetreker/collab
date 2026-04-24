@@ -76,6 +76,7 @@ type Action =
   | { type: 'ACK_PENDING_MESSAGE'; clientMessageId: string; channelId: string; serverMessage: Message }
   | { type: 'FAIL_PENDING_MESSAGE'; clientMessageId: string; channelId: string }
   | { type: 'REMOVE_PENDING_MESSAGE'; clientMessageId: string; channelId: string }
+  | { type: 'CLEAR_LOCAL_MESSAGES'; payload: { channelId: string } }
   | { type: 'INSERT_LOCAL_SYSTEM_MESSAGE'; payload: { channelId: string; text: string } }
   | { type: 'NAVIGATE_AFTER_LEAVE'; payload: { channelId: string } }
   | { type: 'EDIT_MESSAGE'; channelId: string; messageId: string; content: string; editedAt: number }
@@ -337,6 +338,12 @@ function reducer(state: AppState, action: Action): AppState {
       if (list.length === 0) pm.delete(action.channelId);
       else pm.set(action.channelId, list);
       return { ...state, pendingMessages: pm };
+    }
+
+    case 'CLEAR_LOCAL_MESSAGES': {
+      const msgs = new Map(state.messages);
+      msgs.set(action.payload.channelId, []);
+      return { ...state, messages: msgs };
     }
 
     case 'INSERT_LOCAL_SYSTEM_MESSAGE': {

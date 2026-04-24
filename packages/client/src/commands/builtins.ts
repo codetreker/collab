@@ -63,3 +63,66 @@ commandRegistry.register({
     await actions.openDm(resolvedUser.id);
   },
 });
+
+commandRegistry.register({
+  name: 'status',
+  description: '显示频道状态',
+  usage: '/status',
+  paramType: 'none',
+  execute: async ({ channelId, api, dispatch }: CommandContext) => {
+    const { channel } = await api.getChannel(channelId);
+    const members = await api.fetchChannelMembers(channelId);
+    const onlineIds = await api.fetchOnlineUsers();
+    const onlineSet = new Set(onlineIds);
+    const online = members.filter(m => onlineSet.has(m.user_id));
+    const offline = members.filter(m => !onlineSet.has(m.user_id));
+
+    const lines = [
+      `**#${channel.name}**`,
+      `主题: ${channel.topic || '无'}`,
+      `成员: ${members.length} (在线 ${online.length})`,
+      '',
+      online.length ? `🟢 在线: ${online.map(m => m.display_name).join(', ')}` : '',
+      offline.length ? `⚫ 离线: ${offline.map(m => m.display_name).join(', ')}` : '',
+    ].filter(Boolean);
+
+    dispatch({
+      type: 'INSERT_LOCAL_SYSTEM_MESSAGE',
+      payload: { channelId, text: lines.join('\n') },
+    });
+  },
+});
+
+commandRegistry.register({
+  name: 'clear',
+  description: '清除本地聊天记录',
+  usage: '/clear',
+  paramType: 'none',
+  execute: async ({ channelId, dispatch }: CommandContext) => {
+    const confirmed = window.confirm('确定清除本地聊天记录？仅清除本地显示，不影响服务端数据。');
+    if (!confirmed) return;
+    dispatch({ type: 'CLEAR_LOCAL_MESSAGES', payload: { channelId } });
+    dispatch({
+      type: 'INSERT_LOCAL_SYSTEM_MESSAGE',
+      payload: { channelId, text: '🗑️ 本地聊天记录已清除' },
+    });
+  },
+});
+
+commandRegistry.register({
+  name: 'nick',
+  description: '修改显示名',
+  usage: '/nick <name>',
+  paramType: 'text',
+  placeholder: '新显示名…',
+  execute: async ({ channelId, args, api, dispatch }: CommandContext) => {
+    if (!args.trim()) throw new CommandError('Usage: /nick <name>');
+    const oldUser = await api.fetchMe();
+    const oldName = oldUser.display_name;
+    await api.updateProfile({ display_name: args.trim() });
+    dispatch({
+      type: 'INSERT_LOCAL_SYSTEM_MESSAGE',
+      payload: { channelId, text: `✅ 昵称已修改: ${oldName} → ${args.trim()}` },
+    });
+  },
+});
