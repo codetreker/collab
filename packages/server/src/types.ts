@@ -50,7 +50,7 @@ export interface Message {
   sender_id: string;
   sender_name?: string;
   content: string;
-  content_type: 'text' | 'image';
+  content_type: 'text' | 'image' | 'command';
   reply_to_id: string | null;
   created_at: number;
   edited_at: number | null;
@@ -111,6 +111,11 @@ export interface RemoteBinding {
   created_at: string;
 }
 
+export interface CommandMessageContent {
+  command: string;
+  params: Array<{ name: string; value: string }>;
+}
+
 export interface WorkspaceFile {
   id: string;
   user_id: string;
@@ -124,4 +129,11 @@ export interface WorkspaceFile {
   source_message_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AgentCommand {
+  name: string;
+  description: string;
+  usage: string;
+  params: Array<{ name: string; type: string; required?: boolean; placeholder?: string }>;
 }

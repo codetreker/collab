@@ -1,9 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
+import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { getDb } from './db.js';
 import * as Q from './queries.js';
-import type { User } from './types.js';
+import { commandStore } from './command-store.js';
+import type { AgentCommand, User } from './types.js';
 
 const JWT_SECRET = process.env.JWT_SECRET ?? '';
 
@@ -74,9 +76,13 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
   return undefined;
 }
 
+const BUILTIN_NAMES = new Set(['help', 'leave', 'topic', 'invite', 'dm', 'status', 'clear', 'nick']);
+
 interface WsClient {
   ws: WebSocket;
   userId: string;
+  connectionId: string;
+  role?: string;
   subscribedChannels: Set<string>;
   alive: boolean;
 }
@@ -181,6 +187,8 @@ export function registerWebSocket(app: FastifyInstance): void {
     const client: WsClient = {
       ws: socket,
       userId,
+      connectionId: randomUUID(),
+      role: user.role,
       subscribedChannels: new Set(),
       alive: true,
     };
@@ -266,9 +274,31 @@ export function registerWebSocket(app: FastifyInstance): void {
             }
 
             const ct = msg.content_type ?? 'text';
-            if (ct !== 'text' && ct !== 'image') {
-              socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INVALID_CONTENT_TYPE', message: "content_type must be 'text' or 'image'" }));
+            if (!['text', 'image', 'command'].includes(ct)) {
+              socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INVALID_CONTENT_TYPE', message: "content_type must be 'text', 'image', or 'command'" }));
               break;
+            }
+
+            // Command-specific validation
+            if (ct === 'command') {
+              if (!Array.isArray(msg.mentions) || msg.mentions.length === 0) {
+                socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INVALID_COMMAND', message: 'Command messages must mention at least one agent' }));
+                break;
+              }
+              try {
+                const parsed = JSON.parse(msg.content);
+                if (typeof parsed.command !== 'string' || !parsed.command) {
+                  socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INVALID_COMMAND', message: 'Command content must include a "command" field' }));
+                  break;
+                }
+                if (!Array.isArray(parsed.params)) {
+                  socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INVALID_COMMAND', message: 'Command content must include a "params" array' }));
+                  break;
+                }
+              } catch {
+                socket.send(JSON.stringify({ type: 'message_nack', client_message_id: msg.client_message_id ?? null, code: 'INVALID_COMMAND', message: 'Command content must be valid JSON' }));
+                break;
+              }
             }
 
             try {
@@ -300,6 +330,37 @@ export function registerWebSocket(app: FastifyInstance): void {
             break;
           }
 
+          case 'register_commands': {
+            if (client.role !== 'agent') {
+              socket.send(JSON.stringify({ type: 'error', message: 'Only agents can register commands' }));
+              break;
+            }
+            if (!Array.isArray(msg.commands)) {
+              socket.send(JSON.stringify({ type: 'error', message: 'commands must be an array' }));
+              break;
+            }
+            try {
+              const result = commandStore.register(
+                client.userId,
+                client.connectionId,
+                msg.commands as AgentCommand[],
+                BUILTIN_NAMES,
+              );
+              socket.send(JSON.stringify({
+                type: 'commands_registered',
+                registered: result.registered,
+                skipped: result.skipped,
+              }));
+              broadcastToAll({ type: 'commands_updated' });
+            } catch (err) {
+              socket.send(JSON.stringify({
+                type: 'error',
+                message: err instanceof Error ? err.message : 'Failed to register commands',
+              }));
+            }
+            break;
+          }
+
           default:
             socket.send(JSON.stringify({ type: 'error', message: `Unknown message type: ${msg.type}` }));
         }
@@ -311,11 +372,15 @@ export function registerWebSocket(app: FastifyInstance): void {
     socket.on('close', () => {
       clients.delete(socket);
       removeOnlineUser(userId, socket);
+      commandStore.unregisterByConnection(client.connectionId);
+      broadcastToAll({ type: 'commands_updated' });
     });
 
     socket.on('error', () => {
       clients.delete(socket);
       removeOnlineUser(userId, socket);
+      commandStore.unregisterByConnection(client.connectionId);
+      broadcastToAll({ type: 'commands_updated' });
     });
     })().catch(() => {
       if (socket.readyState === 1) {
