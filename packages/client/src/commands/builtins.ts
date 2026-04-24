@@ -7,10 +7,16 @@ commandRegistry.register({
   usage: '/help',
   paramType: 'none',
   execute: async ({ channelId, dispatch }: CommandContext) => {
-    const lines = commandRegistry.all().map(c => `\`${c.usage}\` — ${c.description}`);
+    const groups = commandRegistry.search('');
+    const sections = groups.map(g => {
+      const isSystem = g.group === 'System';
+      const header = isSystem ? `── ${g.group} ──` : `── 🤖 ${g.group} ──`;
+      const lines = g.items.map(c => `\`${c.usage}\` — ${c.description}`);
+      return [header, ...lines].join('\n');
+    });
     dispatch({
       type: 'INSERT_LOCAL_SYSTEM_MESSAGE',
-      payload: { channelId, text: lines.join('\n') },
+      payload: { channelId, text: sections.join('\n\n') },
     });
   },
 });

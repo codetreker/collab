@@ -63,19 +63,27 @@ export function registerCommandRoutes(app: FastifyInstance): void {
     }
 
     const agentList = allGroups
-      .filter((g) => !channelMemberIds || channelMemberIds.has(g.agentId))
-      .map((g) => {
-        const user = Q.getUserById(db, g.agentId);
-        return {
-          agent_id: g.agentId,
-          agent_name: user?.display_name ?? g.agentId,
-          commands: g.commands,
-        };
-      });
+      .filter((g) => !channelMemberIds || channelMemberIds.has(g.agentId));
+
+    const uniqueAgentIds = [...new Set(agentList.map(g => g.agentId))];
+    const displayNames = new Map<string, string>();
+    if (uniqueAgentIds.length > 0) {
+      const placeholders = uniqueAgentIds.map(() => '?').join(',');
+      const rows = db.prepare(`SELECT id, display_name FROM users WHERE id IN (${placeholders})`).all(...uniqueAgentIds) as Array<{ id: string; display_name: string }>;
+      for (const row of rows) {
+        displayNames.set(row.id, row.display_name);
+      }
+    }
+
+    const result = agentList.map((g) => ({
+      agent_id: g.agentId,
+      agent_name: displayNames.get(g.agentId) ?? g.agentId,
+      commands: g.commands,
+    }));
 
     return {
       builtin: BUILTIN_COMMANDS,
-      agent: agentList,
+      agent: result,
     };
   });
 }

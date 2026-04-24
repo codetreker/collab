@@ -77,6 +77,7 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
 }
 
 const BUILTIN_NAMES = new Set(['help', 'leave', 'topic', 'invite', 'dm', 'status', 'clear', 'nick']);
+const CMD_NAME_RE = /^[a-z][a-z0-9_-]{0,31}$/;
 
 interface WsClient {
   ws: WebSocket;
@@ -339,6 +340,40 @@ export function registerWebSocket(app: FastifyInstance): void {
               socket.send(JSON.stringify({ type: 'error', message: 'commands must be an array' }));
               break;
             }
+            {
+              let validationError: string | null = null;
+              for (const cmd of msg.commands as Record<string, unknown>[]) {
+                if (typeof cmd.name !== 'string' || !CMD_NAME_RE.test(cmd.name)) {
+                  validationError = `name must match ${CMD_NAME_RE}`;
+                  break;
+                }
+                if (typeof cmd.description !== 'string' || (cmd.description as string).length > 200) {
+                  validationError = 'description must be a string with length <= 200';
+                  break;
+                }
+                if (typeof cmd.usage !== 'string' || (cmd.usage as string).length > 200) {
+                  validationError = 'usage must be a string with length <= 200';
+                  break;
+                }
+                if (cmd.params !== undefined) {
+                  if (!Array.isArray(cmd.params)) {
+                    validationError = 'params must be an array';
+                    break;
+                  }
+                  for (const p of cmd.params as Record<string, unknown>[]) {
+                    if (typeof p.name !== 'string' || typeof p.type !== 'string') {
+                      validationError = 'each param must have name (string) and type (string)';
+                      break;
+                    }
+                  }
+                  if (validationError) break;
+                }
+              }
+              if (validationError) {
+                socket.send(JSON.stringify({ type: 'error', message: `Invalid command definition: ${validationError}` }));
+                break;
+              }
+            }
             try {
               const result = commandStore.register(
                 client.userId,
@@ -372,15 +407,15 @@ export function registerWebSocket(app: FastifyInstance): void {
     socket.on('close', () => {
       clients.delete(socket);
       removeOnlineUser(userId, socket);
-      commandStore.unregisterByConnection(client.connectionId);
-      broadcastToAll({ type: 'commands_updated' });
+      const hadCommands = commandStore.unregisterByConnection(client.connectionId);
+      if (hadCommands) broadcastToAll({ type: 'commands_updated' });
     });
 
     socket.on('error', () => {
       clients.delete(socket);
       removeOnlineUser(userId, socket);
-      commandStore.unregisterByConnection(client.connectionId);
-      broadcastToAll({ type: 'commands_updated' });
+      const hadCommands = commandStore.unregisterByConnection(client.connectionId);
+      if (hadCommands) broadcastToAll({ type: 'commands_updated' });
     });
     })().catch(() => {
       if (socket.readyState === 1) {
@@ -393,6 +428,8 @@ export function registerWebSocket(app: FastifyInstance): void {
     heartbeatInterval = setInterval(() => {
       for (const [ws, client] of clients.entries()) {
         if (!client.alive) {
+          const hadCommands = commandStore.unregisterByConnection(client.connectionId);
+          if (hadCommands) broadcastToAll({ type: 'commands_updated' });
           ws.terminate();
           clients.delete(ws);
           removeOnlineUser(client.userId, ws);

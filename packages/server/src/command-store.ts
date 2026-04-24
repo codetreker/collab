@@ -54,12 +54,19 @@ class CommandStore {
     return { registered, skipped };
   }
 
-  unregisterByConnection(connectionId: string): void {
+  unregisterByConnection(connectionId: string): boolean {
     const had = this.byConnection.has(connectionId);
-    if (!had) return;
+    if (!had) return false;
 
     this.commands = this.commands.filter((c) => c.connectionId !== connectionId);
     this.rebuildIndexes();
+    return true;
+  }
+
+  clear(): void {
+    this.commands = [];
+    this.byConnection = new Map();
+    this.byName = new Map();
   }
 
   getAll(): GroupedCommands[] {
