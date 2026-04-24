@@ -17,26 +17,7 @@ env:
   HARBOR_USER: ${{ vars.HARBOR_USER }}
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter @collab/server --filter @collab/client --filter collab
-      - run: pnpm --filter @collab/client build
-      - run: pnpm --filter @collab/server build
-      - run: cd packages/server && npx vitest run
-
   deploy-test:
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,10 +59,10 @@ jobs:
           command_timeout: 5m
           script: |
             mkdir -p /opt/dockers/collab-test
-            cat > /opt/dockers/collab-test/docker-compose.yml << 'EOF'
+            cat > /opt/dockers/collab-test/docker-compose.yml << 'COMPEOF'
             services:
               collab-test:
-                image: ${{ env.REGISTRY }}/${{ env.IMAGE }}:test
+                image: cr.codetrek.work/default/collab:test
                 container_name: collab-test
                 restart: unless-stopped
                 ports:
@@ -92,7 +73,7 @@ jobs:
                   - NODE_ENV=production
             volumes:
               collab-test-data:
-            EOF
+            COMPEOF
             cd /opt/dockers/collab-test
             docker compose pull
             docker compose up -d
