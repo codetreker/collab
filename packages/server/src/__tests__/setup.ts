@@ -36,6 +36,7 @@ export function createTestDb(): Database.Database {
       topic       TEXT DEFAULT '',
       type        TEXT DEFAULT 'channel',
       visibility  TEXT DEFAULT 'public' CHECK(visibility IN ('public','private')),
+      position    TEXT DEFAULT '0|aaaaaa',
       created_at  INTEGER NOT NULL,
       created_by  TEXT NOT NULL,
       deleted_at  INTEGER
