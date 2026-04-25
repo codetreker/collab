@@ -329,10 +329,12 @@ export async function buildFullApp(): Promise<FastifyInstance> {
   const { registerPollRoutes } = await import('../routes/poll.js');
   const { registerStreamRoutes } = await import('../routes/stream.js');
   const { registerCommandRoutes } = await import('../routes/commands.js');
+  const { registerChannelGroupRoutes } = await import('../routes/channel-groups.js');
   const ws = await import('../ws.js');
 
   registerAuthRoutes(app);
   registerChannelRoutes(app);
+  registerChannelGroupRoutes(app);
   registerMessageRoutes(app);
   registerUserRoutes(app);
   registerAdminRoutes(app);
