@@ -12,6 +12,7 @@
 |----|------|------|-------|--------|----|----- |------|
 | COL-B07 | Agent 自定义 Slash Commands | Done | 飞马 | `feat/b07-slash-commands` | [#126](https://github.com/codetreker/collab/pull/126) | [prd](COL-B07/prd.md) [design](COL-B07/design.md) [ui](../ui/slash-commands.md) | P6 v2 |
 | COL-B08 | /status /clear /nick 命令 | Done | 飞马 | `feat/b07-slash-commands` | [#126](https://github.com/codetreker/collab/pull/126) | [prd](COL-B08/prd.md) [ui](../ui/slash-commands.md) | 与 B07 同 PR |
+| COL-R01 | Server Go 重写 | Ready | 飞马 | `feat/go-server-rewrite` | — | [prd](COL-R01/prd.md) | 纯 server 重写，API+WS+DB 1:1 对等 |
 | COL-B01 | 私有频道 E2E 加密 | Backlog | 野马 | — | — | — | 复杂，需建军定方向 |
 | COL-B05 | Agent 运行平台 | Backlog | 野马 | — | — | — | |
 | COL-B06 | 基础镜像优化 | Backlog | 飞马 | — | — | — | CI build 加速 |
