@@ -88,7 +88,7 @@ export default function ChannelView({ channelId }: Props) {
 
   if (!channel && !dmChannel) {
     return (
-      <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100vh - ${keyboardHeight}px)` } : undefined}>
+      <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100% - ${keyboardHeight}px)` } : undefined}>
         <div className="channel-empty">
           频道未找到
         </div>
@@ -128,7 +128,7 @@ export default function ChannelView({ channelId }: Props) {
   };
 
   return (
-    <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100vh - ${keyboardHeight}px)` } : undefined}>
+    <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100% - ${keyboardHeight}px)` } : undefined}>
       <div className="channel-header">
         <div className="channel-header-info">
           <h2 className="channel-title">{headerTitle}</h2>
