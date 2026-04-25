@@ -21,7 +21,7 @@ interface AdminUser {
 
 function listAdminUsers(db: import('better-sqlite3').Database): AdminUser[] {
   return db
-    .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at, owner_id, disabled, deleted_at FROM users ORDER BY created_at ASC')
+    .prepare('SELECT id, display_name, email, role, api_key, require_mention, created_at, owner_id, disabled, deleted_at FROM users WHERE deleted_at IS NULL ORDER BY created_at ASC')
     .all() as AdminUser[];
 }
 
@@ -336,7 +336,7 @@ export function registerAdminRoutes(app: FastifyInstance): void {
   app.get('/api/v1/admin/channels', async () => {
     const db = getDb();
     const channels = db.prepare(
-      'SELECT id, name, type, visibility, created_at, created_by, deleted_at FROM channels ORDER BY created_at ASC'
+      'SELECT id, name, type, visibility, created_at, created_by, deleted_at FROM channels WHERE deleted_at IS NULL ORDER BY created_at ASC'
     ).all() as { id: string; name: string; type: string; visibility: string; created_at: number; created_by: string; deleted_at: number | null }[];
     return { channels };
   });
