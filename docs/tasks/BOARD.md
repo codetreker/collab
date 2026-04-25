@@ -25,3 +25,4 @@
 | ID | Bug | 状态 | Owner | Branch | PR | 备注 |
 |----|-----|------|-------|--------|----|----- |
 | COL-BUG-020 | PWA 轻 app 非聊天页面 header 重叠 | Backlog | 战马 | — | — | Admin/Agents 页 header 与汉堡菜单重叠 |
+| COL-BUG-021 | Admin 管理页显示已删除用户和频道 | Backlog | 战马 | — | — | 已删除的用户和 channel 应该隐藏或标记 |
