@@ -47,6 +47,31 @@ func (s *Server) SetupRoutes() {
 	authMw := auth.AuthMiddleware(s.store, s.cfg)
 	s.mux.Handle("GET /api/v1/users/me", authMw(http.HandlerFunc(authHandler.HandleGetMe)))
 
+	// Messages
+	msgHandler := &api.MessageHandler{
+		Store:  s.store,
+		Logger: s.logger,
+	}
+	sendPerm := auth.RequirePermission(s.store, "message.send", func(r *http.Request) string {
+		return "channel:" + r.PathValue("channelId")
+	})
+	msgHandler.RegisterRoutes(s.mux, authMw, sendPerm)
+
+	// Users
+	userHandler := &api.UserHandler{
+		Store:  s.store,
+		Logger: s.logger,
+	}
+	userHandler.RegisterRoutes(s.mux, authMw)
+
+	// Channels
+	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
+	channelHandler.RegisterRoutes(s.mux, authMw)
+
+	// DMs
+	dmHandler := &api.DmHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
+	dmHandler.RegisterRoutes(s.mux, authMw)
+
 	s.mux.HandleFunc("/api/v1/", respondNotImplemented)
 
 	s.mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(s.cfg.UploadDir))))
