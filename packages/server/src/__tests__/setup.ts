@@ -30,15 +30,26 @@ export function createTestDb(): Database.Database {
   db.pragma('foreign_keys = ON');
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS channel_groups (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      position    TEXT NOT NULL DEFAULT '0|aaaaaa',
+      created_by  TEXT NOT NULL,
+      created_at  INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_channel_groups_position ON channel_groups(position);
+
     CREATE TABLE IF NOT EXISTS channels (
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL UNIQUE,
       topic       TEXT DEFAULT '',
       type        TEXT DEFAULT 'channel',
       visibility  TEXT DEFAULT 'public' CHECK(visibility IN ('public','private')),
+      position    TEXT DEFAULT '0|aaaaaa',
       created_at  INTEGER NOT NULL,
       created_by  TEXT NOT NULL,
-      deleted_at  INTEGER
+      deleted_at  INTEGER,
+      group_id    TEXT REFERENCES channel_groups(id) ON DELETE SET NULL
     );
 
     CREATE TABLE IF NOT EXISTS users (
@@ -166,6 +177,15 @@ export function createTestDb(): Database.Database {
       created_at TEXT DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_remote_nodes_user ON remote_nodes(user_id);
+
+    CREATE TABLE IF NOT EXISTS remote_bindings (
+      id TEXT PRIMARY KEY,
+      node_id TEXT NOT NULL REFERENCES remote_nodes(id) ON DELETE CASCADE,
+      channel_id TEXT NOT NULL REFERENCES channels(id),
+      path TEXT NOT NULL,
+      label TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   return db;
@@ -309,10 +329,12 @@ export async function buildFullApp(): Promise<FastifyInstance> {
   const { registerPollRoutes } = await import('../routes/poll.js');
   const { registerStreamRoutes } = await import('../routes/stream.js');
   const { registerCommandRoutes } = await import('../routes/commands.js');
+  const { registerChannelGroupRoutes } = await import('../routes/channel-groups.js');
   const ws = await import('../ws.js');
 
   registerAuthRoutes(app);
   registerChannelRoutes(app);
+  registerChannelGroupRoutes(app);
   registerMessageRoutes(app);
   registerUserRoutes(app);
   registerAdminRoutes(app);

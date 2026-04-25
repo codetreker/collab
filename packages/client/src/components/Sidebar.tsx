@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCan } from '../hooks/usePermissions';
 import { logout } from '../lib/api';
-import type { Channel, DmChannel } from '../types';
+import ChannelList from './ChannelList';
+import CreateGroupModal from './CreateGroupModal';
+import type { DmChannel } from '../types';
 
 interface Props {
   onClose?: () => void;
@@ -20,6 +22,9 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
   const { theme, toggleTheme } = useTheme();
   const canCreateChannel = useCan('channel.create');
   const [showCreate, setShowCreate] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement>(null);
   const [newName, setNewName] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [creating, setCreating] = useState(false);
@@ -29,6 +34,15 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
   useEffect(() => {
     actions.loadDmChannels();
   }, [actions]);
+
+  useEffect(() => {
+    if (!showAddMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) setShowAddMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAddMenu]);
 
   const handleSelect = (channelId: string) => {
     actions.selectChannel(channelId);
@@ -70,12 +84,8 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
     }
   };
 
-  // Sort: channels with recent activity first (exclude DMs)
-  const sortedChannels = [...state.channels].filter(c => c.type !== 'dm').sort((a, b) => {
-    const aTime = a.last_message_at ?? a.created_at;
-    const bTime = b.last_message_at ?? b.created_at;
-    return bTime - aTime;
-  });
+  // Filter out DMs — sorting is handled by ChannelList component
+  const nonDmChannels = state.channels.filter(c => c.type !== 'dm');
 
   // Sort DMs by last message time
   const sortedDms = [...state.dmChannels].sort((a, b) => {
@@ -97,13 +107,31 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
           {canCreateChannel && (
-            <button
-              className="icon-btn"
-              onClick={() => setShowCreate(!showCreate)}
-              title="创建频道"
-            >
-              +
-            </button>
+            <div className="sidebar-add-dropdown" ref={addMenuRef}>
+              <button
+                className="icon-btn"
+                onClick={() => setShowAddMenu(!showAddMenu)}
+                title="创建"
+              >
+                +
+              </button>
+              {showAddMenu && (
+                <div className="sidebar-add-menu">
+                  <div
+                    className="sidebar-add-menu-item"
+                    onClick={() => { setShowCreate(true); setShowAddMenu(false); }}
+                  >
+                    创建频道
+                  </div>
+                  <div
+                    className="sidebar-add-menu-item"
+                    onClick={() => { setShowGroupModal(true); setShowAddMenu(false); }}
+                  >
+                    创建分组
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -176,32 +204,11 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
         </form>
       )}
 
-      <div className="channel-list">
-        {sortedChannels.filter(c => c.is_member !== false).map(channel => (
-          <ChannelItem
-            key={channel.id}
-            channel={channel}
-            active={channel.id === state.currentChannelId}
-            onClick={() => handleSelect(channel.id)}
-          />
-        ))}
-        {sortedChannels.some(c => c.is_member === false) && (
-          <>
-            <div className="channel-group-label">公开频道</div>
-            {sortedChannels.filter(c => c.is_member === false).map(channel => (
-              <ChannelItem
-                key={channel.id}
-                channel={channel}
-                active={channel.id === state.currentChannelId}
-                onClick={() => handleSelect(channel.id)}
-              />
-            ))}
-          </>
-        )}
-        {sortedChannels.length === 0 && (
-          <div className="sidebar-empty">暂无频道</div>
-        )}
-      </div>
+      <ChannelList
+        channels={nonDmChannels}
+        currentChannelId={state.currentChannelId}
+        onSelectChannel={handleSelect}
+      />
 
       <MergedDmList
         dms={sortedDms}
@@ -212,6 +219,13 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
         onSelectDm={handleSelect}
         onOpenDm={actions.openDm}
       />
+
+      {showGroupModal && (
+        <CreateGroupModal
+          onClose={() => setShowGroupModal(false)}
+          onCreated={() => actions.loadChannels()}
+        />
+      )}
 
       {state.currentUser && (
         <div className="sidebar-footer">
@@ -274,28 +288,6 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
         </div>
       )}
     </div>
-  );
-}
-
-function ChannelItem({ channel, active, onClick }: { channel: Channel; active: boolean; onClick: () => void }) {
-  const unread = channel.unread_count ?? 0;
-  const isPrivate = channel.visibility === 'private';
-  const isMember = channel.is_member !== false;
-
-  return (
-    <button
-      className={`channel-item ${active ? 'channel-item-active' : ''} ${!isMember ? 'channel-item-preview' : ''}`}
-      onClick={onClick}
-    >
-      <span className="channel-hash">{isPrivate ? '🔒' : '#'}</span>
-      <span className="channel-name">{channel.name}</span>
-      {!isMember && !isPrivate && (
-        <span className="preview-badge">预览</span>
-      )}
-      {unread > 0 && isMember && (
-        <span className="unread-badge">{unread > 99 ? '99+' : unread}</span>
-      )}
-    </button>
   );
 }
 

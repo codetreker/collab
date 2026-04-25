@@ -12,6 +12,8 @@ export interface Channel {
   is_member?: boolean;
   last_message_at?: number | null;
   unread_count?: number;
+  position?: string;
+  group_id?: string | null;
 }
 
 export interface User {
@@ -83,6 +85,14 @@ export interface AdminUser {
   owner_id?: string | null;
   disabled?: number;
   deleted_at?: number | null;
+}
+
+export interface ChannelGroup {
+  id: string;
+  name: string;
+  position: string;
+  created_by: string;
+  created_at: number;
 }
 
 export interface WorkspaceFile {

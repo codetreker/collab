@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { getDb } from '../db.js';
 import * as Q from '../queries.js';
-import { broadcastToChannel, broadcastToUser, getOnlineUserIds, unsubscribeUserFromChannel } from '../ws.js';
+import { generateRankBetween } from '../lexorank.js';
+import { broadcastToAll, broadcastToChannel, broadcastToUser, getOnlineUserIds, unsubscribeUserFromChannel } from '../ws.js';
 import { requirePermission } from '../middleware/permissions.js';
 
 export function registerChannelRoutes(app: FastifyInstance): void {
@@ -10,14 +11,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     const db = getDb();
     if (request.currentUser?.role === 'admin') {
       const channels = Q.listAllChannelsForAdmin(db, request.currentUser.id);
-      return { channels };
+      return { channels, groups: Q.listChannelGroups(db) };
     }
     if (request.currentUser) {
       const channels = Q.listChannelsWithUnread(db, request.currentUser.id);
-      return { channels };
+      return { channels, groups: Q.listChannelGroups(db) };
     }
     const channels = Q.listChannels(db);
-    return { channels };
+    return { channels, groups: Q.listChannelGroups(db) };
   });
 
   // Create channel
@@ -589,5 +590,74 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     }
 
     return { ok: true };
+  });
+
+  // Reorder channel (drag-and-drop sorting via lexorank)
+  app.put<{
+    Body: { channel_id: string; after_id: string | null; group_id?: string | null };
+  }>('/api/v1/channels/reorder', async (request, reply) => {
+    const { channel_id, after_id, group_id } = request.body ?? {};
+
+    if (!channel_id || typeof channel_id !== 'string') {
+      return reply.status(400).send({ error: 'channel_id is required' });
+    }
+
+    const db = getDb();
+    const userId = request.currentUser?.id;
+    if (!userId) {
+      return reply.status(401).send({ error: 'Authentication required' });
+    }
+
+    const channel = Q.getChannel(db, channel_id);
+    if (!channel) {
+      return reply.status(404).send({ error: 'Channel not found' });
+    }
+
+    if (channel.created_by !== userId && request.currentUser?.role !== 'admin') {
+      return reply.status(403).send({ error: 'Only the channel owner can reorder' });
+    }
+
+    if (group_id !== undefined && group_id !== null && typeof group_id === 'string') {
+      const targetGroup = Q.getChannelGroup(db, group_id);
+      if (!targetGroup) {
+        return reply.status(404).send({ error: 'Group not found' });
+      }
+    }
+
+    const afterId = after_id ?? null;
+    if (afterId !== null) {
+      const afterChannel = Q.getChannel(db, afterId);
+      if (!afterChannel) {
+        return reply.status(404).send({ error: 'after_id channel not found' });
+      }
+    }
+
+    // Use BEGIN IMMEDIATE to prevent concurrent lexorank conflicts
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const { before, after } = Q.getAdjacentChannelPositions(db, afterId, group_id);
+      const newPosition = generateRankBetween(before, after);
+      Q.updateChannelPosition(db, channel_id, newPosition, group_id);
+      db.exec('COMMIT');
+
+      const updated = Q.getChannel(db, channel_id);
+      const payload = {
+        id: updated!.id,
+        position: updated!.position ?? newPosition,
+        group_id: group_id !== undefined ? group_id : null,
+      };
+
+      broadcastToAll({
+        type: 'channels_reordered',
+        channel_id: payload.id,
+        position: payload.position,
+        group_id: payload.group_id,
+      });
+
+      return { channel: payload };
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
   });
 }

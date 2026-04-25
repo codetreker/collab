@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { Channel, Message, User, ConnectionState, DmChannel, PendingMessage } from '../types';
+import type { Channel, ChannelGroup, Message, User, ConnectionState, DmChannel, PendingMessage } from '../types';
 import type { PermissionDetail } from '../lib/api';
 import * as api from '../lib/api';
 
@@ -7,6 +7,7 @@ import * as api from '../lib/api';
 
 interface AppState {
   channels: Channel[];
+  groups: ChannelGroup[];
   dmChannels: DmChannel[];
   currentChannelId: string | null;
   messages: Map<string, Message[]>;     // channelId -> messages
@@ -26,6 +27,7 @@ interface AppState {
 
 const initialState: AppState = {
   channels: [],
+  groups: [],
   dmChannels: [],
   currentChannelId: null,
   messages: new Map(),
@@ -47,6 +49,10 @@ const initialState: AppState = {
 
 type Action =
   | { type: 'SET_CHANNELS'; channels: Channel[] }
+  | { type: 'SET_GROUPS'; groups: ChannelGroup[] }
+  | { type: 'ADD_GROUP'; group: ChannelGroup }
+  | { type: 'UPDATE_GROUP'; groupId: string; updates: Partial<ChannelGroup> }
+  | { type: 'REMOVE_GROUP'; groupId: string; ungroupedChannelIds: string[] }
   | { type: 'ADD_CHANNEL'; channel: Channel }
   | { type: 'SET_CURRENT_CHANNEL'; channelId: string | null }
   | { type: 'SET_MESSAGES'; channelId: string; messages: Message[]; hasMore: boolean }
@@ -86,6 +92,30 @@ function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_CHANNELS':
       return { ...state, channels: action.channels };
+
+    case 'SET_GROUPS':
+      return { ...state, groups: action.groups };
+
+    case 'ADD_GROUP': {
+      if (state.groups.some(g => g.id === action.group.id)) return state;
+      return { ...state, groups: [...state.groups, action.group] };
+    }
+
+    case 'UPDATE_GROUP': {
+      const groups = state.groups.map(g =>
+        g.id === action.groupId ? { ...g, ...action.updates } : g,
+      );
+      return { ...state, groups };
+    }
+
+    case 'REMOVE_GROUP': {
+      const groups = state.groups.filter(g => g.id !== action.groupId);
+      const ungroupedSet = new Set(action.ungroupedChannelIds);
+      const channels = state.channels.map(c =>
+        ungroupedSet.has(c.id) ? { ...c, group_id: null } : c,
+      );
+      return { ...state, groups, channels };
+    }
 
     case 'ADD_CHANNEL': {
       // Avoid duplicates
@@ -447,8 +477,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadChannels = useCallback(async () => {
-    const channels = await api.fetchChannels();
+    const { channels, groups } = await api.fetchChannels();
     dispatch({ type: 'SET_CHANNELS', channels });
+    dispatch({ type: 'SET_GROUPS', groups: groups ?? [] });
   }, []);
 
   const loadMessages = useCallback(async (channelId: string) => {

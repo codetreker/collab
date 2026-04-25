@@ -142,6 +142,37 @@ describe('Channels API', () => {
       expect(names).toContain('pub2');
       expect(names).not.toContain('priv2');
     });
+
+    it('response includes groups array', async () => {
+      const adminId = seedAdmin(testDb);
+      seedChannel(testDb, adminId, 'grp-test', 'public');
+      const res = await inject('GET', '/api/v1/channels', adminId);
+      const body = JSON.parse(res.body);
+      expect(body.groups).toEqual([]);
+    });
+
+    it('each channel includes position field', async () => {
+      const adminId = seedAdmin(testDb);
+      seedChannel(testDb, adminId, 'pos-test', 'public');
+      const res = await inject('GET', '/api/v1/channels', adminId);
+      const { channels } = JSON.parse(res.body);
+      expect(channels.length).toBe(1);
+      expect(channels[0].position).toBeDefined();
+      expect(typeof channels[0].position).toBe('string');
+    });
+
+    it('channels are sorted by position', async () => {
+      const adminId = seedAdmin(testDb);
+      const ch1 = seedChannel(testDb, adminId, 'zeta', 'public');
+      const ch2 = seedChannel(testDb, adminId, 'alpha', 'public');
+      // Set positions so alpha comes first
+      testDb.prepare('UPDATE channels SET position = ? WHERE id = ?').run('0|aaaaaa', ch2);
+      testDb.prepare('UPDATE channels SET position = ? WHERE id = ?').run('0|zzzzzz', ch1);
+      const res = await inject('GET', '/api/v1/channels', adminId);
+      const { channels } = JSON.parse(res.body);
+      expect(channels[0].name).toBe('alpha');
+      expect(channels[1].name).toBe('zeta');
+    });
   });
 
   describe('GET /api/v1/channels/:channelId', () => {

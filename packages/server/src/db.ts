@@ -303,6 +303,60 @@ function initSchema(db: Database.Database): void {
       );
     `);
 
+    // Migration: B26 — add position column to channels (lexorank ordering)
+    const channelColsB26 = db.prepare("PRAGMA table_info(channels)").all() as { name: string }[];
+    if (!channelColsB26.some((c) => c.name === 'position')) {
+      db.exec("ALTER TABLE channels ADD COLUMN position TEXT DEFAULT '0|aaaaaa'");
+      db.exec('CREATE INDEX IF NOT EXISTS idx_channels_position ON channels(position)');
+
+      // Backfill: assign evenly distributed lexorank values to existing channels
+      const existingChannels = db.prepare(
+        'SELECT id FROM channels ORDER BY created_at ASC',
+      ).all() as { id: string }[];
+
+      if (existingChannels.length > 0) {
+        const updatePos = db.prepare('UPDATE channels SET position = ? WHERE id = ?');
+        if (existingChannels.length === 1) {
+          updatePos.run('0|aaaaaa', existingChannels[0]!.id);
+        } else {
+          // Generate evenly spaced 6-char keys between 'aaaaaa' and 'zzzzzz'
+          const min = 0; // 'aaaaaa' = 0
+          const max = Math.pow(26, 6) - 1; // 'zzzzzz'
+          const count = existingChannels.length;
+          for (let i = 0; i < count; i++) {
+            const val = Math.round(min + (i / (count - 1)) * (max - min));
+            let remaining = val;
+            let key = '';
+            for (let d = 5; d >= 0; d--) {
+              const divisor = Math.pow(26, d);
+              const charIdx = Math.floor(remaining / divisor);
+              key += String.fromCharCode(97 + Math.min(charIdx, 25));
+              remaining -= charIdx * divisor;
+            }
+            updatePos.run(`0|${key}`, existingChannels[i]!.id);
+          }
+        }
+      }
+    }
+
+    // Migration: B26-T16 — channel_groups table + channels.group_id FK
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS channel_groups (
+        id          TEXT PRIMARY KEY,
+        name        TEXT NOT NULL,
+        position    TEXT NOT NULL,
+        created_by  TEXT NOT NULL REFERENCES users(id),
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_channel_groups_position ON channel_groups(position);
+    `);
+
+    const channelColsT16 = db.prepare("PRAGMA table_info(channels)").all() as { name: string }[];
+    if (!channelColsT16.some((c) => c.name === 'group_id')) {
+      db.exec('ALTER TABLE channels ADD COLUMN group_id TEXT REFERENCES channel_groups(id) ON DELETE SET NULL');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_channels_group ON channels(group_id)');
+    }
+
     const dmChannels = db.prepare(
       `SELECT c.id, c.name FROM channels c
        WHERE c.type = 'dm'

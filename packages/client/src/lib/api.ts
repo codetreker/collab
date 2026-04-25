@@ -1,6 +1,6 @@
 // ─── REST API client ─────────────────────────────────────
 
-import type { Channel, Message, User, AdminUser, DmChannel, WorkspaceFile } from '../types';
+import type { Channel, ChannelGroup, Message, User, AdminUser, DmChannel, WorkspaceFile } from '../types';
 
 const BASE = '';  // Same origin via Vite proxy in dev, or same server in prod
 
@@ -68,9 +68,8 @@ export async function logout(): Promise<void> {
 
 // ─── Channels ───────────────────────────────────────────
 
-export async function fetchChannels(): Promise<Channel[]> {
-  const data = await request<{ channels: Channel[] }>('/api/v1/channels');
-  return data.channels;
+export async function fetchChannels(): Promise<{ channels: Channel[]; groups: ChannelGroup[] }> {
+  return request<{ channels: Channel[]; groups: ChannelGroup[] }>('/api/v1/channels');
 }
 
 export async function createChannel(
@@ -123,6 +122,46 @@ export async function leaveChannel(channelId: string): Promise<void> {
 export async function deleteChannel(channelId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/channels/${channelId}`, {
     method: 'DELETE',
+  });
+}
+
+export async function reorderChannel(channelId: string, afterId: string | null, groupId?: string | null): Promise<void> {
+  const body: Record<string, unknown> = { channel_id: channelId, after_id: afterId };
+  if (groupId !== undefined) body.group_id = groupId;
+  await request<{ ok: boolean }>(`/api/v1/channels/reorder`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+// ─── Channel Groups ────────────────────────────────────
+
+export async function createChannelGroup(name: string): Promise<ChannelGroup> {
+  const data = await request<{ group: ChannelGroup }>('/api/v1/channel-groups', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+  return data.group;
+}
+
+export async function updateChannelGroup(groupId: string, name: string): Promise<ChannelGroup> {
+  const data = await request<{ group: ChannelGroup }>(`/api/v1/channel-groups/${groupId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  });
+  return data.group;
+}
+
+export async function deleteChannelGroup(groupId: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/channel-groups/${groupId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function reorderChannelGroup(groupId: string, afterId: string | null): Promise<void> {
+  await request<{ ok: boolean }>('/api/v1/channel-groups/reorder', {
+    method: 'PUT',
+    body: JSON.stringify({ group_id: groupId, after_id: afterId }),
   });
 }
 

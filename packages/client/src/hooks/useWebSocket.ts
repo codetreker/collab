@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
 import { getDevUserId, fetchMessages } from '../lib/api';
-import type { ConnectionState, Message, Channel, PendingMessage } from '../types';
+import type { ConnectionState, Message, Channel, ChannelGroup, PendingMessage } from '../types';
 
 const PING_INTERVAL = 25_000;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
@@ -226,6 +226,14 @@ export function useWebSocket() {
         }
         break;
       }
+      case 'channels_reordered': {
+        const reorderedChId = data.channel_id as string;
+        const reorderUpdates: Partial<Channel> = {};
+        if (typeof data.position === 'string') reorderUpdates.position = data.position;
+        if (data.group_id !== undefined) reorderUpdates.group_id = data.group_id as string | null;
+        dispatch({ type: 'UPDATE_CHANNEL', channelId: reorderedChId, updates: reorderUpdates });
+        break;
+      }
       case 'user_joined': {
         const joinedChannelId = data.channel_id as string;
         const joinedUserId = data.user_id as string;
@@ -318,6 +326,34 @@ export function useWebSocket() {
           messageId: deletedMessageId,
           deletedAt,
         });
+        break;
+      }
+      case 'group_created': {
+        const group = data.group as ChannelGroup;
+        dispatch({ type: 'ADD_GROUP', group });
+        break;
+      }
+      case 'group_updated': {
+        const group = data.group as ChannelGroup;
+        dispatch({ type: 'UPDATE_GROUP', groupId: group.id, updates: group });
+        break;
+      }
+      case 'group_reordered': {
+        const groupId = data.group_id as string;
+        const position = data.position as string;
+        dispatch({ type: 'UPDATE_GROUP', groupId, updates: { position } });
+        break;
+      }
+      case 'channel_groups_reordered': {
+        const groupId = data.group_id as string;
+        const position = data.position as string;
+        dispatch({ type: 'UPDATE_GROUP', groupId, updates: { position } });
+        break;
+      }
+      case 'group_deleted': {
+        const groupId = data.group_id as string;
+        const ungroupedChannelIds = (data.ungrouped_channel_ids ?? []) as string[];
+        dispatch({ type: 'REMOVE_GROUP', groupId, ungroupedChannelIds });
         break;
       }
       case 'commands_updated': {

@@ -4,9 +4,19 @@ export interface Channel {
   topic: string;
   type?: 'channel' | 'dm';
   visibility?: 'public' | 'private';
+  position?: string;
+  group_id?: string | null;
   created_at: number;
   created_by: string;
   deleted_at?: number | null;
+}
+
+export interface ChannelGroup {
+  id: string;
+  name: string;
+  position: string;
+  created_by: string;
+  created_at: number;
 }
 
 export interface User {
