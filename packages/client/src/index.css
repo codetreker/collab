@@ -339,6 +339,54 @@ body {
   letter-spacing: 0.5px;
 }
 
+.group-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-sidebar-dim);
+}
+
+.group-header:hover {
+  color: var(--text-sidebar);
+}
+
+.group-header-arrow {
+  display: inline-block;
+  width: 12px;
+  margin-right: 4px;
+  font-size: 0.6rem;
+  transition: transform 0.15s ease;
+}
+
+.group-header-arrow.collapsed {
+  transform: rotate(-90deg);
+}
+
+.group-header-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-group-channels {
+  overflow: hidden;
+  transition: max-height 0.2s ease, opacity 0.2s ease;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.channel-group-channels.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
 .preview-banner {
   padding: 8px 16px;
   background: var(--bg-sidebar-hover);
@@ -3377,4 +3425,97 @@ body {
     border-right: none;
     border-bottom: 1px solid var(--border-color);
   }
+}
+
+/* ─── Group Context Menu ─────────────────────────────── */
+
+.group-context-menu {
+  position: fixed;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 4px 0;
+  min-width: 140px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+}
+
+.group-context-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.group-context-menu-item:hover {
+  background: var(--bg-message-hover);
+}
+
+.group-context-menu-item.danger {
+  color: var(--danger);
+}
+
+.group-header-actions {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.group-header:hover .group-header-actions {
+  opacity: 1;
+}
+
+.group-header-actions .icon-btn {
+  font-size: 0.75rem;
+  padding: 0 4px;
+}
+
+.group-header-rename-input {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 2px 4px;
+  outline: none;
+}
+
+/* ─── Sidebar dropdown ───────────────────────────────── */
+
+.sidebar-add-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.sidebar-add-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 4px 0;
+  min-width: 140px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+}
+
+.sidebar-add-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.sidebar-add-menu-item:hover {
+  background: var(--bg-message-hover);
+}
+
+/* ─── Create Group Modal ─────────────────────────────── */
+
+.create-group-modal {
+  max-width: 360px;
 }

@@ -8,9 +8,10 @@ interface Props {
   active: boolean;
   isOwner: boolean;
   onClick: () => void;
+  groupId?: string | null;
 }
 
-export default function SortableChannelItem({ channel, active, isOwner, onClick }: Props) {
+export default function SortableChannelItem({ channel, active, isOwner, onClick, groupId }: Props) {
   const {
     attributes,
     listeners,
@@ -19,7 +20,7 @@ export default function SortableChannelItem({ channel, active, isOwner, onClick 
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: channel.id, disabled: !isOwner });
+  } = useSortable({ id: channel.id, disabled: !isOwner, data: { type: 'channel' as const, groupId: groupId ?? null } });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),

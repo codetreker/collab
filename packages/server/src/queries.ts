@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import type { Channel, ChannelGroup, User, Message, EventRow, Mention, EventKind, InviteCode, WorkspaceFile, RemoteNode, RemoteBinding } from './types.js';
+import { generateRankBetween } from './lexorank.js';
 
 // ─── Channels ───────────────────────────────────────────
 
@@ -146,11 +147,17 @@ export function createChannel(
 ): Channel {
   const id = uuidv4();
   const now = Date.now();
-  db.prepare(
-    'INSERT INTO channels (id, name, topic, visibility, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, name, topic, visibility, now, createdBy);
 
-  const channel: Channel = { id, name, topic, visibility, created_at: now, created_by: createdBy };
+  const lastRow = db.prepare(
+    'SELECT position FROM channels WHERE deleted_at IS NULL ORDER BY position DESC LIMIT 1',
+  ).get() as { position: string } | undefined;
+  const position = generateRankBetween(lastRow?.position ?? null, null);
+
+  db.prepare(
+    'INSERT INTO channels (id, name, topic, visibility, created_at, created_by, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, name, topic, visibility, now, createdBy, position);
+
+  const channel: Channel = { id, name, topic, visibility, created_at: now, created_by: createdBy, position };
 
   insertEvent(db, 'channel_created', id, { channel });
 

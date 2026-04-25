@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCan } from '../hooks/usePermissions';
 import { logout } from '../lib/api';
 import ChannelList from './ChannelList';
+import CreateGroupModal from './CreateGroupModal';
 import type { DmChannel } from '../types';
 
 interface Props {
@@ -21,6 +22,9 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
   const { theme, toggleTheme } = useTheme();
   const canCreateChannel = useCan('channel.create');
   const [showCreate, setShowCreate] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement>(null);
   const [newName, setNewName] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [creating, setCreating] = useState(false);
@@ -30,6 +34,15 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
   useEffect(() => {
     actions.loadDmChannels();
   }, [actions]);
+
+  useEffect(() => {
+    if (!showAddMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) setShowAddMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAddMenu]);
 
   const handleSelect = (channelId: string) => {
     actions.selectChannel(channelId);
@@ -94,13 +107,31 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
           {canCreateChannel && (
-            <button
-              className="icon-btn"
-              onClick={() => setShowCreate(!showCreate)}
-              title="创建频道"
-            >
-              +
-            </button>
+            <div className="sidebar-add-dropdown" ref={addMenuRef}>
+              <button
+                className="icon-btn"
+                onClick={() => setShowAddMenu(!showAddMenu)}
+                title="创建"
+              >
+                +
+              </button>
+              {showAddMenu && (
+                <div className="sidebar-add-menu">
+                  <div
+                    className="sidebar-add-menu-item"
+                    onClick={() => { setShowCreate(true); setShowAddMenu(false); }}
+                  >
+                    创建频道
+                  </div>
+                  <div
+                    className="sidebar-add-menu-item"
+                    onClick={() => { setShowGroupModal(true); setShowAddMenu(false); }}
+                  >
+                    创建分组
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -188,6 +219,13 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
         onSelectDm={handleSelect}
         onOpenDm={actions.openDm}
       />
+
+      {showGroupModal && (
+        <CreateGroupModal
+          onClose={() => setShowGroupModal(false)}
+          onCreated={() => actions.loadChannels()}
+        />
+      )}
 
       {state.currentUser && (
         <div className="sidebar-footer">

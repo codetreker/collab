@@ -87,6 +87,14 @@ export interface AdminUser {
   deleted_at?: number | null;
 }
 
+export interface ChannelGroup {
+  id: string;
+  name: string;
+  position: string;
+  created_by: string;
+  created_at: number;
+}
+
 export interface WorkspaceFile {
   id: string;
   user_id: string;
