@@ -107,6 +107,8 @@ func HandlePlugin(hub *Hub) http.HandlerFunc {
 				go pc.handleAPIRequest(msg.ID, msg.Data)
 			case "api_response":
 				go pc.handleAPIResponse(msg.ID, msg.Data)
+			case "response":
+				pc.resolveRequest(msg.ID, 200, msg.Data)
 			}
 		}
 	}

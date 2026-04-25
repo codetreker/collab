@@ -779,14 +779,13 @@ func (h *ChannelHandler) handleCreateGroup(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if h.Hub != nil {
-		h.Hub.BroadcastEventToAll("group_created", map[string]any{"group": group})
-	}
-
 	h.Store.CreateEvent(&store.Event{
 		Kind:    "group_created",
 		Payload: mustJSON(map[string]any{"group": group}),
 	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("group_created", map[string]any{"group": group})
+	}
 
 	writeJSONResponse(w,http.StatusCreated, map[string]any{"group": group})
 }
@@ -836,14 +835,13 @@ func (h *ChannelHandler) handleUpdateGroup(w http.ResponseWriter, r *http.Reques
 	group.Name = name
 	writeJSONResponse(w,http.StatusOK, map[string]any{"group": group})
 
-	if h.Hub != nil {
-		h.Hub.BroadcastEventToAll("group_updated", map[string]any{"group": group})
-	}
-
 	h.Store.CreateEvent(&store.Event{
 		Kind:    "group_updated",
 		Payload: mustJSON(map[string]any{"group": group}),
 	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("group_updated", map[string]any{"group": group})
+	}
 }
 
 func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
@@ -880,14 +878,13 @@ func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Reques
 		ungroupedIDs = []string{}
 	}
 
-	if h.Hub != nil {
-		h.Hub.BroadcastEventToAll("group_deleted", map[string]any{"group_id": groupID})
-	}
-
 	h.Store.CreateEvent(&store.Event{
 		Kind:    "group_deleted",
 		Payload: mustJSON(map[string]any{"group_id": groupID}),
 	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("group_deleted", map[string]any{"group_id": groupID})
+	}
 
 	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true, "ungrouped_channel_ids": ungroupedIDs})
 }
