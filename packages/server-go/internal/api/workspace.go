@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -80,6 +81,11 @@ func (h *WorkspaceHandler) handleUploadFile(w http.ResponseWriter, r *http.Reque
 	const maxSize = 10 << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 	if err := r.ParseMultipartForm(maxSize); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			writeJSONError(w, http.StatusRequestEntityTooLarge, "File too large (max 10MB)")
+			return
+		}
 		writeJSONError(w, http.StatusBadRequest, "File too large (max 10MB)")
 		return
 	}
@@ -145,17 +151,35 @@ func (h *WorkspaceHandler) handleUploadFile(w http.ResponseWriter, r *http.Reque
 	writeJSONResponse(w, http.StatusCreated, map[string]any{"file": result})
 }
 
-func (h *WorkspaceHandler) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
+func (h *WorkspaceHandler) loadWorkspaceFileForRequest(r *http.Request, fileID, channelID string) (*store.WorkspaceFile, int, string) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
+		return nil, http.StatusUnauthorized, "Unauthorized"
 	}
 
-	id := r.PathValue("id")
-	f, err := h.Store.GetWorkspaceFile(id)
+	f, err := h.Store.GetWorkspaceFile(fileID)
 	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "File not found")
+		return nil, http.StatusNotFound, "File not found"
+	}
+
+	if f.ChannelID != channelID {
+		return nil, http.StatusNotFound, "File not found"
+	}
+
+	if f.UserID != user.ID && !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
+		return nil, http.StatusForbidden, "Forbidden"
+	}
+
+	return f, 0, ""
+}
+
+func (h *WorkspaceHandler) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
+	channelID := r.PathValue("channelId")
+	id := r.PathValue("id")
+
+	f, status, errMsg := h.loadWorkspaceFileForRequest(r, id, channelID)
+	if f == nil {
+		writeJSONError(w, status, errMsg)
 		return
 	}
 
@@ -177,16 +201,12 @@ func (h *WorkspaceHandler) handleDownloadFile(w http.ResponseWriter, r *http.Req
 }
 
 func (h *WorkspaceHandler) handleUpdateFile(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
+	channelID := r.PathValue("channelId")
 	id := r.PathValue("id")
-	f, err := h.Store.GetWorkspaceFile(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "File not found")
+
+	f, status, errMsg := h.loadWorkspaceFileForRequest(r, id, channelID)
+	if f == nil {
+		writeJSONError(w, status, errMsg)
 		return
 	}
 
@@ -211,15 +231,12 @@ func (h *WorkspaceHandler) handleUpdateFile(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *WorkspaceHandler) handleRenameFile(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
+	channelID := r.PathValue("channelId")
 	id := r.PathValue("id")
-	if _, err := h.Store.GetWorkspaceFile(id); err != nil {
-		writeJSONError(w, http.StatusNotFound, "File not found")
+
+	f, status, errMsg := h.loadWorkspaceFileForRequest(r, id, channelID)
+	if f == nil {
+		writeJSONError(w, status, errMsg)
 		return
 	}
 
@@ -245,16 +262,12 @@ func (h *WorkspaceHandler) handleRenameFile(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *WorkspaceHandler) handleDeleteFile(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
+	channelID := r.PathValue("channelId")
 	id := r.PathValue("id")
-	f, err := h.Store.GetWorkspaceFile(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "File not found")
+
+	f, status, errMsg := h.loadWorkspaceFileForRequest(r, id, channelID)
+	if f == nil {
+		writeJSONError(w, status, errMsg)
 		return
 	}
 
@@ -303,15 +316,12 @@ func (h *WorkspaceHandler) handleMkdir(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkspaceHandler) handleMoveFile(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
+	channelID := r.PathValue("channelId")
 	id := r.PathValue("id")
-	if _, err := h.Store.GetWorkspaceFile(id); err != nil {
-		writeJSONError(w, http.StatusNotFound, "File not found")
+
+	f, status, errMsg := h.loadWorkspaceFileForRequest(r, id, channelID)
+	if f == nil {
+		writeJSONError(w, status, errMsg)
 		return
 	}
 

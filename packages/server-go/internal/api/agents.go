@@ -11,6 +11,11 @@ import (
 type AgentHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
+	Hub    AgentFileProxy
+}
+
+type AgentFileProxy interface {
+	ProxyPluginRequest(agentID string, method string, path string, body []byte) (int, []byte, error)
 }
 
 func (h *AgentHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
@@ -23,6 +28,7 @@ func (h *AgentHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handl
 	mux.Handle("POST /api/v1/agents/{id}/rotate-api-key", wrap(h.handleRotateAPIKey))
 	mux.Handle("GET /api/v1/agents/{id}/permissions", wrap(h.handleGetPermissions))
 	mux.Handle("PUT /api/v1/agents/{id}/permissions", wrap(h.handleSetPermissions))
+	mux.Handle("GET /api/v1/agents/{id}/files", wrap(h.handleGetAgentFiles))
 }
 
 func sanitizeAgent(u *store.User) map[string]any {
@@ -323,4 +329,40 @@ func (h *AgentHandler) handleSetPermissions(w http.ResponseWriter, r *http.Reque
 		"permissions": permStrs,
 		"details":     details,
 	})
+}
+
+func (h *AgentHandler) handleGetAgentFiles(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id := r.PathValue("id")
+	agent, err := h.Store.GetAgent(id)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Agent not found")
+		return
+	}
+
+	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	if h.Hub == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "Agent not connected")
+		return
+	}
+
+	path := r.URL.Query().Get("path")
+	status, body, err := h.Hub.ProxyPluginRequest(id, "GET", "/api/v1/files?path="+path, nil)
+	if err != nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "Agent not connected")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	w.Write(body)
 }

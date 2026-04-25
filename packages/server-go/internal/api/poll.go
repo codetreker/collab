@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"collab-server/internal/auth"
+	"collab-server/internal/config"
 	"collab-server/internal/store"
 )
 
@@ -19,7 +20,9 @@ var channelChangeKinds = []string{
 }
 
 type EventSignaler interface {
-	EventSignal() <-chan struct{}
+	SubscribeEvents() chan struct{}
+	UnsubscribeEvents(chan struct{})
+	SignalNewEvents()
 	GetOnlineUserIDs() []string
 }
 
@@ -27,21 +30,68 @@ type PollHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 	Hub    EventSignaler
+	Config *config.Config
 }
 
 func (h *PollHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
-	mux.Handle("POST /api/v1/poll", authMw(http.HandlerFunc(h.handlePoll)))
+	mux.HandleFunc("POST /api/v1/poll", h.handlePoll)
 	mux.Handle("HEAD /api/v1/stream", authMw(http.HandlerFunc(h.handleStreamHead)))
-	mux.Handle("GET /api/v1/stream", authMw(http.HandlerFunc(h.handleStreamGet)))
+	mux.HandleFunc("GET /api/v1/stream", h.handleStreamGet)
+}
+
+func (h *PollHandler) authenticatePoll(r *http.Request, body *struct {
+	APIKey     string   `json:"api_key"`
+	Cursor     *int64   `json:"cursor"`
+	SinceID    *string  `json:"since_id"`
+	TimeoutMs  *int     `json:"timeout_ms"`
+	ChannelIDs []string `json:"channel_ids"`
+}) *store.User {
+	if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
+		if user, err := h.Store.GetUserByAPIKey(apiKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+			return user
+		}
+	}
+
+	if body.APIKey != "" {
+		if user, err := h.Store.GetUserByAPIKey(body.APIKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+			return user
+		}
+	}
+
+	if cookie, err := r.Cookie("collab_token"); err == nil {
+		if user := auth.ValidateJWT(h.Store, h.Config.JWTSecret, cookie.Value); user != nil {
+			return user
+		}
+	}
+
+	return nil
+}
+
+func (h *PollHandler) authenticateSSE(r *http.Request) *store.User {
+	if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
+		if user, err := h.Store.GetUserByAPIKey(apiKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+			return user
+		}
+	}
+
+	if apiKey := r.URL.Query().Get("api_key"); apiKey != "" {
+		if user, err := h.Store.GetUserByAPIKey(apiKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+			return user
+		}
+	}
+
+	if cookie, err := r.Cookie("collab_token"); err == nil {
+		if user := auth.ValidateJWT(h.Store, h.Config.JWTSecret, cookie.Value); user != nil {
+			return user
+		}
+	}
+
+	return nil
 }
 
 func (h *PollHandler) handlePoll(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
 	var body struct {
 		APIKey     string   `json:"api_key"`
 		Cursor     *int64   `json:"cursor"`
@@ -50,6 +100,12 @@ func (h *PollHandler) handlePoll(w http.ResponseWriter, r *http.Request) {
 		ChannelIDs []string `json:"channel_ids"`
 	}
 	readJSON(r, &body)
+
+	user := h.authenticatePoll(r, &body)
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 
 	userChannels := h.Store.GetUserChannelIDs(user.ID)
 	accessible := make(map[string]bool, len(userChannels))
@@ -96,6 +152,8 @@ func (h *PollHandler) handlePoll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(events) == 0 && timeoutMs > 0 && h.Hub != nil {
+		signal := h.Hub.SubscribeEvents()
+		defer h.Hub.UnsubscribeEvents(signal)
 		deadline := time.After(time.Duration(timeoutMs) * time.Millisecond)
 		for {
 			select {
@@ -105,7 +163,7 @@ func (h *PollHandler) handlePoll(w http.ResponseWriter, r *http.Request) {
 			case <-deadline:
 				writeJSONResponse(w, http.StatusOK, map[string]any{"cursor": cursor, "events": []any{}})
 				return
-			case <-h.Hub.EventSignal():
+			case <-signal:
 				events, err = h.Store.GetEventsSinceWithChanges(cursor, 100, filterIDs, channelChangeKinds)
 				if err != nil || len(events) > 0 {
 					goto respond
@@ -152,7 +210,7 @@ func (h *PollHandler) handleStreamHead(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PollHandler) handleStreamGet(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
+	user := h.authenticateSSE(r)
 	if user == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -190,9 +248,10 @@ func (h *PollHandler) handleStreamGet(w http.ResponseWriter, r *http.Request) {
 	defer memberRefresh.Stop()
 
 	ctx := r.Context()
-	var signal <-chan struct{}
+	var signal chan struct{}
 	if h.Hub != nil {
-		signal = h.Hub.EventSignal()
+		signal = h.Hub.SubscribeEvents()
+		defer h.Hub.UnsubscribeEvents(signal)
 	}
 
 	for {

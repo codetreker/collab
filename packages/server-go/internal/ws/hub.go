@@ -12,6 +12,12 @@ import (
 	"collab-server/internal/store"
 )
 
+type EventBroadcaster interface {
+	BroadcastEventToChannel(channelID string, eventType string, payload any)
+	BroadcastEventToAll(eventType string, payload any)
+	SignalNewEvents()
+}
+
 type Hub struct {
 	store   *store.Store
 	logger  *slog.Logger
@@ -26,22 +32,23 @@ type Hub struct {
 	plugins map[string]*PluginConn
 	remotes map[string]*RemoteConn
 
-	eventSignal chan struct{}
+	eventWaiters   map[chan struct{}]struct{}
+	eventWaitersMu sync.Mutex
 
 	mu sync.RWMutex
 }
 
 func NewHub(s *store.Store, logger *slog.Logger, cfg *config.Config) *Hub {
 	return &Hub{
-		store:       s,
-		logger:      logger,
-		config:      cfg,
-		cmdStore:    NewCommandStore(),
-		clients:     make(map[*Client]bool),
-		onlineUsers: make(map[string]map[*Client]bool),
-		plugins:     make(map[string]*PluginConn),
-		remotes:     make(map[string]*RemoteConn),
-		eventSignal: make(chan struct{}, 1),
+		store:        s,
+		logger:       logger,
+		config:       cfg,
+		cmdStore:     NewCommandStore(),
+		clients:      make(map[*Client]bool),
+		onlineUsers:  make(map[string]map[*Client]bool),
+		plugins:      make(map[string]*PluginConn),
+		remotes:      make(map[string]*RemoteConn),
+		eventWaiters: make(map[chan struct{}]struct{}),
 	}
 }
 
@@ -137,14 +144,44 @@ func (h *Hub) GetOnlineUserIDs() []string {
 }
 
 func (h *Hub) SignalNewEvents() {
-	select {
-	case h.eventSignal <- struct{}{}:
-	default:
+	h.eventWaitersMu.Lock()
+	for ch := range h.eventWaiters {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
 	}
+	h.eventWaitersMu.Unlock()
 }
 
-func (h *Hub) EventSignal() <-chan struct{} {
-	return h.eventSignal
+func (h *Hub) SubscribeEvents() chan struct{} {
+	ch := make(chan struct{}, 1)
+	h.eventWaitersMu.Lock()
+	h.eventWaiters[ch] = struct{}{}
+	h.eventWaitersMu.Unlock()
+	return ch
+}
+
+func (h *Hub) UnsubscribeEvents(ch chan struct{}) {
+	h.eventWaitersMu.Lock()
+	delete(h.eventWaiters, ch)
+	h.eventWaitersMu.Unlock()
+}
+
+func (h *Hub) BroadcastEventToChannel(channelID string, eventType string, payload any) {
+	h.BroadcastToChannel(channelID, map[string]any{
+		"type": eventType,
+		"data": payload,
+	}, nil)
+	h.SignalNewEvents()
+}
+
+func (h *Hub) BroadcastEventToAll(eventType string, payload any) {
+	h.BroadcastToAll(map[string]any{
+		"type": eventType,
+		"data": payload,
+	})
+	h.SignalNewEvents()
 }
 
 func (h *Hub) CommandStore() *CommandStore {

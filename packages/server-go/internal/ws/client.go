@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -134,13 +135,15 @@ var builtinCommandNames = map[string]bool{
 var commandNameRe = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 
 type wsMessage struct {
-	Type      string          `json:"type"`
-	ChannelID string          `json:"channel_id,omitempty"`
-	Content   string          `json:"content,omitempty"`
-	ClientID  string          `json:"client_id,omitempty"`
-	ReplyToID string          `json:"reply_to_id,omitempty"`
-	Mentions  []string        `json:"mentions,omitempty"`
-	Commands  json.RawMessage `json:"commands,omitempty"`
+	Type            string          `json:"type"`
+	ChannelID       string          `json:"channel_id,omitempty"`
+	Content         string          `json:"content,omitempty"`
+	ContentType     string          `json:"content_type,omitempty"`
+	ClientID        string          `json:"client_id,omitempty"`
+	ClientMessageID string          `json:"client_message_id,omitempty"`
+	ReplyToID       string          `json:"reply_to_id,omitempty"`
+	Mentions        []string        `json:"mentions,omitempty"`
+	Commands        json.RawMessage `json:"commands,omitempty"`
 }
 
 func HandleClient(hub *Hub) http.HandlerFunc {
@@ -175,7 +178,7 @@ func HandleClient(hub *Hub) http.HandlerFunc {
 
 		defer func() {
 			hub.Unregister(client)
-			hub.cmdStore.UnregisterByConnection(client.userID)
+			hub.cmdStore.UnregisterByConnection(fmt.Sprintf("%p", client))
 			hub.BroadcastToAll(map[string]any{
 				"type":    "presence",
 				"user_id": user.ID,
@@ -218,9 +221,22 @@ func HandleClient(hub *Hub) http.HandlerFunc {
 }
 
 func authenticateWS(hub *Hub, r *http.Request) *store.User {
+	if proto := r.Header.Get("Sec-WebSocket-Protocol"); strings.HasPrefix(proto, "Bearer,") {
+		apiKey := strings.TrimSpace(strings.TrimPrefix(proto, "Bearer,"))
+		if user, err := hub.store.GetUserByAPIKey(apiKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+			return user
+		}
+	}
+
 	if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
 		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 		if user, err := hub.store.GetUserByAPIKey(apiKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+			return user
+		}
+	}
+
+	if token := r.URL.Query().Get("token"); token != "" {
+		if user, err := hub.store.GetUserByAPIKey(token); err == nil && user.DeletedAt == nil && !user.Disabled {
 			return user
 		}
 	}
@@ -232,6 +248,11 @@ func authenticateWS(hub *Hub, r *http.Request) *store.User {
 	}
 
 	if hub.config.IsDevelopment() && hub.config.DevAuthBypass {
+		if userID := r.URL.Query().Get("user_id"); userID != "" {
+			if user, err := hub.store.GetUserByID(userID); err == nil {
+				return user
+			}
+		}
 		if devUserID := r.Header.Get("X-Dev-User-Id"); devUserID != "" {
 			if user, err := hub.store.GetUserByID(devUserID); err == nil {
 				return user
@@ -279,12 +300,18 @@ func handleTyping(c *Client, msg wsMessage) {
 }
 
 func handleSendMessage(c *Client, msg wsMessage) {
+	clientMsgID := msg.ClientMessageID
+	if clientMsgID == "" {
+		clientMsgID = msg.ClientID
+	}
+
 	nack := func(code, message string) {
 		c.SendJSON(map[string]any{
-			"type":      "message_nack",
-			"client_id": msg.ClientID,
-			"code":      code,
-			"message":   message,
+			"type":              "message_nack",
+			"client_id":        clientMsgID,
+			"client_message_id": clientMsgID,
+			"code":             code,
+			"message":          message,
 		})
 	}
 
@@ -310,9 +337,29 @@ func handleSendMessage(c *Client, msg wsMessage) {
 		return
 	}
 
-	ct := "text"
-	if strings.HasPrefix(content, "/") {
-		ct = "command"
+	ct := msg.ContentType
+	if ct == "" {
+		ct = "text"
+		if strings.HasPrefix(content, "/") {
+			ct = "command"
+		}
+	}
+	if ct != "text" && ct != "image" && ct != "command" {
+		nack("INVALID_CONTENT_TYPE", "content_type must be 'text', 'image', or 'command'")
+		return
+	}
+
+	if ct == "command" {
+		var cmdCheck struct {
+			Command string `json:"command"`
+			Params  any    `json:"params"`
+		}
+		if !strings.HasPrefix(content, "/") {
+			if err := json.Unmarshal([]byte(content), &cmdCheck); err != nil {
+				nack("INVALID_CONTENT_TYPE", "Command content_type requires valid JSON with command/params or /prefix")
+				return
+			}
+		}
 	}
 
 	var replyTo *string
@@ -328,9 +375,11 @@ func handleSendMessage(c *Client, msg wsMessage) {
 	}
 
 	c.SendJSON(map[string]any{
-		"type":       "message_ack",
-		"client_id":  msg.ClientID,
-		"message_id": created.ID,
+		"type":              "message_ack",
+		"client_id":        clientMsgID,
+		"client_message_id": clientMsgID,
+		"message_id":       created.ID,
+		"message":          created,
 	})
 
 	payload := mustJSON(map[string]any{
@@ -352,26 +401,49 @@ func handleSendMessage(c *Client, msg wsMessage) {
 }
 
 func handleRegisterCommands(c *Client, msg wsMessage) {
+	if c.user.Role != "agent" {
+		c.SendJSON(map[string]any{"type": "error", "code": "FORBIDDEN", "message": "Only agents can register commands"})
+		return
+	}
+
 	var cmds []AgentCommand
 	if err := json.Unmarshal(msg.Commands, &cmds); err != nil {
 		c.SendJSON(map[string]any{"type": "error", "message": "Invalid commands payload"})
 		return
 	}
 
+	var registered []string
+	var skipped []string
+	var valid []AgentCommand
+
 	for _, cmd := range cmds {
 		if !commandNameRe.MatchString(cmd.Name) {
-			c.SendJSON(map[string]any{"type": "error", "code": "INVALID_COMMAND", "message": "Invalid command name: " + cmd.Name})
-			return
+			skipped = append(skipped, cmd.Name)
+			continue
 		}
 		if builtinCommandNames[cmd.Name] {
-			c.SendJSON(map[string]any{"type": "error", "code": "INVALID_COMMAND", "message": "Cannot override builtin command: " + cmd.Name})
-			return
+			skipped = append(skipped, cmd.Name)
+			continue
 		}
+		if len(cmd.Description) > 200 {
+			skipped = append(skipped, cmd.Name)
+			continue
+		}
+		if len(cmd.Params) > 0 {
+			paramsJSON, _ := json.Marshal(cmd.Params)
+			if len(paramsJSON) > 16384 {
+				skipped = append(skipped, cmd.Name)
+				continue
+			}
+		}
+		valid = append(valid, cmd)
+		registered = append(registered, cmd.Name)
 	}
 
-	c.hub.cmdStore.Register(c.userID, c.userID, c.user.DisplayName, cmds)
+	connID := fmt.Sprintf("%p", c)
+	c.hub.cmdStore.Register(connID, c.userID, c.user.DisplayName, valid)
 
-	c.SendJSON(map[string]any{"type": "commands_registered", "count": len(cmds)})
+	c.SendJSON(map[string]any{"type": "commands_registered", "registered": registered, "skipped": skipped})
 
 	c.hub.BroadcastToAll(map[string]any{"type": "commands_updated"})
 }

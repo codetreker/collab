@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"mime"
@@ -49,6 +50,11 @@ func (h *UploadHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 
 	if err := r.ParseMultipartForm(maxSize); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			writeJSONError(w, http.StatusRequestEntityTooLarge, "File too large (max 10MB)")
+			return
+		}
 		writeJSONError(w, http.StatusBadRequest, "File too large (max 10MB)")
 		return
 	}

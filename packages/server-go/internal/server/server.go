@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -38,7 +40,7 @@ func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	}
 	srv.SetupRoutes()
 
-	hub.SetHandler(srv.mux)
+	hub.SetHandler(srv.Handler())
 
 	ctx := context.Background()
 	go hub.StartHeartbeat(ctx)
@@ -63,10 +65,13 @@ func (s *Server) SetupRoutes() {
 	authMw := auth.AuthMiddleware(s.store, s.cfg)
 	s.mux.Handle("GET /api/v1/users/me", authMw(http.HandlerFunc(authHandler.HandleGetMe)))
 
+	broadcaster := &hubBroadcastAdapter{s.hub}
+
 	// Messages
 	msgHandler := &api.MessageHandler{
 		Store:  s.store,
 		Logger: s.logger,
+		Hub:    broadcaster,
 	}
 	sendPerm := auth.RequirePermission(s.store, "message.send", func(r *http.Request) string {
 		return "channel:" + r.PathValue("channelId")
@@ -81,7 +86,7 @@ func (s *Server) SetupRoutes() {
 	userHandler.RegisterRoutes(s.mux, authMw)
 
 	// Channels
-	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
+	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
 	channelHandler.RegisterRoutes(s.mux, authMw)
 
 	// DMs
@@ -93,11 +98,11 @@ func (s *Server) SetupRoutes() {
 	adminHandler.RegisterRoutes(s.mux, authMw)
 
 	// Agents
-	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger}
+	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}}
 	agentHandler.RegisterRoutes(s.mux, authMw)
 
 	// Reactions
-	reactionHandler := &api.ReactionHandler{Store: s.store, Logger: s.logger}
+	reactionHandler := &api.ReactionHandler{Store: s.store, Logger: s.logger, Hub: broadcaster}
 	reactionHandler.RegisterRoutes(s.mux, authMw)
 
 	// Commands
@@ -113,11 +118,11 @@ func (s *Server) SetupRoutes() {
 	workspaceHandler.RegisterRoutes(s.mux, authMw)
 
 	// Remote
-	remoteHandler := &api.RemoteHandler{Store: s.store, Logger: s.logger}
+	remoteHandler := &api.RemoteHandler{Store: s.store, Logger: s.logger, Hub: &hubRemoteAdapter{s.hub}}
 	remoteHandler.RegisterRoutes(s.mux, authMw)
 
 	// Poll/SSE
-	pollHandler := &api.PollHandler{Store: s.store, Logger: s.logger, Hub: s.hub}
+	pollHandler := &api.PollHandler{Store: s.store, Logger: s.logger, Hub: s.hub, Config: s.cfg}
 	pollHandler.RegisterRoutes(s.mux, authMw)
 
 	// WebSocket endpoints
@@ -202,4 +207,55 @@ func (a *hubCommandAdapter) GetAllCommands() []api.AgentCommandGroup {
 		}
 	}
 	return result
+}
+
+type hubRemoteAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubRemoteAdapter) IsNodeOnline(nodeID string) bool {
+	return a.hub.GetRemote(nodeID) != nil
+}
+
+func (a *hubRemoteAdapter) ProxyRequest(nodeID string, action string, params map[string]string) (json.RawMessage, error) {
+	rc := a.hub.GetRemote(nodeID)
+	if rc == nil {
+		return nil, fmt.Errorf("node offline")
+	}
+	return rc.SendRequest(map[string]any{
+		"action": action,
+		"params": params,
+	})
+}
+
+type hubBroadcastAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubBroadcastAdapter) BroadcastEventToChannel(channelID string, eventType string, payload any) {
+	a.hub.BroadcastEventToChannel(channelID, eventType, payload)
+}
+
+func (a *hubBroadcastAdapter) BroadcastEventToAll(eventType string, payload any) {
+	a.hub.BroadcastEventToAll(eventType, payload)
+}
+
+func (a *hubBroadcastAdapter) SignalNewEvents() {
+	a.hub.SignalNewEvents()
+}
+
+type hubPluginAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubPluginAdapter) ProxyPluginRequest(agentID string, method string, path string, body []byte) (int, []byte, error) {
+	pc := a.hub.GetPlugin(agentID)
+	if pc == nil {
+		return 0, nil, fmt.Errorf("agent not connected")
+	}
+	resp, err := pc.SendRequest(method, path, body)
+	if err != nil {
+		return 0, nil, err
+	}
+	return resp.Status, resp.Body, nil
 }

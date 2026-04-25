@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -8,9 +10,15 @@ import (
 	"collab-server/internal/store"
 )
 
+type RemoteProxy interface {
+	IsNodeOnline(nodeID string) bool
+	ProxyRequest(nodeID string, action string, params map[string]string) (json.RawMessage, error)
+}
+
 type RemoteHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
+	Hub    RemoteProxy
 }
 
 func (h *RemoteHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
@@ -217,13 +225,122 @@ func (h *RemoteHandler) handleListChannelBindings(w http.ResponseWriter, r *http
 }
 
 func (h *RemoteHandler) handleNodeStatus(w http.ResponseWriter, r *http.Request) {
-	writeJSONResponse(w, http.StatusOK, map[string]any{"online": false})
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	nodeID := r.PathValue("nodeId")
+	node, err := h.Store.GetRemoteNode(nodeID)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Node not found")
+		return
+	}
+	if node.UserID != user.ID && user.Role != "admin" {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	online := h.Hub != nil && h.Hub.IsNodeOnline(nodeID)
+	writeJSONResponse(w, http.StatusOK, map[string]any{"online": online})
 }
 
 func (h *RemoteHandler) handleNodeLs(w http.ResponseWriter, r *http.Request) {
-	writeJSONError(w, http.StatusServiceUnavailable, "node_offline")
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	nodeID := r.PathValue("nodeId")
+	node, err := h.Store.GetRemoteNode(nodeID)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Node not found")
+		return
+	}
+	if node.UserID != user.ID && user.Role != "admin" {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	if h.Hub == nil || !h.Hub.IsNodeOnline(nodeID) {
+		writeJSONError(w, http.StatusServiceUnavailable, "node_offline")
+		return
+	}
+
+	path := r.URL.Query().Get("path")
+	resp, err := h.Hub.ProxyRequest(nodeID, "ls", map[string]string{"path": path})
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			writeJSONError(w, http.StatusGatewayTimeout, "timeout")
+			return
+		}
+		writeJSONError(w, http.StatusBadGateway, "Remote request failed")
+		return
+	}
+
+	writeRemoteResponse(w, resp)
 }
 
 func (h *RemoteHandler) handleNodeRead(w http.ResponseWriter, r *http.Request) {
-	writeJSONError(w, http.StatusServiceUnavailable, "node_offline")
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	nodeID := r.PathValue("nodeId")
+	node, err := h.Store.GetRemoteNode(nodeID)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Node not found")
+		return
+	}
+	if node.UserID != user.ID && user.Role != "admin" {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	if h.Hub == nil || !h.Hub.IsNodeOnline(nodeID) {
+		writeJSONError(w, http.StatusServiceUnavailable, "node_offline")
+		return
+	}
+
+	path := r.URL.Query().Get("path")
+	resp, err := h.Hub.ProxyRequest(nodeID, "read", map[string]string{"path": path})
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			writeJSONError(w, http.StatusGatewayTimeout, "timeout")
+			return
+		}
+		writeJSONError(w, http.StatusBadGateway, "Remote request failed")
+		return
+	}
+
+	writeRemoteResponse(w, resp)
+}
+
+func writeRemoteResponse(w http.ResponseWriter, resp json.RawMessage) {
+	var parsed struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(resp, &parsed); err == nil && parsed.Error != "" {
+		switch parsed.Error {
+		case "path_not_allowed":
+			writeJSONError(w, http.StatusForbidden, parsed.Error)
+		case "file_not_found":
+			writeJSONError(w, http.StatusNotFound, parsed.Error)
+		case "file_too_large":
+			writeJSONError(w, http.StatusRequestEntityTooLarge, parsed.Error)
+		case "timeout":
+			writeJSONError(w, http.StatusGatewayTimeout, parsed.Error)
+		default:
+			writeJSONError(w, http.StatusBadGateway, parsed.Error)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(resp)
 }

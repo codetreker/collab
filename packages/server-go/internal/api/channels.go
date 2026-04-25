@@ -32,6 +32,7 @@ type ChannelHandler struct {
 	Store  *store.Store
 	Config *config.Config
 	Logger *slog.Logger
+	Hub    EventBroadcaster
 }
 
 var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
@@ -189,9 +190,17 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 	result, _ := h.Store.GetChannelWithCounts(ch.ID, user.ID)
 	if result == nil {
 		writeJSONResponse(w,http.StatusCreated, map[string]any{"channel": ch})
-		return
+	} else {
+		writeJSONResponse(w,http.StatusCreated, map[string]any{"channel": result})
 	}
-	writeJSONResponse(w,http.StatusCreated, map[string]any{"channel": result})
+
+	h.Store.CreateEvent(&store.Event{
+		Kind:    "channel_created",
+		Payload: mustJSON(map[string]any{"channel": ch}),
+	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("channel_created", map[string]any{"channel": ch})
+	}
 }
 
 func (h *ChannelHandler) handleGetChannel(w http.ResponseWriter, r *http.Request) {
@@ -332,6 +341,15 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 
 	result, _ := h.Store.GetChannelWithCounts(channelID, user.ID)
 	writeJSONResponse(w,http.StatusOK, map[string]any{"channel": result})
+
+	h.Store.CreateEvent(&store.Event{
+		Kind:      "channel_updated",
+		ChannelID: channelID,
+		Payload:   mustJSON(map[string]any{"channel": result}),
+	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("channel_updated", map[string]any{"channel": result})
+	}
 }
 
 func (h *ChannelHandler) handleSetTopic(w http.ResponseWriter, r *http.Request) {
@@ -587,6 +605,15 @@ func (h *ChannelHandler) handleDeleteChannel(w http.ResponseWriter, r *http.Requ
 	scope := fmt.Sprintf("channel:%s", channelID)
 	h.Store.DeletePermissionsByScope(scope)
 
+	h.Store.CreateEvent(&store.Event{
+		Kind:      "channel_deleted",
+		ChannelID: channelID,
+		Payload:   mustJSON(map[string]any{"channel_id": channelID}),
+	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("channel_deleted", map[string]any{"channel_id": channelID})
+	}
+
 	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -697,6 +724,10 @@ func (h *ChannelHandler) handleCreateGroup(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("group_created", map[string]any{"group": group})
+	}
+
 	writeJSONResponse(w,http.StatusCreated, map[string]any{"group": group})
 }
 
@@ -744,6 +775,10 @@ func (h *ChannelHandler) handleUpdateGroup(w http.ResponseWriter, r *http.Reques
 
 	group.Name = name
 	writeJSONResponse(w,http.StatusOK, map[string]any{"group": group})
+
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("group_updated", map[string]any{"group": group})
+	}
 }
 
 func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
@@ -779,6 +814,11 @@ func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Reques
 	if ungroupedIDs == nil {
 		ungroupedIDs = []string{}
 	}
+
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToAll("group_deleted", map[string]any{"group_id": groupID})
+	}
+
 	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true, "ungrouped_channel_ids": ungroupedIDs})
 }
 

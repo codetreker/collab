@@ -15,6 +15,13 @@ import (
 type MessageHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
+	Hub    EventBroadcaster
+}
+
+type EventBroadcaster interface {
+	BroadcastEventToChannel(channelID string, eventType string, payload any)
+	BroadcastEventToAll(eventType string, payload any)
+	SignalNewEvents()
 }
 
 func (h *MessageHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler, sendPerm func(http.Handler) http.Handler) {
@@ -205,6 +212,15 @@ func (h *MessageHandler) handleCreateMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	h.Store.CreateEvent(&store.Event{
+		Kind:      "new_message",
+		ChannelID: channelID,
+		Payload:   mustJSON(map[string]any{"message": msg}),
+	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToChannel(channelID, "new_message", map[string]any{"message": msg})
+	}
+
 	writeJSONResponse(w, http.StatusCreated, map[string]any{"message": msg})
 }
 
@@ -265,6 +281,9 @@ func (h *MessageHandler) handleUpdateMessage(w http.ResponseWriter, r *http.Requ
 		ChannelID: existing.ChannelID,
 		Payload:   mustJSON(map[string]any{"id": messageID, "channel_id": existing.ChannelID, "sender_id": user.ID, "content": content, "system_message": "用户 " + user.DisplayName + " 编辑了消息"}),
 	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToChannel(existing.ChannelID, "message_edited", map[string]any{"message": msg})
+	}
 
 	writeJSONResponse(w, http.StatusOK, map[string]any{"message": msg})
 }
@@ -314,6 +333,9 @@ func (h *MessageHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Requ
 		ChannelID: existing.ChannelID,
 		Payload:   mustJSON(map[string]any{"message_id": messageID, "channel_id": existing.ChannelID, "deleted_at": deletedAt, "sender_id": user.ID, "system_message": "用户 " + user.DisplayName + " 删除了一条消息"}),
 	})
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToChannel(existing.ChannelID, "message_deleted", map[string]any{"message_id": messageID, "channel_id": existing.ChannelID, "deleted_at": deletedAt})
+	}
 
 	w.WriteHeader(http.StatusNoContent)
 }

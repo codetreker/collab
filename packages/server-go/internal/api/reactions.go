@@ -11,6 +11,7 @@ import (
 type ReactionHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
+	Hub    EventBroadcaster
 }
 
 func (h *ReactionHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
@@ -48,10 +49,21 @@ func (h *ReactionHandler) handleAddReaction(w http.ResponseWriter, r *http.Reque
 
 	h.Store.AddReaction(messageID, user.ID, body.Emoji)
 
+	msg, _ := h.Store.GetMessageByID(messageID)
+
 	reactions, err := h.Store.GetReactionsByMessage(messageID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to get reactions")
 		return
+	}
+
+	if h.Hub != nil && msg != nil {
+		h.Store.CreateEvent(&store.Event{
+			Kind:      "reaction_update",
+			ChannelID: msg.ChannelID,
+			Payload:   mustJSON(map[string]any{"message_id": messageID, "reactions": reactions}),
+		})
+		h.Hub.BroadcastEventToChannel(msg.ChannelID, "reaction_update", map[string]any{"message_id": messageID, "reactions": reactions})
 	}
 
 	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true, "reactions": reactions})
@@ -80,10 +92,21 @@ func (h *ReactionHandler) handleRemoveReaction(w http.ResponseWriter, r *http.Re
 
 	h.Store.RemoveReaction(messageID, user.ID, body.Emoji)
 
+	msg, _ := h.Store.GetMessageByID(messageID)
+
 	reactions, err := h.Store.GetReactionsByMessage(messageID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to get reactions")
 		return
+	}
+
+	if h.Hub != nil && msg != nil {
+		h.Store.CreateEvent(&store.Event{
+			Kind:      "reaction_update",
+			ChannelID: msg.ChannelID,
+			Payload:   mustJSON(map[string]any{"message_id": messageID, "reactions": reactions}),
+		})
+		h.Hub.BroadcastEventToChannel(msg.ChannelID, "reaction_update", map[string]any{"message_id": messageID, "reactions": reactions})
 	}
 
 	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true, "reactions": reactions})

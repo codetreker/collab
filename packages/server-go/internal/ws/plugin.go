@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/coder/websocket"
+	"github.com/google/uuid"
 )
 
 type PluginConn struct {
@@ -20,16 +23,29 @@ type PluginConn struct {
 	send    chan []byte
 	done    chan struct{}
 	alive   bool
+
+	pendingMu sync.Mutex
+	pending   map[string]chan PluginResponse
+}
+
+type PluginResponse struct {
+	Status int
+	Body   []byte
 }
 
 func HandlePlugin(hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if !strings.HasPrefix(authHeader, "Bearer ") {
+		var apiKey string
+		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+			apiKey = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+		if apiKey == "" {
+			apiKey = r.URL.Query().Get("apiKey")
+		}
+		if apiKey == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 		user, err := hub.store.GetUserByAPIKey(apiKey)
 		if err != nil || user.DeletedAt != nil || user.Disabled {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -52,6 +68,7 @@ func HandlePlugin(hub *Hub) http.HandlerFunc {
 			send:    make(chan []byte, sendBufSize),
 			done:    make(chan struct{}),
 			alive:   true,
+			pending: make(map[string]chan PluginResponse),
 		}
 
 		hub.RegisterPlugin(user.ID, pc)
@@ -88,9 +105,22 @@ func HandlePlugin(hub *Hub) http.HandlerFunc {
 				// alive already set
 			case "api_request":
 				go pc.handleAPIRequest(msg.ID, msg.Data)
+			case "api_response":
+				go pc.handleAPIResponse(msg.ID, msg.Data)
 			}
 		}
 	}
+}
+
+func (pc *PluginConn) handleAPIResponse(id string, data json.RawMessage) {
+	var resp struct {
+		Status int             `json:"status"`
+		Body   json.RawMessage `json:"body"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return
+	}
+	pc.resolveRequest(id, resp.Status, resp.Body)
 }
 
 func (pc *PluginConn) handleAPIRequest(id string, data json.RawMessage) {
@@ -125,12 +155,20 @@ func (pc *PluginConn) handleAPIRequest(id string, data json.RawMessage) {
 	rec := httptest.NewRecorder()
 	pc.hub.handler.ServeHTTP(rec, httpReq)
 
+	var responseBody any
+	bodyStr := rec.Body.String()
+	if json.Valid([]byte(bodyStr)) {
+		responseBody = json.RawMessage(bodyStr)
+	} else {
+		responseBody = bodyStr
+	}
+
 	pc.sendJSON(map[string]any{
 		"type": "api_response",
 		"id":   id,
 		"data": map[string]any{
 			"status": rec.Code,
-			"body":   rec.Body.String(),
+			"body":   responseBody,
 		},
 	})
 }
@@ -150,6 +188,53 @@ func (pc *PluginConn) Send(data []byte) {
 	select {
 	case pc.send <- data:
 	default:
+	}
+}
+
+func (pc *PluginConn) SendRequest(method, path string, body []byte) (PluginResponse, error) {
+	id := uuid.NewString()
+	ch := make(chan PluginResponse, 1)
+
+	pc.pendingMu.Lock()
+	pc.pending[id] = ch
+	pc.pendingMu.Unlock()
+
+	defer func() {
+		pc.pendingMu.Lock()
+		delete(pc.pending, id)
+		pc.pendingMu.Unlock()
+	}()
+
+	req := map[string]any{
+		"type": "api_request",
+		"id":   id,
+		"data": map[string]any{
+			"method": method,
+			"path":   path,
+		},
+	}
+	if body != nil {
+		req["data"].(map[string]any)["body"] = json.RawMessage(body)
+	}
+	pc.sendJSON(req)
+
+	select {
+	case resp := <-ch:
+		return resp, nil
+	case <-time.After(10 * time.Second):
+		return PluginResponse{}, context.DeadlineExceeded
+	}
+}
+
+func (pc *PluginConn) resolveRequest(id string, status int, body []byte) {
+	pc.pendingMu.Lock()
+	ch, ok := pc.pending[id]
+	pc.pendingMu.Unlock()
+	if ok {
+		select {
+		case ch <- PluginResponse{Status: status, Body: body}:
+		default:
+		}
 	}
 }
 

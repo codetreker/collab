@@ -42,8 +42,15 @@ func (cs *CommandStore) Register(connectionID, agentID, agentName string, cmds [
 
 	cs.removeByConnLocked(connectionID)
 
-	if len(cs.commands)+len(cmds) > 100 {
-		allowed := 100 - len(cs.commands)
+	agentCount := 0
+	for _, c := range cs.commands {
+		if c.AgentID == agentID && c.ConnectionID != connectionID {
+			agentCount++
+		}
+	}
+
+	if agentCount+len(cmds) > 100 {
+		allowed := 100 - agentCount
 		if allowed < 0 {
 			allowed = 0
 		}

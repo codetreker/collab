@@ -98,3 +98,44 @@ func writeJSON401(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte(`{"error":"Unauthorized"}`))
 }
+
+func AuthenticateFlexible(s *store.Store, cfg *config.Config, r *http.Request) *store.User {
+	if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
+		if user, err := s.GetUserByAPIKey(apiKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+			return user
+		}
+	}
+
+	if cookie, err := r.Cookie("collab_token"); err == nil {
+		if user := ValidateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
+			return user
+		}
+	}
+
+	if cfg.IsDevelopment() && cfg.DevAuthBypass {
+		if devUserID := r.Header.Get("X-Dev-User-Id"); devUserID != "" {
+			if user, err := s.GetUserByID(devUserID); err == nil {
+				return user
+			}
+		}
+	}
+
+	return nil
+}
+
+func AuthenticateFromAPIKey(s *store.Store, apiKey string) *store.User {
+	if apiKey == "" {
+		return nil
+	}
+	user, err := s.GetUserByAPIKey(apiKey)
+	if err != nil || user.DeletedAt != nil || user.Disabled {
+		return nil
+	}
+	return user
+}
+
+func AuthenticateFromQuery(s *store.Store, r *http.Request, paramName string) *store.User {
+	apiKey := r.URL.Query().Get(paramName)
+	return AuthenticateFromAPIKey(s, apiKey)
+}
