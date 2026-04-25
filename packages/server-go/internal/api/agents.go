@@ -356,7 +356,7 @@ func (h *AgentHandler) handleGetAgentFiles(w http.ResponseWriter, r *http.Reques
 	}
 
 	path := r.URL.Query().Get("path")
-	status, body, err := h.Hub.ProxyPluginRequest(id, "GET", "/api/v1/files?path="+path, nil)
+	status, body, err := h.Hub.ProxyPluginRequest(id, "read_file", path, nil)
 	if err != nil {
 		writeJSONError(w, http.StatusServiceUnavailable, "Agent not connected")
 		return

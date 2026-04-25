@@ -62,7 +62,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.signAndSetCookie(w, user)
+	h.signAndSetCookie(w, r, user)
 	writeJSONResponse(w, http.StatusOK, map[string]any{"user": sanitizeUser(user)})
 }
 
@@ -146,7 +146,7 @@ func (h *AuthHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		h.Logger.Error("failed to add user to public channels", "error", err)
 	}
 
-	h.signAndSetCookie(w, user)
+	h.signAndSetCookie(w, r, user)
 	writeJSONResponse(w, http.StatusCreated, map[string]any{"user": sanitizeUser(user)})
 }
 
@@ -188,7 +188,7 @@ func (h *AuthHandler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 	writeJSONResponse(w, http.StatusOK, map[string]any{"user": u})
 }
 
-func (h *AuthHandler) signAndSetCookie(w http.ResponseWriter, user *store.User) {
+func (h *AuthHandler) signAndSetCookie(w http.ResponseWriter, r *http.Request, user *store.User) {
 	email := ""
 	if user.Email != nil {
 		email = *user.Email
@@ -218,7 +218,10 @@ func (h *AuthHandler) signAndSetCookie(w http.ResponseWriter, user *store.User) 
 		MaxAge:   604800,
 	}
 	if !h.Config.IsDevelopment() {
-		cookie.Secure = true
+		host := strings.Split(r.Host, ":")[0]
+		if host != "localhost" && host != "127.0.0.1" {
+			cookie.Secure = true
+		}
 	}
 	http.SetCookie(w, cookie)
 }

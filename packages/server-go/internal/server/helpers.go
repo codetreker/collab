@@ -44,7 +44,7 @@ func ParseIDParam(r *http.Request, name string) string {
 
 // respondNotImplemented returns a 501 for placeholder routes.
 func respondNotImplemented(w http.ResponseWriter, r *http.Request) {
-	JSONError(w, http.StatusNotImplemented, "Not implemented")
+	JSONError(w, http.StatusNotFound, "Not found")
 }
 
 // respondHealthCheck is defined in server.go via SetupRoutes.

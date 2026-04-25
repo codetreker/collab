@@ -166,7 +166,7 @@ func (h *WorkspaceHandler) loadWorkspaceFileForRequest(r *http.Request, fileID, 
 		return nil, http.StatusNotFound, "File not found"
 	}
 
-	if f.UserID != user.ID && !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
+	if f.UserID != user.ID && user.Role != "admin" {
 		return nil, http.StatusForbidden, "Forbidden"
 	}
 

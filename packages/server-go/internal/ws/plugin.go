@@ -206,10 +206,10 @@ func (pc *PluginConn) SendRequest(method, path string, body []byte) (PluginRespo
 	}()
 
 	req := map[string]any{
-		"type": "api_request",
+		"type": "request",
 		"id":   id,
 		"data": map[string]any{
-			"method": method,
+			"action": method,
 			"path":   path,
 		},
 	}

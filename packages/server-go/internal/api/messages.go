@@ -21,6 +21,7 @@ type MessageHandler struct {
 type EventBroadcaster interface {
 	BroadcastEventToChannel(channelID string, eventType string, payload any)
 	BroadcastEventToAll(eventType string, payload any)
+	BroadcastEventToUser(userID string, eventType string, payload any)
 	SignalNewEvents()
 }
 

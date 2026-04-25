@@ -139,9 +139,10 @@ func (s *Server) SetupRoutes() {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]any{
-		"status":    "ok",
-		"timestamp": time.Now().UnixMilli(),
-		"uptime":    time.Since(s.startTime).Seconds(),
+		"status":     "ok",
+		"timestamp":  time.Now().UnixMilli(),
+		"uptime":     time.Since(s.startTime).Seconds(),
+		"ws_clients": s.hub.ClientCount(),
 	})
 }
 
@@ -238,6 +239,14 @@ func (a *hubBroadcastAdapter) BroadcastEventToChannel(channelID string, eventTyp
 
 func (a *hubBroadcastAdapter) BroadcastEventToAll(eventType string, payload any) {
 	a.hub.BroadcastEventToAll(eventType, payload)
+}
+
+func (a *hubBroadcastAdapter) BroadcastEventToUser(userID string, eventType string, payload any) {
+	a.hub.BroadcastToUser(userID, map[string]any{
+		"type": eventType,
+		"data": payload,
+	})
+	a.hub.SignalNewEvents()
 }
 
 func (a *hubBroadcastAdapter) SignalNewEvents() {

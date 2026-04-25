@@ -188,6 +188,12 @@ func (h *Hub) CommandStore() *CommandStore {
 	return h.cmdStore
 }
 
+func (h *Hub) ClientCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients)
+}
+
 func (h *Hub) Store() *store.Store {
 	return h.store
 }
