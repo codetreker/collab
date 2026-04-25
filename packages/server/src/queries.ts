@@ -18,10 +18,7 @@ export function listChannels(db: Database.Database): (Channel & { member_count: 
          AND (c.visibility = 'public' OR c.visibility IS NULL)
          AND c.deleted_at IS NULL
        GROUP BY c.id
-       ORDER BY
-         CASE WHEN (SELECT MAX(m2.created_at) FROM messages m2 WHERE m2.channel_id = c.id) IS NULL THEN 1 ELSE 0 END,
-         (SELECT MAX(m3.created_at) FROM messages m3 WHERE m3.channel_id = c.id) DESC,
-         c.created_at DESC`,
+       ORDER BY c.position ASC, c.created_at ASC`,
     )
     .all() as (Channel & { member_count: number; last_message_at: number | null })[];
 }
@@ -51,9 +48,7 @@ export function listChannelsWithUnread(
        GROUP BY c.id
        ORDER BY
          CASE WHEN cm.user_id IS NOT NULL THEN 0 ELSE 1 END,
-         CASE WHEN (SELECT MAX(m3.created_at) FROM messages m3 WHERE m3.channel_id = c.id) IS NULL THEN 1 ELSE 0 END,
-         (SELECT MAX(m4.created_at) FROM messages m4 WHERE m4.channel_id = c.id) DESC,
-         c.created_at DESC`,
+         c.position ASC, c.created_at ASC`,
     )
     .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[];
 }
@@ -80,10 +75,7 @@ export function listAllChannelsForAdmin(
        WHERE (c.type = 'channel' OR c.type IS NULL)
          AND c.deleted_at IS NULL
        GROUP BY c.id
-       ORDER BY
-         CASE WHEN (SELECT MAX(m3.created_at) FROM messages m3 WHERE m3.channel_id = c.id) IS NULL THEN 1 ELSE 0 END,
-         (SELECT MAX(m4.created_at) FROM messages m4 WHERE m4.channel_id = c.id) DESC,
-         c.created_at DESC`,
+       ORDER BY c.position ASC, c.created_at ASC`,
     )
     .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[];
 }
@@ -179,6 +171,52 @@ export function updateChannel(
 
   db.prepare('UPDATE channels SET name = ?, topic = ?, visibility = ? WHERE id = ?').run(name, topic, visibility, id);
   return { ...channel, name, topic, visibility };
+}
+
+export function getChannelsByPosition(db: Database.Database): Channel[] {
+  return db
+    .prepare('SELECT * FROM channels WHERE deleted_at IS NULL ORDER BY position ASC')
+    .all() as Channel[];
+}
+
+export function updateChannelPosition(
+  db: Database.Database,
+  channelId: string,
+  position: string,
+): void {
+  db.prepare('UPDATE channels SET position = ? WHERE id = ?').run(position, channelId);
+}
+
+export function getAdjacentChannelPositions(
+  db: Database.Database,
+  afterId: string | null,
+): { before: string | null; after: string | null } {
+  if (afterId === null) {
+    // Inserting at the very top: get the first (smallest) position
+    const first = db
+      .prepare(
+        'SELECT position FROM channels WHERE deleted_at IS NULL ORDER BY position ASC LIMIT 1',
+      )
+      .get() as { position: string } | undefined;
+    return { before: null, after: first?.position ?? null };
+  }
+
+  // Get the afterId's position and the next channel's position
+  const current = db
+    .prepare('SELECT position FROM channels WHERE id = ? AND deleted_at IS NULL')
+    .get(afterId) as { position: string } | undefined;
+
+  if (!current) {
+    return { before: null, after: null };
+  }
+
+  const next = db
+    .prepare(
+      'SELECT position FROM channels WHERE deleted_at IS NULL AND position > ? ORDER BY position ASC LIMIT 1',
+    )
+    .get(current.position) as { position: string } | undefined;
+
+  return { before: current.position, after: next?.position ?? null };
 }
 
 export function softDeleteChannel(db: Database.Database, id: string): boolean {
