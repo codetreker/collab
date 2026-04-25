@@ -17,6 +17,7 @@
 | 8 | [公开频道预览](preview.md) | `preview.md` |
 | 9 | [DM 页面](dm.md) | `dm.md` |
 | 10 | [Slash Commands](slash-commands.md) | `slash-commands.md` |
+| 11 | [频道排序与分组](channel-sort-groups.md) | `channel-sort-groups.md` |
 
 ## 附录：设计说明
 
