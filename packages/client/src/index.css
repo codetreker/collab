@@ -1721,7 +1721,11 @@ body {
     width: 100vw;
   }
 
-  .channel-header {
+  .channel-header,
+  .admin-sidebar-header,
+  .admin-section-header,
+  .node-manager-header,
+  .workspace-manager-sidebar > div:first-child {
     padding-left: 58px;
   }
 
@@ -1880,6 +1884,13 @@ body {
 
 .hamburger-btn {
   top: calc(4px + env(safe-area-inset-top, 0px));
+}
+
+.admin-sidebar-header,
+.admin-section-header,
+.node-manager-header,
+.workspace-manager-sidebar > div:first-child {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* ─── Login Page ─────────────────────────────────────── */
