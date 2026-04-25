@@ -3,16 +3,16 @@ package store
 import "time"
 
 type Channel struct {
-	ID         string  `gorm:"primaryKey;size:36"`
-	Name       string  `gorm:"not null;unique;size:100"`
-	Topic      string  `gorm:"not null;default:'';size:500"`
-	Visibility string  `gorm:"not null;default:public;size:20"`
-	CreatedAt  int64   `gorm:"not null"`
-	CreatedBy  string  `gorm:"not null;size:36;index"`
-	Type       string  `gorm:"not null;default:channel;size:20"`
-	DeletedAt  *int64  `gorm:"index"`
-	Position   string  `gorm:"not null;default:0|aaaaaa;size:50;index"`
-	GroupID    *string `gorm:"size:36;index"`
+	ID         string  `gorm:"primaryKey;size:36" json:"id"`
+	Name       string  `gorm:"not null;unique;size:100" json:"name"`
+	Topic      string  `gorm:"not null;default:'';size:500" json:"topic"`
+	Visibility string  `gorm:"not null;default:public;size:20" json:"visibility"`
+	CreatedAt  int64   `gorm:"not null" json:"created_at"`
+	CreatedBy  string  `gorm:"not null;size:36;index" json:"created_by"`
+	Type       string  `gorm:"not null;default:channel;size:20" json:"type"`
+	DeletedAt  *int64  `gorm:"index" json:"deleted_at,omitempty"`
+	Position   string  `gorm:"not null;default:0|aaaaaa;size:50;index" json:"position"`
+	GroupID    *string `gorm:"size:36;index" json:"group_id,omitempty"`
 }
 
 type ChannelGroup struct {
@@ -40,15 +40,15 @@ type User struct {
 }
 
 type Message struct {
-	ID          string  `gorm:"primaryKey;size:36"`
-	ChannelID   string  `gorm:"not null;size:36;index:idx_messages_channel_time,priority:1"`
-	SenderID    string  `gorm:"not null;size:36;index"`
-	Content     string  `gorm:"not null"`
-	ContentType string  `gorm:"not null;default:text;size:20"`
-	ReplyToID   *string `gorm:"size:36;index"`
-	CreatedAt   int64   `gorm:"not null;index:idx_messages_channel_time,priority:2,sort:desc"`
-	EditedAt    *int64
-	DeletedAt   *int64  `gorm:"index"`
+	ID          string  `gorm:"primaryKey;size:36" json:"id"`
+	ChannelID   string  `gorm:"not null;size:36;index:idx_messages_channel_time,priority:1" json:"channel_id"`
+	SenderID    string  `gorm:"not null;size:36;index" json:"sender_id"`
+	Content     string  `gorm:"not null" json:"content"`
+	ContentType string  `gorm:"not null;default:text;size:20" json:"content_type"`
+	ReplyToID   *string `gorm:"size:36;index" json:"reply_to_id,omitempty"`
+	CreatedAt   int64   `gorm:"not null;index:idx_messages_channel_time,priority:2,sort:desc" json:"created_at"`
+	EditedAt    *int64  `json:"edited_at,omitempty"`
+	DeletedAt   *int64  `gorm:"index" json:"deleted_at,omitempty"`
 }
 
 type ChannelMember struct {

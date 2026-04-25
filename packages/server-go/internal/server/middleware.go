@@ -59,6 +59,10 @@ func (sr *statusRecorder) WriteHeader(code int) {
 	sr.ResponseWriter.WriteHeader(code)
 }
 
+func (sr *statusRecorder) Unwrap() http.ResponseWriter {
+	return sr.ResponseWriter
+}
+
 func loggerMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
