@@ -72,6 +72,38 @@ func (s *Server) SetupRoutes() {
 	dmHandler := &api.DmHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
 	dmHandler.RegisterRoutes(s.mux, authMw)
 
+	// Admin
+	adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
+	adminHandler.RegisterRoutes(s.mux, authMw)
+
+	// Agents
+	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger}
+	agentHandler.RegisterRoutes(s.mux, authMw)
+
+	// Reactions
+	reactionHandler := &api.ReactionHandler{Store: s.store, Logger: s.logger}
+	reactionHandler.RegisterRoutes(s.mux, authMw)
+
+	// Commands
+	commandHandler := &api.CommandHandler{Store: s.store, Logger: s.logger}
+	commandHandler.RegisterRoutes(s.mux, authMw)
+
+	// Upload
+	uploadHandler := &api.UploadHandler{Config: s.cfg, Logger: s.logger}
+	uploadHandler.RegisterRoutes(s.mux, authMw)
+
+	// Workspace
+	workspaceHandler := &api.WorkspaceHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
+	workspaceHandler.RegisterRoutes(s.mux, authMw)
+
+	// Remote
+	remoteHandler := &api.RemoteHandler{Store: s.store, Logger: s.logger}
+	remoteHandler.RegisterRoutes(s.mux, authMw)
+
+	// Poll/SSE
+	pollHandler := &api.PollHandler{Store: s.store, Logger: s.logger}
+	pollHandler.RegisterRoutes(s.mux, authMw)
+
 	s.mux.HandleFunc("/api/v1/", respondNotImplemented)
 
 	s.mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(s.cfg.UploadDir))))
