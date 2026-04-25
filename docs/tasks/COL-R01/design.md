@@ -36,6 +36,7 @@ Collab 当前 server 位于 `packages/server/src/`，基于 TypeScript、Fastify
 - WebSocket：`github.com/coder/websocket`
 - SQLite：`github.com/mattn/go-sqlite3`（CGO）
 - JWT：`github.com/golang-jwt/jwt/v5`
+- Password hash：`golang.org/x/crypto/bcrypt`
 - 测试：`github.com/stretchr/testify`
 
 保持不变：
@@ -135,12 +136,13 @@ Go `internal/config.Config` 从环境变量读取，启动时集中校验：
 | `DATABASE_PATH` | `data/collab.db` | SQLite 文件 |
 | `UPLOAD_DIR` | `data/uploads` | `/uploads/*` 静态目录 |
 | `WORKSPACE_DIR` | `data/workspaces` | workspace 文件数据 |
-| `JWT_SECRET` | 空 | 生产环境必填 |
+| `CLIENT_DIST` | `packages/client/dist` | 前端构建产物目录；Docker 内为 `/app/client/dist` |
+| `JWT_SECRET` | `dev-secret`（development）/ 空（production） | JWT 签发与验证密钥；生产环境必填 |
 | `DEV_AUTH_BYPASS` | `false` | development only |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | 空 | bootstrap admin |
 | `AGENT_*_API_KEY` | 随机 | legacy seed agents |
 
-生产环境如果 `JWT_SECRET` 为空，启动失败；开发环境允许空 secret，但 JWT cookie auth 只有 secret 非空时才验证。
+生产环境如果 `JWT_SECRET` 为空，启动失败；开发环境默认使用 `dev-secret`，确保本地签发和验证 JWT cookie 使用同一密钥。`DEV_AUTH_BYPASS` 只影响认证兜底，不改变 JWT 校验逻辑。
 
 ## 7. 中间件链
 
@@ -151,17 +153,20 @@ Recover
   -> RequestID / Logger
   -> CORS
   -> SecurityHeaders
+  -> RateLimiter
   -> StaticBypass
   -> AuthMiddleware
   -> Route Handler
   -> JSON Error Adapter
 ```
 
+`RateLimiter` 先按 client IP 做轻量内存限流；`POST /api/v1/auth/register` 固定限制为 10 req/min，超限返回 `429 {"error":"Rate limit exceeded"}`。其他端点可按 TS 行为保留更宽松默认值或仅记录。
+
 鉴权白名单与 TS 保持一致：
 
 - `/health`
 - `/api/v1/poll`
-- `/api/v1/stream` 和 query variant
+- `/api/v1/stream` 和 `/api/v1/stream?*` query variant
 - `/api/v1/auth/*`
 - `/assets/*`
 - `/uploads/*`
@@ -191,7 +196,7 @@ Set-Cookie: collab_token=...; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800
 { "user": { "id": "u1", "display_name": "Alice", "role": "member" } }
 ```
 
-Go 实现密码哈希需要与现有 bcrypt hash 兼容。技术栈未列 bcrypt 包，建议增加 `golang.org/x/crypto/bcrypt`；如果依赖严格受限，则注册/登录无法兼容现有 `password_hash`，这是开放问题。
+Go 实现密码哈希使用 `golang.org/x/crypto/bcrypt`，必须兼容现有 `password_hash`，并用于新用户注册、管理员创建/重置密码和登录校验。
 
 WS/SSE 鉴权兼容入口：
 
@@ -230,6 +235,8 @@ POST /api/v1/auth/register
 { "user": { "id": "uuid", "display_name": "Alice", "role": "member", "email": "alice@example.com" } }
 ```
 
+注册校验保持服务端强约束：`password` UTF-8 bytes 长度必须为 8-72（bcrypt 限制），`display_name` 字符长度必须为 1-50，email trim/lowercase 后唯一。注册成功后自动加入所有未删除的 public channels，并设置登录 cookie。
+
 ### 9.2 用户、Admin、Agent
 
 | Method | Path | Body / Query | 响应 |
@@ -257,6 +264,8 @@ POST /api/v1/auth/register
 | `GET` | `/api/v1/agents/:id/permissions` | - | `{agent_id,permissions,details}` |
 | `PUT` | `/api/v1/agents/:id/permissions` | `{permissions:[{permission,scope?}]}` | `{agent_id,permissions,details}` |
 | `GET` | `/api/v1/agents/:id/files?path=...` | owner only | proxied plugin file result |
+
+Admin 用户操作业务错误需与 TS 行为兼容：不能删除当前登录用户，不能修改当前登录用户自己的 `role`，soft delete 用户时需要级联 soft delete 其 owner-scoped agents 并失效这些 agents 的 API key/在线连接。
 
 ```json
 POST /api/v1/agents
@@ -300,7 +309,7 @@ POST /api/v1/agents
 | `POST` | `/api/v1/dm/:userId` | - | `{channel,peer}` |
 | `GET` | `/api/v1/dm` | - | `{channels}` |
 | `GET` | `/api/v1/channels/:channelId/messages?before=&after=&limit=` | limit max 200 | `{messages,has_more}` |
-| `GET` | `/api/v1/channels/:channelId/messages/search?q=` | - | `{messages}` |
+| `GET` | `/api/v1/channels/:channelId/messages/search?q=&limit=` | limit max 50 | `{messages}` |
 | `POST` | `/api/v1/channels/:channelId/messages` | `{content,content_type?,reply_to_id?,mentions?}` | `201 {message}` |
 | `PUT` | `/api/v1/messages/:messageId` | `{content}` | `{message}` |
 | `DELETE` | `/api/v1/messages/:messageId` | - | `204` |
@@ -357,6 +366,8 @@ Authorization: Bearer col_xxx
 }
 ```
 
+`/api/v1/poll` 必须把请求中的 `channel_ids` 与当前用户可访问频道集合取交集；无权限频道静默过滤，事件查询只使用过滤后的 channel IDs，避免 private channel 泄露。未传 `channel_ids` 时使用用户当前可访问的全部频道。
+
 SSE event 格式：
 
 ```text
@@ -368,6 +379,8 @@ event: heartbeat
 id: 101
 data: {}
 ```
+
+SSE 连接建立并完成 header flush 后先写一帧注释 `:connected\n\n`，方便客户端区分网络已连通但尚无业务事件的状态。
 
 ### 9.5 Upload、Workspace、Remote
 
@@ -394,6 +407,8 @@ data: {}
 | `GET` | `/api/v1/remote/nodes/:nodeId/read?path=` | proxied | remote result |
 | `GET` | `/api/v1/remote/nodes/:nodeId/status` | - | `{online}` |
 
+workspace 同一用户、频道、父目录下文件名冲突时自动重命名：先保留原名，冲突后依次尝试 `name (1).ext`、`name (2).ext`；目录无扩展名时使用 `name (1)`。DB 唯一约束仍作为最后防线，冲突重试次数耗尽返回 `409`。
+
 ```json
 POST /api/v1/remote/nodes
 { "machine_name": "mbp-1" }
@@ -403,6 +418,8 @@ POST /api/v1/remote/nodes
 ```
 
 ## 10. WS 消息类型映射
+
+所有 WebSocket connection 必须使用 per-connection write pump/channel 模式：业务 goroutine 只向 outbound channel 投递消息，单独 write pump 串行调用 `websocket.Conn.Write`，并在 close path 统一关闭 channel 和连接。禁止多个 goroutine 直接并发写同一个 `coder/websocket` connection。
 
 ### 10.1 Client WS `/ws`
 
@@ -419,6 +436,8 @@ POST /api/v1/remote/nodes
 | `typing` | `{channel_id}` | 向同频道其他订阅者广播 `typing` |
 | `send_message` | `{channel_id,content,content_type?,reply_to_id?,mentions?,client_message_id?}` | 创建消息，ack/nack，广播 `new_message` |
 | `register_commands` | `{commands}` | agent only，注册 slash commands |
+
+`register_commands` 边界：每个 agent 最多注册 100 条命令；内置命令名冲突时跳过并计入 `skipped`，不覆盖 builtin；命令名必须匹配 `^[a-z][a-z0-9_-]{0,31}$`；`description` 最长 200 chars，`params` schema JSON 序列化后最长 16KB，超限命令跳过并在响应中返回原因。
 
 服务端到客户端：
 
@@ -454,6 +473,8 @@ POST /api/v1/remote/nodes
 
 客户端到服务端：`ping`、`pong`、`response`、`api_request`。服务端到客户端：`pong`、`request`、`event`、`api_response`、`error`。
 
+Plugin WS 不做 server-initiated heartbeat；服务端只在收到 client `ping` 时响应 `pong`，并用读超时/连接关闭感知离线。
+
 ```json
 // plugin -> server
 { "type": "api_request", "id": "req-1", "data": { "method": "GET", "path": "/api/v1/channels" } }
@@ -470,6 +491,8 @@ Go 中不能使用 Fastify `inject`，需要实现内部 loopback：构造 `http
 ### 10.3 Remote WS `/ws/remote`
 
 客户端到服务端：`ping`、`pong`、`response`。服务端到客户端：`pong`、`request`、`error`。
+
+Remote WS 不做 server-initiated heartbeat；服务端只响应 remote node 发来的 `ping`，不主动发送 ping，以兼容现有 remote client 行为。
 
 ```json
 // server -> remote node
@@ -641,7 +664,7 @@ CREATE TABLE IF NOT EXISTS remote_bindings (
 ## 12. 静态文件 Serve
 
 - `/uploads/*`：从 `UPLOAD_DIR` 直接 serve；启动时 `mkdir -p`。
-- `/assets/*` 和其他 client 文件：从 `packages/client/dist` 或 Docker 内 `/app/client/dist` serve。
+- `/assets/*` 和其他 client 文件：从 `CLIENT_DIST` serve，默认开发路径为 `packages/client/dist`，Docker 内设置为 `/app/client/dist`。
 - SPA fallback：非 `/api/*`、非 `/ws*`、无文件扩展名时返回 `index.html`。
 - API/WS not found：返回 `404 {"error":"Not found"}`。
 - upload 文件名必须使用随机 UUID + MIME 推断扩展名，禁止使用用户原始文件名写路径。
@@ -690,7 +713,7 @@ func JSONError(w http.ResponseWriter, status int, msg string) {
 4. 校验 content 非空，`content_type in text|image`。
 5. `store.CreateMessage` 事务：insert `messages`，解析 `<@id>` 和 `@displayName`，insert `mentions`，insert `events(kind='message')` 和 mention events。
 6. Hub 广播 `{type:"new_message",message}`。
-7. 如果 image content 指向 `/uploads/*`，异步/非关键地复制到 workspace `attachments`。
+7. 如果 image content 指向 `/uploads/*`，异步/非关键地复制到 workspace `attachments`。复制逻辑需要先确保 `attachments` 目录存在；目标文件名使用消息 id + 原上传扩展名，若冲突按 workspace `(1)(2)` 规则重命名；复制、建目录或 DB 记录失败只记录日志并静默吞掉，不能影响消息发送响应。
 8. 返回 `201 {message}`。
 
 ### 14.3 WS 发送消息
@@ -705,13 +728,15 @@ func JSONError(w http.ResponseWriter, status int, msg string) {
 ### 14.4 SSE 推送与补发
 
 1. `GET /api/v1/stream` 认证。
-2. `Last-Event-ID` 存在则从该 cursor 后补发，否则从当前 latest cursor 开始。
-3. client 注册为 `ready=false`，先 backfill。
-4. 查询 `getEventsSinceWithChanges(cursor, 100, userChannelIds, channelChangeKinds)`。
-5. channel change events 做相关性判断并刷新 channelIds；普通事件跳过 sender 自己，但推进 cursor。
-6. backfill 完成后 `ready=true` 并 drain-until-stable。
-7. 新事件由 `signalNewEvents` 同时唤醒 poll waiters 和 SSE clients。
-8. 15s heartbeat 写 `event: heartbeat`，并更新 `last_seen_at`。
+2. 写响应头并 flush 后立即发送 `:connected\n\n` 注释帧。
+3. `Last-Event-ID` 存在则从该 cursor 后补发，否则从当前 latest cursor 开始。
+4. client 注册为 `ready=false`，先 backfill。
+5. 查询 `getEventsSinceWithChanges(cursor, 100, userChannelIds, channelChangeKinds)`。
+6. channel change events 做相关性判断并刷新 channelIds；普通事件跳过 sender 自己，但推进 cursor。
+7. backfill 完成后 `ready=true` 并 drain-until-stable。
+8. 新事件由 `signalNewEvents` 同时唤醒 poll waiters 和 SSE clients。
+9. 15s heartbeat 写 `event: heartbeat`，并更新 `last_seen_at`。
+10. 每 60s 重新查询一次当前用户可访问 channel list，刷新 SSE client 的 `channelIds`，覆盖权限、加入/退出频道和 public/private 变化未产生可见事件的边界。
 
 ### 14.5 Remote Explorer
 
@@ -860,37 +885,50 @@ ENTRYPOINT ["/app/collab"]
 - 实现 auth：JWT cookie、API key、dev bypass、permission middleware。
 - 覆盖测试：migration、seed、login/register/logout、permission check。
 
-### Phase 2 — REST 功能对等（5 人日）
+### Phase 2a — REST 核心 CRUD（3 人日）
 
-- 实现 users/admin/agents/channels/channel-groups/dm/messages/reactions/commands。
-- 实现 upload/workspace/remote REST handlers。
-- 实现 LexoRank、DM channel 规则、message mention parsing、reaction aggregation。
+- 实现 auth/users/channels/messages/DM 核心 CRUD。
+- 实现 login/register/logout、users/me、channels list/detail/create/update/delete、join/leave、members、read state。
+- 实现 DM 创建/list、message create/edit/delete/list/search。
+- 实现 LexoRank 基础 channel reorder、DM channel 规则、message mention parsing。
+- 覆盖测试：auth、users、channels、DM、messages 和权限过滤。
+
+### Phase 2b — REST 扩展功能对等（3 人日）
+
+- 实现 admin/agents/workspace/remote/upload/reactions/commands/channel-groups。
+- 实现 admin 用户与权限管理、agent CRUD/API key/permissions。
+- 实现 workspace 文件、upload、remote REST proxy、reactions aggregation、slash commands、channel groups。
+- 实现 channel groups reorder、workspace move/rename、remote binding、command list/register 边界。
 - 实现静态文件 serve 和 SPA fallback。
-- 覆盖测试：TS 现有 route 测试场景迁移到 Go。
+- 覆盖测试：TS 现有 route 测试场景迁移到 Go，重点覆盖 admin 业务错误、workspace 文件名冲突、upload 限制和 remote 错误映射。
 
 ### Phase 3 — Realtime：WS + SSE + Poll（4 人日）
 
 - 实现 `/ws` client hub、presence、channel subscriptions、message ack/nack、slash command registration。
-- 实现 `/ws/plugin` manager、event bridge、internal API loopback。
+- 实现 `/ws/plugin` manager、event bridge。
 - 实现 `/ws/remote` manager、pending request、timeout/offline 映射。
 - 实现 `/api/v1/poll` waiters 和 `/api/v1/stream` replay/heartbeat。
 - 覆盖测试：多设备、permission WS、plugin comm、remote explorer、SSE replay、token rotation。
+
+### Phase 3b — Plugin WS internal API loopback（1 人日）
+
+- 实现 Plugin `api_request` 到 root handler 的 loopback，补齐 Bearer auth、JSON body、headers/body/status 透传。
+- 覆盖测试：plugin 通过 loopback 调用 channels/messages/workspace/admin denied 场景，确认与真实 HTTP handler 行为一致。
 
 ### Phase 4 — Compatibility Hardening + Release（3 人日）
 
 - 将 TS 集成测试关键断言整理为 Go golden/compat test。
 - 增加 `-race`、coverage helper、CI target，覆盖率门槛 ≥85%。
 - 压测 SQLite WAL busy_timeout、WS 心跳、SSE 大量 backfill。
-- 完成 Docker image、部署文档、回滚步骤。
+- 完成 Docker image、部署文档、切换步骤文档、回滚步骤。
 - 用现有数据库副本做 dry-run，确认 frontend 零改动验收。
 
-总估算：15 人日，不含线上灰度观察和 bug buffer。
+总估算：17 人日，不含线上灰度观察和 bug buffer。
 
 ## 18. 风险与开放问题
 
 | 风险 / 问题 | 影响 | 处理建议 |
 |---|---|---|
-| bcrypt 未在已确定技术栈中列出 | 无法校验现有 `password_hash` | 增加 `golang.org/x/crypto/bcrypt` 作为必要兼容依赖 |
 | `net/http` ServeMux path variable 与 method routing 细节 | 路由冲突可能导致状态码差异 | 建立 route table 测试，逐条校验 method/path/status |
 | SQLite CGO 部署 | 镜像/runtime 依赖复杂于纯 Go | 保持 debian slim runtime，CI 构建 linux/amd64 实测 |
 | 事件过滤差异 | SSE/Poll/Plugin 漏消息或泄露 private channel | 以 TS `getEventsSinceWithChanges` 语义做集成测试 |
@@ -905,7 +943,6 @@ ENTRYPOINT ["/app/collab"]
 
 开放问题：
 
-1. 是否批准新增 `golang.org/x/crypto/bcrypt` 依赖？
-2. Go server 是否需要保留 TS 的 legacy seed agents（飞马/野马/战马/烈马）及随机 API key 日志输出？建议保留以兼容旧 dev 数据。
-3. Docker build 是否由 monorepo root 执行？上述 Dockerfile 假设 root context。
-4. 是否需要在 Phase 4 加入真实前端 Playwright smoke test，验证“前端零改动”？建议加入登录、频道、消息、upload、workspace、remote 状态页 smoke。
+1. Go server 是否需要保留 TS 的 legacy seed agents（飞马/野马/战马/烈马）及随机 API key 日志输出？建议保留以兼容旧 dev 数据。
+2. Docker build 是否由 monorepo root 执行？上述 Dockerfile 假设 root context。
+3. 是否需要在 Phase 4 加入真实前端 Playwright smoke test，验证“前端零改动”？建议加入登录、频道、消息、upload、workspace、remote 状态页 smoke。
