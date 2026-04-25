@@ -1981,6 +1981,21 @@ body {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* PWA standalone: safe-area-inset-bottom is 0, no extra padding needed */
+@media (display-mode: standalone) {
+  .message-input-container {
+    padding-bottom: 12px;
+  }
+
+  .mention-picker {
+    padding-bottom: 8px;
+  }
+
+  .mobile-action-sheet {
+    padding-bottom: 8px;
+  }
+}
+
 /* ─── Login Page ─────────────────────────────────────── */
 
 .login-page {
