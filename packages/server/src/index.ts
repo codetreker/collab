@@ -26,6 +26,7 @@ import { registerWebSocket, getConnectedClientCount, getOnlineUserIds } from './
 import { registerWsPluginRoutes } from './routes/ws-plugin.js';
 import { registerRemoteRoutes } from './routes/remote.js';
 import { registerCommandRoutes } from './routes/commands.js';
+import { registerChannelGroupRoutes } from './routes/channel-groups.js';
 import { registerWsRemoteRoutes } from './routes/ws-remote.js';
 import * as Q from './queries.js';
 
@@ -124,6 +125,7 @@ async function main(): Promise<void> {
   registerRemoteRoutes(app);
   registerDmRoutes(app);
   registerCommandRoutes(app);
+  registerChannelGroupRoutes(app);
 
   // WebSocket
   registerWebSocket(app);

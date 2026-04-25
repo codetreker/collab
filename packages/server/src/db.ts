@@ -339,6 +339,24 @@ function initSchema(db: Database.Database): void {
       }
     }
 
+    // Migration: B26-T16 — channel_groups table + channels.group_id FK
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS channel_groups (
+        id          TEXT PRIMARY KEY,
+        name        TEXT NOT NULL,
+        position    TEXT NOT NULL,
+        created_by  TEXT NOT NULL REFERENCES users(id),
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_channel_groups_position ON channel_groups(position);
+    `);
+
+    const channelColsT16 = db.prepare("PRAGMA table_info(channels)").all() as { name: string }[];
+    if (!channelColsT16.some((c) => c.name === 'group_id')) {
+      db.exec('ALTER TABLE channels ADD COLUMN group_id TEXT REFERENCES channel_groups(id) ON DELETE SET NULL');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_channels_group ON channels(group_id)');
+    }
+
     const dmChannels = db.prepare(
       `SELECT c.id, c.name FROM channels c
        WHERE c.type = 'dm'

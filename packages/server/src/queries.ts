@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Channel, User, Message, EventRow, Mention, EventKind, InviteCode, WorkspaceFile, RemoteNode, RemoteBinding } from './types.js';
+import type { Channel, ChannelGroup, User, Message, EventRow, Mention, EventKind, InviteCode, WorkspaceFile, RemoteNode, RemoteBinding } from './types.js';
 
 // ─── Channels ───────────────────────────────────────────
 
@@ -183,25 +183,42 @@ export function updateChannelPosition(
   db: Database.Database,
   channelId: string,
   position: string,
+  groupId?: string | null,
 ): void {
-  db.prepare('UPDATE channels SET position = ? WHERE id = ?').run(position, channelId);
+  if (groupId !== undefined) {
+    db.prepare("UPDATE channels SET position = ?, group_id = ? WHERE id = ?").run(position, groupId, channelId);
+  } else {
+    db.prepare('UPDATE channels SET position = ? WHERE id = ?').run(position, channelId);
+  }
 }
 
 export function getAdjacentChannelPositions(
   db: Database.Database,
   afterId: string | null,
+  groupId?: string | null,
 ): { before: string | null; after: string | null } {
+  const filterByGroup = groupId !== undefined;
+
+  const buildWhereClause = (): { where: string; params: unknown[] } => {
+    if (!filterByGroup) {
+      return { where: 'deleted_at IS NULL', params: [] };
+    }
+    if (groupId === null) {
+      return { where: 'group_id IS NULL AND deleted_at IS NULL', params: [] };
+    }
+    return { where: 'group_id = ? AND deleted_at IS NULL', params: [groupId] };
+  };
+
   if (afterId === null) {
-    // Inserting at the very top: get the first (smallest) position
+    const { where, params } = buildWhereClause();
     const first = db
       .prepare(
-        'SELECT position FROM channels WHERE deleted_at IS NULL ORDER BY position ASC LIMIT 1',
+        `SELECT position FROM channels WHERE ${where} ORDER BY position ASC LIMIT 1`,
       )
-      .get() as { position: string } | undefined;
+      .get(...params) as { position: string } | undefined;
     return { before: null, after: first?.position ?? null };
   }
 
-  // Get the afterId's position and the next channel's position
   const current = db
     .prepare('SELECT position FROM channels WHERE id = ? AND deleted_at IS NULL')
     .get(afterId) as { position: string } | undefined;
@@ -210,11 +227,12 @@ export function getAdjacentChannelPositions(
     return { before: null, after: null };
   }
 
+  const { where, params } = buildWhereClause();
   const next = db
     .prepare(
-      'SELECT position FROM channels WHERE deleted_at IS NULL AND position > ? ORDER BY position ASC LIMIT 1',
+      `SELECT position FROM channels WHERE ${where} AND position > ? ORDER BY position ASC LIMIT 1`,
     )
-    .get(current.position) as { position: string } | undefined;
+    .get(...params, current.position) as { position: string } | undefined;
 
   return { before: current.position, after: next?.position ?? null };
 }
@@ -1234,4 +1252,103 @@ export function getRemoteBinding(
   bindingId: string,
 ): RemoteBinding | undefined {
   return db.prepare('SELECT * FROM remote_bindings WHERE id = ?').get(bindingId) as RemoteBinding | undefined;
+}
+
+// ─── Channel Groups ─────────────────────────────────
+
+export function createChannelGroup(
+  db: Database.Database,
+  group: { id: string; name: string; position: string; created_by: string; created_at: number },
+): ChannelGroup {
+  db.prepare(
+    'INSERT INTO channel_groups (id, name, position, created_by, created_at) VALUES (?, ?, ?, ?, ?)',
+  ).run(group.id, group.name, group.position, group.created_by, group.created_at);
+  return db.prepare('SELECT * FROM channel_groups WHERE id = ?').get(group.id) as ChannelGroup;
+}
+
+export function getChannelGroup(
+  db: Database.Database,
+  groupId: string,
+): ChannelGroup | undefined {
+  return db.prepare('SELECT * FROM channel_groups WHERE id = ?').get(groupId) as ChannelGroup | undefined;
+}
+
+export function updateChannelGroup(
+  db: Database.Database,
+  groupId: string,
+  updates: { name: string },
+): ChannelGroup | undefined {
+  db.prepare('UPDATE channel_groups SET name = ? WHERE id = ?').run(updates.name, groupId);
+  return db.prepare('SELECT * FROM channel_groups WHERE id = ?').get(groupId) as ChannelGroup | undefined;
+}
+
+export function deleteChannelGroup(
+  db: Database.Database,
+  groupId: string,
+): boolean {
+  return db.prepare('DELETE FROM channel_groups WHERE id = ?').run(groupId).changes > 0;
+}
+
+export function listChannelGroups(
+  db: Database.Database,
+): ChannelGroup[] {
+  return db.prepare('SELECT * FROM channel_groups ORDER BY position ASC').all() as ChannelGroup[];
+}
+
+export function getLastGroupPosition(
+  db: Database.Database,
+): string | null {
+  const row = db.prepare(
+    'SELECT position FROM channel_groups ORDER BY position DESC LIMIT 1',
+  ).get() as { position: string } | undefined;
+  return row?.position ?? null;
+}
+
+export function getAdjacentGroupPositions(
+  db: Database.Database,
+  afterId: string | null,
+): { before: string | null; after: string | null } {
+  if (afterId === null) {
+    const first = db
+      .prepare('SELECT position FROM channel_groups ORDER BY position ASC LIMIT 1')
+      .get() as { position: string } | undefined;
+    return { before: null, after: first?.position ?? null };
+  }
+
+  const current = db
+    .prepare('SELECT position FROM channel_groups WHERE id = ?')
+    .get(afterId) as { position: string } | undefined;
+
+  if (!current) {
+    return { before: null, after: null };
+  }
+
+  const next = db
+    .prepare(
+      'SELECT position FROM channel_groups WHERE position > ? ORDER BY position ASC LIMIT 1',
+    )
+    .get(current.position) as { position: string } | undefined;
+
+  return { before: current.position, after: next?.position ?? null };
+}
+
+export function updateGroupPosition(
+  db: Database.Database,
+  groupId: string,
+  position: string,
+): void {
+  db.prepare('UPDATE channel_groups SET position = ? WHERE id = ?').run(position, groupId);
+}
+
+export function ungroupChannels(
+  db: Database.Database,
+  groupId: string,
+): string[] {
+  const rows = db.prepare(
+    'SELECT id FROM channels WHERE group_id = ?',
+  ).all(groupId) as { id: string }[];
+  if (rows.length > 0) {
+    db.prepare('UPDATE channels SET group_id = NULL WHERE group_id = ?').run(groupId);
+  }
+  return rows.map((r) => r.id);
 }

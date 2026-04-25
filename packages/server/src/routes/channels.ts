@@ -11,14 +11,14 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     const db = getDb();
     if (request.currentUser?.role === 'admin') {
       const channels = Q.listAllChannelsForAdmin(db, request.currentUser.id);
-      return { channels, groups: [] };
+      return { channels, groups: Q.listChannelGroups(db) };
     }
     if (request.currentUser) {
       const channels = Q.listChannelsWithUnread(db, request.currentUser.id);
-      return { channels, groups: [] };
+      return { channels, groups: Q.listChannelGroups(db) };
     }
     const channels = Q.listChannels(db);
-    return { channels, groups: [] };
+    return { channels, groups: Q.listChannelGroups(db) };
   });
 
   // Create channel
@@ -596,7 +596,7 @@ export function registerChannelRoutes(app: FastifyInstance): void {
   app.put<{
     Body: { channel_id: string; after_id: string | null; group_id?: string | null };
   }>('/api/v1/channels/reorder', async (request, reply) => {
-    const { channel_id, after_id } = request.body ?? {};
+    const { channel_id, after_id, group_id } = request.body ?? {};
 
     if (!channel_id || typeof channel_id !== 'string') {
       return reply.status(400).send({ error: 'channel_id is required' });
@@ -617,6 +617,13 @@ export function registerChannelRoutes(app: FastifyInstance): void {
       return reply.status(403).send({ error: 'Only the channel owner can reorder' });
     }
 
+    if (group_id !== undefined && group_id !== null && typeof group_id === 'string') {
+      const targetGroup = Q.getChannelGroup(db, group_id);
+      if (!targetGroup) {
+        return reply.status(404).send({ error: 'Group not found' });
+      }
+    }
+
     const afterId = after_id ?? null;
     if (afterId !== null) {
       const afterChannel = Q.getChannel(db, afterId);
@@ -628,16 +635,16 @@ export function registerChannelRoutes(app: FastifyInstance): void {
     // Use BEGIN IMMEDIATE to prevent concurrent lexorank conflicts
     db.exec('BEGIN IMMEDIATE');
     try {
-      const { before, after } = Q.getAdjacentChannelPositions(db, afterId);
+      const { before, after } = Q.getAdjacentChannelPositions(db, afterId, group_id);
       const newPosition = generateRankBetween(before, after);
-      Q.updateChannelPosition(db, channel_id, newPosition);
+      Q.updateChannelPosition(db, channel_id, newPosition, group_id);
       db.exec('COMMIT');
 
       const updated = Q.getChannel(db, channel_id);
       const payload = {
         id: updated!.id,
         position: updated!.position ?? newPosition,
-        group_id: null,
+        group_id: group_id !== undefined ? group_id : null,
       };
 
       broadcastToAll({
