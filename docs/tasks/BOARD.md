@@ -19,10 +19,11 @@
 | COL-B11 | 画布 + 文档协作 | Backlog | 野马 | — | — | — | |
 | COL-B13 | DB 操作改用 ORM | Backlog | 飞马 | — | — | — | 技术债 |
 | COL-B19 | Remote Explorer | Backlog | 野马 | — | — | [direction](COL-B19/direction.md) | 远程文件浏览，只读 v1 |
+| COL-B26 | 频道拖动排序 | Backlog | 野马 | — | — | — | 侧边栏频道拖动调整顺序 |
 
 ## Bugs
 
 | ID | Bug | 状态 | Owner | Branch | PR | 备注 |
 |----|-----|------|-------|--------|----|----- |
-| COL-BUG-020 | PWA 轻 app 非聊天页面 header 重叠 | Backlog | 战马 | — | — | Admin/Agents 页 header 与汉堡菜单重叠 |
-| COL-BUG-021 | Admin 管理页显示已删除用户和频道 | Backlog | 战马 | — | — | 已删除的用户和 channel 应该隐藏或标记 |
+| COL-BUG-020 | PWA 轻 app 非聊天页面 header 重叠 | Done | 战马 | `fix/bug-020-pwa-header` | [#131](https://github.com/codetreker/collab/pull/131) | CSS padding-left + safe-area |
+| COL-BUG-021 | Admin 管理页显示已删除用户和频道 | Done | 战马 | `fix/bug-021-admin-deleted` | [#132](https://github.com/codetreker/collab/pull/132) | WHERE deleted_at IS NULL |
