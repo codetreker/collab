@@ -226,6 +226,14 @@ export function useWebSocket() {
         }
         break;
       }
+      case 'channels_reordered': {
+        const reorderedChId = data.channel_id as string;
+        const reorderUpdates: Partial<Channel> = {};
+        if (typeof data.position === 'string') reorderUpdates.position = data.position;
+        if (data.group_id !== undefined) reorderUpdates.group_id = data.group_id as string | null;
+        dispatch({ type: 'UPDATE_CHANNEL', channelId: reorderedChId, updates: reorderUpdates });
+        break;
+      }
       case 'user_joined': {
         const joinedChannelId = data.channel_id as string;
         const joinedUserId = data.user_id as string;

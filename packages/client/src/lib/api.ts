@@ -126,6 +126,13 @@ export async function deleteChannel(channelId: string): Promise<void> {
   });
 }
 
+export async function reorderChannel(channelId: string, afterId: string | null): Promise<void> {
+  await request<{ ok: boolean }>(`/api/v1/channels/reorder`, {
+    method: "PUT",
+    body: JSON.stringify({ channel_id: channelId, after_id: afterId }),
+  });
+}
+
 // ─── Channel Members ────────────────────────────────────
 
 export interface ChannelMember {

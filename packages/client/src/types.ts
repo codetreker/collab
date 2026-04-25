@@ -12,6 +12,8 @@ export interface Channel {
   is_member?: boolean;
   last_message_at?: number | null;
   unread_count?: number;
+  position?: string;
+  group_id?: string | null;
 }
 
 export interface User {
