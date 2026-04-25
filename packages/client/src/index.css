@@ -186,9 +186,11 @@ body {
   transition: all 0.15s;
 }
 
-.icon-btn:hover {
-  background: var(--bg-sidebar-hover);
-  color: var(--text-sidebar);
+@media (hover: hover) {
+  .icon-btn:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-sidebar);
+  }
 }
 
 /* Channel list */
@@ -222,11 +224,15 @@ body {
   text-align: left;
   cursor: pointer;
   transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.channel-item:hover {
-  background: var(--bg-sidebar-hover);
-  color: var(--text-sidebar);
+@media (hover: hover) {
+  .channel-item:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-sidebar);
+  }
 }
 
 .channel-item-active {
@@ -321,12 +327,16 @@ body {
   cursor: grabbing;
 }
 
-.channel-item:hover .drag-handle {
-  opacity: 0.6;
+@media (hover: hover) {
+  .channel-item:hover .drag-handle {
+    opacity: 0.6;
+  }
 }
 
-.channel-item:hover .drag-handle:hover {
-  opacity: 1;
+@media (hover: hover) {
+  .channel-item:hover .drag-handle:hover {
+    opacity: 1;
+  }
 }
 
 .channel-group-label {
@@ -351,8 +361,10 @@ body {
   color: var(--text-sidebar-dim);
 }
 
-.group-header:hover {
-  color: var(--text-sidebar);
+@media (hover: hover) {
+  .group-header:hover {
+    color: var(--text-sidebar);
+  }
 }
 
 .group-header-arrow {
@@ -417,9 +429,11 @@ body {
   border-radius: 4px;
 }
 
-.leave-btn:hover {
-  background: var(--bg-message-hover);
-  color: var(--bg-badge);
+@media (hover: hover) {
+  .leave-btn:hover {
+    background: var(--bg-message-hover);
+    color: var(--bg-badge);
+  }
 }
 
 /* Create channel form */
@@ -501,9 +515,11 @@ body {
   transition: all 0.15s;
 }
 
-.online-user-item:hover {
-  background: var(--bg-sidebar-hover);
-  color: var(--text-sidebar);
+@media (hover: hover) {
+  .online-user-item:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-sidebar);
+  }
 }
 
 .online-user-item:active {
@@ -748,8 +764,10 @@ body {
   transition: background 0.15s;
 }
 
-.new-message-btn:hover {
-  background: var(--accent-hover);
+@media (hover: hover) {
+  .new-message-btn:hover {
+    background: var(--accent-hover);
+  }
 }
 
 .empty-channel {
@@ -825,8 +843,10 @@ body {
   position: relative;
 }
 
-.message-item:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .message-item:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 .message-actions {
@@ -842,8 +862,10 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.message-item:hover .message-actions {
-  display: flex;
+@media (hover: hover) {
+  .message-item:hover .message-actions {
+    display: flex;
+  }
 }
 
 .message-action-btn {
@@ -856,8 +878,10 @@ body {
   line-height: 1;
 }
 
-.message-action-btn:hover {
-  background: var(--bg-secondary);
+@media (hover: hover) {
+  .message-action-btn:hover {
+    background: var(--bg-secondary);
+  }
 }
 
 .message-edited {
@@ -947,8 +971,10 @@ body {
   font-size: 13px;
 }
 
-.btn-cancel:hover {
-  background: var(--bg-secondary);
+@media (hover: hover) {
+  .btn-cancel:hover {
+    background: var(--bg-secondary);
+  }
 }
 
 .btn-danger {
@@ -961,8 +987,10 @@ body {
   font-size: 13px;
 }
 
-.btn-danger:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  .btn-danger:hover {
+    opacity: 0.9;
+  }
 }
 
 .message-avatar {
@@ -1063,8 +1091,10 @@ body {
   text-decoration: none;
 }
 
-.message-text a:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .message-text a:hover {
+    text-decoration: underline;
+  }
 }
 
 .message-text ul, .message-text ol {
@@ -1111,8 +1141,10 @@ body {
   transition: opacity 0.15s;
 }
 
-.message-image:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  .message-image:hover {
+    opacity: 0.9;
+  }
 }
 
 .image-error {
@@ -1332,9 +1364,11 @@ body {
   transition: background 0.1s, color 0.1s;
 }
 
-.toolbar-btn:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+@media (hover: hover) {
+  .toolbar-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
 }
 
 .toolbar-btn-active {
@@ -1391,9 +1425,14 @@ body {
   transition: background 0.1s;
 }
 
-.mention-option:hover,
 .mention-option-active {
   background: var(--bg-secondary);
+}
+
+@media (hover: hover) {
+  .mention-option:hover {
+    background: var(--bg-secondary);
+  }
 }
 
 .mention-avatar {
@@ -1470,9 +1509,14 @@ body {
   transition: background 0.1s;
 }
 
-.slash-command-option:hover,
 .slash-command-option-active {
   background: var(--bg-secondary);
+}
+
+@media (hover: hover) {
+  .slash-command-option:hover {
+    background: var(--bg-secondary);
+  }
 }
 
 .slash-command-name {
@@ -1584,8 +1628,10 @@ body {
   white-space: nowrap;
 }
 
-.btn:hover {
-  background: var(--bg-secondary);
+@media (hover: hover) {
+  .btn:hover {
+    background: var(--bg-secondary);
+  }
 }
 
 .btn:disabled {
@@ -1599,8 +1645,10 @@ body {
   border-color: var(--accent);
 }
 
-.btn-primary:hover {
-  background: var(--accent-hover);
+@media (hover: hover) {
+  .btn-primary:hover {
+    background: var(--accent-hover);
+  }
 }
 
 .btn-sm {
@@ -1614,8 +1662,10 @@ body {
   border-color: #e74c3c;
 }
 
-.btn-danger:hover {
-  background: #c0392b;
+@media (hover: hover) {
+  .btn-danger:hover {
+    background: #c0392b;
+  }
 }
 
 /* ─── Modal ──────────────────────────────────────────── */
@@ -2030,8 +2080,10 @@ body {
   opacity: 0.7;
 }
 
-.logout-btn:hover {
-  opacity: 1;
+@media (hover: hover) {
+  .logout-btn:hover {
+    opacity: 1;
+  }
 }
 
 /* ─── Admin Page ──────────────────────────────────────── */
@@ -2099,8 +2151,10 @@ body {
   word-break: break-all;
 }
 
-.admin-table tbody tr:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .admin-table tbody tr:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 .role-badge {
@@ -2155,8 +2209,10 @@ body {
   transition: background 0.15s;
 }
 
-.btn-icon:hover {
-  background: var(--bg-secondary);
+@media (hover: hover) {
+  .btn-icon:hover {
+    background: var(--bg-secondary);
+  }
 }
 
 .admin-actions .btn-danger {
@@ -2165,9 +2221,11 @@ body {
   border-color: var(--danger);
 }
 
-.admin-actions .btn-danger:hover {
-  background: var(--danger);
-  color: #fff;
+@media (hover: hover) {
+  .admin-actions .btn-danger:hover {
+    background: var(--danger);
+    color: #fff;
+  }
 }
 
 .admin-actions {
@@ -2289,8 +2347,10 @@ body {
   transition: background 0.1s;
 }
 
-.admin-nav-item:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .admin-nav-item:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 .admin-nav-item.active {
@@ -2471,9 +2531,11 @@ body {
   transition: all 0.15s;
 }
 
-.reaction-pill:hover {
-  background: var(--bg-message-hover);
-  border-color: var(--accent);
+@media (hover: hover) {
+  .reaction-pill:hover {
+    background: var(--bg-message-hover);
+    border-color: var(--accent);
+  }
 }
 
 .reaction-active {
@@ -2486,8 +2548,10 @@ body {
   opacity: 0.6;
 }
 
-.reaction-add:hover {
-  opacity: 1;
+@media (hover: hover) {
+  .reaction-add:hover {
+    opacity: 1;
+  }
 }
 
 .reaction-add-hidden {
@@ -2496,9 +2560,11 @@ body {
   transition: opacity 0.15s;
 }
 
-.message-item:hover .reaction-add-hidden {
-  opacity: 0.6;
-  pointer-events: auto;
+@media (hover: hover) {
+  .message-item:hover .reaction-add-hidden {
+    opacity: 0.6;
+    pointer-events: auto;
+  }
 }
 
 .reaction-picker-popover {
@@ -2532,9 +2598,11 @@ body {
   cursor: pointer;
 }
 
-.retry-btn:hover {
-  background: var(--danger);
-  color: #fff;
+@media (hover: hover) {
+  .retry-btn:hover {
+    background: var(--danger);
+    color: #fff;
+  }
 }
 
 .message-item-pending {
@@ -2673,8 +2741,10 @@ body {
   border-radius: 4px;
 }
 
-.file-viewer-close:hover {
-  background: var(--bg-secondary);
+@media (hover: hover) {
+  .file-viewer-close:hover {
+    background: var(--bg-secondary);
+  }
 }
 
 .file-viewer-body {
@@ -2737,8 +2807,10 @@ body {
   font-size: 0.85em;
 }
 
-.btn-edit-md:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  .btn-edit-md:hover {
+    opacity: 0.9;
+  }
 }
 
 .markdown-viewer-content {
@@ -2793,8 +2865,10 @@ body {
   font-size: 0.8em;
 }
 
-.workspace-btn:hover {
-  background: var(--bg-secondary);
+@media (hover: hover) {
+  .workspace-btn:hover {
+    background: var(--bg-secondary);
+  }
 }
 
 .workspace-file-tree {
@@ -2827,8 +2901,10 @@ body {
   text-overflow: ellipsis;
 }
 
-.workspace-file-item:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .workspace-file-item:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 .workspace-file-item.active {
@@ -2885,8 +2961,10 @@ body {
   font-size: 0.9em;
 }
 
-.workspace-context-menu-item:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .workspace-context-menu-item:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 .workspace-context-menu-item.danger {
@@ -2951,8 +3029,10 @@ body {
   font-size: 0.9em;
 }
 
-.workspace-manager-channel:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .workspace-manager-channel:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 .workspace-manager-channel.active {
@@ -2983,8 +3063,10 @@ body {
   margin: 4px 0;
 }
 
-.workspace-ref-card:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .workspace-ref-card:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 .workspace-ref-card-name {
@@ -3048,8 +3130,10 @@ body {
   text-underline-offset: 2px;
 }
 
-.file-link:hover {
-  text-decoration-style: solid;
+@media (hover: hover) {
+  .file-link:hover {
+    text-decoration-style: solid;
+  }
 }
 
 .file-link-loading {
@@ -3105,8 +3189,10 @@ body {
   padding: 2px 6px;
 }
 
-.remote-back-btn:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .remote-back-btn:hover {
+    text-decoration: underline;
+  }
 }
 
 .remote-empty {
@@ -3134,8 +3220,10 @@ body {
   transition: background-color 0.15s;
 }
 
-.remote-binding-item:hover {
-  background: var(--bg-sidebar-hover);
+@media (hover: hover) {
+  .remote-binding-item:hover {
+    background: var(--bg-sidebar-hover);
+  }
 }
 
 .remote-binding-icon {
@@ -3186,8 +3274,10 @@ body {
   color: var(--accent);
 }
 
-.remote-breadcrumb-item:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .remote-breadcrumb-item:hover {
+    text-decoration: underline;
+  }
 }
 
 .remote-breadcrumb-path {
@@ -3242,8 +3332,10 @@ body {
   transition: background-color 0.15s;
 }
 
-.node-list-item:hover {
-  background: var(--bg-sidebar-hover);
+@media (hover: hover) {
+  .node-list-item:hover {
+    background: var(--bg-sidebar-hover);
+  }
 }
 
 .node-list-item.active {
@@ -3401,8 +3493,10 @@ body {
   font-size: 0.85em;
 }
 
-.node-binding-item:hover {
-  background: var(--bg-sidebar-hover);
+@media (hover: hover) {
+  .node-binding-item:hover {
+    background: var(--bg-sidebar-hover);
+  }
 }
 
 .node-binding-path {
@@ -3445,8 +3539,10 @@ body {
   font-size: 0.9em;
 }
 
-.group-context-menu-item:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .group-context-menu-item:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 .group-context-menu-item.danger {
@@ -3459,8 +3555,10 @@ body {
   transition: opacity 0.15s;
 }
 
-.group-header:hover .group-header-actions {
-  opacity: 1;
+@media (hover: hover) {
+  .group-header:hover .group-header-actions {
+    opacity: 1;
+  }
 }
 
 .group-header-actions .icon-btn {
@@ -3509,8 +3607,10 @@ body {
   white-space: nowrap;
 }
 
-.sidebar-add-menu-item:hover {
-  background: var(--bg-message-hover);
+@media (hover: hover) {
+  .sidebar-add-menu-item:hover {
+    background: var(--bg-message-hover);
+  }
 }
 
 /* ─── Create Group Modal ─────────────────────────────── */
