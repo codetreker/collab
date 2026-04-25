@@ -39,13 +39,12 @@ export default function SortableChannelItem({ channel, active, isOwner, onClick,
       style={style}
       className={`channel-item ${active ? "channel-item-active" : ""} ${!isMember ? "channel-item-preview" : ""} ${isDragging ? "channel-item-dragging" : ""}`}
       onClick={onClick}
-      {...attributes}
     >
       {isOver && !isDragging && (
         <span className="drop-indicator" />
       )}
       {isOwner && (
-        <span className="drag-handle" {...listeners} onClick={e => e.stopPropagation()}>
+        <span className="drag-handle" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
           ≡
         </span>
       )}

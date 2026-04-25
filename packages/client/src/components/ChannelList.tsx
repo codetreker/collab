@@ -4,7 +4,6 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
-  TouchSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -60,9 +59,10 @@ export default function ChannelList({ channels, currentChannelId, onSelectChanne
     });
   }, []);
 
+  // Mobile: disable touch drag to avoid click conflicts (BUG-023)
+  // Desktop only: pointer + keyboard drag
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
