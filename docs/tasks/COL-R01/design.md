@@ -24,7 +24,7 @@ Collab 当前 server 位于 `packages/server/src/`，基于 TypeScript、Fastify
 2. Go server 覆盖 TS server 全部公开端点：REST、`/ws`、`/ws/plugin`、`/ws/remote`、`/api/v1/stream`、`/api/v1/poll`、`/uploads/*`、SPA fallback。
 3. REST API 路径、状态码、JSON 字段、错误 `{ "error": "..." }` 结构与 TS server 兼容。
 4. WS/SSE 消息类型兼容；客户端、agent plugin、remote node 不需要改协议。
-5. 现有 SQLite DB 文件无需迁移即可启动；Go 初始化 schema 只执行兼容性 `CREATE TABLE IF NOT EXISTS` 和缺列迁移。
+5. 现有 SQLite DB 文件无需迁移即可启动；Go 初始化 schema 使用 GORM `AutoMigrate` 做兼容同步，并保留必要缺列/索引 backfill。
 6. Go 测试覆盖率 ≥ 85%；关键路径必须有 `httptest`/WS 集成测试：auth、channels、messages、reactions、workspace、plugin WS、remote WS、SSE replay。
 7. Docker 镜像使用多阶段构建，最终镜像仅包含 Go binary、client dist、运行时数据目录和 CGO 运行依赖。
 
@@ -34,7 +34,8 @@ Collab 当前 server 位于 `packages/server/src/`，基于 TypeScript、Fastify
 
 - HTTP：Go 1.22+ `net/http` + `http.ServeMux`
 - WebSocket：`github.com/coder/websocket`
-- SQLite：`github.com/mattn/go-sqlite3`（CGO）
+- ORM：`gorm.io/gorm`
+- SQLite driver：`gorm.io/driver/sqlite`（项目只依赖 GORM driver API，不直接依赖底层 SQLite driver API）
 - JWT：`github.com/golang-jwt/jwt/v5`
 - Password hash：`golang.org/x/crypto/bcrypt`
 - 测试：`github.com/stretchr/testify`
@@ -60,7 +61,7 @@ packages/server-go/cmd/collab
   +-- internal/auth         JWT cookie, API key, dev bypass, permission check
   +-- internal/api          REST handlers grouped by domain
   +-- internal/ws           client WS, plugin WS, remote WS, hub managers
-  +-- internal/store        SQLite migrations, queries, transactions
+  +-- internal/store        GORM models, AutoMigrate, ORM queries, transactions
   +-- internal/model        shared request/response/domain structs
   +-- internal/static       uploads and client dist file serving helpers
   +-- scripts/lib/coverage  Go coverage helper, adapted from /workspace/syntrix
@@ -71,8 +72,8 @@ SQLite data/collab.db + data/uploads + data/workspaces
 
 核心设计原则：
 
-- `api` 层只做 HTTP decode/validate/encode，不拼 SQL。
-- `store` 层封装所有 SQL 和事务，保留 TS 查询语义。
+- `api` 层只做 HTTP decode/validate/encode，不拼查询条件。
+- `store` 层封装 GORM model、查询和事务，保留 TS 查询语义；禁止在业务代码中手写裸 SQL CRUD。
 - `ws.Hub` 是实时广播的唯一出口，REST handler 通过接口调用广播，避免循环依赖。
 - `events` 表是 Poll/SSE/Plugin event bridge 的事实来源，所有消息和频道变更继续写入。
 - 所有时间戳兼容 TS：业务表大多为 Unix ms `INTEGER`，workspace/remote 表保留 SQLite `datetime('now')` 文本。
@@ -107,6 +108,7 @@ packages/server-go/
 │   ├── store/
 │   │   ├── db.go
 │   │   ├── migrations.go
+│   │   ├── models.go
 │   │   ├── queries.go
 │   │   └── lexorank.go
 │   └── ws/
@@ -121,6 +123,8 @@ packages/server-go/
 ```
 
 `scripts/lib/coverage/` 参考 `/workspace/syntrix/scripts/lib/coverage/`，保留 AST priority/report 能力，适配 `go test -coverprofile` 输出，用于 CI 标注未覆盖关键路径。
+
+`store/` 只暴露按业务命名的方法，例如 `CreateMessage`、`ListChannelMessages`、`GrantPermission`。这些方法内部使用 GORM model 和 `Where`/`First`/`Find`/`Create`/`Save`/`Delete`/`Transaction`，避免 handler 或 store 方法散落裸 SQL。
 
 ## 6. 配置管理
 
@@ -502,164 +506,152 @@ Remote WS 不做 server-initiated heartbeat；服务端只响应 remote node 发
 { "type": "response", "id": "req_abcd", "data": { "entries": [{ "name": "README.md", "type": "file" }] } }
 ```
 
-## 11. DB Schema DDL
+## 11. DB Schema GORM Models
 
-Go `store.Migrate` 启动时执行 `PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;`，再执行以下兼容 DDL 和缺列迁移。
+Go `store.Migrate` 启动时执行 `PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;`，再调用 `db.AutoMigrate(...)` 同步 schema。GORM model 是 schema 的事实来源；不再维护手写建表语句。迁移只允许做 `AutoMigrate` 无法表达的兼容补丁、历史数据 backfill 和 SQLite 索引细节。
 
-```sql
-CREATE TABLE IF NOT EXISTS channels (
-  id          TEXT PRIMARY KEY,
-  name        TEXT NOT NULL UNIQUE,
-  topic       TEXT DEFAULT '',
-  visibility  TEXT DEFAULT 'public' CHECK(visibility IN ('public','private')),
-  created_at  INTEGER NOT NULL,
-  created_by  TEXT NOT NULL,
-  type        TEXT DEFAULT 'channel',
-  deleted_at  INTEGER,
-  position    TEXT DEFAULT '0|aaaaaa',
-  group_id    TEXT REFERENCES channel_groups(id) ON DELETE SET NULL
-);
-CREATE INDEX IF NOT EXISTS idx_channels_position ON channels(position);
-CREATE INDEX IF NOT EXISTS idx_channels_group ON channels(group_id);
+```go
+package store
 
-CREATE TABLE IF NOT EXISTS channel_groups (
-  id          TEXT PRIMARY KEY,
-  name        TEXT NOT NULL,
-  position    TEXT NOT NULL,
-  created_by  TEXT NOT NULL REFERENCES users(id),
-  created_at  INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_channel_groups_position ON channel_groups(position);
+import "time"
 
-CREATE TABLE IF NOT EXISTS users (
-  id              TEXT PRIMARY KEY,
-  display_name    TEXT NOT NULL,
-  role            TEXT DEFAULT 'member',
-  avatar_url      TEXT,
-  api_key         TEXT UNIQUE,
-  created_at      INTEGER NOT NULL,
-  email           TEXT,
-  password_hash   TEXT,
-  last_seen_at    INTEGER,
-  require_mention INTEGER DEFAULT 1,
-  owner_id        TEXT REFERENCES users(id),
-  deleted_at      INTEGER,
-  disabled        INTEGER DEFAULT 0
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_users_owner_id ON users(owner_id);
+type Channel struct {
+    ID         string  `gorm:"primaryKey;size:36"`
+    Name       string  `gorm:"not null;unique;size:100"`
+    Topic      string  `gorm:"not null;default:'';size:500"`
+    Visibility string  `gorm:"not null;default:public;size:20"`
+    CreatedAt  int64   `gorm:"not null"`
+    CreatedBy  string  `gorm:"not null;size:36;index"`
+    Type       string  `gorm:"not null;default:channel;size:20"`
+    DeletedAt  *int64  `gorm:"index"`
+    Position   string  `gorm:"not null;default:0|aaaaaa;size:50;index"`
+    GroupID    *string `gorm:"size:36;index"`
+}
 
-CREATE TABLE IF NOT EXISTS messages (
-  id            TEXT PRIMARY KEY,
-  channel_id    TEXT NOT NULL REFERENCES channels(id),
-  sender_id     TEXT NOT NULL REFERENCES users(id),
-  content       TEXT NOT NULL,
-  content_type  TEXT DEFAULT 'text',
-  reply_to_id   TEXT REFERENCES messages(id),
-  created_at    INTEGER NOT NULL,
-  edited_at     INTEGER,
-  deleted_at    INTEGER
-);
-CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+type ChannelGroup struct {
+    ID        string `gorm:"primaryKey;size:36"`
+    Name      string `gorm:"not null;size:100"`
+    Position  string `gorm:"not null;size:50;index"`
+    CreatedBy string `gorm:"not null;size:36;index"`
+    CreatedAt int64  `gorm:"not null"`
+}
 
-CREATE TABLE IF NOT EXISTS channel_members (
-  channel_id    TEXT NOT NULL REFERENCES channels(id),
-  user_id       TEXT NOT NULL REFERENCES users(id),
-  joined_at     INTEGER NOT NULL,
-  last_read_at  INTEGER,
-  PRIMARY KEY (channel_id, user_id)
-);
+type User struct {
+    ID             string  `gorm:"primaryKey;size:36"`
+    DisplayName    string  `gorm:"not null;size:100"`
+    Role           string  `gorm:"not null;default:member;size:20"`
+    AvatarURL      string  `gorm:"size:500"`
+    APIKey         *string `gorm:"uniqueIndex;size:128"`
+    CreatedAt      int64   `gorm:"not null"`
+    Email          *string `gorm:"uniqueIndex:idx_users_email;size:255"`
+    PasswordHash   string  `gorm:"size:255"`
+    LastSeenAt     *int64
+    RequireMention bool    `gorm:"not null;default:true"`
+    OwnerID        *string `gorm:"size:36;index"`
+    DeletedAt      *int64  `gorm:"index"`
+    Disabled       bool    `gorm:"not null;default:false"`
+}
 
-CREATE TABLE IF NOT EXISTS mentions (
-  id          TEXT PRIMARY KEY,
-  message_id  TEXT NOT NULL REFERENCES messages(id),
-  user_id     TEXT NOT NULL REFERENCES users(id),
-  channel_id  TEXT NOT NULL REFERENCES channels(id)
-);
-CREATE INDEX IF NOT EXISTS idx_mentions_user ON mentions(user_id, channel_id);
+type Message struct {
+    ID          string  `gorm:"primaryKey;size:36"`
+    ChannelID   string  `gorm:"not null;size:36;index:idx_messages_channel_time,priority:1"`
+    SenderID    string  `gorm:"not null;size:36;index"`
+    Content     string  `gorm:"not null"`
+    ContentType string  `gorm:"not null;default:text;size:20"`
+    ReplyToID   *string `gorm:"size:36;index"`
+    CreatedAt   int64   `gorm:"not null;index:idx_messages_channel_time,priority:2,sort:desc"`
+    EditedAt    *int64
+    DeletedAt   *int64  `gorm:"index"`
+}
 
-CREATE TABLE IF NOT EXISTS events (
-  cursor      INTEGER PRIMARY KEY AUTOINCREMENT,
-  kind        TEXT NOT NULL,
-  channel_id  TEXT NOT NULL,
-  payload     TEXT NOT NULL,
-  created_at  INTEGER NOT NULL
-);
+type ChannelMember struct {
+    ChannelID  string `gorm:"primaryKey;size:36"`
+    UserID     string `gorm:"primaryKey;size:36;index"`
+    JoinedAt   int64  `gorm:"not null"`
+    LastReadAt *int64
+}
 
-CREATE TABLE IF NOT EXISTS user_permissions (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  permission  TEXT NOT NULL,
-  scope       TEXT NOT NULL DEFAULT '*',
-  granted_by  TEXT REFERENCES users(id),
-  granted_at  INTEGER NOT NULL,
-  UNIQUE(user_id, permission, scope)
-);
-CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_permissions_lookup ON user_permissions(user_id, permission, scope);
+type Mention struct {
+    ID        string `gorm:"primaryKey;size:36"`
+    MessageID string `gorm:"not null;size:36;index"`
+    UserID    string `gorm:"not null;size:36;index:idx_mentions_user,priority:1"`
+    ChannelID string `gorm:"not null;size:36;index:idx_mentions_user,priority:2"`
+}
 
-CREATE TABLE IF NOT EXISTS invite_codes (
-  code        TEXT PRIMARY KEY,
-  created_by  TEXT NOT NULL REFERENCES users(id),
-  created_at  INTEGER NOT NULL,
-  expires_at  INTEGER,
-  used_by     TEXT REFERENCES users(id),
-  used_at     INTEGER,
-  note        TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_invite_codes_used ON invite_codes(used_by);
+type Event struct {
+    Cursor    int64  `gorm:"primaryKey;autoIncrement"`
+    Kind      string `gorm:"not null;size:50;index"`
+    ChannelID string `gorm:"not null;size:36;index"`
+    Payload   string `gorm:"not null"`
+    CreatedAt int64  `gorm:"not null;index"`
+}
 
-CREATE TABLE IF NOT EXISTS message_reactions (
-  id          TEXT PRIMARY KEY,
-  message_id  TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
-  user_id     TEXT NOT NULL REFERENCES users(id),
-  emoji       TEXT NOT NULL,
-  created_at  INTEGER NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_unique ON message_reactions(message_id, user_id, emoji);
-CREATE INDEX IF NOT EXISTS idx_reactions_message ON message_reactions(message_id);
+type UserPermission struct {
+    ID         uint    `gorm:"primaryKey;autoIncrement"`
+    UserID     string  `gorm:"not null;size:36;index;uniqueIndex:idx_user_permissions_unique,priority:1;index:idx_user_permissions_lookup,priority:1"`
+    Permission string  `gorm:"not null;size:100;uniqueIndex:idx_user_permissions_unique,priority:2;index:idx_user_permissions_lookup,priority:2"`
+    Scope      string  `gorm:"not null;default:*;size:255;uniqueIndex:idx_user_permissions_unique,priority:3;index:idx_user_permissions_lookup,priority:3"`
+    GrantedBy  *string `gorm:"size:36"`
+    GrantedAt  int64   `gorm:"not null"`
+}
 
-CREATE TABLE IF NOT EXISTS workspace_files (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
-  channel_id TEXT NOT NULL REFERENCES channels(id),
-  parent_id TEXT REFERENCES workspace_files(id),
-  name TEXT NOT NULL,
-  is_directory INTEGER NOT NULL DEFAULT 0,
-  mime_type TEXT,
-  size_bytes INTEGER DEFAULT 0,
-  source TEXT DEFAULT 'upload',
-  source_message_id TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-  UNIQUE(user_id, channel_id, parent_id, name)
-);
-CREATE INDEX IF NOT EXISTS idx_workspace_files_user_channel ON workspace_files(user_id, channel_id);
-CREATE INDEX IF NOT EXISTS idx_workspace_files_parent ON workspace_files(parent_id);
+type InviteCode struct {
+    Code      string  `gorm:"primaryKey;size:128"`
+    CreatedBy string  `gorm:"not null;size:36;index"`
+    CreatedAt int64   `gorm:"not null"`
+    ExpiresAt *int64  `gorm:"index"`
+    UsedBy    *string `gorm:"size:36;index"`
+    UsedAt    *int64
+    Note      string  `gorm:"size:500"`
+}
 
-CREATE TABLE IF NOT EXISTS remote_nodes (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
-  machine_name TEXT NOT NULL,
-  connection_token TEXT NOT NULL UNIQUE,
-  last_seen_at TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_remote_nodes_user ON remote_nodes(user_id);
+type MessageReaction struct {
+    ID        string `gorm:"primaryKey;size:36"`
+    MessageID string `gorm:"not null;size:36;index;uniqueIndex:idx_reactions_unique,priority:1"`
+    UserID    string `gorm:"not null;size:36;index;uniqueIndex:idx_reactions_unique,priority:2"`
+    Emoji     string `gorm:"not null;size:64;uniqueIndex:idx_reactions_unique,priority:3"`
+    CreatedAt int64  `gorm:"not null"`
+}
 
-CREATE TABLE IF NOT EXISTS remote_bindings (
-  id TEXT PRIMARY KEY,
-  node_id TEXT NOT NULL REFERENCES remote_nodes(id) ON DELETE CASCADE,
-  channel_id TEXT NOT NULL REFERENCES channels(id),
-  path TEXT NOT NULL,
-  label TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  UNIQUE(node_id, channel_id, path)
-);
+type WorkspaceFile struct {
+    ID              string    `gorm:"primaryKey;size:36"`
+    UserID          string    `gorm:"not null;size:36;index;uniqueIndex:idx_workspace_files_unique,priority:1"`
+    ChannelID       string    `gorm:"not null;size:36;index;uniqueIndex:idx_workspace_files_unique,priority:2"`
+    ParentID        *string   `gorm:"size:36;index;uniqueIndex:idx_workspace_files_unique,priority:3"`
+    Name            string    `gorm:"not null;size:255;uniqueIndex:idx_workspace_files_unique,priority:4"`
+    IsDirectory     bool      `gorm:"not null;default:false"`
+    MimeType        string    `gorm:"size:255"`
+    SizeBytes       int64     `gorm:"not null;default:0"`
+    Source          string    `gorm:"not null;default:upload;size:50"`
+    SourceMessageID *string   `gorm:"size:36;index"`
+    CreatedAt       time.Time `gorm:"autoCreateTime"`
+    UpdatedAt       time.Time `gorm:"autoUpdateTime"`
+}
+
+type RemoteNode struct {
+    ID              string     `gorm:"primaryKey;size:36"`
+    UserID          string     `gorm:"not null;size:36;index"`
+    MachineName     string     `gorm:"not null;size:255"`
+    ConnectionToken string     `gorm:"not null;uniqueIndex;size:255"`
+    LastSeenAt      *time.Time `gorm:"index"`
+    CreatedAt       time.Time  `gorm:"autoCreateTime"`
+}
+
+type RemoteBinding struct {
+    ID        string    `gorm:"primaryKey;size:36"`
+    NodeID    string    `gorm:"not null;size:36;index;uniqueIndex:idx_remote_bindings_unique,priority:1"`
+    ChannelID string    `gorm:"not null;size:36;index;uniqueIndex:idx_remote_bindings_unique,priority:2"`
+    Path      string    `gorm:"not null;size:1000;uniqueIndex:idx_remote_bindings_unique,priority:3"`
+    Label     string    `gorm:"size:255"`
+    CreatedAt time.Time `gorm:"autoCreateTime"`
+}
 ```
 
-缺列迁移必须兼容老库：`users.email/password_hash/last_seen_at/require_mention/owner_id/deleted_at/disabled`、`channels.type/visibility/deleted_at/position/group_id`、`channel_members.last_read_at`、`messages.deleted_at`。迁移后执行 TS 等价 backfill：默认权限、creator channel permissions、agent owner、重复 DM 清理、DM 成员清理、position backfill。
+`store.Migrate` 调用顺序固定为依赖表优先：`User`、`ChannelGroup`、`Channel`、`Message`、`ChannelMember`、`Mention`、`Event`、`UserPermission`、`InviteCode`、`MessageReaction`、`WorkspaceFile`、`RemoteNode`、`RemoteBinding`。`AutoMigrate` 负责建表、补列和保持向前兼容；已有列不做破坏性变更、不 drop 表、不 drop 列。
+
+缺列兼容仍必须覆盖老库：`users.email/password_hash/last_seen_at/require_mention/owner_id/deleted_at/disabled`、`channels.type/visibility/deleted_at/position/group_id`、`channel_members.last_read_at`、`messages.deleted_at`。迁移后执行 TS 等价 backfill：默认权限、creator channel permissions、agent owner、重复 DM 清理、DM 成员清理、position backfill。涉及部分索引、SQLite partial unique index 或历史列类型差异时，在 `migrations.go` 中用幂等 compatibility migration 包裹，不能散落到 store 查询路径。
+
+store 查询使用 GORM 链式 API 和事务，例如 `Where(...).First(&user)`、`Find(&messages)`、`Create(&message)`、`Save(&channel)`、`Delete(&reaction)`、`db.Transaction(func(tx *gorm.DB) error { ... })`。禁止用手动 prepared statement 做 CRUD；只有 PRAGMA、不可由 GORM 表达的索引兼容和数据修复允许使用 `Exec`，且必须集中在迁移模块。
 
 ## 12. 静态文件 Serve
 
@@ -711,7 +703,7 @@ func JSONError(w http.ResponseWriter, status int, msg string) {
 2. `RequirePermission("message.send", "channel:{id}")`。
 3. 校验频道存在；private channel 用 `canAccessChannel`；发送者必须是成员。
 4. 校验 content 非空，`content_type in text|image`。
-5. `store.CreateMessage` 事务：insert `messages`，解析 `<@id>` 和 `@displayName`，insert `mentions`，insert `events(kind='message')` 和 mention events。
+5. `store.CreateMessage` 使用 GORM transaction：`Create(&Message)`，解析 `<@id>` 和 `@displayName`，再 `Create` mentions、`Create` message event 和 mention events。
 6. Hub 广播 `{type:"new_message",message}`。
 7. 如果 image content 指向 `/uploads/*`，异步/非关键地复制到 workspace `attachments`。复制逻辑需要先确保 `attachments` 目录存在；目标文件名使用消息 id + 原上传扩展名，若冲突按 workspace `(1)(2)` 规则重命名；复制、建目录或 DB 记录失败只记录日志并静默吞掉，不能影响消息发送响应。
 8. 返回 `201 {message}`。
@@ -752,10 +744,12 @@ func JSONError(w http.ResponseWriter, status int, msg string) {
 测试分层：
 
 - `store` unit：迁移、CRUD、事务、LexoRank、DM 去重、权限 backfill。
-- `api` integration：`httptest.Server` + 临时 SQLite + 临时 upload/workspace 目录。
+- `api` integration：`httptest.Server` + GORM sqlite in-memory DB + 临时 upload/workspace 目录。
 - `ws` integration：`coder/websocket.Dial` 测 `/ws`、`/ws/plugin`、`/ws/remote`。
 - compatibility golden：关键 TS response JSON 建 golden 文件，Go 输出字段不得少。
 - coverage：`go test ./... -race -coverprofile=coverage.out`，再运行 `scripts/lib/coverage` 生成关键未覆盖报告。
+
+测试隔离使用 GORM sqlite in-memory：`gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})`，每个测试 server 独立执行 `AutoMigrate` 和 seed/backfill，避免污染真实 `data/collab.db`。
 
 Go 测试示例：
 
@@ -873,7 +867,7 @@ EXPOSE 4900
 ENTRYPOINT ["/app/collab"]
 ```
 
-`mattn/go-sqlite3` 需要 CGO，因此 builder 和 runtime 都必须包含 SQLite C 运行依赖。若后续要求 scratch/distroless，需要静态链接验证和额外 CA/zoneinfo 处理。
+`gorm.io/driver/sqlite` 依赖 CGO SQLite driver，因此 builder 和 runtime 都必须包含 SQLite C 运行依赖。若后续要求 scratch/distroless，需要静态链接验证和额外 CA/zoneinfo 处理。
 
 ## 17. Task Breakdown
 
@@ -881,7 +875,7 @@ ENTRYPOINT ["/app/collab"]
 
 - 搭建 `packages/server-go`、`go.mod`、Makefile、Dockerfile 初版。
 - 实现 config、logger、JSON helpers、middleware chain、graceful shutdown。
-- 实现 SQLite open/migrate/seed，包含 schema 兼容和 backfill。
+- 实现 GORM sqlite open、`AutoMigrate`、seed，包含 schema 兼容和 backfill。
 - 实现 auth：JWT cookie、API key、dev bypass、permission middleware。
 - 覆盖测试：migration、seed、login/register/logout、permission check。
 
@@ -936,7 +930,7 @@ ENTRYPOINT ["/app/collab"]
 | Go internal API loopback 替代 Fastify inject | Plugin `api_request` 可能和真实 HTTP 行为不一致 | loopback 调用同一个 root handler，保留 headers/body/status |
 | multipart parsing | 大文件必须早停且返回 413 | 使用 `http.MaxBytesReader` + streaming copy |
 | workspace DB 与文件数据一致性 | 写 DB 成功但文件失败或反向 | 先写临时文件再 rename，DB 事务失败则清理文件 |
-| schema migration 顺序 | 新老库缺列或 FK 依赖导致启动失败 | `PRAGMA table_info` 检测缺列，表创建顺序固定，迁移幂等测试 |
+| schema migration 顺序 | 新老库缺列或 FK 依赖导致启动失败 | `AutoMigrate` 调用顺序固定，兼容补丁集中在迁移模块，迁移幂等测试 |
 | Admin 权限语义历史演进 | 部分旧设计说 admin 不参与业务权限，新代码已允许 admin bypass | Go 以当前 TS server 为准：admin 在 permission middleware 和部分 channel access 中 bypass |
 | Cookie secure 判断 | 本地/生产 cookie 行为差异影响登录 | 复制 TS：`HOST` 非 localhost/127.0.0.1 且非 development 时加 `Secure` |
 | Go server 与 TS server 并行写同一 SQLite | 切换期双写会有 WAL/事件顺序风险 | 灰度时单 writer；回滚前停止 Go 进程，直接启动 TS server |
