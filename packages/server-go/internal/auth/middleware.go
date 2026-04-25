@@ -37,7 +37,7 @@ func AuthMiddleware(s *store.Store, cfg *config.Config) func(http.Handler) http.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// 1. Check cookie
 			if cookie, err := r.Cookie("collab_token"); err == nil {
-				if user := validateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
+				if user := ValidateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
 					next.ServeHTTP(w, setUserContext(r, user))
 					return
 				}
@@ -77,7 +77,7 @@ func AuthMiddleware(s *store.Store, cfg *config.Config) func(http.Handler) http.
 	}
 }
 
-func validateJWT(s *store.Store, secret string, tokenStr string) *store.User {
+func ValidateJWT(s *store.Store, secret string, tokenStr string) *store.User {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
 		return []byte(secret), nil

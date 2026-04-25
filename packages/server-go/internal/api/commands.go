@@ -4,12 +4,53 @@ import (
 	"log/slog"
 	"net/http"
 
+	"collab-server/internal/auth"
 	"collab-server/internal/store"
 )
+
+var builtinCommands = []map[string]string{
+	{"name": "help", "description": "Show available commands"},
+	{"name": "leave", "description": "Leave the current channel"},
+	{"name": "topic", "description": "Set channel topic", "usage": "/topic <text>"},
+	{"name": "invite", "description": "Invite a user to the channel", "usage": "/invite @user"},
+	{"name": "dm", "description": "Open a direct message", "usage": "/dm @user"},
+	{"name": "status", "description": "Set your status", "usage": "/status <text>"},
+	{"name": "clear", "description": "Clear chat history"},
+	{"name": "nick", "description": "Change your display name", "usage": "/nick <name>"},
+}
+
+type CommandStoreReader interface {
+	GetAll() []struct {
+		AgentID   string
+		AgentName string
+		Commands  []struct {
+			Name        string
+			Description string
+			Usage       string
+		}
+	}
+}
 
 type CommandHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
+	Hub    CommandSource
+}
+
+type CommandSource interface {
+	GetAllCommands() []AgentCommandGroup
+}
+
+type AgentCommandGroup struct {
+	AgentID   string        `json:"agent_id"`
+	AgentName string        `json:"agent_name"`
+	Commands  []AgentCmdDef `json:"commands"`
+}
+
+type AgentCmdDef struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Usage       string `json:"usage,omitempty"`
 }
 
 func (h *CommandHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
@@ -17,8 +58,22 @@ func (h *CommandHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Han
 }
 
 func (h *CommandHandler) handleListCommands(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var agentGroups any
+	if h.Hub != nil {
+		agentGroups = h.Hub.GetAllCommands()
+	}
+	if agentGroups == nil {
+		agentGroups = []AgentCommandGroup{}
+	}
+
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"builtin": []any{},
-		"agent":   []any{},
+		"builtin": builtinCommands,
+		"agent":   agentGroups,
 	})
 }

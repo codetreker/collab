@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"collab-server/internal/auth"
 	"collab-server/internal/config"
 	"collab-server/internal/store"
+	"collab-server/internal/ws"
 )
 
 type Server struct {
@@ -19,19 +21,33 @@ type Server struct {
 	logger    *slog.Logger
 	store     *store.Store
 	mux       *http.ServeMux
+	hub       *ws.Hub
 	startTime time.Time
 }
 
 func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
+	hub := ws.NewHub(s, logger, cfg)
+
 	srv := &Server{
 		cfg:       cfg,
 		logger:    logger,
 		store:     s,
 		mux:       http.NewServeMux(),
+		hub:       hub,
 		startTime: time.Now(),
 	}
 	srv.SetupRoutes()
+
+	hub.SetHandler(srv.mux)
+
+	ctx := context.Background()
+	go hub.StartHeartbeat(ctx)
+
 	return srv
+}
+
+func (s *Server) Hub() *ws.Hub {
+	return s.hub
 }
 
 func (s *Server) SetupRoutes() {
@@ -85,7 +101,7 @@ func (s *Server) SetupRoutes() {
 	reactionHandler.RegisterRoutes(s.mux, authMw)
 
 	// Commands
-	commandHandler := &api.CommandHandler{Store: s.store, Logger: s.logger}
+	commandHandler := &api.CommandHandler{Store: s.store, Logger: s.logger, Hub: &hubCommandAdapter{s.hub}}
 	commandHandler.RegisterRoutes(s.mux, authMw)
 
 	// Upload
@@ -101,8 +117,13 @@ func (s *Server) SetupRoutes() {
 	remoteHandler.RegisterRoutes(s.mux, authMw)
 
 	// Poll/SSE
-	pollHandler := &api.PollHandler{Store: s.store, Logger: s.logger}
+	pollHandler := &api.PollHandler{Store: s.store, Logger: s.logger, Hub: s.hub}
 	pollHandler.RegisterRoutes(s.mux, authMw)
+
+	// WebSocket endpoints
+	s.mux.HandleFunc("/ws", ws.HandleClient(s.hub))
+	s.mux.HandleFunc("/ws/plugin", ws.HandlePlugin(s.hub))
+	s.mux.HandleFunc("/ws/remote", ws.HandleRemote(s.hub))
 
 	s.mux.HandleFunc("/api/v1/", respondNotImplemented)
 
@@ -156,4 +177,29 @@ func (s *Server) Handler() http.Handler {
 	handler = recoverMiddleware(s.logger, handler)
 
 	return handler
+}
+
+type hubCommandAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubCommandAdapter) GetAllCommands() []api.AgentCommandGroup {
+	all := a.hub.CommandStore().GetAll()
+	result := make([]api.AgentCommandGroup, len(all))
+	for i, g := range all {
+		cmds := make([]api.AgentCmdDef, len(g.Commands))
+		for j, c := range g.Commands {
+			cmds[j] = api.AgentCmdDef{
+				Name:        c.Name,
+				Description: c.Description,
+				Usage:       c.Usage,
+			}
+		}
+		result[i] = api.AgentCommandGroup{
+			AgentID:   g.AgentID,
+			AgentName: g.AgentName,
+			Commands:  cmds,
+		}
+	}
+	return result
 }
