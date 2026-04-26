@@ -23,7 +23,7 @@ type ChannelWithCounts struct {
 	Type          string  `json:"type"`
 	DeletedAt     *int64  `json:"deleted_at,omitempty"`
 	Position      string  `json:"position"`
-	GroupID       *string `json:"group_id,omitempty"`
+	GroupID       *string `json:"group_id"`
 	MemberCount   int     `json:"member_count"`
 	UnreadCount   int     `json:"unread_count"`
 	LastMessageAt *int64  `json:"last_message_at,omitempty"`
