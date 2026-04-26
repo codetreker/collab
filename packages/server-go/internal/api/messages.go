@@ -95,6 +95,8 @@ func (h *MessageHandler) handleListMessages(w http.ResponseWriter, r *http.Reque
 		store.MessageWithSender
 		Reactions []store.AggregatedReaction `json:"reactions"`
 	}
+	// TODO: N+1 query — each message triggers a separate DB query for reactions.
+	// Optimize with batch query: SELECT ... WHERE message_id IN (...) grouped by message_id.
 	out := make([]messageWithReactions, len(msgs))
 	for i, msg := range msgs {
 		reactions, err := h.Store.GetReactionsByMessage(msg.ID)
