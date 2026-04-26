@@ -50,6 +50,7 @@ jobs:
                 image: cr.codetrek.work/default/collab:test
                 container_name: collab-test
                 restart: unless-stopped
+                user: "0:0"
                 ports:
                   - "4902:4900"
                 volumes:
@@ -62,6 +63,7 @@ jobs:
                   - UPLOAD_DIR=/app/data/uploads
                   - WORKSPACE_DIR=/app/data/workspaces
                   - CLIENT_DIST=/app/client/dist
+                  - JWT_SECRET=test-env-jwt-secret-b07b08
             volumes:
               collab-test-data:
             COMPEOF
