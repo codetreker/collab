@@ -56,7 +56,7 @@ func TestWorkspacePermissions(t *testing.T) {
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
-	privCh := testutil.CreateChannel(t, ts.URL, adminToken, "private-ws", "private")
+	privCh := testutil.CreateChannel(t, ts.URL, adminToken, "private-ws-perm", "private")
 	privID := privCh["id"].(string)
 
 	status, data := uploadWorkspaceFile(t, ts.URL, adminToken, privID, "test.txt", "hello")
