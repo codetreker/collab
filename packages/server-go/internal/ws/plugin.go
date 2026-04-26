@@ -1,0 +1,257 @@
+package ws
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/coder/websocket"
+	"github.com/google/uuid"
+)
+
+type PluginConn struct {
+	hub     *Hub
+	conn    *websocket.Conn
+	agentID string
+	apiKey  string
+	send    chan []byte
+	done    chan struct{}
+	alive   bool
+
+	pendingMu sync.Mutex
+	pending   map[string]chan PluginResponse
+}
+
+type PluginResponse struct {
+	Status int
+	Body   []byte
+}
+
+func HandlePlugin(hub *Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var apiKey string
+		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+			apiKey = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+		if apiKey == "" {
+			apiKey = r.URL.Query().Get("apiKey")
+		}
+		if apiKey == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		user, err := hub.store.GetUserByAPIKey(apiKey)
+		if err != nil || user.DeletedAt != nil || user.Disabled {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			InsecureSkipVerify: true,
+		})
+		if err != nil {
+			hub.logger.Error("plugin ws accept failed", "error", err)
+			return
+		}
+
+		pc := &PluginConn{
+			hub:     hub,
+			conn:    conn,
+			agentID: user.ID,
+			apiKey:  apiKey,
+			send:    make(chan []byte, sendBufSize),
+			done:    make(chan struct{}),
+			alive:   true,
+			pending: make(map[string]chan PluginResponse),
+		}
+
+		hub.RegisterPlugin(user.ID, pc)
+
+		ctx := r.Context()
+		go pc.writePump(ctx)
+
+		defer func() {
+			hub.UnregisterPlugin(user.ID)
+			conn.Close(websocket.StatusNormalClosure, "")
+		}()
+
+		for {
+			_, data, err := conn.Read(ctx)
+			if err != nil {
+				return
+			}
+
+			var msg struct {
+				Type string          `json:"type"`
+				ID   string          `json:"id,omitempty"`
+				Data json.RawMessage `json:"data,omitempty"`
+			}
+			if err := json.Unmarshal(data, &msg); err != nil {
+				continue
+			}
+
+			pc.alive = true
+
+			switch msg.Type {
+			case "ping":
+				pc.sendJSON(map[string]string{"type": "pong"})
+			case "pong":
+				// alive already set
+			case "api_request":
+				go pc.handleAPIRequest(msg.ID, msg.Data)
+			case "api_response":
+				go pc.handleAPIResponse(msg.ID, msg.Data)
+			case "response":
+				pc.resolveRequest(msg.ID, 200, msg.Data)
+			}
+		}
+	}
+}
+
+func (pc *PluginConn) handleAPIResponse(id string, data json.RawMessage) {
+	var resp struct {
+		Status int             `json:"status"`
+		Body   json.RawMessage `json:"body"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return
+	}
+	pc.resolveRequest(id, resp.Status, resp.Body)
+}
+
+func (pc *PluginConn) handleAPIRequest(id string, data json.RawMessage) {
+	var req struct {
+		Method string          `json:"method"`
+		Path   string          `json:"path"`
+		Body   json.RawMessage `json:"body,omitempty"`
+	}
+	if err := json.Unmarshal(data, &req); err != nil {
+		pc.sendJSON(map[string]any{
+			"type": "api_response",
+			"id":   id,
+			"data": map[string]any{"status": 400, "body": `{"error":"invalid request"}`},
+		})
+		return
+	}
+
+	method := req.Method
+	if method == "" {
+		method = "GET"
+	}
+
+	var bodyReader io.Reader
+	if len(req.Body) > 0 {
+		bodyReader = bytes.NewReader(req.Body)
+	}
+
+	httpReq := httptest.NewRequest(method, req.Path, bodyReader)
+	httpReq.Header.Set("Authorization", "Bearer "+pc.apiKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	rec := httptest.NewRecorder()
+	pc.hub.handler.ServeHTTP(rec, httpReq)
+
+	var responseBody any
+	bodyStr := rec.Body.String()
+	if json.Valid([]byte(bodyStr)) {
+		responseBody = json.RawMessage(bodyStr)
+	} else {
+		responseBody = bodyStr
+	}
+
+	pc.sendJSON(map[string]any{
+		"type": "api_response",
+		"id":   id,
+		"data": map[string]any{
+			"status": rec.Code,
+			"body":   responseBody,
+		},
+	})
+}
+
+func (pc *PluginConn) sendJSON(v any) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return
+	}
+	select {
+	case pc.send <- data:
+	default:
+	}
+}
+
+func (pc *PluginConn) Send(data []byte) {
+	select {
+	case pc.send <- data:
+	default:
+	}
+}
+
+func (pc *PluginConn) SendRequest(method, path string, body []byte) (PluginResponse, error) {
+	id := uuid.NewString()
+	ch := make(chan PluginResponse, 1)
+
+	pc.pendingMu.Lock()
+	pc.pending[id] = ch
+	pc.pendingMu.Unlock()
+
+	defer func() {
+		pc.pendingMu.Lock()
+		delete(pc.pending, id)
+		pc.pendingMu.Unlock()
+	}()
+
+	req := map[string]any{
+		"type": "request",
+		"id":   id,
+		"data": map[string]any{
+			"action": method,
+			"path":   path,
+		},
+	}
+	if body != nil {
+		req["data"].(map[string]any)["body"] = json.RawMessage(body)
+	}
+	pc.sendJSON(req)
+
+	select {
+	case resp := <-ch:
+		return resp, nil
+	case <-time.After(10 * time.Second):
+		return PluginResponse{}, context.DeadlineExceeded
+	}
+}
+
+func (pc *PluginConn) resolveRequest(id string, status int, body []byte) {
+	pc.pendingMu.Lock()
+	ch, ok := pc.pending[id]
+	pc.pendingMu.Unlock()
+	if ok {
+		select {
+		case ch <- PluginResponse{Status: status, Body: body}:
+		default:
+		}
+	}
+}
+
+func (pc *PluginConn) writePump(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-pc.done:
+			return
+		case msg, ok := <-pc.send:
+			if !ok {
+				return
+			}
+			pc.conn.Write(ctx, websocket.MessageText, msg)
+		}
+	}
+}

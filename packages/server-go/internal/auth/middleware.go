@@ -1,0 +1,141 @@
+package auth
+
+import (
+	"context"
+	"net/http"
+	"strings"
+
+	"collab-server/internal/config"
+	"collab-server/internal/store"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type contextKey string
+
+const userContextKey contextKey = "auth_user"
+
+func UserFromContext(ctx context.Context) *store.User {
+	if u, ok := ctx.Value(userContextKey).(*store.User); ok {
+		return u
+	}
+	return nil
+}
+
+func setUserContext(r *http.Request, user *store.User) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), userContextKey, user))
+}
+
+type Claims struct {
+	UserID string `json:"userId"`
+	Email  string `json:"email"`
+	jwt.RegisteredClaims
+}
+
+func AuthMiddleware(s *store.Store, cfg *config.Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// 1. Check cookie
+			if cookie, err := r.Cookie("collab_token"); err == nil {
+				if user := ValidateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
+					next.ServeHTTP(w, setUserContext(r, user))
+					return
+				}
+			}
+
+			// 2. Check Authorization: Bearer <api_key>
+			if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+				apiKey := strings.TrimPrefix(authHeader, "Bearer ")
+				if user, err := s.GetUserByAPIKey(apiKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+					next.ServeHTTP(w, setUserContext(r, user))
+					return
+				}
+			}
+
+			// 3. Dev auth bypass
+			if cfg.IsDevelopment() && cfg.DevAuthBypass {
+				if devUserID := r.Header.Get("X-Dev-User-Id"); devUserID != "" {
+					if user, err := s.GetUserByID(devUserID); err == nil {
+						next.ServeHTTP(w, setUserContext(r, user))
+						return
+					}
+				}
+				// Fallback to first admin
+				users, err := s.ListUsers()
+				if err == nil {
+					for i := range users {
+						if users[i].Role == "admin" {
+							next.ServeHTTP(w, setUserContext(r, &users[i]))
+							return
+						}
+					}
+				}
+			}
+
+			writeJSON401(w)
+		})
+	}
+}
+
+func ValidateJWT(s *store.Store, secret string, tokenStr string) *store.User {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
+		return []byte(secret), nil
+	})
+	if err != nil || !token.Valid {
+		return nil
+	}
+
+	user, err := s.GetUserByID(claims.UserID)
+	if err != nil || user.DeletedAt != nil || user.Disabled {
+		return nil
+	}
+	return user
+}
+
+func writeJSON401(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte(`{"error":"Unauthorized"}`))
+}
+
+func AuthenticateFlexible(s *store.Store, cfg *config.Config, r *http.Request) *store.User {
+	if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
+		if user, err := s.GetUserByAPIKey(apiKey); err == nil && user.DeletedAt == nil && !user.Disabled {
+			return user
+		}
+	}
+
+	if cookie, err := r.Cookie("collab_token"); err == nil {
+		if user := ValidateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
+			return user
+		}
+	}
+
+	if cfg.IsDevelopment() && cfg.DevAuthBypass {
+		if devUserID := r.Header.Get("X-Dev-User-Id"); devUserID != "" {
+			if user, err := s.GetUserByID(devUserID); err == nil {
+				return user
+			}
+		}
+	}
+
+	return nil
+}
+
+func AuthenticateFromAPIKey(s *store.Store, apiKey string) *store.User {
+	if apiKey == "" {
+		return nil
+	}
+	user, err := s.GetUserByAPIKey(apiKey)
+	if err != nil || user.DeletedAt != nil || user.Disabled {
+		return nil
+	}
+	return user
+}
+
+func AuthenticateFromQuery(s *store.Store, r *http.Request, paramName string) *store.User {
+	apiKey := r.URL.Query().Get(paramName)
+	return AuthenticateFromAPIKey(s, apiKey)
+}

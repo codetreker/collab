@@ -27,25 +27,10 @@ jobs:
       - name: Login to Harbor
         run: echo '${{ secrets.HARBOR_API_TOKEN }}' | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
 
-      - name: Build base image if needed
-        id: base
-        run: |
-          BASE_HASH=$(cat Dockerfile.base pnpm-lock.yaml | sha256sum | cut -c1-8)
-          echo "base_hash=$BASE_HASH" >> "$GITHUB_OUTPUT"
-          if docker pull ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH} 2>/dev/null; then
-            echo "✅ Base image exists, skipping build"
-          else
-            echo "🔨 Building base image..."
-            docker build -f Dockerfile.base \
-              -t ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH} .
-            docker push ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH}
-          fi
-          docker tag ${{ env.REGISTRY }}/default/collab-base:${BASE_HASH} collab-base:${BASE_HASH}
-
-      - name: Build and push
+      - name: Build and push (Go server)
         run: |
           docker build \
-            --build-arg BASE_TAG=${{ steps.base.outputs.base_hash }} \
+            -f packages/server-go/Dockerfile \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:test \
             .
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:test
@@ -58,9 +43,31 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
           script: |
+            mkdir -p /opt/dockers/collab-test
+            cat > /opt/dockers/collab-test/docker-compose.yml << 'COMPEOF'
+            services:
+              collab-test:
+                image: cr.codetrek.work/default/collab:test
+                container_name: collab-test
+                restart: unless-stopped
+                ports:
+                  - "4902:4900"
+                volumes:
+                  - collab-test-data:/app/data
+                environment:
+                  - HOST=0.0.0.0
+                  - PORT=4900
+                  - NODE_ENV=production
+                  - DATABASE_PATH=/app/data/collab.db
+                  - UPLOAD_DIR=/app/data/uploads
+                  - WORKSPACE_DIR=/app/data/workspaces
+                  - CLIENT_DIST=/app/client/dist
+            volumes:
+              collab-test-data:
+            COMPEOF
             cd /opt/dockers/collab-test
             docker compose pull
             docker compose up -d
             sleep 5
-            curl -sf http://localhost:4902/ > /dev/null && echo "✅ Test healthy" || (echo "❌ Test unhealthy" && exit 1)
+            curl -sf http://localhost:4902/health > /dev/null && echo "✅ Test healthy" || (echo "❌ Test unhealthy" && exit 1)
             docker image prune -f
