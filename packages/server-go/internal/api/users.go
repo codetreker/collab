@@ -77,12 +77,12 @@ func (h *UserHandler) handleOnlineUsers(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	sanitized := make([]map[string]any, len(users))
+	userIDs := make([]string, len(users))
 	for i, u := range users {
-		sanitized[i] = sanitizeUserPublic(&u)
+		userIDs[i] = u.ID
 	}
 
-	writeJSONResponse(w, http.StatusOK, map[string]any{"users": sanitized})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"user_ids": userIDs})
 }
 
 // sanitizeUserPublic returns a public-safe user representation.
