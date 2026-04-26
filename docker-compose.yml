@@ -13,10 +13,5 @@ services:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/collab.db
       - UPLOAD_DIR=/app/data/uploads
-      - WORKSPACE_DIR=/app/data/workspaces
-      - CLIENT_DIST=/app/client/dist
-      - JWT_SECRET=${JWT_SECRET:-local-dev-jwt-secret}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
     env_file:
       - .env
