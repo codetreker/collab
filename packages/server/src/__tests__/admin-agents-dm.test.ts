@@ -69,12 +69,39 @@ describe('Admin, Agents, DM, Users API', () => {
 
   // ─── Users ─────────────────────────────────────────
   describe('GET /api/v1/users', () => {
-    it('lists users', async () => {
+    it('lists only users sharing a channel with the current user', async () => {
       const adminId = seedAdmin(testDb);
-      seedMember(testDb, 'Alice');
-      const res = await inject('GET', '/api/v1/users', adminId);
+      const memberId = seedMember(testDb, 'Alice');
+      const outsiderId = seedMember(testDb, 'Outsider');
+      const channelId = seedChannel(testDb, adminId, 'shared');
+      addChannelMember(testDb, channelId, adminId);
+      addChannelMember(testDb, channelId, memberId);
+
+      const res = await inject('GET', '/api/v1/users', memberId);
       expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.body).users.length).toBe(2);
+      const users = JSON.parse(res.body).users;
+      expect(users.map((u: { id: string }) => u.id).sort()).toEqual([adminId, memberId].sort());
+      expect(users.map((u: { id: string }) => u.id)).not.toContain(outsiderId);
+    });
+
+    it('returns only public-safe user fields', async () => {
+      const adminId = seedAdmin(testDb);
+      const memberId = seedMember(testDb, 'Alice');
+      const agentId = seedAgent(testDb, adminId, 'MentionBot');
+      const channelId = seedChannel(testDb, adminId, 'mentions');
+      addChannelMember(testDb, channelId, memberId);
+      addChannelMember(testDb, channelId, agentId);
+
+      const res = await inject('GET', '/api/v1/users', memberId);
+      expect(res.statusCode).toBe(200);
+      const users = JSON.parse(res.body).users;
+      expect(users.find((u: { id: string }) => u.id === agentId)).toEqual({
+        id: agentId,
+        display_name: 'MentionBot',
+        role: 'agent',
+        avatar_url: null,
+      });
+      expect(Object.keys(users[0]).sort()).toEqual(['avatar_url', 'display_name', 'id', 'role']);
     });
   });
 

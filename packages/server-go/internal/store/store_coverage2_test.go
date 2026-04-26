@@ -18,6 +18,38 @@ func TestListUsersFunc(t *testing.T) {
 	}
 }
 
+func TestGetVisibleUsers(t *testing.T) {
+	s := migratedStore(t)
+	current := createUser(t, s, "visible-current", "member")
+	shared := createUser(t, s, "visible-shared", "member")
+	outsider := createUser(t, s, "visible-outsider", "member")
+	ch := &Channel{Name: "visible-ch", Visibility: "public", CreatedBy: current.ID, Type: "channel", Position: GenerateInitialRank()}
+	if err := s.CreateChannel(ch); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddChannelMember(&ChannelMember{ChannelID: ch.ID, UserID: current.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddChannelMember(&ChannelMember{ChannelID: ch.ID, UserID: shared.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	users, err := s.GetVisibleUsers(current.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]bool{}
+	for _, u := range users {
+		ids[u.ID] = true
+	}
+	if !ids[current.ID] || !ids[shared.ID] {
+		t.Fatalf("expected current and shared users, got %v", ids)
+	}
+	if ids[outsider.ID] {
+		t.Fatalf("did not expect outsider user, got %v", ids)
+	}
+}
+
 func TestGetEventCursorForMessage(t *testing.T) {
 	s := migratedStore(t)
 	u := createUser(t, s, "evtcursor", "member")

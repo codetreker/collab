@@ -170,6 +170,19 @@ func (s *Store) ListUsers() ([]User, error) {
 	return users, err
 }
 
+func (s *Store) GetVisibleUsers(userID string) ([]User, error) {
+	var users []User
+	err := s.db.Table("users u").
+		Select("DISTINCT u.id, u.display_name, u.role, u.avatar_url, u.created_at").
+		Joins("JOIN channel_members visible_member ON visible_member.user_id = u.id").
+		Joins("JOIN channel_members current_member ON current_member.channel_id = visible_member.channel_id").
+		Joins("JOIN channels c ON c.id = current_member.channel_id AND c.deleted_at IS NULL").
+		Where("current_member.user_id = ? AND u.deleted_at IS NULL AND u.disabled = ?", userID, false).
+		Order("u.created_at ASC").
+		Scan(&users).Error
+	return users, err
+}
+
 func (s *Store) GetInviteCode(code string) (*InviteCode, error) {
 	var ic InviteCode
 	err := s.db.Where("code = ?", code).First(&ic).Error
@@ -1004,14 +1017,14 @@ func (s *Store) CreateDmChannel(userID1, userID2 string) (*Channel, error) {
 
 func (s *Store) ListDmChannelsForUser(userID string) ([]DmChannelInfo, error) {
 	type rawRow struct {
-		ID             string `gorm:"column:id"`
-		Name           string `gorm:"column:name"`
-		CreatedAt      int64  `gorm:"column:created_at"`
-		PeerID         string `gorm:"column:peer_id"`
-		PeerName       string `gorm:"column:peer_name"`
-		PeerAvatar     string `gorm:"column:peer_avatar"`
-		PeerRole       string `gorm:"column:peer_role"`
-		UnreadCount    int    `gorm:"column:unread_count"`
+		ID             string  `gorm:"column:id"`
+		Name           string  `gorm:"column:name"`
+		CreatedAt      int64   `gorm:"column:created_at"`
+		PeerID         string  `gorm:"column:peer_id"`
+		PeerName       string  `gorm:"column:peer_name"`
+		PeerAvatar     string  `gorm:"column:peer_avatar"`
+		PeerRole       string  `gorm:"column:peer_role"`
+		UnreadCount    int     `gorm:"column:unread_count"`
 		LastMsgContent *string `gorm:"column:last_msg_content"`
 		LastMsgAt      *int64  `gorm:"column:last_msg_at"`
 		LastMsgSender  *string `gorm:"column:last_msg_sender"`

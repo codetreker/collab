@@ -23,7 +23,13 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handle
 
 // GET /api/v1/users
 func (h *UserHandler) handleListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.Store.ListUsers()
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	users, err := h.Store.GetVisibleUsers(user.ID)
 	if err != nil {
 		h.Logger.Error("failed to list users", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
@@ -87,19 +93,10 @@ func (h *UserHandler) handleOnlineUsers(w http.ResponseWriter, r *http.Request) 
 
 // sanitizeUserPublic returns a public-safe user representation.
 func sanitizeUserPublic(u *store.User) map[string]any {
-	m := map[string]any{
-		"id":              u.ID,
-		"display_name":    u.DisplayName,
-		"role":            u.Role,
-		"avatar_url":      u.AvatarURL,
-		"require_mention": u.RequireMention,
-		"created_at":      u.CreatedAt,
+	return map[string]any{
+		"id":           u.ID,
+		"display_name": u.DisplayName,
+		"role":         u.Role,
+		"avatar_url":   u.AvatarURL,
 	}
-	if u.OwnerID != nil {
-		m["owner_id"] = *u.OwnerID
-	}
-	if u.LastSeenAt != nil {
-		m["last_seen_at"] = *u.LastSeenAt
-	}
-	return m
 }

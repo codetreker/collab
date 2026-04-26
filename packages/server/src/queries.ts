@@ -260,6 +260,20 @@ export function listUsers(db: Database.Database): User[] {
     .all() as User[];
 }
 
+export function getVisibleUsers(db: Database.Database, userId: string): Pick<User, 'id' | 'display_name' | 'role' | 'avatar_url'>[] {
+  return db.prepare(
+    `SELECT DISTINCT u.id, u.display_name, u.role, u.avatar_url
+     FROM channel_members current_member
+     JOIN channel_members visible_member ON visible_member.channel_id = current_member.channel_id
+     JOIN channels c ON c.id = current_member.channel_id AND c.deleted_at IS NULL
+     JOIN users u ON u.id = visible_member.user_id
+     WHERE current_member.user_id = ?
+       AND u.deleted_at IS NULL
+       AND u.disabled = 0
+     ORDER BY u.created_at ASC`,
+  ).all(userId) as Pick<User, 'id' | 'display_name' | 'role' | 'avatar_url'>[];
+}
+
 export function getUserById(db: Database.Database, id: string): User | undefined {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(id) as User | undefined;
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"borgee-server/internal/store"
 	"borgee-server/internal/testutil"
 )
 
@@ -437,18 +438,48 @@ func TestChannelAdvanced(t *testing.T) {
 }
 
 func TestUsersEndpoints(t *testing.T) {
-	ts, _, _ := testutil.NewTestServer(t)
+	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
-	t.Run("ListUsers", func(t *testing.T) {
-		resp, data := testutil.JSON(t, "GET", ts.URL+"/api/v1/users", adminToken, nil)
+	t.Run("ListUsersVisibleOnly", func(t *testing.T) {
+		outsider := &store.User{DisplayName: "Outsider", Role: "member"}
+		if err := s.CreateUser(outsider); err != nil {
+			t.Fatal(err)
+		}
+		bot := &store.User{DisplayName: "MentionBot", Role: "agent"}
+		if err := s.CreateUser(bot); err != nil {
+			t.Fatal(err)
+		}
+		var general store.Channel
+		if err := s.DB().Where("name = ?", "general").First(&general).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := s.AddChannelMember(&store.ChannelMember{ChannelID: general.ID, UserID: bot.ID}); err != nil {
+			t.Fatal(err)
+		}
+
+		resp, data := testutil.JSON(t, "GET", ts.URL+"/api/v1/users", memberToken, nil)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
 		users := data["users"].([]any)
-		if len(users) < 2 {
-			t.Fatalf("expected at least 2 users, got %d", len(users))
+		ids := map[string]bool{}
+		for _, raw := range users {
+			u := raw.(map[string]any)
+			ids[u["id"].(string)] = true
+			if len(u) != 4 || u["display_name"] == nil || u["role"] == nil || u["avatar_url"] == nil {
+				t.Fatalf("expected public-safe user fields only, got %#v", u)
+			}
+			if _, ok := u["require_mention"]; ok {
+				t.Fatalf("unexpected sensitive field in %#v", u)
+			}
+		}
+		if !ids[bot.ID] {
+			t.Fatalf("expected shared channel bot in users, got %v", ids)
+		}
+		if ids[outsider.ID] {
+			t.Fatalf("did not expect non-shared outsider in users, got %v", ids)
 		}
 	})
 
