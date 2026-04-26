@@ -4,8 +4,8 @@
   "private": true,
   "description": "Borgee — lightweight team chat platform",
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @borgee/server dev\" \"pnpm --filter @borgee/client dev\"",
-    "build": "pnpm --filter @borgee/client build && pnpm --filter @borgee/server build",
+    "dev": "pnpm --filter @borgee/client dev",
+    "build": "pnpm --filter @borgee/client build",
     "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
     "format": "prettier --write 'packages/*/src/**/*.{ts,tsx}'",
     "typecheck": "pnpm -r run typecheck"
