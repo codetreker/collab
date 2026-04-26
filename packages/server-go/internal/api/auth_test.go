@@ -130,10 +130,12 @@ func TestLoginMissingFields(t *testing.T) {
 func TestRegisterSuccess(t *testing.T) {
 	ts, s, _ := setupTest(t)
 
+	systemUser := createTestUser(t, s, "system@test.com", "password123", "admin")
+
 	now := time.Now().UnixMilli()
 	s.DB().Create(&store.InviteCode{
 		Code:      "valid-code",
-		CreatedBy: "system",
+		CreatedBy: systemUser.ID,
 		CreatedAt: now,
 	})
 
@@ -158,10 +160,10 @@ func TestRegisterSuccess(t *testing.T) {
 
 func TestRegisterDuplicateEmail(t *testing.T) {
 	ts, s, _ := setupTest(t)
-	createTestUser(t, s, "dup@test.com", "password123", "member")
+	user := createTestUser(t, s, "dup@test.com", "password123", "member")
 
 	now := time.Now().UnixMilli()
-	s.DB().Create(&store.InviteCode{Code: "code2", CreatedBy: "system", CreatedAt: now})
+	s.DB().Create(&store.InviteCode{Code: "code2", CreatedBy: user.ID, CreatedAt: now})
 
 	body, _ := json.Marshal(map[string]string{
 		"invite_code":  "code2",

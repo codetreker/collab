@@ -46,8 +46,8 @@ func (s *Store) GetRemoteNodeByToken(token string) (*RemoteNode, error) {
 }
 
 func (s *Store) UpdateRemoteNodeLastSeen(nodeID string) error {
-	now := time.Now()
-	return s.db.Model(&RemoteNode{}).Where("id = ?", nodeID).Update("last_seen_at", &now).Error
+	now := time.Now().UnixMilli()
+	return s.db.Model(&RemoteNode{}).Where("id = ?", nodeID).Update("last_seen_at", now).Error
 }
 
 func (s *Store) GetEventByCursor(cursor int64) (*Event, error) {

@@ -161,8 +161,8 @@ CREATE TABLE IF NOT EXISTS workspace_files (
   size_bytes INTEGER DEFAULT 0,
   source TEXT DEFAULT 'upload',
   source_message_id TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
+  created_at INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT 0,
   UNIQUE(user_id, channel_id, parent_id, name)
 );
 
@@ -171,8 +171,8 @@ CREATE TABLE IF NOT EXISTS remote_nodes (
   user_id TEXT NOT NULL REFERENCES users(id),
   machine_name TEXT NOT NULL,
   connection_token TEXT NOT NULL UNIQUE,
-  last_seen_at TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
+  last_seen_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS remote_bindings (
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS remote_bindings (
   channel_id TEXT NOT NULL REFERENCES channels(id),
   path TEXT NOT NULL,
   label TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at INTEGER NOT NULL DEFAULT 0,
   UNIQUE(node_id, channel_id, path)
 );
 
