@@ -22,6 +22,9 @@ func Open(dsn string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	if dsn == ":memory:" {
+		sqlDB.SetMaxOpenConns(1)
+	}
 
 	for _, pragma := range []string{
 		"PRAGMA journal_mode=WAL",

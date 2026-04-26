@@ -125,6 +125,11 @@ func exerciseAuthedHandler(t *testing.T, s *store.Store, cfg *config.Config, tok
 	return rec
 }
 
+func newClosedStoreTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
+	t.Helper()
+	return setupFullTestServer(t)
+}
+
 func rawReq(t *testing.T, method, url, token, contentType string, body io.Reader) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(method, url, body)
@@ -354,7 +359,7 @@ func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
 	})
 
 	t.Run("closed store returns 500 after auth", func(t *testing.T) {
-		ts, s, cfg := setupFullTestServer(t)
+		ts, s, cfg := newClosedStoreTestServer(t)
 		token := loginAs(t, ts.URL, "admin@test.com", "password123")
 		generalID := getGeneralID(t, ts.URL, token)
 		h := &WorkspaceHandler{Store: s, Config: cfg, Logger: testLogger()}
@@ -795,7 +800,7 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ts, s, cfg := setupFullTestServer(t)
+			ts, s, cfg := newClosedStoreTestServer(t)
 			token := loginAs(t, ts.URL, "admin@test.com", "password123")
 			var body io.Reader
 			if tc.body != "" {
@@ -1050,16 +1055,18 @@ func TestSmallFallbackBranches(t *testing.T) {
 		t.Fatalf("expected fallback JSON, got %q", got)
 	}
 
-	ts, s, cfg := setupFullTestServer(t)
-	token := loginAs(t, ts.URL, "admin@test.com", "password123")
-	generalID := getGeneralID(t, ts.URL, token)
-	msg := postMsg(t, ts.URL, token, generalID, "reaction 500")
-	h := &ReactionHandler{Store: s, Logger: testLogger()}
-	rec := exerciseAuthedHandler(t, s, cfg, token, "GET /api/v1/messages/{messageId}/reactions", "GET", "/api/v1/messages/"+msg["id"].(string)+"/reactions", nil, func(w http.ResponseWriter, r *http.Request) {
-		_ = s.Close()
-		h.handleGetReactions(w, r)
+	t.Run("reaction closed store returns 500", func(t *testing.T) {
+		ts, s, cfg := newClosedStoreTestServer(t)
+		token := loginAs(t, ts.URL, "admin@test.com", "password123")
+		generalID := getGeneralID(t, ts.URL, token)
+		msg := postMsg(t, ts.URL, token, generalID, "reaction 500")
+		h := &ReactionHandler{Store: s, Logger: testLogger()}
+		rec := exerciseAuthedHandler(t, s, cfg, token, "GET /api/v1/messages/{messageId}/reactions", "GET", "/api/v1/messages/"+msg["id"].(string)+"/reactions", nil, func(w http.ResponseWriter, r *http.Request) {
+			_ = s.Close()
+			h.handleGetReactions(w, r)
+		})
+		if rec.Code != http.StatusInternalServerError {
+			t.Fatalf("expected reaction 500, got %d", rec.Code)
+		}
 	})
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("expected reaction 500, got %d", rec.Code)
-	}
 }
