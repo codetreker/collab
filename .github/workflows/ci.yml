@@ -37,6 +37,6 @@ jobs:
           COVERAGE=$(cd packages/server-go && go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
           if (( $(echo "$COVERAGE < 85" | bc -l) )); then
-            echo "Coverage ${COVERAGE}% is below 73% threshold"
+            echo "Coverage ${COVERAGE}% is below 85% threshold"
             exit 1
           fi
