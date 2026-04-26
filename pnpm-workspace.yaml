@@ -1,4 +1,3 @@
 packages:
-  - "packages/client"
-  - "packages/remote-agent"
+  - "packages/*"
   - "packages/plugins/*"

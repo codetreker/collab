@@ -1,0 +1,1361 @@
+import Database from 'better-sqlite3';
+import crypto from 'node:crypto';
+import path from 'node:path';
+import { v4 as uuidv4 } from 'uuid';
+import type { Channel, ChannelGroup, User, Message, EventRow, Mention, EventKind, InviteCode, WorkspaceFile, RemoteNode, RemoteBinding } from './types.js';
+import { generateRankBetween } from './lexorank.js';
+
+// ─── Channels ───────────────────────────────────────────
+
+export function listChannels(db: Database.Database): (Channel & { member_count: number; last_message_at: number | null })[] {
+  return db
+    .prepare(
+      `SELECT c.*,
+              COUNT(cm.user_id) AS member_count,
+              (SELECT MAX(m.created_at) FROM messages m WHERE m.channel_id = c.id) AS last_message_at
+       FROM channels c
+       LEFT JOIN channel_members cm ON cm.channel_id = c.id
+       WHERE (c.type = 'channel' OR c.type IS NULL)
+         AND (c.visibility = 'public' OR c.visibility IS NULL)
+         AND c.deleted_at IS NULL
+       GROUP BY c.id
+       ORDER BY c.position ASC, c.created_at ASC`,
+    )
+    .all() as (Channel & { member_count: number; last_message_at: number | null })[];
+}
+
+export function listChannelsWithUnread(
+  db: Database.Database,
+  userId: string,
+): (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[] {
+  return db
+    .prepare(
+      `SELECT c.*,
+              COUNT(DISTINCT cm2.user_id) AS member_count,
+              (SELECT MAX(m.created_at) FROM messages m WHERE m.channel_id = c.id) AS last_message_at,
+              COALESCE(
+                (SELECT COUNT(*) FROM messages m2
+                 WHERE m2.channel_id = c.id
+                   AND m2.created_at > COALESCE(cm.last_read_at, 0)),
+                0
+              ) AS unread_count,
+              CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
+       FROM channels c
+       LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+       LEFT JOIN channel_members cm2 ON cm2.channel_id = c.id
+       WHERE (c.type = 'channel' OR c.type IS NULL)
+         AND c.deleted_at IS NULL
+         AND (cm.user_id IS NOT NULL OR c.visibility = 'public')
+       GROUP BY c.id
+       ORDER BY
+         CASE WHEN cm.user_id IS NOT NULL THEN 0 ELSE 1 END,
+         c.position ASC, c.created_at ASC`,
+    )
+    .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[];
+}
+
+export function listAllChannelsForAdmin(
+  db: Database.Database,
+  userId: string,
+): (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[] {
+  return db
+    .prepare(
+      `SELECT c.*,
+              COUNT(DISTINCT cm2.user_id) AS member_count,
+              (SELECT MAX(m.created_at) FROM messages m WHERE m.channel_id = c.id) AS last_message_at,
+              COALESCE(
+                (SELECT COUNT(*) FROM messages m2
+                 WHERE m2.channel_id = c.id
+                   AND m2.created_at > COALESCE(cm.last_read_at, 0)),
+                0
+              ) AS unread_count,
+              CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
+       FROM channels c
+       LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+       LEFT JOIN channel_members cm2 ON cm2.channel_id = c.id
+       WHERE (c.type = 'channel' OR c.type IS NULL)
+         AND c.deleted_at IS NULL
+       GROUP BY c.id
+       ORDER BY c.position ASC, c.created_at ASC`,
+    )
+    .all(userId) as (Channel & { member_count: number; last_message_at: number | null; unread_count: number; is_member: number })[];
+}
+
+export function getChannelWithCounts(
+  db: Database.Database,
+  channelId: string,
+  userId?: string,
+): (Channel & { member_count: number; unread_count: number; last_message_at: number | null; is_member: number }) | undefined {
+  const row = db.prepare(
+    `SELECT c.*,
+            COUNT(DISTINCT cm2.user_id) AS member_count,
+            (SELECT MAX(m.created_at) FROM messages m WHERE m.channel_id = c.id) AS last_message_at,
+            COALESCE(
+              (SELECT COUNT(*) FROM messages m2
+               WHERE m2.channel_id = c.id
+                 AND m2.created_at > COALESCE(cm.last_read_at, 0)),
+              0
+            ) AS unread_count,
+            CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
+     FROM channels c
+     LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+     LEFT JOIN channel_members cm2 ON cm2.channel_id = c.id
+     WHERE c.id = ? AND c.deleted_at IS NULL
+     GROUP BY c.id`,
+  ).get(userId ?? '', channelId) as (Channel & { member_count: number; unread_count: number; last_message_at: number | null; is_member: number }) | undefined;
+  return row;
+}
+
+export function getChannel(db: Database.Database, id: string): Channel | undefined {
+  return db.prepare('SELECT * FROM channels WHERE id = ? AND deleted_at IS NULL').get(id) as Channel | undefined;
+}
+
+export function getChannelIncludingDeleted(db: Database.Database, id: string): Channel | undefined {
+  return db.prepare('SELECT * FROM channels WHERE id = ?').get(id) as Channel | undefined;
+}
+
+export function getChannelByName(db: Database.Database, name: string): Channel | undefined {
+  return db.prepare('SELECT * FROM channels WHERE name = ? AND deleted_at IS NULL').get(name) as Channel | undefined;
+}
+
+export function getChannelDetail(
+  db: Database.Database,
+  id: string,
+): (Channel & { member_count: number; members: { user_id: string; display_name: string; role: string; joined_at: number }[] }) | undefined {
+  const channel = db.prepare('SELECT * FROM channels WHERE id = ? AND deleted_at IS NULL').get(id) as Channel | undefined;
+  if (!channel) return undefined;
+
+  const members = db
+    .prepare(
+      `SELECT cm.user_id, u.display_name, u.role, cm.joined_at
+       FROM channel_members cm
+       JOIN users u ON u.id = cm.user_id
+       WHERE cm.channel_id = ? AND u.deleted_at IS NULL AND u.disabled = 0
+       ORDER BY cm.joined_at ASC`,
+    )
+    .all(id) as { user_id: string; display_name: string; role: string; joined_at: number }[];
+
+  return { ...channel, member_count: members.length, members };
+}
+
+export function createChannel(
+  db: Database.Database,
+  name: string,
+  topic: string,
+  createdBy: string,
+  visibility: 'public' | 'private' = 'public',
+): Channel {
+  const id = uuidv4();
+  const now = Date.now();
+
+  const lastRow = db.prepare(
+    'SELECT position FROM channels WHERE deleted_at IS NULL ORDER BY position DESC LIMIT 1',
+  ).get() as { position: string } | undefined;
+  const position = generateRankBetween(lastRow?.position ?? null, null);
+
+  db.prepare(
+    'INSERT INTO channels (id, name, topic, visibility, created_at, created_by, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, name, topic, visibility, now, createdBy, position);
+
+  const channel: Channel = { id, name, topic, visibility, created_at: now, created_by: createdBy, position };
+
+  insertEvent(db, 'channel_created', id, { channel });
+
+  return channel;
+}
+
+export function updateChannel(
+  db: Database.Database,
+  id: string,
+  updates: { name?: string; topic?: string; visibility?: 'public' | 'private' },
+): Channel | undefined {
+  const channel = getChannel(db, id);
+  if (!channel) return undefined;
+
+  const name = updates.name ?? channel.name;
+  const topic = updates.topic ?? channel.topic;
+  const visibility = updates.visibility ?? channel.visibility ?? 'public';
+
+  db.prepare('UPDATE channels SET name = ?, topic = ?, visibility = ? WHERE id = ?').run(name, topic, visibility, id);
+  return { ...channel, name, topic, visibility };
+}
+
+export function getChannelsByPosition(db: Database.Database): Channel[] {
+  return db
+    .prepare('SELECT * FROM channels WHERE deleted_at IS NULL ORDER BY position ASC')
+    .all() as Channel[];
+}
+
+export function updateChannelPosition(
+  db: Database.Database,
+  channelId: string,
+  position: string,
+  groupId?: string | null,
+): void {
+  if (groupId !== undefined) {
+    db.prepare("UPDATE channels SET position = ?, group_id = ? WHERE id = ?").run(position, groupId, channelId);
+  } else {
+    db.prepare('UPDATE channels SET position = ? WHERE id = ?').run(position, channelId);
+  }
+}
+
+export function getAdjacentChannelPositions(
+  db: Database.Database,
+  afterId: string | null,
+  groupId?: string | null,
+): { before: string | null; after: string | null } {
+  const filterByGroup = groupId !== undefined;
+
+  const buildWhereClause = (): { where: string; params: unknown[] } => {
+    if (!filterByGroup) {
+      return { where: 'deleted_at IS NULL', params: [] };
+    }
+    if (groupId === null) {
+      return { where: 'group_id IS NULL AND deleted_at IS NULL', params: [] };
+    }
+    return { where: 'group_id = ? AND deleted_at IS NULL', params: [groupId] };
+  };
+
+  if (afterId === null) {
+    const { where, params } = buildWhereClause();
+    const first = db
+      .prepare(
+        `SELECT position FROM channels WHERE ${where} ORDER BY position ASC LIMIT 1`,
+      )
+      .get(...params) as { position: string } | undefined;
+    return { before: null, after: first?.position ?? null };
+  }
+
+  const current = db
+    .prepare('SELECT position FROM channels WHERE id = ? AND deleted_at IS NULL')
+    .get(afterId) as { position: string } | undefined;
+
+  if (!current) {
+    return { before: null, after: null };
+  }
+
+  const { where, params } = buildWhereClause();
+  const next = db
+    .prepare(
+      `SELECT position FROM channels WHERE ${where} AND position > ? ORDER BY position ASC LIMIT 1`,
+    )
+    .get(...params, current.position) as { position: string } | undefined;
+
+  return { before: current.position, after: next?.position ?? null };
+}
+
+export function softDeleteChannel(db: Database.Database, id: string): boolean {
+  const now = Date.now();
+  const res = db
+    .prepare('UPDATE channels SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL')
+    .run(now, id);
+  return res.changes > 0;
+}
+
+// ─── Users ──────────────────────────────────────────────
+
+export function listUsers(db: Database.Database): User[] {
+  return db
+    .prepare('SELECT id, display_name, role, avatar_url, require_mention, owner_id, created_at FROM users WHERE deleted_at IS NULL AND disabled = 0 ORDER BY created_at ASC')
+    .all() as User[];
+}
+
+export function getUserById(db: Database.Database, id: string): User | undefined {
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(id) as User | undefined;
+}
+
+export function getUserByApiKey(db: Database.Database, apiKey: string): User | undefined {
+  return db.prepare('SELECT * FROM users WHERE api_key = ?').get(apiKey) as User | undefined;
+}
+
+export function getUserByDisplayName(db: Database.Database, displayName: string): User | undefined {
+  return db.prepare('SELECT * FROM users WHERE display_name = ?').get(displayName) as User | undefined;
+}
+
+export function getUserByEmail(db: Database.Database, email: string): User | undefined {
+  return db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
+}
+
+export function createUser(
+  db: Database.Database,
+  id: string,
+  displayName: string,
+  role: string,
+  apiKey: string | null = null,
+  email: string | null = null,
+  passwordHash: string | null = null,
+  ownerId: string | null = null,
+): User {
+  const now = Date.now();
+  db.prepare(
+    'INSERT OR IGNORE INTO users (id, display_name, role, api_key, email, password_hash, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, displayName, role, apiKey, email, passwordHash, ownerId, now);
+  return { id, display_name: displayName, role: role as User['role'], avatar_url: null, api_key: apiKey, email, password_hash: passwordHash, last_seen_at: null, require_mention: true, created_at: now, owner_id: ownerId, deleted_at: null, disabled: 0 };
+}
+
+// ─── Messages ───────────────────────────────────────────
+
+export function getMessages(
+  db: Database.Database,
+  channelId: string,
+  before?: number,
+  limit = 50,
+  after?: number,
+): { messages: Message[]; has_more: boolean } {
+  const actualLimit = limit + 1;
+
+  let rows: Message[];
+  if (after) {
+    rows = db
+      .prepare(
+        `SELECT m.*, u.display_name AS sender_name
+         FROM messages m
+         JOIN users u ON u.id = m.sender_id
+         WHERE m.channel_id = ? AND m.created_at > ?
+         ORDER BY m.created_at ASC
+         LIMIT ?`,
+      )
+      .all(channelId, after, actualLimit) as Message[];
+
+    const hasMore = rows.length > limit;
+    const messages = hasMore ? rows.slice(0, limit) : rows;
+    attachMentions(db, messages);
+    maskDeletedMessages(messages);
+    return { messages, has_more: hasMore };
+  }
+
+  if (before) {
+    rows = db
+      .prepare(
+        `SELECT m.*, u.display_name AS sender_name
+         FROM messages m
+         JOIN users u ON u.id = m.sender_id
+         WHERE m.channel_id = ? AND m.created_at < ?
+         ORDER BY m.created_at DESC
+         LIMIT ?`,
+      )
+      .all(channelId, before, actualLimit) as Message[];
+  } else {
+    rows = db
+      .prepare(
+        `SELECT m.*, u.display_name AS sender_name
+         FROM messages m
+         JOIN users u ON u.id = m.sender_id
+         WHERE m.channel_id = ?
+         ORDER BY m.created_at DESC
+         LIMIT ?`,
+      )
+      .all(channelId, actualLimit) as Message[];
+  }
+
+  const hasMore = rows.length > limit;
+  const messages = hasMore ? rows.slice(0, limit) : rows;
+  attachMentions(db, messages);
+  maskDeletedMessages(messages);
+  return { messages: messages.reverse(), has_more: hasMore };
+}
+
+function attachMentions(db: Database.Database, messages: Message[]): void {
+  for (const msg of messages) {
+    const mentionRows = db
+      .prepare('SELECT user_id FROM mentions WHERE message_id = ?')
+      .all(msg.id) as { user_id: string }[];
+    msg.mentions = mentionRows.map((r) => r.user_id);
+  }
+}
+
+function maskDeletedMessages(messages: Message[]): void {
+  for (const msg of messages) {
+    if (msg.deleted_at) {
+      msg.content = '';
+    }
+  }
+}
+
+export function getPreviewMessages(
+  db: Database.Database,
+  channelId: string,
+  limit = 50,
+): Message[] {
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const rows = db
+    .prepare(
+      `SELECT m.*, u.display_name AS sender_name
+       FROM messages m
+       JOIN users u ON u.id = m.sender_id
+       WHERE m.channel_id = ? AND m.created_at > ?
+       ORDER BY m.created_at DESC
+       LIMIT ?`,
+    )
+    .all(channelId, since, limit) as Message[];
+
+  attachMentions(db, rows);
+  maskDeletedMessages(rows);
+  return rows.reverse();
+}
+
+export function searchMessages(
+  db: Database.Database,
+  channelId: string,
+  query: string,
+  limit = 50,
+): Message[] {
+  const rows = db
+    .prepare(
+      `SELECT m.*, u.display_name AS sender_name
+       FROM messages m
+       JOIN users u ON u.id = m.sender_id
+       WHERE m.channel_id = ? AND m.content LIKE ? AND m.deleted_at IS NULL
+       ORDER BY m.created_at DESC
+       LIMIT ?`,
+    )
+    .all(channelId, `%${query}%`, limit) as Message[];
+
+  attachMentions(db, rows);
+  maskDeletedMessages(rows);
+  return rows;
+}
+
+export function createMessage(
+  db: Database.Database,
+  channelId: string,
+  senderId: string,
+  content: string,
+  contentType: 'text' | 'image' = 'text',
+  replyToId: string | null = null,
+  mentionUserIds: string[] = [],
+): Message {
+  const id = uuidv4();
+  const now = Date.now();
+
+  // Parse <@user_id> tokens from content
+  const parsedIds: string[] = [];
+  for (const m of content.matchAll(/<@([^>]+)>/g)) {
+    const uid = m[1]!;
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(uid) as { id: string } | undefined;
+    if (user && !mentionUserIds.includes(user.id)) {
+      parsedIds.push(user.id);
+    }
+  }
+  // Fallback: parse @displayName for backward compat with old clients
+  for (const m of content.matchAll(/@([\p{L}\p{N}_]+)/gu)) {
+    const name = m[1]!;
+    const user = getUserByDisplayName(db, name);
+    if (user && !mentionUserIds.includes(user.id) && !parsedIds.includes(user.id)) {
+      parsedIds.push(user.id);
+    }
+  }
+  const allMentionIds = [...new Set([...mentionUserIds, ...parsedIds])];
+
+  const insertMsg = db.prepare(
+    `INSERT INTO messages (id, channel_id, sender_id, content, content_type, reply_to_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+
+  const insertMention = db.prepare(
+    'INSERT INTO mentions (id, message_id, user_id, channel_id) VALUES (?, ?, ?, ?)',
+  );
+
+  const insertEventStmt = db.prepare(
+    'INSERT INTO events (kind, channel_id, payload, created_at) VALUES (?, ?, ?, ?)',
+  );
+
+  const senderRow = db
+    .prepare('SELECT display_name FROM users WHERE id = ?')
+    .get(senderId) as { display_name: string } | undefined;
+
+  const channelRow = db
+    .prepare('SELECT type FROM channels WHERE id = ?')
+    .get(channelId) as { type: string | null } | undefined;
+
+  const message: Message = {
+    id,
+    channel_id: channelId,
+    sender_id: senderId,
+    sender_name: senderRow?.display_name ?? 'Unknown',
+    content,
+    content_type: contentType,
+    reply_to_id: replyToId,
+    created_at: now,
+    edited_at: null,
+    deleted_at: null,
+    mentions: allMentionIds,
+  };
+
+  const txn = db.transaction(() => {
+    insertMsg.run(id, channelId, senderId, content, contentType, replyToId, now);
+
+    for (const userId of allMentionIds) {
+      insertMention.run(uuidv4(), id, userId, channelId);
+    }
+
+    insertEventStmt.run('message', channelId, JSON.stringify({ ...message, channel_type: channelRow?.type ?? 'channel' }), now);
+
+    for (const userId of allMentionIds) {
+      insertEventStmt.run('mention', channelId, JSON.stringify({ message, mentioned_user_id: userId }), now);
+    }
+  });
+
+  txn();
+
+  import('./routes/poll.js').then((m) => m.signalNewEvents()).catch(() => {});
+
+  return message;
+}
+
+// ─── Events (for plugin long-polling) ───────────────────
+
+export function insertEvent(
+  db: Database.Database,
+  kind: EventKind,
+  channelId: string,
+  payload: unknown,
+): void {
+  db.prepare(
+    'INSERT INTO events (kind, channel_id, payload, created_at) VALUES (?, ?, ?, ?)',
+  ).run(kind, channelId, JSON.stringify(payload), Date.now());
+
+  import('./routes/poll.js').then((m) => m.signalNewEvents()).catch(() => {});
+}
+
+export function getEventsSince(
+  db: Database.Database,
+  cursor: number,
+  limit = 100,
+  channelIds?: string[],
+): EventRow[] {
+  if (channelIds && channelIds.length > 0) {
+    const placeholders = channelIds.map(() => '?').join(',');
+    return db
+      .prepare(`SELECT * FROM events WHERE cursor > ? AND channel_id IN (${placeholders}) ORDER BY cursor ASC LIMIT ?`)
+      .all(cursor, ...channelIds, limit) as EventRow[];
+  }
+  return db
+    .prepare('SELECT * FROM events WHERE cursor > ? ORDER BY cursor ASC LIMIT ?')
+    .all(cursor, limit) as EventRow[];
+}
+
+export function getEventsSinceWithChanges(
+  db: Database.Database,
+  cursor: number,
+  limit: number,
+  channelIds: string[],
+  changeKinds: string[],
+): EventRow[] {
+  if (channelIds.length === 0 && changeKinds.length === 0) return [];
+
+  const parts: string[] = [];
+  const args: unknown[] = [cursor];
+
+  if (channelIds.length > 0) {
+    const ph = channelIds.map(() => '?').join(',');
+    parts.push(`channel_id IN (${ph})`);
+    args.push(...channelIds);
+  }
+  if (changeKinds.length > 0) {
+    const ph = changeKinds.map(() => '?').join(',');
+    parts.push(`kind IN (${ph})`);
+    args.push(...changeKinds);
+  }
+
+  args.push(limit);
+  const where = parts.join(' OR ');
+  return db
+    .prepare(`SELECT * FROM events WHERE cursor > ? AND (${where}) ORDER BY cursor ASC LIMIT ?`)
+    .all(...args) as EventRow[];
+}
+
+export function getLatestCursor(db: Database.Database): number {
+  const row = db.prepare('SELECT MAX(cursor) AS max_cursor FROM events').get() as {
+    max_cursor: number | null;
+  };
+  return row.max_cursor ?? 0;
+}
+
+export function getMessageById(db: Database.Database, id: string): Message | undefined {
+  return db.prepare('SELECT * FROM messages WHERE id = ?').get(id) as Message | undefined;
+}
+
+export function updateMessageContent(
+  db: Database.Database,
+  messageId: string,
+  content: string,
+): Message | undefined {
+  const now = Date.now();
+  db.prepare('UPDATE messages SET content = ?, edited_at = ? WHERE id = ?').run(content, now, messageId);
+  const msg = db.prepare(
+    `SELECT m.*, u.display_name AS sender_name FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.id = ?`,
+  ).get(messageId) as Message | undefined;
+  if (msg) {
+    attachMentions(db, [msg]);
+  }
+  return msg;
+}
+
+export function softDeleteMessage(
+  db: Database.Database,
+  messageId: string,
+): { deleted_at: number } {
+  const now = Date.now();
+  db.prepare('UPDATE messages SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run(now, messageId);
+  const row = db.prepare('SELECT deleted_at FROM messages WHERE id = ?').get(messageId) as { deleted_at: number };
+  return { deleted_at: row.deleted_at };
+}
+
+// ─── Channel Members ────────────────────────────────────
+
+export function addChannelMember(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): void {
+  db.prepare(
+    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at) VALUES (?, ?, ?)',
+  ).run(channelId, userId, Date.now());
+}
+
+export function addUserToPublicChannels(
+  db: Database.Database,
+  userId: string,
+): void {
+  const now = Date.now();
+  const publicChannels = db.prepare(
+    "SELECT id FROM channels WHERE (type = 'channel' OR type IS NULL) AND (visibility = 'public' OR visibility IS NULL) AND deleted_at IS NULL",
+  ).all() as { id: string }[];
+
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+  );
+  for (const ch of publicChannels) {
+    stmt.run(ch.id, userId, now, now);
+  }
+}
+
+export function addAllUsersToChannel(
+  db: Database.Database,
+  channelId: string,
+): void {
+  const now = Date.now();
+  const users = db.prepare('SELECT id FROM users WHERE deleted_at IS NULL AND disabled = 0').all() as { id: string }[];
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+  );
+  for (const u of users) {
+    stmt.run(channelId, u.id, now, now);
+  }
+}
+
+export function canAccessChannel(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): boolean {
+  const row = db.prepare(
+    `SELECT
+       c.visibility,
+       EXISTS(SELECT 1 FROM channel_members WHERE channel_id = ? AND user_id = ?) AS is_member,
+       (SELECT role FROM users WHERE id = ?) AS user_role
+     FROM channels c
+     WHERE c.id = ? AND c.deleted_at IS NULL`,
+  ).get(channelId, userId, userId, channelId) as { visibility: string | null; is_member: number; user_role: string | null } | undefined;
+
+  if (!row) return false;
+  if (row.visibility !== 'private') return true;
+  if (row.is_member) return true;
+  return row.user_role === 'admin';
+}
+
+export function removeChannelMember(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): boolean {
+  const result = db.prepare(
+    'DELETE FROM channel_members WHERE channel_id = ? AND user_id = ?',
+  ).run(channelId, userId);
+  return result.changes > 0;
+}
+
+export function getChannelMembers(
+  db: Database.Database,
+  channelId: string,
+): { user_id: string; display_name: string; role: string; joined_at: number }[] {
+  return db
+    .prepare(
+      `SELECT cm.user_id, u.display_name, u.role, cm.joined_at
+       FROM channel_members cm
+       JOIN users u ON u.id = cm.user_id
+       WHERE cm.channel_id = ? AND u.deleted_at IS NULL AND u.disabled = 0
+       ORDER BY cm.joined_at ASC`,
+    )
+    .all(channelId) as { user_id: string; display_name: string; role: string; joined_at: number }[];
+}
+
+export function isChannelMember(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): boolean {
+  const row = db
+    .prepare('SELECT 1 FROM channel_members WHERE channel_id = ? AND user_id = ?')
+    .get(channelId, userId);
+  return row !== undefined;
+}
+
+export function getUserChannelIds(db: Database.Database, userId: string): string[] {
+  const rows = db
+    .prepare(
+      `SELECT cm.channel_id FROM channel_members cm
+       JOIN channels c ON c.id = cm.channel_id
+       WHERE cm.user_id = ? AND c.deleted_at IS NULL`,
+    )
+    .all(userId) as { channel_id: string }[];
+  return rows.map((r) => r.channel_id);
+}
+
+export function markChannelRead(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): void {
+  db.prepare(
+    'UPDATE channel_members SET last_read_at = ? WHERE channel_id = ? AND user_id = ?',
+  ).run(Date.now(), channelId, userId);
+}
+
+export function getUnreadCount(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): number {
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS cnt FROM messages m
+       JOIN channel_members cm ON cm.channel_id = m.channel_id AND cm.user_id = ?
+       WHERE m.channel_id = ? AND m.created_at > COALESCE(cm.last_read_at, 0)`,
+    )
+    .get(userId, channelId) as { cnt: number };
+  return row.cnt;
+}
+
+export function getRecentlySeenUserIds(db: Database.Database, withinMs = 120000): string[] {
+  const cutoff = Date.now() - withinMs;
+  const rows = db.prepare("SELECT id FROM users WHERE last_seen_at IS NOT NULL AND last_seen_at > ? AND deleted_at IS NULL AND disabled = 0").all(cutoff) as { id: string }[];
+  return rows.map((r) => r.id);
+}
+
+// ─── Invite Codes ──────────────────────────────────────
+
+export function createInviteCode(
+  db: Database.Database,
+  createdBy: string,
+  expiresAt: number | null = null,
+  note: string | null = null,
+): InviteCode {
+  const code = crypto.randomBytes(8).toString('hex');
+  const now = Date.now();
+  db.prepare(
+    'INSERT INTO invite_codes (code, created_by, created_at, expires_at, note) VALUES (?, ?, ?, ?, ?)',
+  ).run(code, createdBy, now, expiresAt, note);
+  return { code, created_by: createdBy, created_at: now, expires_at: expiresAt, used_by: null, used_at: null, note };
+}
+
+export function listInviteCodes(db: Database.Database): InviteCode[] {
+  return db.prepare('SELECT * FROM invite_codes ORDER BY created_at DESC').all() as InviteCode[];
+}
+
+export function getInviteCode(db: Database.Database, code: string): InviteCode | undefined {
+  return db.prepare('SELECT * FROM invite_codes WHERE code = ?').get(code) as InviteCode | undefined;
+}
+
+export function deleteInviteCode(db: Database.Database, code: string): boolean {
+  return db.prepare('DELETE FROM invite_codes WHERE code = ?').run(code).changes > 0;
+}
+
+export function consumeInviteCode(db: Database.Database, code: string, userId: string): boolean {
+  const now = Date.now();
+  return db.prepare(
+    'UPDATE invite_codes SET used_by = ?, used_at = ? WHERE code = ? AND used_by IS NULL AND (expires_at IS NULL OR expires_at > ?)',
+  ).run(userId, now, code, now).changes > 0;
+}
+
+// ─── Permissions ───────────────────────────────────────
+
+const DEFAULT_MEMBER_PERMISSIONS = ['channel.create', 'message.send', 'agent.manage'];
+const DEFAULT_AGENT_PERMISSIONS = ['message.send'];
+
+export function grantDefaultPermissions(
+  db: Database.Database,
+  userId: string,
+  role: 'member' | 'agent',
+  grantedBy: string | null = null,
+): void {
+  const perms = role === 'member' ? DEFAULT_MEMBER_PERMISSIONS : DEFAULT_AGENT_PERMISSIONS;
+  const now = Date.now();
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, \'*\', ?, ?)',
+  );
+  for (const p of perms) {
+    stmt.run(userId, p, grantedBy, now);
+  }
+}
+
+export function grantCreatorPermissions(
+  db: Database.Database,
+  creatorId: string,
+  creatorRole: 'admin' | 'member' | 'agent',
+  channelId: string,
+  ownerIdIfAgent?: string,
+): void {
+  const recipientId = creatorRole === 'agent' && ownerIdIfAgent ? ownerIdIfAgent : creatorId;
+
+  const scope = `channel:${channelId}`;
+  const now = Date.now();
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO user_permissions (user_id, permission, scope, granted_by, granted_at) VALUES (?, ?, ?, ?, ?)',
+  );
+  stmt.run(recipientId, 'channel.delete', scope, null, now);
+  stmt.run(recipientId, 'channel.manage_members', scope, null, now);
+  stmt.run(recipientId, 'channel.manage_visibility', scope, null, now);
+}
+
+// ─── DM Channels ───────────────────────────────────────
+
+function dmChannelName(userId1: string, userId2: string): string {
+  const sorted = [userId1, userId2].sort();
+  return `dm:${sorted[0]}_${sorted[1]}`;
+}
+
+export function createDmChannel(
+  db: Database.Database,
+  userId1: string,
+  userId2: string,
+): Channel {
+  const name = dmChannelName(userId1, userId2);
+
+  const txn = db.transaction(() => {
+    const existing = db.prepare("SELECT * FROM channels WHERE name = ?").get(name) as Channel | undefined;
+    if (existing) return existing;
+
+    const id = uuidv4();
+    const now = Date.now();
+    db.prepare(
+      "INSERT OR IGNORE INTO channels (id, name, topic, type, created_at, created_by) VALUES (?, ?, '', 'dm', ?, ?)",
+    ).run(id, name, now, userId1);
+
+    // Re-fetch in case INSERT OR IGNORE hit the UNIQUE constraint
+    const channel = db.prepare("SELECT * FROM channels WHERE name = ?").get(name) as Channel;
+
+    const memberStmt = db.prepare(
+      'INSERT OR IGNORE INTO channel_members (channel_id, user_id, joined_at, last_read_at) VALUES (?, ?, ?, ?)',
+    );
+    memberStmt.run(channel.id, userId1, now, now);
+    memberStmt.run(channel.id, userId2, now, now);
+
+    return channel;
+  });
+
+  return txn();
+}
+
+export function getDmChannel(
+  db: Database.Database,
+  userId1: string,
+  userId2: string,
+): Channel | undefined {
+  const name = dmChannelName(userId1, userId2);
+  return db.prepare("SELECT * FROM channels WHERE name = ?").get(name) as Channel | undefined;
+}
+
+export interface DmChannelInfo {
+  id: string;
+  name: string;
+  type: 'dm';
+  created_at: number;
+  peer: { id: string; display_name: string; avatar_url: string | null; role: string };
+  unread_count: number;
+  last_message: { content: string; created_at: number } | null;
+}
+
+export function listDmChannelsForUser(
+  db: Database.Database,
+  userId: string,
+): DmChannelInfo[] {
+  const rows = db.prepare(
+    `SELECT c.id, c.name, c.type, c.created_at,
+            u.id AS peer_id, u.display_name AS peer_display_name, u.avatar_url AS peer_avatar_url, u.role AS peer_role,
+            COALESCE(
+              (SELECT COUNT(*) FROM messages m2
+               WHERE m2.channel_id = c.id
+                 AND m2.created_at > COALESCE(cm.last_read_at, 0)),
+              0
+            ) AS unread_count
+     FROM channels c
+     JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+     JOIN channel_members cm2 ON cm2.channel_id = c.id AND cm2.user_id != ?
+     JOIN users u ON u.id = cm2.user_id
+     WHERE c.type = 'dm' AND c.deleted_at IS NULL
+     GROUP BY c.id
+     ORDER BY c.created_at DESC`,
+  ).all(userId, userId) as {
+    id: string; name: string; type: 'dm'; created_at: number;
+    peer_id: string; peer_display_name: string; peer_avatar_url: string | null; peer_role: string;
+    unread_count: number;
+  }[];
+
+  return rows.map((r) => {
+    const lastMsg = db.prepare(
+      `SELECT content, created_at FROM messages WHERE channel_id = ? ORDER BY created_at DESC LIMIT 1`,
+    ).get(r.id) as { content: string; created_at: number } | undefined;
+
+    return {
+      id: r.id,
+      name: r.name,
+      type: 'dm' as const,
+      created_at: r.created_at,
+      peer: { id: r.peer_id, display_name: r.peer_display_name, avatar_url: r.peer_avatar_url, role: r.peer_role },
+      unread_count: r.unread_count,
+      last_message: lastMsg ?? null,
+    };
+  });
+}
+
+// ─── Reactions ─────────────────────────────────────────
+
+export function addReaction(
+  db: Database.Database, messageId: string, userId: string, emoji: string,
+): void {
+  db.prepare(
+    'INSERT OR IGNORE INTO message_reactions (id, message_id, user_id, emoji, created_at) VALUES (?, ?, ?, ?, ?)',
+  ).run(uuidv4(), messageId, userId, emoji, Date.now());
+}
+
+export function removeReaction(
+  db: Database.Database, messageId: string, userId: string, emoji: string,
+): boolean {
+  return db.prepare(
+    'DELETE FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?',
+  ).run(messageId, userId, emoji).changes > 0;
+}
+
+export function getReactionsByMessageId(
+  db: Database.Database, messageId: string,
+): { emoji: string; count: number; user_ids: string[] }[] {
+  const rows = db.prepare(
+    `SELECT emoji, GROUP_CONCAT(user_id) AS user_ids, COUNT(*) AS count
+     FROM message_reactions
+     WHERE message_id = ?
+     GROUP BY emoji
+     ORDER BY MIN(created_at) ASC`,
+  ).all(messageId) as { emoji: string; user_ids: string; count: number }[];
+  return rows.map(r => ({ emoji: r.emoji, count: r.count, user_ids: r.user_ids.split(',') }));
+}
+
+export function getReactionsForMessages(
+  db: Database.Database, messageIds: string[],
+): Map<string, { emoji: string; count: number; user_ids: string[] }[]> {
+  const result = new Map<string, { emoji: string; count: number; user_ids: string[] }[]>();
+  if (messageIds.length === 0) return result;
+
+  const placeholders = messageIds.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT message_id, emoji, GROUP_CONCAT(user_id) AS user_ids, COUNT(*) AS count
+     FROM message_reactions
+     WHERE message_id IN (${placeholders})
+     GROUP BY message_id, emoji
+     ORDER BY MIN(created_at) ASC`,
+  ).all(...messageIds) as { message_id: string; emoji: string; user_ids: string; count: number }[];
+
+  for (const r of rows) {
+    const arr = result.get(r.message_id) ?? [];
+    arr.push({ emoji: r.emoji, count: r.count, user_ids: r.user_ids.split(',') });
+    result.set(r.message_id, arr);
+  }
+  return result;
+}
+
+export function getReactionCountForMessage(
+  db: Database.Database, messageId: string,
+): number {
+  const row = db.prepare(
+    'SELECT COUNT(DISTINCT emoji) AS cnt FROM message_reactions WHERE message_id = ?',
+  ).get(messageId) as { cnt: number };
+  return row.cnt;
+}
+
+// ─── Workspace Files ──────────────────────────────────
+
+export function listWorkspaceFiles(
+  db: Database.Database,
+  userId: string,
+  channelId: string,
+  parentId: string | null = null,
+): WorkspaceFile[] {
+  if (parentId) {
+    return db.prepare(
+      'SELECT * FROM workspace_files WHERE user_id = ? AND channel_id = ? AND parent_id = ? ORDER BY is_directory DESC, name ASC',
+    ).all(userId, channelId, parentId) as WorkspaceFile[];
+  }
+  return db.prepare(
+    'SELECT * FROM workspace_files WHERE user_id = ? AND channel_id = ? AND parent_id IS NULL ORDER BY is_directory DESC, name ASC',
+  ).all(userId, channelId) as WorkspaceFile[];
+}
+
+export function getWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+): WorkspaceFile | undefined {
+  return db.prepare('SELECT * FROM workspace_files WHERE id = ?').get(fileId) as WorkspaceFile | undefined;
+}
+
+export function getSiblingNames(
+  db: Database.Database,
+  userId: string,
+  channelId: string,
+  parentId: string | null,
+): string[] {
+  let rows: { name: string }[];
+  if (parentId) {
+    rows = db.prepare(
+      'SELECT name FROM workspace_files WHERE user_id = ? AND channel_id = ? AND parent_id = ?',
+    ).all(userId, channelId, parentId) as { name: string }[];
+  } else {
+    rows = db.prepare(
+      'SELECT name FROM workspace_files WHERE user_id = ? AND channel_id = ? AND parent_id IS NULL',
+    ).all(userId, channelId) as { name: string }[];
+  }
+  return rows.map(r => r.name);
+}
+
+export function resolveConflict(name: string, existing: string[]): string {
+  if (!existing.includes(name)) return name;
+  const ext = path.extname(name);
+  const base = path.basename(name, ext);
+  let i = 1;
+  while (existing.includes(`${base} (${i})${ext}`)) i++;
+  return `${base} (${i})${ext}`;
+}
+
+export function insertWorkspaceFile(
+  db: Database.Database,
+  file: {
+    id: string;
+    userId: string;
+    channelId: string;
+    parentId: string | null;
+    name: string;
+    isDirectory: boolean;
+    mimeType: string | null;
+    sizeBytes: number;
+    source?: string;
+    sourceMessageId?: string | null;
+  },
+): WorkspaceFile {
+  db.prepare(
+    `INSERT INTO workspace_files (id, user_id, channel_id, parent_id, name, is_directory, mime_type, size_bytes, source, source_message_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    file.id, file.userId, file.channelId, file.parentId,
+    file.name, file.isDirectory ? 1 : 0, file.mimeType,
+    file.sizeBytes, file.source ?? 'upload', file.sourceMessageId ?? null,
+  );
+  return db.prepare('SELECT * FROM workspace_files WHERE id = ?').get(file.id) as WorkspaceFile;
+}
+
+export function deleteWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+): boolean {
+  const file = getWorkspaceFile(db, fileId);
+  if (!file) return false;
+
+  if (file.is_directory) {
+    const children = db.prepare('SELECT id, is_directory FROM workspace_files WHERE parent_id = ?').all(fileId) as { id: string; is_directory: number }[];
+    for (const child of children) {
+      deleteWorkspaceFile(db, child.id);
+    }
+  }
+
+  return db.prepare('DELETE FROM workspace_files WHERE id = ?').run(fileId).changes > 0;
+}
+
+export function renameWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+  newName: string,
+): WorkspaceFile {
+  const file = getWorkspaceFile(db, fileId);
+  if (!file) throw new Error('File not found');
+
+  const siblings = getSiblingNames(db, file.user_id, file.channel_id, file.parent_id ?? null)
+    .filter(n => n !== file.name);
+
+  if (siblings.includes(newName)) {
+    throw new Error('CONFLICT');
+  }
+
+  db.prepare(
+    "UPDATE workspace_files SET name = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(newName, fileId);
+  return db.prepare('SELECT * FROM workspace_files WHERE id = ?').get(fileId) as WorkspaceFile;
+}
+
+export function updateWorkspaceFileContent(
+  db: Database.Database,
+  fileId: string,
+  sizeBytes: number,
+): void {
+  db.prepare(
+    "UPDATE workspace_files SET size_bytes = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(sizeBytes, fileId);
+}
+
+export function mkdirWorkspace(
+  db: Database.Database,
+  userId: string,
+  channelId: string,
+  parentId: string | null,
+  name: string,
+): WorkspaceFile {
+  const siblings = getSiblingNames(db, userId, channelId, parentId);
+  const resolvedName = resolveConflict(name, siblings);
+  const id = crypto.randomBytes(16).toString('hex');
+  return insertWorkspaceFile(db, {
+    id, userId, channelId, parentId,
+    name: resolvedName, isDirectory: true, mimeType: null, sizeBytes: 0,
+  });
+}
+
+export function moveWorkspaceFile(
+  db: Database.Database,
+  fileId: string,
+  newParentId: string | null,
+): WorkspaceFile | undefined {
+  const file = getWorkspaceFile(db, fileId);
+  if (!file) return undefined;
+
+  const siblings = getSiblingNames(db, file.user_id, file.channel_id, newParentId);
+  const resolvedName = resolveConflict(file.name, siblings);
+
+  db.prepare(
+    "UPDATE workspace_files SET parent_id = ?, name = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(newParentId, resolvedName, fileId);
+  return getWorkspaceFile(db, fileId);
+}
+
+export function getAllWorkspaceFiles(
+  db: Database.Database,
+  userId: string,
+): (WorkspaceFile & { channel_name: string })[] {
+  return db.prepare(
+    `SELECT wf.*, c.name AS channel_name
+     FROM workspace_files wf
+     JOIN channels c ON c.id = wf.channel_id
+     WHERE wf.user_id = ? AND c.deleted_at IS NULL
+     ORDER BY c.name, wf.is_directory DESC, wf.name ASC`,
+  ).all(userId) as (WorkspaceFile & { channel_name: string })[];
+}
+
+// ─── Remote Nodes ────────────────────────────────────
+
+export function createRemoteNode(
+  db: Database.Database,
+  userId: string,
+  machineName: string,
+): RemoteNode {
+  const id = uuidv4();
+  const token = `rn_${crypto.randomBytes(32).toString('hex')}`;
+  db.prepare(
+    'INSERT INTO remote_nodes (id, user_id, machine_name, connection_token) VALUES (?, ?, ?, ?)',
+  ).run(id, userId, machineName, token);
+  return db.prepare('SELECT * FROM remote_nodes WHERE id = ?').get(id) as RemoteNode;
+}
+
+export function listRemoteNodes(
+  db: Database.Database,
+  userId: string,
+): RemoteNode[] {
+  return db.prepare(
+    'SELECT * FROM remote_nodes WHERE user_id = ? ORDER BY created_at DESC',
+  ).all(userId) as RemoteNode[];
+}
+
+export function getRemoteNode(
+  db: Database.Database,
+  nodeId: string,
+): RemoteNode | undefined {
+  return db.prepare('SELECT * FROM remote_nodes WHERE id = ?').get(nodeId) as RemoteNode | undefined;
+}
+
+export function getRemoteNodeByToken(
+  db: Database.Database,
+  token: string,
+): RemoteNode | undefined {
+  return db.prepare('SELECT * FROM remote_nodes WHERE connection_token = ?').get(token) as RemoteNode | undefined;
+}
+
+export function deleteRemoteNode(
+  db: Database.Database,
+  nodeId: string,
+): boolean {
+  return db.prepare('DELETE FROM remote_nodes WHERE id = ?').run(nodeId).changes > 0;
+}
+
+export function updateRemoteNodeLastSeen(
+  db: Database.Database,
+  nodeId: string,
+): void {
+  db.prepare("UPDATE remote_nodes SET last_seen_at = datetime('now') WHERE id = ?").run(nodeId);
+}
+
+// ─── Remote Bindings ─────────────────────────────────
+
+export function createRemoteBinding(
+  db: Database.Database,
+  nodeId: string,
+  channelId: string,
+  remotePath: string,
+  label: string | null = null,
+): RemoteBinding {
+  const id = uuidv4();
+  db.prepare(
+    'INSERT INTO remote_bindings (id, node_id, channel_id, path, label) VALUES (?, ?, ?, ?, ?)',
+  ).run(id, nodeId, channelId, remotePath, label);
+  return db.prepare('SELECT * FROM remote_bindings WHERE id = ?').get(id) as RemoteBinding;
+}
+
+export function listRemoteBindings(
+  db: Database.Database,
+  nodeId: string,
+): RemoteBinding[] {
+  return db.prepare(
+    'SELECT * FROM remote_bindings WHERE node_id = ? ORDER BY created_at DESC',
+  ).all(nodeId) as RemoteBinding[];
+}
+
+export function deleteRemoteBinding(
+  db: Database.Database,
+  bindingId: string,
+): boolean {
+  return db.prepare('DELETE FROM remote_bindings WHERE id = ?').run(bindingId).changes > 0;
+}
+
+export function listChannelRemoteBindings(
+  db: Database.Database,
+  channelId: string,
+  userId: string,
+): (RemoteBinding & { machine_name: string; node_user_id: string })[] {
+  return db.prepare(
+    `SELECT rb.*, rn.machine_name, rn.user_id AS node_user_id
+     FROM remote_bindings rb
+     JOIN remote_nodes rn ON rn.id = rb.node_id
+     WHERE rb.channel_id = ? AND rn.user_id = ?
+     ORDER BY rb.created_at DESC`,
+  ).all(channelId, userId) as (RemoteBinding & { machine_name: string; node_user_id: string })[];
+}
+
+export function getRemoteBinding(
+  db: Database.Database,
+  bindingId: string,
+): RemoteBinding | undefined {
+  return db.prepare('SELECT * FROM remote_bindings WHERE id = ?').get(bindingId) as RemoteBinding | undefined;
+}
+
+// ─── Channel Groups ─────────────────────────────────
+
+export function createChannelGroup(
+  db: Database.Database,
+  group: { id: string; name: string; position: string; created_by: string; created_at: number },
+): ChannelGroup {
+  db.prepare(
+    'INSERT INTO channel_groups (id, name, position, created_by, created_at) VALUES (?, ?, ?, ?, ?)',
+  ).run(group.id, group.name, group.position, group.created_by, group.created_at);
+  return db.prepare('SELECT * FROM channel_groups WHERE id = ?').get(group.id) as ChannelGroup;
+}
+
+export function getChannelGroup(
+  db: Database.Database,
+  groupId: string,
+): ChannelGroup | undefined {
+  return db.prepare('SELECT * FROM channel_groups WHERE id = ?').get(groupId) as ChannelGroup | undefined;
+}
+
+export function updateChannelGroup(
+  db: Database.Database,
+  groupId: string,
+  updates: { name: string },
+): ChannelGroup | undefined {
+  db.prepare('UPDATE channel_groups SET name = ? WHERE id = ?').run(updates.name, groupId);
+  return db.prepare('SELECT * FROM channel_groups WHERE id = ?').get(groupId) as ChannelGroup | undefined;
+}
+
+export function deleteChannelGroup(
+  db: Database.Database,
+  groupId: string,
+): boolean {
+  return db.prepare('DELETE FROM channel_groups WHERE id = ?').run(groupId).changes > 0;
+}
+
+export function listChannelGroups(
+  db: Database.Database,
+): ChannelGroup[] {
+  return db.prepare('SELECT * FROM channel_groups ORDER BY position ASC').all() as ChannelGroup[];
+}
+
+export function getLastGroupPosition(
+  db: Database.Database,
+): string | null {
+  const row = db.prepare(
+    'SELECT position FROM channel_groups ORDER BY position DESC LIMIT 1',
+  ).get() as { position: string } | undefined;
+  return row?.position ?? null;
+}
+
+export function getAdjacentGroupPositions(
+  db: Database.Database,
+  afterId: string | null,
+): { before: string | null; after: string | null } {
+  if (afterId === null) {
+    const first = db
+      .prepare('SELECT position FROM channel_groups ORDER BY position ASC LIMIT 1')
+      .get() as { position: string } | undefined;
+    return { before: null, after: first?.position ?? null };
+  }
+
+  const current = db
+    .prepare('SELECT position FROM channel_groups WHERE id = ?')
+    .get(afterId) as { position: string } | undefined;
+
+  if (!current) {
+    return { before: null, after: null };
+  }
+
+  const next = db
+    .prepare(
+      'SELECT position FROM channel_groups WHERE position > ? ORDER BY position ASC LIMIT 1',
+    )
+    .get(current.position) as { position: string } | undefined;
+
+  return { before: current.position, after: next?.position ?? null };
+}
+
+export function updateGroupPosition(
+  db: Database.Database,
+  groupId: string,
+  position: string,
+): void {
+  db.prepare('UPDATE channel_groups SET position = ? WHERE id = ?').run(position, groupId);
+}
+
+export function ungroupChannels(
+  db: Database.Database,
+  groupId: string,
+): string[] {
+  const rows = db.prepare(
+    'SELECT id FROM channels WHERE group_id = ?',
+  ).all(groupId) as { id: string }[];
+  if (rows.length > 0) {
+    db.prepare('UPDATE channels SET group_id = NULL WHERE group_id = ?').run(groupId);
+  }
+  return rows.map((r) => r.id);
+}

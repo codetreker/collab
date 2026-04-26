@@ -16,8 +16,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter @borgee/client --filter borgee
+      - run: pnpm install --frozen-lockfile --filter @borgee/server --filter @borgee/client --filter borgee
       - run: pnpm --filter @borgee/client build
+      - run: pnpm --filter @borgee/server build
+      - run: cd packages/server && npx vitest run --coverage
 
   go-test:
     runs-on: ubuntu-latest
@@ -25,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: packages/server-go/go.mod
+          go-version: '1.24'
       - name: Install dependencies
         run: cd packages/server-go && go mod download
       - name: Run tests with race detector
