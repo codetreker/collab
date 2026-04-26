@@ -226,3 +226,55 @@ func TestHub(t *testing.T) {
 		t.Fatal("expected hub")
 	}
 }
+
+func TestAdapters(t *testing.T) {
+	srv, _ := testServer(t)
+	hub := srv.Hub()
+
+	// hubCommandAdapter
+	ca := &hubCommandAdapter{hub: hub}
+	cmds := ca.GetAllCommands()
+	if cmds == nil {
+		t.Fatal("expected non-nil commands")
+	}
+
+	// hubRemoteAdapter
+	ra := &hubRemoteAdapter{hub: hub}
+	if ra.IsNodeOnline("nonexistent") {
+		t.Fatal("expected false")
+	}
+	_, err := ra.ProxyRequest("nonexistent", "ls", map[string]string{"path": "/"})
+	if err == nil {
+		t.Fatal("expected error for offline node")
+	}
+
+	// hubBroadcastAdapter
+	ba := &hubBroadcastAdapter{hub: hub}
+	ba.BroadcastEventToChannel("ch-1", "test", map[string]string{})
+	ba.BroadcastEventToAll("test", map[string]string{})
+	ba.BroadcastEventToUser("user-1", "test", map[string]string{})
+	ba.SignalNewEvents()
+
+	// hubPluginAdapter
+	pa := &hubPluginAdapter{hub: hub}
+	_, _, err = pa.ProxyPluginRequest("nonexistent", "read_file", "/test", nil)
+	if err == nil {
+		t.Fatal("expected error for disconnected plugin")
+	}
+}
+
+func TestWriteErrorResponse(t *testing.T) {
+	rec := httptest.NewRecorder()
+	writeErrorResponse(rec, http.StatusInternalServerError, "test error")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", rec.Code)
+	}
+}
+
+func TestRespondNotImplemented(t *testing.T) {
+	rec := httptest.NewRecorder()
+	respondNotImplemented(rec, nil)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", rec.Code)
+	}
+}

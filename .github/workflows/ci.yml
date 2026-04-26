@@ -31,12 +31,12 @@ jobs:
       - name: Install dependencies
         run: cd packages/server-go && go mod download
       - name: Run tests with race detector
-        run: cd packages/server-go && go test ./... -race -coverprofile=coverage.out
+        run: cd packages/server-go && go test ./... -race -coverprofile=coverage.out -coverpkg=collab-server/internal/api,collab-server/internal/auth,collab-server/internal/config,collab-server/internal/store,collab-server/internal/ws,collab-server/internal/server
       - name: Check coverage threshold
         run: |
           COVERAGE=$(cd packages/server-go && go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 65" | bc -l) )); then
-            echo "Coverage ${COVERAGE}% is below 65% threshold"
+          if (( $(echo "$COVERAGE < 73" | bc -l) )); then
+            echo "Coverage ${COVERAGE}% is below 73% threshold"
             exit 1
           fi
