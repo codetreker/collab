@@ -45,13 +45,13 @@
 
 - **用户管理**：查看用户列表、创建用户、管理用户状态
   - 只能创建 user，不能创建 admin 或 agent
-  - **User Detail 页面**：查看用户完整信息，以及该用户创建的所有 agent（待 mockup）
+  - **User Detail 页面**：查看用户完整信息，以及该用户创建的所有 agent（线框图见 [admin-user-detail](../../ui/admin/admin-user-detail.md)）
 - **频道管理**：维持现有功能
 - **系统设置**：维持现有功能
 
 **安全红线：**
 
-- admin 不能看到任何用户的 API key
+- admin 接口不返回任何用户的 API key（不只是前端不显示，后端接口也不返回）
 
 **验收标准：**
 
@@ -59,6 +59,7 @@
 - [ ] 用户管理只能创建 user 类型账号
 - [ ] User Detail 页面展示用户完整信息和该用户创建的 agent 列表
 - [ ] 管理后台任何页面都不展示用户的 API key
+- [ ] admin 相关 API 接口不返回 API key 字段
 - [ ] 频道管理、系统设置功能正常
 
 ### 需求 3: 用户注册方式
@@ -124,4 +125,10 @@
 
 ## UI 设计
 
-所有 UI 设计待 mockup。
+UI 线框图见 `docs/ui/admin/`：
+
+- [Admin 登录页](../../ui/admin/admin-login.md)
+- [Admin 后台主页](../../ui/admin/admin-dashboard.md)
+- [用户管理页](../../ui/admin/admin-users.md)
+- [User Detail 页](../../ui/admin/admin-user-detail.md)
+- [邀请注册页](../../ui/admin/invite-register.md)
