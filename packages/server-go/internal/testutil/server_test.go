@@ -9,7 +9,7 @@ import (
 
 func TestHelpersExerciseTestServer(t *testing.T) {
 	ts, _, _ := NewTestServer(t)
-	token := LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	resp, data := JSON(t, "GET", ts.URL+"/api/v1/channels", token, nil)
 	if resp.StatusCode != http.StatusOK {

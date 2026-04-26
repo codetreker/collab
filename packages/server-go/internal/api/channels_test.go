@@ -9,7 +9,7 @@ import (
 
 func TestChannelCRUD(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	var channelID string
@@ -86,7 +86,7 @@ func TestChannelCRUD(t *testing.T) {
 
 func TestChannelMembers(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	pubCh := testutil.CreateChannel(t, ts.URL, adminToken, "pub-join-test", "public")

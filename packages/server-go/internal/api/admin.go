@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 
 	"golang.org/x/crypto/bcrypt"
@@ -19,33 +18,50 @@ type AdminHandler struct {
 }
 
 func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
-	wrap := func(f http.HandlerFunc) http.Handler { return authMw(http.HandlerFunc(h.requireAdmin(f))) }
+	wrap := func(f http.HandlerFunc) http.Handler { return authMw(http.HandlerFunc(f)) }
 
-	mux.Handle("GET /api/v1/admin/users", wrap(h.handleListUsers))
-	mux.Handle("POST /api/v1/admin/users", wrap(h.handleCreateUser))
-	mux.Handle("PATCH /api/v1/admin/users/{id}", wrap(h.handleUpdateUser))
-	mux.Handle("DELETE /api/v1/admin/users/{id}", wrap(h.handleDeleteUser))
-	mux.Handle("POST /api/v1/admin/users/{id}/api-key", wrap(h.handleGenerateAPIKey))
-	mux.Handle("DELETE /api/v1/admin/users/{id}/api-key", wrap(h.handleDeleteAPIKey))
-	mux.Handle("GET /api/v1/admin/users/{id}/permissions", wrap(h.handleGetPermissions))
-	mux.Handle("POST /api/v1/admin/users/{id}/permissions", wrap(h.handleGrantPermission))
-	mux.Handle("DELETE /api/v1/admin/users/{id}/permissions", wrap(h.handleRevokePermission))
-	mux.Handle("POST /api/v1/admin/invites", wrap(h.handleCreateInvite))
-	mux.Handle("GET /api/v1/admin/invites", wrap(h.handleListInvites))
-	mux.Handle("DELETE /api/v1/admin/invites/{code}", wrap(h.handleDeleteInvite))
-	mux.Handle("GET /api/v1/admin/channels", wrap(h.handleListChannels))
-	mux.Handle("DELETE /api/v1/admin/channels/{id}/force", wrap(h.handleForceDeleteChannel))
+	mux.Handle("GET /admin-api/v1/stats", wrap(h.handleStats))
+	mux.Handle("GET /admin-api/v1/users", wrap(h.handleListUsers))
+	mux.Handle("POST /admin-api/v1/users", wrap(h.handleCreateUser))
+	mux.Handle("PATCH /admin-api/v1/users/{id}", wrap(h.handleUpdateUser))
+	mux.Handle("DELETE /admin-api/v1/users/{id}", wrap(h.handleDeleteUser))
+	mux.Handle("GET /admin-api/v1/users/{id}/agents", wrap(h.handleListUserAgents))
+	mux.Handle("POST /admin-api/v1/users/{id}/api-key", wrap(h.handleGenerateAPIKey))
+	mux.Handle("DELETE /admin-api/v1/users/{id}/api-key", wrap(h.handleDeleteAPIKey))
+	mux.Handle("GET /admin-api/v1/users/{id}/permissions", wrap(h.handleGetPermissions))
+	mux.Handle("POST /admin-api/v1/users/{id}/permissions", wrap(h.handleGrantPermission))
+	mux.Handle("DELETE /admin-api/v1/users/{id}/permissions", wrap(h.handleRevokePermission))
+	mux.Handle("POST /admin-api/v1/invites", wrap(h.handleCreateInvite))
+	mux.Handle("GET /admin-api/v1/invites", wrap(h.handleListInvites))
+	mux.Handle("DELETE /admin-api/v1/invites/{code}", wrap(h.handleDeleteInvite))
+	mux.Handle("GET /admin-api/v1/channels", wrap(h.handleListChannels))
+	mux.Handle("DELETE /admin-api/v1/channels/{id}/force", wrap(h.handleForceDeleteChannel))
 }
 
-func (h *AdminHandler) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		user := auth.UserFromContext(r.Context())
-		if user == nil || user.Role != "admin" {
-			writeJSONError(w, http.StatusForbidden, "Admin access required")
-			return
-		}
-		next(w, r)
+func (h *AdminHandler) handleStats(w http.ResponseWriter, r *http.Request) {
+	var userCount int64
+	if err := h.Store.DB().Model(&store.User{}).Where("deleted_at IS NULL").Count(&userCount).Error; err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to count users")
+		return
 	}
+
+	var channelCount int64
+	if err := h.Store.DB().Model(&store.Channel{}).Where("deleted_at IS NULL").Count(&channelCount).Error; err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to count channels")
+		return
+	}
+
+	online, err := h.Store.GetOnlineUsers()
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to count online users")
+		return
+	}
+
+	writeJSONResponse(w, http.StatusOK, map[string]any{
+		"user_count":    userCount,
+		"channel_count": channelCount,
+		"online_count":  len(online),
+	})
 }
 
 func (h *AdminHandler) handleListUsers(w http.ResponseWriter, r *http.Request) {
@@ -74,9 +90,6 @@ func sanitizeUserAdmin(u *store.User) map[string]any {
 	}
 	if u.Email != nil {
 		m["email"] = *u.Email
-	}
-	if u.APIKey != nil {
-		m["api_key"] = *u.APIKey
 	}
 	if u.OwnerID != nil {
 		m["owner_id"] = *u.OwnerID
@@ -110,12 +123,12 @@ func (h *AdminHandler) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 	if body.Role == "" {
 		body.Role = "member"
 	}
-	if body.Role != "admin" && body.Role != "member" && body.Role != "agent" {
-		writeJSONError(w, http.StatusBadRequest, "role must be admin, member, or agent")
+	if body.Role != "member" {
+		writeJSONError(w, http.StatusBadRequest, "role must be member")
 		return
 	}
-	if body.Role != "agent" && (body.Email == "" || body.Password == "") {
-		writeJSONError(w, http.StatusBadRequest, "email and password are required for non-agent users")
+	if body.Email == "" || body.Password == "" {
+		writeJSONError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
 
@@ -149,7 +162,6 @@ func (h *AdminHandler) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AdminHandler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
-	currentUser := auth.UserFromContext(r.Context())
 	id := r.PathValue("id")
 
 	target, err := h.Store.GetUserByID(id)
@@ -170,23 +182,10 @@ func (h *AdminHandler) handleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if body.Role != nil && id == currentUser.ID {
-		writeJSONError(w, http.StatusBadRequest, "Cannot change your own role")
-		return
-	}
-
 	if body.Role != nil {
 		newRole := *body.Role
-		if newRole != "admin" && newRole != "member" && newRole != "agent" {
-			writeJSONError(w, http.StatusBadRequest, "role must be admin, member, or agent")
-			return
-		}
-		if target.Role != "agent" && newRole == "agent" && target.OwnerID == nil {
-			writeJSONError(w, http.StatusBadRequest, "Cannot change non-agent to agent without owner_id")
-			return
-		}
-		if target.Role == "agent" && (newRole == "member" || newRole == "admin") && target.OwnerID != nil {
-			writeJSONError(w, http.StatusBadRequest, "Cannot change agent with owner to member/admin")
+		if newRole != "member" {
+			writeJSONError(w, http.StatusBadRequest, "role must be member")
 			return
 		}
 	}
@@ -249,13 +248,7 @@ func (h *AdminHandler) cascadeDisableAgents(ownerID string, disable bool) {
 }
 
 func (h *AdminHandler) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
-	currentUser := auth.UserFromContext(r.Context())
 	id := r.PathValue("id")
-
-	if id == currentUser.ID {
-		writeJSONError(w, http.StatusBadRequest, "Cannot delete yourself")
-		return
-	}
 
 	if _, err := h.Store.GetUserByID(id); err != nil {
 		writeJSONError(w, http.StatusNotFound, "User not found")
@@ -289,7 +282,26 @@ func (h *AdminHandler) handleGenerateAPIKey(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	writeJSONResponse(w, http.StatusOK, map[string]any{"api_key": apiKey})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (h *AdminHandler) handleListUserAgents(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if _, err := h.Store.GetUserByID(id); err != nil {
+		writeJSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	agents, err := h.Store.ListAgentsByOwner(id)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to list agents")
+		return
+	}
+	result := make([]map[string]any, len(agents))
+	for i, agent := range agents {
+		result[i] = sanitizeUserAdmin(&agent)
+	}
+	writeJSONResponse(w, http.StatusOK, map[string]any{"agents": result})
 }
 
 func (h *AdminHandler) handleDeleteAPIKey(w http.ResponseWriter, r *http.Request) {
@@ -355,7 +367,6 @@ func (h *AdminHandler) handleGetPermissions(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *AdminHandler) handleGrantPermission(w http.ResponseWriter, r *http.Request) {
-	currentUser := auth.UserFromContext(r.Context())
 	id := r.PathValue("id")
 
 	if _, err := h.Store.GetUserByID(id); err != nil {
@@ -391,7 +402,6 @@ func (h *AdminHandler) handleGrantPermission(w http.ResponseWriter, r *http.Requ
 		UserID:     id,
 		Permission: body.Permission,
 		Scope:      body.Scope,
-		GrantedBy:  &currentUser.ID,
 		GrantedAt:  time.Now().UnixMilli(),
 	}
 	if err := h.Store.GrantPermission(perm); err != nil {
@@ -449,8 +459,6 @@ func (h *AdminHandler) handleRevokePermission(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AdminHandler) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
-	currentUser := auth.UserFromContext(r.Context())
-
 	var body struct {
 		ExpiresInHours *int   `json:"expires_in_hours"`
 		Note           string `json:"note"`
@@ -466,7 +474,7 @@ func (h *AdminHandler) handleCreateInvite(w http.ResponseWriter, r *http.Request
 		expiresAt = &t
 	}
 
-	invite, err := h.Store.CreateInviteCode(currentUser.ID, expiresAt, body.Note)
+	invite, err := h.Store.CreateInviteCode("admin", expiresAt, body.Note)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to create invite")
 		return

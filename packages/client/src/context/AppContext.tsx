@@ -13,8 +13,6 @@ interface AppState {
   messages: Map<string, Message[]>;     // channelId -> messages
   hasMore: Map<string, boolean>;        // channelId -> has_more
   loadingMessages: Set<string>;         // channelIds currently loading
-  users: User[];
-  userMap: Map<string, string>;         // userId -> displayName
   currentUser: User | null;
   permissions: PermissionDetail[] | null;
   onlineUserIds: Set<string>;
@@ -33,8 +31,6 @@ const initialState: AppState = {
   messages: new Map(),
   hasMore: new Map(),
   loadingMessages: new Set(),
-  users: [],
-  userMap: new Map(),
   currentUser: null,
   permissions: null,
   onlineUserIds: new Set(),
@@ -59,7 +55,6 @@ type Action =
   | { type: 'PREPEND_MESSAGES'; channelId: string; messages: Message[]; hasMore: boolean }
   | { type: 'ADD_MESSAGE'; channelId: string; message: Message }
   | { type: 'SET_LOADING_MESSAGES'; channelId: string; loading: boolean }
-  | { type: 'SET_USERS'; users: User[] }
   | { type: 'SET_CURRENT_USER'; user: User | null }
   | { type: 'SET_PERMISSIONS'; permissions: PermissionDetail[] | null }
   | { type: 'SET_ONLINE_USERS'; userIds: string[] }
@@ -188,14 +183,6 @@ function reducer(state: AppState, action: Action): AppState {
       if (action.loading) loading.add(action.channelId);
       else loading.delete(action.channelId);
       return { ...state, loadingMessages: loading };
-    }
-
-    case 'SET_USERS': {
-      const userMap = new Map<string, string>();
-      for (const u of action.users) {
-        userMap.set(u.id, u.display_name);
-      }
-      return { ...state, users: action.users, userMap };
     }
 
     case 'SET_CURRENT_USER':
@@ -447,7 +434,6 @@ interface AppContextValue {
     loadChannels: () => Promise<void>;
     loadMessages: (channelId: string) => Promise<void>;
     loadOlderMessages: (channelId: string) => Promise<void>;
-    loadUsers: () => Promise<void>;
     loadCurrentUser: () => Promise<void>;
     loadPermissions: () => Promise<void>;
     loadOnlineUsers: () => Promise<void>;
@@ -509,11 +495,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       dispatch({ type: 'SET_LOADING_MESSAGES', channelId, loading: false });
     }
-  }, []);
-
-  const loadUsers = useCallback(async () => {
-    const users = await api.fetchUsers();
-    dispatch({ type: 'SET_USERS', users });
   }, []);
 
   const loadCurrentUser = useCallback(async () => {
@@ -605,7 +586,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadChannels,
     loadMessages,
     loadOlderMessages,
-    loadUsers,
     loadCurrentUser,
     loadPermissions,
     loadOnlineUsers,
@@ -614,7 +594,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     createChannel: createChannelAction,
     loadDmChannels,
     openDm,
-  }), [loadChannels, loadMessages, loadOlderMessages, loadUsers, loadCurrentUser, loadPermissions, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction, loadDmChannels, openDm]);
+  }), [loadChannels, loadMessages, loadOlderMessages, loadCurrentUser, loadPermissions, loadOnlineUsers, selectChannel, sendMessageAction, createChannelAction, loadDmChannels, openDm]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, sendWsMessage, setSendWsMessage, registerAckTimer, setRegisterAckTimer, actions }}>

@@ -9,15 +9,15 @@ import (
 
 func TestDMCreate(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	users, _ := s.ListUsers()
 	var adminID, memberID string
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			adminID = u.ID
-		} else if u.Role == "member" {
+		} else if u.Email != nil && *u.Email == "member@test.com" {
 			memberID = u.ID
 		}
 	}

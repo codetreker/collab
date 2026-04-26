@@ -57,7 +57,7 @@ func makePNG(t *testing.T) []byte {
 
 func TestUpload(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	client := &http.Client{}
 

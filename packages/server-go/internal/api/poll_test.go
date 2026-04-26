@@ -10,7 +10,7 @@ import (
 
 func TestPollAuthFallback(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	t.Run("CookieAuth", func(t *testing.T) {
 		resp, data := testutil.JSON(t, "POST", ts.URL+"/api/v1/poll", token, map[string]any{
@@ -28,7 +28,7 @@ func TestPollAuthFallback(t *testing.T) {
 		apiKey, _ := store.GenerateAPIKey()
 		users, _ := s.ListUsers()
 		for _, u := range users {
-			if u.Role == "admin" {
+			if u.Email != nil && *u.Email == "owner@test.com" {
 				s.SetAPIKey(u.ID, apiKey)
 				break
 			}

@@ -94,8 +94,15 @@ func (s *Server) SetupRoutes() {
 	dmHandler.RegisterRoutes(s.mux, authMw)
 
 	// Admin
-	adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
-	adminHandler.RegisterRoutes(s.mux, authMw)
+	if s.cfg.AdminUser == "" || s.cfg.AdminPassword == "" {
+		s.logger.Warn("admin routes disabled; ADMIN_USER and ADMIN_PASSWORD must be set")
+	} else {
+		adminMw := api.AdminAuthMiddleware(s.cfg)
+		adminAuthHandler := &api.AdminAuthHandler{Config: s.cfg, Logger: s.logger}
+		adminAuthHandler.RegisterRoutes(s.mux, adminMw)
+		adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
+		adminHandler.RegisterRoutes(s.mux, adminMw)
+	}
 
 	// Agents
 	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}}
@@ -147,9 +154,17 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/ws") {
+	if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/admin-api" || strings.HasPrefix(r.URL.Path, "/admin-api/") || strings.HasPrefix(r.URL.Path, "/ws") {
 		JSONError(w, http.StatusNotFound, "Not found")
 		return
+	}
+
+	if r.URL.Path == "/admin" || strings.HasPrefix(r.URL.Path, "/admin/") {
+		adminPath := filepath.Join(s.cfg.ClientDist, "admin.html")
+		if _, err := os.Stat(adminPath); err == nil {
+			http.ServeFile(w, r, adminPath)
+			return
+		}
 	}
 
 	filePath := filepath.Join(s.cfg.ClientDist, filepath.Clean(r.URL.Path))

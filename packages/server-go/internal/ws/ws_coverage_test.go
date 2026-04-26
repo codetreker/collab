@@ -17,7 +17,7 @@ import (
 
 func TestPluginWSConnect(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	// Create an agent with API key
 	resp, data := testutil.JSON(t, "POST", ts.URL+"/api/v1/agents", adminToken, map[string]any{
@@ -121,7 +121,7 @@ func TestRemoteWSConnect(t *testing.T) {
 	users, _ := s.ListUsers()
 	var adminID string
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			adminID = u.ID
 			break
 		}
@@ -162,7 +162,7 @@ func TestRemoteWSConnect(t *testing.T) {
 
 func TestWSTypingAndUnsubscribe(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", token, nil)
 	channels := chData["channels"].([]any)
@@ -198,7 +198,7 @@ func TestWSTypingAndUnsubscribe(t *testing.T) {
 
 func TestWSPingPong(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	conn := dialWS(t, ts.URL, token)
 	defer conn.Close(websocket.StatusNormalClosure, "")
@@ -215,7 +215,7 @@ func TestWSPingPong(t *testing.T) {
 
 func TestWSSubscribeNonexistent(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	conn := dialWS(t, ts.URL, token)
 	defer conn.Close(websocket.StatusNormalClosure, "")
@@ -236,7 +236,7 @@ func TestWSAuthMethods(t *testing.T) {
 	users, _ := s.ListUsers()
 	var adminID string
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			adminID = u.ID
 			break
 		}

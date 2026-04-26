@@ -6,15 +6,31 @@ import Sidebar from './components/Sidebar';
 import ChannelView from './components/ChannelView';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
-import UserPicker from './components/UserPicker';
-import AdminPage from './components/AdminPage';
 import AgentManager from './components/AgentManager';
 import WorkspaceManager from './components/WorkspaceManager';
 import NodeManager from './components/NodeManager';
 import { useWebSocket } from './hooks/useWebSocket';
-import { setDevUserId, fetchMe, ApiError } from './lib/api';
+import { fetchMe, ApiError } from './lib/api';
 import './index.css';
 import 'highlight.js/styles/github.css';
+
+const AUTH_READY_TIMEOUT_MS = 500;
+const AUTH_READY_POLL_MS = 50;
+
+async function waitForAuthReady(): Promise<void> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < AUTH_READY_TIMEOUT_MS) {
+    try {
+      await fetchMe();
+      return;
+    } catch (err) {
+      if (err instanceof ApiError && err.status !== 401) return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, AUTH_READY_POLL_MS));
+  }
+}
 
 function AppInner() {
   const { state, actions, dispatch, setSendWsMessage, setRegisterAckTimer } = useAppContext();
@@ -23,7 +39,6 @@ function AppInner() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
   const [showWorkspaces, setShowWorkspaces] = useState(false);
@@ -66,26 +81,34 @@ function AppInner() {
   // Initialize app data after auth
   useEffect(() => {
     if (!authenticated) return;
+    let cancelled = false;
+
     const init = async () => {
-      await actions.loadUsers();
-      await actions.loadCurrentUser();
-      await actions.loadPermissions();
-      await actions.loadChannels();
-      await actions.loadOnlineUsers();
-      dispatch({ type: 'SET_INITIALIZED' });
+      try {
+        await actions.loadCurrentUser();
+        await actions.loadPermissions();
+        await actions.loadChannels();
+        await actions.loadOnlineUsers();
+      } finally {
+        if (!cancelled) dispatch({ type: 'SET_INITIALIZED' });
+      }
     };
     init();
 
     const interval = setInterval(() => {
       actions.loadOnlineUsers();
     }, 30_000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [authenticated, actions, dispatch]);
 
   // Auto-select first channel if none selected
   useEffect(() => {
-    if (state.initialized && !state.currentChannelId && state.channels.length > 0) {
-      actions.selectChannel(state.channels[0]!.id);
+    const firstChannel = state.channels[0];
+    if (state.initialized && !state.currentChannelId && firstChannel) {
+      actions.selectChannel(firstChannel.id);
     }
   }, [state.initialized, state.currentChannelId, state.channels, actions]);
 
@@ -99,18 +122,6 @@ function AppInner() {
     }
   }, [state.initialized, state.channels, subscribe]);
 
-  // Auto-set dev user if not set (dev mode only)
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    if (state.initialized && state.users.length > 0 && !state.currentUser) {
-      const admin = state.users.find(u => u.role === 'admin');
-      if (admin) {
-        setDevUserId(admin.id);
-        actions.loadCurrentUser();
-      }
-    }
-  }, [state.initialized, state.users, state.currentUser, actions]);
-
   const toggleSidebar = useCallback(() => {
     setSidebarOpen(o => !o);
   }, []);
@@ -120,13 +131,13 @@ function AppInner() {
   }, []);
 
   const closeAllViews = useCallback(() => {
-    setShowAdmin(false);
     setShowAgents(false);
     setShowWorkspaces(false);
     setShowRemoteNodes(false);
   }, []);
 
-  const handleLogin = useCallback(() => {
+  const handleLogin = useCallback(async () => {
+    await waitForAuthReady();
     setAuthenticated(true);
   }, []);
 
@@ -171,13 +182,11 @@ function AppInner() {
         <div className="sidebar-overlay" onClick={closeSidebar} />
       )}
       <div className={`sidebar-wrapper ${isMobile ? (sidebarOpen ? 'sidebar-open' : 'sidebar-closed') : ''}`}>
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
       </div>
 
       <div className="main-content">
-        {showAdmin ? (
-          <AdminPage onBack={() => setShowAdmin(false)} />
-        ) : showAgents ? (
+        {showAgents ? (
           <AgentManager onBack={() => setShowAgents(false)} />
         ) : showWorkspaces ? (
           <WorkspaceManager onBack={() => setShowWorkspaces(false)} />
@@ -192,7 +201,6 @@ function AppInner() {
         )}
       </div>
 
-      {import.meta.env.DEV && <UserPicker />}
     </div>
   );
 }

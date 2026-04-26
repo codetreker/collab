@@ -11,12 +11,12 @@ import (
 
 func TestAPIKeyAuth(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
 	users, _ := s.ListUsers()
 	var adminID string
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			adminID = u.ID
 			break
 		}
@@ -62,7 +62,7 @@ func TestAuthRegisterValidation(t *testing.T) {
 	users, _ := s.ListUsers()
 	var adminID string
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			adminID = u.ID
 			break
 		}
@@ -108,18 +108,18 @@ func TestAuthRegisterValidation(t *testing.T) {
 
 func TestDisabledUserCantLogin(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
 	users, _ := s.ListUsers()
 	var memberID string
 	for _, u := range users {
-		if u.Role == "member" {
+		if u.Email != nil && *u.Email == "member@test.com" {
 			memberID = u.ID
 			break
 		}
 	}
 
-	testutil.JSON(t, "PATCH", ts.URL+"/api/v1/admin/users/"+memberID, adminToken, map[string]any{"disabled": true})
+	testutil.JSON(t, "PATCH", ts.URL+"/admin-api/v1/users/"+memberID, adminToken, map[string]any{"disabled": true})
 
 	resp, _ := testutil.JSON(t, "POST", ts.URL+"/api/v1/auth/login", "", map[string]string{
 		"email": "member@test.com", "password": "password123",
@@ -128,12 +128,12 @@ func TestDisabledUserCantLogin(t *testing.T) {
 		t.Fatalf("expected 401 for disabled user, got %d", resp.StatusCode)
 	}
 
-	testutil.JSON(t, "PATCH", ts.URL+"/api/v1/admin/users/"+memberID, adminToken, map[string]any{"disabled": false})
+	testutil.JSON(t, "PATCH", ts.URL+"/admin-api/v1/users/"+memberID, adminToken, map[string]any{"disabled": false})
 }
 
 func TestWorkspaceUpdate(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	ch := testutil.CreateChannel(t, ts.URL, adminToken, "ws-update-test", "public")
 	chID := ch["id"].(string)
@@ -173,7 +173,7 @@ func TestWorkspaceUpdate(t *testing.T) {
 
 func TestChannelMemberOperations(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	users, _ := s.ListUsers()
 	var memberID string
@@ -259,7 +259,7 @@ func TestChannelMemberOperations(t *testing.T) {
 
 func TestMessageInPrivateChannel(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	privCh := testutil.CreateChannel(t, ts.URL, adminToken, "priv-msg-test", "private")
@@ -282,7 +282,7 @@ func TestMessageInPrivateChannel(t *testing.T) {
 
 func TestTopicValidation(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", adminToken, nil)
 	channels := chData["channels"].([]any)
@@ -309,7 +309,7 @@ func TestTopicValidation(t *testing.T) {
 
 func TestChannelCreationValidation(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	t.Run("EmptyName", func(t *testing.T) {
 		resp, _ := testutil.JSON(t, "POST", ts.URL+"/api/v1/channels", adminToken, map[string]string{
@@ -332,7 +332,7 @@ func TestChannelCreationValidation(t *testing.T) {
 
 func TestInvalidContentType(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", adminToken, nil)
 	channels := chData["channels"].([]any)

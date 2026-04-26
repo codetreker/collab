@@ -1,5 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
-import type { User } from '../types';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { fetchChannelMembers } from '../lib/api';
+import type { ChannelMember } from '../lib/api';
 
 const MAX_RESULTS = 10;
 
@@ -8,24 +9,50 @@ interface UseMentionResult {
   visible: boolean;
   index: number;
   start: number;
-  filteredUsers: User[];
+  filteredUsers: ChannelMember[];
   setIndex: (i: number | ((prev: number) => number)) => void;
   setVisible: (v: boolean) => void;
   handleChange: (value: string, cursorPos: number) => 'mention' | null;
-  insertMention: (user: User, text: string, selectionStart: number) => { newText: string; cursorPos: number };
+  insertMention: (user: ChannelMember, text: string, selectionStart: number) => { newText: string; cursorPos: number };
   reset: () => void;
 }
 
-export function useMention(users: User[]): UseMentionResult {
+const membersCache = new Map<string, ChannelMember[]>();
+
+export function useMention(channelId: string | null): UseMentionResult {
   const [query, setQuery] = useState('');
   const [visible, setVisible] = useState(false);
   const [index, setIndex] = useState(0);
   const [start, setStart] = useState(-1);
+  const [members, setMembers] = useState<ChannelMember[]>([]);
+  const activeChannelRef = useRef(channelId);
+  activeChannelRef.current = channelId;
 
-  const filteredUsers = users
+  useEffect(() => {
+    if (!channelId) {
+      setMembers([]);
+      return;
+    }
+
+    setMembers(membersCache.get(channelId) ?? []);
+    let cancelled = false;
+    fetchChannelMembers(channelId).then(next => {
+      membersCache.set(channelId, next);
+      if (!cancelled && activeChannelRef.current === channelId) {
+        setMembers(next);
+      }
+    }).catch(() => {
+      if (!cancelled && activeChannelRef.current === channelId) {
+        setMembers([]);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [channelId]);
+
+  const filteredUsers = members
     .filter(u => {
       const q = query.toLowerCase();
-      return u.display_name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
+      return u.display_name.toLowerCase().startsWith(q);
     })
     .slice(0, MAX_RESULTS);
 
@@ -50,10 +77,10 @@ export function useMention(users: User[]): UseMentionResult {
     return null;
   }, []);
 
-  const insertMention = useCallback((user: User, text: string, selectionStart: number) => {
+  const insertMention = useCallback((user: ChannelMember, text: string, selectionStart: number) => {
     const before = text.slice(0, start);
     const after = text.slice(selectionStart);
-    const mentionToken = `<@${user.id}>`;
+    const mentionToken = `<@${user.user_id}>`;
     const newText = `${before}${mentionToken} ${after}`;
     const cursorPos = before.length + mentionToken.length + 1;
     return { newText, cursorPos };

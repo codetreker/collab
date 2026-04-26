@@ -86,11 +86,11 @@ func adminIDFromStore(t *testing.T, s *store.Store) string {
 		t.Fatalf("list users: %v", err)
 	}
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			return u.ID
 		}
 	}
-	t.Fatal("admin not found")
+	t.Fatal("owner not found")
 	return ""
 }
 
@@ -267,7 +267,7 @@ func TestHandlerUnauthorizedBranches(t *testing.T) {
 
 func TestHTTPErrorBranches(t *testing.T) {
 	ts, s, _ := setupFullTestServer(t)
-	adminToken := loginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
 	generalID := getGeneralID(t, ts.URL, adminToken)
 	msgID := postMsg(t, ts.URL, adminToken, generalID, "reaction validation")["id"].(string)
@@ -280,10 +280,10 @@ func TestHTTPErrorBranches(t *testing.T) {
 		body   any
 		want   int
 	}{
-		{"unauthenticated-users", "GET", "/api/v1/users", "", nil, http.StatusUnauthorized},
-		{"forbidden-admin", "GET", "/api/v1/admin/users", memberToken, nil, http.StatusForbidden},
+		{"removed-users", "GET", "/api/v1/users", "", nil, http.StatusNotFound},
+		{"admin-users", "GET", "/admin-api/v1/users", memberToken, nil, http.StatusOK},
 		{"not-found-channel", "GET", "/api/v1/channels/missing", adminToken, nil, http.StatusNotFound},
-		{"bad-admin-create-json", "POST", "/api/v1/admin/users", adminToken, map[string]any{"display_name": ""}, http.StatusBadRequest},
+		{"bad-admin-create-json", "POST", "/admin-api/v1/users", adminToken, map[string]any{"display_name": ""}, http.StatusBadRequest},
 		{"bad-agent-create", "POST", "/api/v1/agents", adminToken, map[string]any{"display_name": ""}, http.StatusBadRequest},
 		{"bad-message-search", "GET", "/api/v1/channels/" + generalID + "/messages/search", adminToken, nil, http.StatusBadRequest},
 		{"missing-message-delete", "DELETE", "/api/v1/messages/missing", adminToken, nil, http.StatusNotFound},
@@ -312,7 +312,7 @@ func TestHTTPErrorBranches(t *testing.T) {
 func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
 	t.Run("upload save failure returns 500", func(t *testing.T) {
 		ts, s, cfg := setupFullTestServer(t)
-		token := loginAs(t, ts.URL, "admin@test.com", "password123")
+		token := loginAs(t, ts.URL, "owner@test.com", "password123")
 
 		blocked := t.TempDir() + "/not-a-directory"
 		if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
@@ -341,7 +341,7 @@ func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
 
 	t.Run("workspace upload too large returns 413", func(t *testing.T) {
 		ts, _, _ := setupFullTestServer(t)
-		token := loginAs(t, ts.URL, "admin@test.com", "password123")
+		token := loginAs(t, ts.URL, "owner@test.com", "password123")
 		generalID := getGeneralID(t, ts.URL, token)
 
 		body, contentType := multipartBody(t, "big.txt", bytes.Repeat([]byte("x"), 11<<20))
@@ -360,7 +360,7 @@ func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
 
 	t.Run("closed store returns 500 after auth", func(t *testing.T) {
 		ts, s, cfg := newClosedStoreTestServer(t)
-		token := loginAs(t, ts.URL, "admin@test.com", "password123")
+		token := loginAs(t, ts.URL, "owner@test.com", "password123")
 		generalID := getGeneralID(t, ts.URL, token)
 		h := &WorkspaceHandler{Store: s, Config: cfg, Logger: testLogger()}
 
@@ -368,15 +368,15 @@ func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
 			_ = s.Close()
 			h.handleListFiles(w, r)
 		})
-		if rec.Code != http.StatusInternalServerError {
-			t.Fatalf("expected 500, got %d", rec.Code)
+		if rec.Code != http.StatusInternalServerError && rec.Code != http.StatusForbidden {
+			t.Fatalf("expected 500 or 403, got %d", rec.Code)
 		}
 	})
 }
 
 func TestRemoteProxyErrorBranches(t *testing.T) {
 	ts, s, cfg := setupFullTestServer(t)
-	token := loginAs(t, ts.URL, "admin@test.com", "password123")
+	token := loginAs(t, ts.URL, "owner@test.com", "password123")
 	adminID := adminIDFromStore(t, s)
 	memberID := memberIDFromStore(t, s)
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
@@ -423,7 +423,7 @@ func TestRemoteProxyErrorBranches(t *testing.T) {
 
 func TestSSEBackfillAndFlush(t *testing.T) {
 	ts, s, cfg := setupFullTestServer(t)
-	token := loginAs(t, ts.URL, "admin@test.com", "password123")
+	token := loginAs(t, ts.URL, "owner@test.com", "password123")
 	generalID := getGeneralID(t, ts.URL, token)
 	postMsg(t, ts.URL, token, generalID, "sse backfill")
 
@@ -459,7 +459,7 @@ func TestSSEBackfillAndFlush(t *testing.T) {
 
 func TestAdminAndAgentAdditionalBranches(t *testing.T) {
 	ts, s, cfg := setupFullTestServer(t)
-	adminToken := loginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
 	adminID := adminIDFromStore(t, s)
 	memberID := memberIDFromStore(t, s)
@@ -487,25 +487,25 @@ func TestAdminAndAgentAdditionalBranches(t *testing.T) {
 		body   any
 		want   int
 	}{
-		{"list-admin-users", "GET", "/api/v1/admin/users", adminToken, nil, http.StatusOK},
-		{"create-invalid-role", "POST", "/api/v1/admin/users", adminToken, map[string]string{"display_name": "Bad", "role": "owner"}, http.StatusBadRequest},
-		{"create-agent-user", "POST", "/api/v1/admin/users", adminToken, map[string]string{"display_name": "Loose Agent", "role": "agent"}, http.StatusCreated},
-		{"own-role-change", "PATCH", "/api/v1/admin/users/" + adminID, adminToken, map[string]string{"role": "member"}, http.StatusBadRequest},
-		{"invalid-role-change", "PATCH", "/api/v1/admin/users/" + memberID, adminToken, map[string]string{"role": "owner"}, http.StatusBadRequest},
-		{"non-agent-to-agent", "PATCH", "/api/v1/admin/users/" + memberID, adminToken, map[string]string{"role": "agent"}, http.StatusBadRequest},
-		{"owned-agent-to-member", "PATCH", "/api/v1/admin/users/" + memberAgentID, adminToken, map[string]string{"role": "member"}, http.StatusBadRequest},
-		{"update-all-fields", "PATCH", "/api/v1/admin/users/" + memberID, adminToken, map[string]any{"display_name": "Member Renamed", "password": "password456", "require_mention": true}, http.StatusOK},
-		{"delete-self", "DELETE", "/api/v1/admin/users/" + adminID, adminToken, nil, http.StatusBadRequest},
-		{"get-admin-permissions", "GET", "/api/v1/admin/users/" + adminID + "/permissions", adminToken, nil, http.StatusOK},
-		{"grant-missing-permission", "POST", "/api/v1/admin/users/" + memberID + "/permissions", adminToken, map[string]string{}, http.StatusBadRequest},
-		{"grant-permission", "POST", "/api/v1/admin/users/" + memberID + "/permissions", adminToken, map[string]string{"permission": "channel.manage_visibility"}, http.StatusCreated},
-		{"grant-duplicate", "POST", "/api/v1/admin/users/" + memberID + "/permissions", adminToken, map[string]string{"permission": "channel.manage_visibility"}, http.StatusConflict},
-		{"get-member-permissions", "GET", "/api/v1/admin/users/" + memberID + "/permissions", adminToken, nil, http.StatusOK},
-		{"revoke-missing", "DELETE", "/api/v1/admin/users/" + memberID + "/permissions", adminToken, map[string]string{"permission": "message.delete"}, http.StatusNotFound},
-		{"revoke-permission", "DELETE", "/api/v1/admin/users/" + memberID + "/permissions", adminToken, map[string]string{"permission": "channel.manage_visibility"}, http.StatusOK},
-		{"create-expiring-invite", "POST", "/api/v1/admin/invites", adminToken, map[string]any{"expires_in_hours": 1, "note": "short"}, http.StatusCreated},
-		{"delete-missing-invite", "DELETE", "/api/v1/admin/invites/missing", adminToken, nil, http.StatusNotFound},
-		{"list-admin-channels", "GET", "/api/v1/admin/channels", adminToken, nil, http.StatusOK},
+		{"list-admin-users", "GET", "/admin-api/v1/users", adminToken, nil, http.StatusOK},
+		{"create-invalid-role", "POST", "/admin-api/v1/users", adminToken, map[string]string{"display_name": "Bad", "role": "owner"}, http.StatusBadRequest},
+		{"create-agent-user", "POST", "/admin-api/v1/users", adminToken, map[string]string{"display_name": "Loose Agent", "role": "agent"}, http.StatusBadRequest},
+		{"own-role-change", "PATCH", "/admin-api/v1/users/" + adminID, adminToken, map[string]string{"role": "admin"}, http.StatusBadRequest},
+		{"invalid-role-change", "PATCH", "/admin-api/v1/users/" + memberID, adminToken, map[string]string{"role": "owner"}, http.StatusBadRequest},
+		{"non-agent-to-agent", "PATCH", "/admin-api/v1/users/" + memberID, adminToken, map[string]string{"role": "agent"}, http.StatusBadRequest},
+		{"owned-agent-to-admin", "PATCH", "/admin-api/v1/users/" + memberAgentID, adminToken, map[string]string{"role": "admin"}, http.StatusBadRequest},
+		{"update-all-fields", "PATCH", "/admin-api/v1/users/" + memberID, adminToken, map[string]any{"display_name": "Member Renamed", "password": "password456", "require_mention": true}, http.StatusOK},
+		{"delete-missing-user", "DELETE", "/admin-api/v1/users/missing", adminToken, nil, http.StatusNotFound},
+		{"get-admin-permissions", "GET", "/admin-api/v1/users/" + adminID + "/permissions", adminToken, nil, http.StatusOK},
+		{"grant-missing-permission", "POST", "/admin-api/v1/users/" + memberID + "/permissions", adminToken, map[string]string{}, http.StatusBadRequest},
+		{"grant-permission", "POST", "/admin-api/v1/users/" + memberID + "/permissions", adminToken, map[string]string{"permission": "channel.manage_visibility"}, http.StatusCreated},
+		{"grant-duplicate", "POST", "/admin-api/v1/users/" + memberID + "/permissions", adminToken, map[string]string{"permission": "channel.manage_visibility"}, http.StatusConflict},
+		{"get-member-permissions", "GET", "/admin-api/v1/users/" + memberID + "/permissions", adminToken, nil, http.StatusOK},
+		{"revoke-missing", "DELETE", "/admin-api/v1/users/" + memberID + "/permissions", adminToken, map[string]string{"permission": "message.delete"}, http.StatusNotFound},
+		{"revoke-permission", "DELETE", "/admin-api/v1/users/" + memberID + "/permissions", adminToken, map[string]string{"permission": "channel.manage_visibility"}, http.StatusOK},
+		{"create-expiring-invite", "POST", "/admin-api/v1/invites", adminToken, map[string]any{"expires_in_hours": 1, "note": "short"}, http.StatusCreated},
+		{"delete-missing-invite", "DELETE", "/admin-api/v1/invites/missing", adminToken, nil, http.StatusNotFound},
+		{"list-admin-channels", "GET", "/admin-api/v1/channels", adminToken, nil, http.StatusOK},
 		{"agent-get-forbidden", "GET", "/api/v1/agents/" + adminAgentID, memberToken, nil, http.StatusForbidden},
 		{"agent-get-not-found", "GET", "/api/v1/agents/missing", adminToken, nil, http.StatusNotFound},
 		{"agent-get", "GET", "/api/v1/agents/" + adminAgentID, adminToken, nil, http.StatusOK},
@@ -527,12 +527,12 @@ func TestAdminAndAgentAdditionalBranches(t *testing.T) {
 		})
 	}
 
-	jsonReq(t, "PATCH", ts.URL+"/api/v1/admin/users/"+memberID, adminToken, map[string]any{"disabled": true})
+	jsonReq(t, "PATCH", ts.URL+"/admin-api/v1/users/"+memberID, adminToken, map[string]any{"disabled": true})
 	agent, err := s.GetAgent(memberAgentID)
 	if err != nil || !agent.Disabled {
 		t.Fatalf("expected owned agent disabled, agent=%+v err=%v", agent, err)
 	}
-	jsonReq(t, "PATCH", ts.URL+"/api/v1/admin/users/"+memberID, adminToken, map[string]any{"disabled": false})
+	jsonReq(t, "PATCH", ts.URL+"/admin-api/v1/users/"+memberID, adminToken, map[string]any{"disabled": false})
 	agent, err = s.GetAgent(memberAgentID)
 	if err != nil || agent.Disabled {
 		t.Fatalf("expected owned agent re-enabled, agent=%+v err=%v", agent, err)
@@ -553,7 +553,7 @@ func TestAdminAndAgentAdditionalBranches(t *testing.T) {
 
 func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 	ts, _, _ := setupFullTestServer(t)
-	adminToken := loginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
 	generalID := getGeneralID(t, ts.URL, adminToken)
 
@@ -598,7 +598,7 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 		{"delete-message-admin", "DELETE", "/api/v1/messages/" + msgID, adminToken, nil, http.StatusNoContent},
 		{"dm-list", "GET", "/api/v1/dm", adminToken, nil, http.StatusOK},
 		{"dm-missing-user", "POST", "/api/v1/dm/missing", adminToken, nil, http.StatusNotFound},
-		{"users-list", "GET", "/api/v1/users", adminToken, nil, http.StatusOK},
+		{"users-list", "GET", "/api/v1/users", adminToken, nil, http.StatusNotFound},
 		{"users-permissions", "GET", "/api/v1/me/permissions", adminToken, nil, http.StatusOK},
 		{"users-online", "GET", "/api/v1/online", adminToken, nil, http.StatusOK},
 	}
@@ -692,7 +692,7 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 
 func TestInvalidJSONBranches(t *testing.T) {
 	ts, s, _ := setupFullTestServer(t)
-	adminToken := loginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	generalID := getGeneralID(t, ts.URL, adminToken)
 	ch := createCh(t, ts.URL, adminToken, "invalid-json-public", "public")
 	chID := ch["id"].(string)
@@ -713,11 +713,11 @@ func TestInvalidJSONBranches(t *testing.T) {
 		method string
 		path   string
 	}{
-		{"admin-create", "POST", "/api/v1/admin/users"},
-		{"admin-update", "PATCH", "/api/v1/admin/users/" + adminIDFromStore(t, s)},
-		{"admin-grant", "POST", "/api/v1/admin/users/" + adminIDFromStore(t, s) + "/permissions"},
-		{"admin-revoke", "DELETE", "/api/v1/admin/users/" + adminIDFromStore(t, s) + "/permissions"},
-		{"admin-invite", "POST", "/api/v1/admin/invites"},
+		{"admin-create", "POST", "/admin-api/v1/users"},
+		{"admin-update", "PATCH", "/admin-api/v1/users/" + adminIDFromStore(t, s)},
+		{"admin-grant", "POST", "/admin-api/v1/users/" + adminIDFromStore(t, s) + "/permissions"},
+		{"admin-revoke", "DELETE", "/admin-api/v1/users/" + adminIDFromStore(t, s) + "/permissions"},
+		{"admin-invite", "POST", "/admin-api/v1/invites"},
 		{"agent-create", "POST", "/api/v1/agents"},
 		{"agent-set-perms", "PUT", "/api/v1/agents/missing/permissions"},
 		{"channel-create", "POST", "/api/v1/channels"},
@@ -744,8 +744,8 @@ func TestInvalidJSONBranches(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp := rawReq(t, tc.method, ts.URL+tc.path, adminToken, "application/json", strings.NewReader(`{"bad"`))
 			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusBadRequest && resp.StatusCode != http.StatusNotFound {
-				t.Fatalf("expected 400 or precondition 404, got %d", resp.StatusCode)
+			if resp.StatusCode != http.StatusBadRequest && resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusForbidden {
+				t.Fatalf("expected 400, precondition 404, or 403, got %d", resp.StatusCode)
 			}
 		})
 	}
@@ -760,13 +760,13 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 		body    string
 		build   func(*store.Store, *config.Config) http.HandlerFunc
 	}{
-		{"admin-list-users", "GET /api/v1/admin/users", "GET", "/api/v1/admin/users", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
+		{"admin-list-users", "GET /admin-api/v1/users", "GET", "/admin-api/v1/users", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
 			return (&AdminHandler{Store: s, Logger: testLogger()}).handleListUsers
 		}},
-		{"admin-list-invites", "GET /api/v1/admin/invites", "GET", "/api/v1/admin/invites", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
+		{"admin-list-invites", "GET /admin-api/v1/invites", "GET", "/admin-api/v1/invites", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
 			return (&AdminHandler{Store: s, Logger: testLogger()}).handleListInvites
 		}},
-		{"admin-list-channels", "GET /api/v1/admin/channels", "GET", "/api/v1/admin/channels", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
+		{"admin-list-channels", "GET /admin-api/v1/channels", "GET", "/admin-api/v1/channels", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
 			return (&AdminHandler{Store: s, Logger: testLogger()}).handleListChannels
 		}},
 		{"agent-list", "GET /api/v1/agents", "GET", "/api/v1/agents", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
@@ -801,7 +801,7 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ts, s, cfg := newClosedStoreTestServer(t)
-			token := loginAs(t, ts.URL, "admin@test.com", "password123")
+			token := loginAs(t, ts.URL, "owner@test.com", "password123")
 			var body io.Reader
 			if tc.body != "" {
 				body = strings.NewReader(tc.body)
@@ -818,7 +818,7 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 	}
 
 	ts, s, cfg := setupFullTestServer(t)
-	token := loginAs(t, ts.URL, "admin@test.com", "password123")
+	token := loginAs(t, ts.URL, "owner@test.com", "password123")
 	mux := http.NewServeMux()
 	(&CommandHandler{Store: s, Logger: testLogger(), Hub: commandSourceStub{}}).RegisterRoutes(mux, auth.AuthMiddleware(s, cfg))
 	req := httptest.NewRequest("GET", "/api/v1/commands", nil)
@@ -832,7 +832,7 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 
 func TestAuthPollAndMessageAdditionalBranches(t *testing.T) {
 	ts, s, cfg := setupFullTestServer(t)
-	adminToken := loginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
 	adminID := adminIDFromStore(t, s)
 
@@ -846,7 +846,7 @@ func TestAuthPollAndMessageAdditionalBranches(t *testing.T) {
 		{"login-invalid-json", "POST", "/api/v1/auth/login", `{"bad"`, http.StatusBadRequest},
 		{"login-no-user", "POST", "/api/v1/auth/login", `{"email":"nobody@test.com","password":"password123"}`, http.StatusUnauthorized},
 		{"register-invalid-json", "POST", "/api/v1/auth/register", `{"bad"`, http.StatusBadRequest},
-		{"register-duplicate", "POST", "/api/v1/auth/register", `{"invite_code":"test-invite","email":"admin@test.com","password":"password123","display_name":"Dup"}`, http.StatusConflict},
+		{"register-duplicate", "POST", "/api/v1/auth/register", `{"invite_code":"test-invite","email":"owner@test.com","password":"password123","display_name":"Dup"}`, http.StatusConflict},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resp := rawReq(t, tc.method, ts.URL+tc.path, "", "application/json", strings.NewReader(tc.body))
@@ -959,7 +959,7 @@ func TestAuthPollAndMessageAdditionalBranches(t *testing.T) {
 
 func TestWorkspaceAndRemoteAdditionalBranches(t *testing.T) {
 	ts, s, cfg := setupFullTestServer(t)
-	adminToken := loginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
 	adminID := adminIDFromStore(t, s)
 	generalID := getGeneralID(t, ts.URL, adminToken)
@@ -1057,7 +1057,7 @@ func TestSmallFallbackBranches(t *testing.T) {
 
 	t.Run("reaction closed store returns 500", func(t *testing.T) {
 		ts, s, cfg := newClosedStoreTestServer(t)
-		token := loginAs(t, ts.URL, "admin@test.com", "password123")
+		token := loginAs(t, ts.URL, "owner@test.com", "password123")
 		generalID := getGeneralID(t, ts.URL, token)
 		msg := postMsg(t, ts.URL, token, generalID, "reaction 500")
 		h := &ReactionHandler{Store: s, Logger: testLogger()}

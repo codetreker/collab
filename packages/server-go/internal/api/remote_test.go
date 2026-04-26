@@ -9,7 +9,7 @@ import (
 
 func TestRemoteNodesCRUD(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	var nodeID string

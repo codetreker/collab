@@ -60,7 +60,7 @@ func dialWS(t *testing.T, serverURL, token string) *websocket.Conn {
 
 func TestWSConnect(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	conn := dialWS(t, ts.URL, token)
 	defer conn.Close(websocket.StatusNormalClosure, "")
@@ -76,7 +76,7 @@ func TestWSConnect(t *testing.T) {
 
 func TestWSSubscribe(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	// Get general channel
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", token, nil)
@@ -109,7 +109,7 @@ func TestWSSubscribe(t *testing.T) {
 
 func TestWSSendMessage(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	// Get general channel
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", token, nil)

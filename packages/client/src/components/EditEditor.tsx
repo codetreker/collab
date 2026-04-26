@@ -3,14 +3,14 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 import { createMentionExtension } from '../extensions/mention';
-import type { User } from '../types';
+import type { ChannelMember } from '../lib/api';
 
 interface Props {
   initialContent: string;
   onSave: (markdown: string) => void;
   onCancel: () => void;
   disabled?: boolean;
-  users: User[];
+  users: ChannelMember[];
 }
 
 export default function EditEditor({ initialContent, onSave, onCancel, disabled, users }: Props) {

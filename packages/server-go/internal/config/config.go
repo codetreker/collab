@@ -20,24 +20,24 @@ type Config struct {
 	ClientDist    string
 	JWTSecret     string
 	DevAuthBypass bool
-	AdminEmail    string
+	AdminUser     string
 	AdminPassword string
 }
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:         envInt("PORT", 4900),
-		Host:         envStr("HOST", "0.0.0.0"),
-		LogLevelStr:  envStr("LOG_LEVEL", "info"),
-		NodeEnv:      envStr("NODE_ENV", ""),
-		CORSOrigin:   envStr("CORS_ORIGIN", "https://borgee.codetrek.cn"),
-		DatabasePath: envStr("DATABASE_PATH", "data/collab.db"),
-		UploadDir:    envStr("UPLOAD_DIR", "data/uploads"),
-		WorkspaceDir: envStr("WORKSPACE_DIR", "data/workspaces"),
-		ClientDist:   envStr("CLIENT_DIST", "packages/client/dist"),
-		JWTSecret:    envStr("JWT_SECRET", ""),
+		Port:          envInt("PORT", 4900),
+		Host:          envStr("HOST", "0.0.0.0"),
+		LogLevelStr:   envStr("LOG_LEVEL", "info"),
+		NodeEnv:       envStr("NODE_ENV", ""),
+		CORSOrigin:    envStr("CORS_ORIGIN", "https://borgee.codetrek.cn"),
+		DatabasePath:  envStr("DATABASE_PATH", "data/collab.db"),
+		UploadDir:     envStr("UPLOAD_DIR", "data/uploads"),
+		WorkspaceDir:  envStr("WORKSPACE_DIR", "data/workspaces"),
+		ClientDist:    envStr("CLIENT_DIST", "packages/client/dist"),
+		JWTSecret:     envStr("JWT_SECRET", ""),
 		DevAuthBypass: envBool("DEV_AUTH_BYPASS", false),
-		AdminEmail:    envStr("ADMIN_EMAIL", ""),
+		AdminUser:     envStr("ADMIN_USER", ""),
 		AdminPassword: envStr("ADMIN_PASSWORD", ""),
 	}
 

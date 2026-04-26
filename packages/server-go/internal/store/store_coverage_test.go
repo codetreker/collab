@@ -598,7 +598,7 @@ func TestEventOps(t *testing.T) {
 
 func TestAdminOps(t *testing.T) {
 	s := migratedStore(t)
-	u := createUser(t, s, "adminops", "admin")
+	u := createUser(t, s, "adminops", "member")
 	m := createUser(t, s, "memberops", "member")
 
 	users, err := s.ListAdminUsers()

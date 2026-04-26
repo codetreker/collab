@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { register } from '../lib/api';
 
 interface Props {
-  onLogin: () => void;
+  onLogin: () => void | Promise<void>;
   onBack: () => void;
 }
 
@@ -66,7 +66,7 @@ export default function RegisterPage({ onLogin, onBack }: Props) {
     setError('');
     try {
       await register(inviteCode.trim(), email, password, displayName);
-      onLogin();
+      await onLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {

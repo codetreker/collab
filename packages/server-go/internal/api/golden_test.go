@@ -13,7 +13,7 @@ import (
 func TestAPIGoldenCompatResponses(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 
-	loginResp, loginBody := loginJSON(t, ts.URL, "admin@test.com", "password123")
+	loginResp, loginBody := loginJSON(t, ts.URL, "owner@test.com", "password123")
 	if loginResp.StatusCode != http.StatusOK {
 		t.Fatalf("login status: got %d body %v", loginResp.StatusCode, loginBody)
 	}

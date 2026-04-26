@@ -2,13 +2,9 @@ package store
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func (s *Store) Migrate() error {
@@ -35,10 +31,6 @@ func (s *Store) Migrate() error {
 	// Re-enable FK constraints after migration
 	if err := s.execMigrationSQL("enable foreign keys", "PRAGMA foreign_keys = ON"); err != nil {
 		return err
-	}
-
-	if err := s.seedBootstrapAdmin(); err != nil {
-		return fmt.Errorf("seed admin: %w", err)
 	}
 
 	if err := s.backfillDefaultPermissions(); err != nil {
@@ -134,7 +126,7 @@ CREATE TABLE IF NOT EXISTS user_permissions (
 
 CREATE TABLE IF NOT EXISTS invite_codes (
   code        TEXT PRIMARY KEY,
-  created_by  TEXT NOT NULL REFERENCES users(id),
+  created_by  TEXT NOT NULL,
   created_at  INTEGER NOT NULL,
   expires_at  INTEGER,
   used_by     TEXT REFERENCES users(id),
@@ -197,10 +189,10 @@ CREATE TABLE IF NOT EXISTS channel_groups (
 
 func (s *Store) applyColumnMigrations() error {
 	columns := []struct {
-		table  string
-		name   string
-		ddl    string
-		label  string
+		table string
+		name  string
+		ddl   string
+		label string
 	}{
 		{"channel_members", "last_read_at", "ALTER TABLE channel_members ADD COLUMN last_read_at INTEGER", "add channel_members.last_read_at"},
 		{"users", "email", "ALTER TABLE users ADD COLUMN email TEXT", "add users.email"},
@@ -277,36 +269,6 @@ func (s *Store) execMigrationSQL(label, sql string) error {
 	return nil
 }
 
-func (s *Store) seedBootstrapAdmin() error {
-	email := os.Getenv("ADMIN_EMAIL")
-	password := os.Getenv("ADMIN_PASSWORD")
-	if email == "" || password == "" {
-		return nil
-	}
-
-	var count int64
-	s.db.Model(&User{}).Where("email = ?", email).Count(&count)
-	if count > 0 {
-		return nil
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-
-	now := time.Now().UnixMilli()
-	user := User{
-		ID:           uuid.NewString(),
-		DisplayName:  "Admin",
-		Role:         "admin",
-		Email:        &email,
-		PasswordHash: string(hash),
-		CreatedAt:    now,
-	}
-	return s.db.Create(&user).Error
-}
-
 func (s *Store) backfillDefaultPermissions() error {
 	memberPerms := []string{"channel.create", "message.send", "agent.manage"}
 	agentPerms := []string{"message.send"}
@@ -352,16 +314,6 @@ func (s *Store) backfillCreatorChannelPermissions() error {
 }
 
 func (s *Store) backfillAgentOwnerID() error {
-	var firstAdmin User
-	err := s.db.Where("role = ? AND deleted_at IS NULL", "admin").Order("created_at ASC").First(&firstAdmin).Error
-	if err != nil {
-		return nil
-	}
-
-	s.db.Model(&User{}).
-		Where("role = ? AND owner_id IS NULL AND deleted_at IS NULL", "agent").
-		Update("owner_id", firstAdmin.ID)
-
 	return nil
 }
 

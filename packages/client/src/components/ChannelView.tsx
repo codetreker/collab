@@ -27,7 +27,7 @@ export default function ChannelView({ channelId }: Props) {
 
   const channel = state.channels.find(c => c.id === channelId);
   const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
-  const isDm = !!dmChannel;
+  const isDm = !!dmChannel?.peer;
   const isMember = channel?.is_member !== false;
   const isPublicPreview = !isDm && channel && !isMember && channel.visibility !== 'private';
 
@@ -86,7 +86,7 @@ export default function ChannelView({ channelId }: Props) {
     };
   }, [channelId]);
 
-  if (!channel && !dmChannel) {
+  if (!channel && !isDm) {
     return (
       <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100% - ${keyboardHeight}px)` } : undefined}>
         <div className="channel-empty">
@@ -190,11 +190,7 @@ export default function ChannelView({ channelId }: Props) {
           ) : (
             <>
               <MessageList channelId={channelId} />
-              {!isDm && channel?.visibility === 'private' && state.currentUser?.role === 'admin' && !isMember ? (
-                <MessageInput channelId={channelId} disabled disabledHint="你不是此频道成员，无法发送消息。请先将自己添加为成员。" />
-              ) : (
-                <MessageInput channelId={channelId} />
-              )}
+              <MessageInput channelId={channelId} />
             </>
           )}
         </>

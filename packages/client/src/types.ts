@@ -19,7 +19,7 @@ export interface Channel {
 export interface User {
   id: string;
   display_name: string;
-  role: 'admin' | 'member' | 'agent';
+  role: 'member' | 'agent';
   avatar_url: string | null;
   owner_id?: string | null;
   created_at: number;
@@ -72,19 +72,6 @@ export interface PendingMessage {
   senderName: string;
   senderId: string;
   mentions?: string[];
-}
-
-export interface AdminUser {
-  id: string;
-  display_name: string;
-  email: string | null;
-  role: 'admin' | 'member' | 'agent';
-  api_key: string | null;
-  require_mention: boolean;
-  created_at: number;
-  owner_id?: string | null;
-  disabled?: number;
-  deleted_at?: number | null;
 }
 
 export interface ChannelGroup {

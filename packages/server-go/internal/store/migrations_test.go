@@ -1,9 +1,6 @@
 package store
 
-import (
-	"os"
-	"testing"
-)
+import "testing"
 
 func TestMigrateIdempotent(t *testing.T) {
 	s := testStore(t)
@@ -16,30 +13,25 @@ func TestMigrateIdempotent(t *testing.T) {
 	}
 }
 
-func TestMigrateWithAdminSeed(t *testing.T) {
-	os.Setenv("ADMIN_EMAIL", "seedadmin@test.com")
-	os.Setenv("ADMIN_PASSWORD", "seedpassword123")
-	t.Cleanup(func() {
-		os.Unsetenv("ADMIN_EMAIL")
-		os.Unsetenv("ADMIN_PASSWORD")
-	})
-
+func TestMigrateWithoutAdminSeedIsIdempotent(t *testing.T) {
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
 	}
 
-	user, err := s.GetUserByEmail("seedadmin@test.com")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if user.Role != "admin" {
-		t.Fatal("expected admin role")
-	}
-
 	// Run migrate again - should not duplicate
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
+	}
+
+	users, err := s.ListUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, user := range users {
+		if user.Role == "admin" {
+			t.Fatal("admin should not be seeded into users table")
+		}
 	}
 }
 

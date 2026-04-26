@@ -9,7 +9,7 @@ import (
 
 func TestReactionsCRUD(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", token, nil)
 	channels := chData["channels"].([]any)

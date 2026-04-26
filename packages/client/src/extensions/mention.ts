@@ -2,7 +2,7 @@ import { ReactRenderer } from '@tiptap/react';
 import Mention from '@tiptap/extension-mention';
 import type { SuggestionOptions, SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion';
 import MentionList from '../components/MentionList';
-import type { User } from '../types';
+import type { ChannelMember } from '../lib/api';
 
 export interface MentionSuggestionItem {
   id: string;
@@ -25,7 +25,7 @@ const MentionWithMarkdown = Mention.extend({
 });
 
 export function createMentionExtension(
-  getUsersFn: () => User[],
+  getUsersFn: () => ChannelMember[],
   activeRef?: { current: boolean },
 ) {
   return MentionWithMarkdown.configure({
@@ -45,9 +45,9 @@ export function createMentionExtension(
         const users = getUsersFn();
         const q = query.toLowerCase();
         return users
-          .filter(u => u.display_name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q))
+          .filter(u => u.display_name.toLowerCase().startsWith(q))
           .slice(0, 10)
-          .map(u => ({ id: u.id, label: u.display_name, role: u.role }));
+          .map(u => ({ id: u.user_id, label: u.display_name, role: u.role }));
       },
       render: () => {
         let component: ReactRenderer<{ onKeyDown: (props: SuggestionKeyDownProps) => boolean }> | null = null;

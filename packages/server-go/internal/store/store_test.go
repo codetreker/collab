@@ -1,9 +1,6 @@
 package store
 
-import (
-	"os"
-	"testing"
-)
+import "testing"
 
 func testStore(t *testing.T) *Store {
 	t.Helper()
@@ -22,25 +19,20 @@ func TestMigrate(t *testing.T) {
 	}
 }
 
-func TestSeedAdmin(t *testing.T) {
-	os.Setenv("ADMIN_EMAIL", "admin@test.com")
-	os.Setenv("ADMIN_PASSWORD", "testpassword123")
-	t.Cleanup(func() {
-		os.Unsetenv("ADMIN_EMAIL")
-		os.Unsetenv("ADMIN_PASSWORD")
-	})
-
+func TestMigrateDoesNotSeedAdmin(t *testing.T) {
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
 	}
 
-	user, err := s.GetUserByEmail("admin@test.com")
+	users, err := s.ListUsers()
 	if err != nil {
-		t.Fatal("admin not found:", err)
+		t.Fatal(err)
 	}
-	if user.Role != "admin" {
-		t.Fatalf("expected admin role, got %s", user.Role)
+	for _, user := range users {
+		if user.Role == "admin" {
+			t.Fatal("admin should not be seeded into users table")
+		}
 	}
 }
 

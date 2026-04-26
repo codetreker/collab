@@ -58,9 +58,11 @@ func TestConfigLogLevel(t *testing.T) {
 func TestConfigLoad(t *testing.T) {
 	os.Setenv("NODE_ENV", "development")
 	os.Setenv("PORT", "5000")
+	os.Setenv("ADMIN_USER", "root")
 	t.Cleanup(func() {
 		os.Unsetenv("NODE_ENV")
 		os.Unsetenv("PORT")
+		os.Unsetenv("ADMIN_USER")
 	})
 
 	cfg, err := Load()
@@ -72,6 +74,9 @@ func TestConfigLoad(t *testing.T) {
 	}
 	if cfg.JWTSecret != "dev-secret" {
 		t.Fatalf("expected dev-secret, got %s", cfg.JWTSecret)
+	}
+	if cfg.AdminUser != "root" {
+		t.Fatalf("expected admin user root, got %s", cfg.AdminUser)
 	}
 }
 

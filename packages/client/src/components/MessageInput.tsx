@@ -15,6 +15,7 @@ import { isRemoteCommand } from './SlashCommandPicker';
 import '../commands/builtins';
 import * as api from '../lib/api';
 import { fetchChannelMembers, ApiError } from '../lib/api';
+import type { ChannelMember } from '../lib/api';
 import type { SendStatus } from '../types';
 
 interface Props {
@@ -46,6 +47,8 @@ function extractMentionIds(ed: { getJSON: () => { content?: Array<Record<string,
   return [...new Set(ids)];
 }
 
+const channelMembersCache = new Map<string, ChannelMember[]>();
+
 export default function MessageInput({ channelId, disabled, disabledHint }: Props) {
   const { state, actions, dispatch, sendWsMessage, registerAckTimer } = useAppContext();
   const [text, setText] = useState('');
@@ -59,32 +62,26 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
   const [slashResolvedUser, setSlashResolvedUser] = useState<{ id: string; username: string } | undefined>();
 
-  const channel = state.channels.find(c => c.id === channelId);
-  const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
-  const isPrivate = !dmChannel && channel?.visibility === 'private';
-
   const slash = useSlashCommands(text);
 
-  const [channelMemberIds, setChannelMemberIds] = useState<Set<string> | null>(null);
+  const [mentionMembers, setMentionMembers] = useState<ChannelMember[]>(() => channelMembersCache.get(channelId) ?? []);
 
   const membersVersion = state.channelMembersVersion.get(channelId) ?? 0;
 
   useEffect(() => {
-    if (!isPrivate) {
-      setChannelMemberIds(null);
-      return;
-    }
+    setMentionMembers(channelMembersCache.get(channelId) ?? []);
     let cancelled = false;
     fetchChannelMembers(channelId).then(members => {
-      if (!cancelled) setChannelMemberIds(new Set(members.map(m => m.user_id)));
+      channelMembersCache.set(channelId, members);
+      if (!cancelled) setMentionMembers(members);
+    }).catch(() => {
+      if (!cancelled) setMentionMembers([]);
     });
     return () => { cancelled = true; };
-  }, [channelId, isPrivate, membersVersion]);
+  }, [channelId, membersVersion]);
 
-  const mentionUsersRef = useRef(state.users);
-  mentionUsersRef.current = isPrivate && channelMemberIds
-    ? state.users.filter(u => channelMemberIds.has(u.id))
-    : state.users;
+  const mentionUsersRef = useRef<ChannelMember[]>(mentionMembers);
+  mentionUsersRef.current = mentionMembers;
 
   const mentionActiveRef = useRef(false);
 
@@ -281,7 +278,7 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
       dispatch({ type: 'FAIL_PENDING_MESSAGE', clientMessageId, channelId });
     }, 10_000);
     registerAckTimer(clientMessageId, () => clearTimeout(timer));
-  }, [editor, sendStatus, channelId, state.users, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand, slashResolvedUser]);
+  }, [editor, sendStatus, channelId, state.currentUser, dispatch, sendWsMessage, registerAckTimer, executeCommand, slashResolvedUser]);
 
   useEffect(() => {
     handleSendRef.current = handleSend;

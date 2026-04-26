@@ -14,7 +14,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('borgee-theme') as Theme | null;
+    const stored = safeGetTheme();
     if (stored === 'light' || stored === 'dark') return stored;
     // Check system preference
     if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
@@ -23,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('borgee-theme', theme);
+    safeSetTheme(theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
@@ -39,4 +39,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme(): ThemeContextValue {
   return useContext(ThemeContext);
+}
+
+function safeGetTheme(): Theme | null {
+  try {
+    return localStorage.getItem('borgee-theme') as Theme | null;
+  } catch {
+    return null;
+  }
+}
+
+function safeSetTheme(theme: Theme): void {
+  try {
+    localStorage.setItem('borgee-theme', theme);
+  } catch {
+    // Storage can be unavailable in mobile private browsing or embedded views.
+  }
 }
