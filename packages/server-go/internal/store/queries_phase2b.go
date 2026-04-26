@@ -142,9 +142,9 @@ func (s *Store) GetAgent(id string) (*User, error) {
 // ─── Reactions ───────────────────────────────────────
 
 type AggregatedReaction struct {
-	Emoji string   `json:"emoji"`
-	Count int      `json:"count"`
-	Users []string `json:"users"`
+	Emoji   string   `json:"emoji"`
+	Count   int      `json:"count"`
+	UserIDs []string `json:"user_ids"`
 }
 
 func (s *Store) AddReaction(messageID, userID, emoji string) error {
@@ -187,7 +187,7 @@ func (s *Store) GetReactionsByMessage(messageID string) ([]AggregatedReaction, e
 		result = append(result, AggregatedReaction{
 			Emoji: emoji,
 			Count: len(users),
-			Users: users,
+			UserIDs: users,
 		})
 	}
 	return result, nil
