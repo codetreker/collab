@@ -105,7 +105,7 @@ ADMIN_PASSWORD=xxx        # 保持不变
 **数据可清空重建**（已确认），因此无需写迁移脚本。
 
 变更内容：
-- `users` 表：`role` 字段取值范围从 `admin | member | agent` 改为 `member | agent`。不再有 `role=admin` 的行
+- `users` 表：`role` 字段取值范围从 `admin | member` 改为 `member | agent`。不再有 `role=admin` 的行
 - Seed 逻辑：删除现有 `SeedAdmin` / `EnsureAdmin` 相关代码（DB 中不再创建 admin 用户）
 - `handleCreateUser`：移除创建 `role=admin` 的能力（第 113 行，只允许 `member` 和 `agent`）
 - `handleUpdateUser`：移除将用户角色改为 `admin` 的能力（第 179-180 行）
@@ -226,10 +226,10 @@ build: {
 
 ### 3.5 DB Schema 与 Seed 变更
 
-- `User.Role` 有效值：`member | agent`（移除 `admin`）
+- `User.Role` 有效值：`member`（移除 `admin`）
 - 删除启动时创建 admin 用户的 seed 逻辑
-- `handleCreateUser`：`role` 校验只接受 `member | agent`
-- `handleUpdateUser`：`role` 校验只接受 `member | agent`
+- `handleCreateUser`：`role` 校验只接受 `member`
+- `handleUpdateUser`：`role` 校验只接受 `member`
 - `users.ListAdminUsers()`：查询中排除 `role=admin`（过渡期兜底，正常情况下不应有此类数据）
 
 ## 4. 接口清单
