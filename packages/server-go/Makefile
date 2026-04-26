@@ -20,3 +20,11 @@ fmt:
 
 vet:
 	go vet ./...
+
+coverage:
+	go test ./... -race -coverprofile=coverage.out
+	go tool cover -func=coverage.out | tail -1
+
+coverage-html:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out -o coverage.html

@@ -1,7 +1,5 @@
 package store
 
-import "time"
-
 type Channel struct {
 	ID         string  `gorm:"primaryKey;size:36" json:"id"`
 	Name       string  `gorm:"not null;unique;size:100" json:"name"`
@@ -45,10 +43,10 @@ type Message struct {
 	SenderID    string  `gorm:"not null;size:36;index" json:"sender_id"`
 	Content     string  `gorm:"not null" json:"content"`
 	ContentType string  `gorm:"not null;default:text;size:20" json:"content_type"`
-	ReplyToID   *string `gorm:"size:36;index" json:"reply_to_id,omitempty"`
+	ReplyToID   *string `gorm:"size:36;index" json:"reply_to_id"`
 	CreatedAt   int64   `gorm:"not null;index:idx_messages_channel_time,priority:2,sort:desc" json:"created_at"`
-	EditedAt    *int64  `json:"edited_at,omitempty"`
-	DeletedAt   *int64  `gorm:"index" json:"deleted_at,omitempty"`
+	EditedAt    *int64  `json:"edited_at"`
+	DeletedAt   *int64  `gorm:"index" json:"deleted_at"`
 }
 
 type ChannelMember struct {
@@ -101,34 +99,34 @@ type MessageReaction struct {
 }
 
 type WorkspaceFile struct {
-	ID              string    `gorm:"primaryKey;size:36" json:"id"`
-	UserID          string    `gorm:"not null;size:36;index" json:"user_id"`
-	ChannelID       string    `gorm:"not null;size:36;index" json:"channel_id"`
-	ParentID        *string   `gorm:"size:36;index" json:"parent_id,omitempty"`
-	Name            string    `gorm:"not null;size:255" json:"name"`
-	IsDirectory     bool      `gorm:"not null;default:false" json:"is_directory"`
-	MimeType        string    `gorm:"size:255" json:"mime_type"`
-	SizeBytes       int64     `gorm:"not null;default:0" json:"size_bytes"`
-	Source          string    `gorm:"not null;default:upload;size:50" json:"source"`
-	SourceMessageID *string   `gorm:"size:36;index" json:"source_message_id,omitempty"`
-	CreatedAt       time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt       time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	ID              string  `gorm:"primaryKey;size:36" json:"id"`
+	UserID          string  `gorm:"not null;size:36;index" json:"user_id"`
+	ChannelID       string  `gorm:"not null;size:36;index" json:"channel_id"`
+	ParentID        *string `gorm:"size:36;index" json:"parent_id,omitempty"`
+	Name            string  `gorm:"not null;size:255" json:"name"`
+	IsDirectory     bool    `gorm:"not null;default:false" json:"is_directory"`
+	MimeType        string  `gorm:"size:255" json:"mime_type"`
+	SizeBytes       int64   `gorm:"not null;default:0" json:"size_bytes"`
+	Source          string  `gorm:"not null;default:upload;size:50" json:"source"`
+	SourceMessageID *string `gorm:"size:36;index" json:"source_message_id,omitempty"`
+	CreatedAt       int64   `gorm:"not null" json:"created_at"`
+	UpdatedAt       int64   `gorm:"not null" json:"updated_at"`
 }
 
 type RemoteNode struct {
-	ID              string     `gorm:"primaryKey;size:36" json:"id"`
-	UserID          string     `gorm:"not null;size:36;index" json:"user_id"`
-	MachineName     string     `gorm:"not null;size:255" json:"machine_name"`
-	ConnectionToken string     `gorm:"not null;uniqueIndex;size:255" json:"-"`
-	LastSeenAt      *time.Time `gorm:"index" json:"last_seen_at,omitempty"`
-	CreatedAt       time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	ID              string `gorm:"primaryKey;size:36" json:"id"`
+	UserID          string `gorm:"not null;size:36;index" json:"user_id"`
+	MachineName     string `gorm:"not null;size:255" json:"machine_name"`
+	ConnectionToken string `gorm:"not null;uniqueIndex;size:255" json:"-"`
+	LastSeenAt      *int64 `gorm:"index" json:"last_seen_at,omitempty"`
+	CreatedAt       int64  `gorm:"not null" json:"created_at"`
 }
 
 type RemoteBinding struct {
-	ID        string    `gorm:"primaryKey;size:36" json:"id"`
-	NodeID    string    `gorm:"not null;size:36;index" json:"node_id"`
-	ChannelID string    `gorm:"not null;size:36;index" json:"channel_id"`
-	Path      string    `gorm:"not null;size:1000" json:"path"`
-	Label     string    `gorm:"size:255" json:"label"`
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	ID        string `gorm:"primaryKey;size:36" json:"id"`
+	NodeID    string `gorm:"not null;size:36;index" json:"node_id"`
+	ChannelID string `gorm:"not null;size:36;index" json:"channel_id"`
+	Path      string `gorm:"not null;size:1000" json:"path"`
+	Label     string `gorm:"size:255" json:"label"`
+	CreatedAt int64  `gorm:"not null" json:"created_at"`
 }

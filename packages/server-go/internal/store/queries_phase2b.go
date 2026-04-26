@@ -220,6 +220,13 @@ func (s *Store) InsertWorkspaceFile(file *WorkspaceFile) (*WorkspaceFile, error)
 	if file.ID == "" {
 		file.ID = uuid.NewString()
 	}
+	now := time.Now().UnixMilli()
+	if file.CreatedAt == 0 {
+		file.CreatedAt = now
+	}
+	if file.UpdatedAt == 0 {
+		file.UpdatedAt = now
+	}
 	if err := s.db.Create(file).Error; err != nil {
 		return nil, err
 	}
@@ -242,17 +249,24 @@ func (s *Store) DeleteWorkspaceFile(id string) error {
 }
 
 func (s *Store) RenameWorkspaceFile(id, name string) (*WorkspaceFile, error) {
-	if err := s.db.Model(&WorkspaceFile{}).Where("id = ?", id).Update("name", name).Error; err != nil {
+	if err := s.db.Model(&WorkspaceFile{}).Where("id = ?", id).Updates(map[string]any{
+		"name":       name,
+		"updated_at": time.Now().UnixMilli(),
+	}).Error; err != nil {
 		return nil, err
 	}
 	return s.GetWorkspaceFile(id)
 }
 
 func (s *Store) UpdateWorkspaceFileSize(id string, size int64) error {
-	return s.db.Model(&WorkspaceFile{}).Where("id = ?", id).Update("size_bytes", size).Error
+	return s.db.Model(&WorkspaceFile{}).Where("id = ?", id).Updates(map[string]any{
+		"size_bytes": size,
+		"updated_at": time.Now().UnixMilli(),
+	}).Error
 }
 
 func (s *Store) MkdirWorkspace(userID, channelID string, parentID *string, name string) (*WorkspaceFile, error) {
+	now := time.Now().UnixMilli()
 	f := &WorkspaceFile{
 		ID:          uuid.NewString(),
 		UserID:      userID,
@@ -260,6 +274,8 @@ func (s *Store) MkdirWorkspace(userID, channelID string, parentID *string, name 
 		ParentID:    parentID,
 		Name:        name,
 		IsDirectory: true,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	if err := s.db.Create(f).Error; err != nil {
 		return nil, err
@@ -268,7 +284,7 @@ func (s *Store) MkdirWorkspace(userID, channelID string, parentID *string, name 
 }
 
 func (s *Store) MoveWorkspaceFile(id string, parentID *string) (*WorkspaceFile, error) {
-	updates := map[string]any{"parent_id": parentID}
+	updates := map[string]any{"parent_id": parentID, "updated_at": time.Now().UnixMilli()}
 	if err := s.db.Model(&WorkspaceFile{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		return nil, err
 	}
@@ -323,6 +339,7 @@ func (s *Store) CreateRemoteNode(userID, machineName string) (*RemoteNode, error
 		UserID:          userID,
 		MachineName:     machineName,
 		ConnectionToken: hex.EncodeToString(b),
+		CreatedAt:       time.Now().UnixMilli(),
 	}
 	if err := s.db.Create(node).Error; err != nil {
 		return nil, err
@@ -359,6 +376,7 @@ func (s *Store) CreateRemoteBinding(nodeID, channelID, path, label string) (*Rem
 		ChannelID: channelID,
 		Path:      path,
 		Label:     label,
+		CreatedAt: time.Now().UnixMilli(),
 	}
 	if err := s.db.Create(b).Error; err != nil {
 		return nil, err
