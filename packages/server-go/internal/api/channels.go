@@ -57,7 +57,7 @@ func (h *ChannelHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Han
 	mux.Handle("GET /api/v1/channels", wrap(h.handleListChannels))
 	mux.Handle("POST /api/v1/channels", authMw(auth.RequirePermission(h.Store, "channel.create", nil)(http.HandlerFunc(h.handleCreateChannel))))
 	mux.Handle("GET /api/v1/channels/{channelId}", wrap(h.handleGetChannel))
-	mux.Handle("GET /api/v1/channels/{channelId}/preview", wrap(h.handlePreviewChannel))
+	mux.HandleFunc("GET /api/v1/channels/{channelId}/preview", h.handlePreviewChannel)
 	mux.Handle("PUT /api/v1/channels/{channelId}", wrap(h.handleUpdateChannel))
 	mux.Handle("PUT /api/v1/channels/{channelId}/topic", wrap(h.handleSetTopic))
 	mux.Handle("POST /api/v1/channels/{channelId}/join", wrap(h.handleJoinChannel))
@@ -235,8 +235,7 @@ func (h *ChannelHandler) handleGetChannel(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ChannelHandler) handlePreviewChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
+	if h.Store == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
