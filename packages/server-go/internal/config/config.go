@@ -30,7 +30,7 @@ func Load() (*Config, error) {
 		Host:         envStr("HOST", "0.0.0.0"),
 		LogLevelStr:  envStr("LOG_LEVEL", "info"),
 		NodeEnv:      envStr("NODE_ENV", ""),
-		CORSOrigin:   envStr("CORS_ORIGIN", "https://collab.codetrek.work"),
+		CORSOrigin:   envStr("CORS_ORIGIN", "https://borgee.codetrek.cn"),
 		DatabasePath: envStr("DATABASE_PATH", "data/collab.db"),
 		UploadDir:    envStr("UPLOAD_DIR", "data/uploads"),
 		WorkspaceDir: envStr("WORKSPACE_DIR", "data/workspaces"),

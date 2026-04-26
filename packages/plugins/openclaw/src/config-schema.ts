@@ -1,7 +1,7 @@
 import { buildChannelConfigSchema } from "openclaw/plugin-sdk/channel-config-schema";
 import { z } from "openclaw/plugin-sdk/zod";
 
-export const CollabAccountConfigSchema = z
+export const BorgeeAccountConfigSchema = z
   .object({
     name: z.string().optional(),
     enabled: z.boolean().optional(),
@@ -16,10 +16,10 @@ export const CollabAccountConfigSchema = z
   })
   .strict();
 
-export const CollabConfigSchema = CollabAccountConfigSchema.extend({
-  accounts: z.record(z.string(), CollabAccountConfigSchema.partial()).optional(),
+export const BorgeeConfigSchema = BorgeeAccountConfigSchema.extend({
+  accounts: z.record(z.string(), BorgeeAccountConfigSchema.partial()).optional(),
   defaultAccount: z.string().optional(),
 }).strict();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const collabPluginConfigSchema: any = buildChannelConfigSchema(CollabConfigSchema);
+export const borgeePluginConfigSchema: any = buildChannelConfigSchema(BorgeeConfigSchema);

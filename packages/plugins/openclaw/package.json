@@ -1,5 +1,5 @@
 {
-  "name": "@codetreker/collab-openclaw-plugin",
+  "name": "@codetreker/borgee-openclaw-plugin",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -36,12 +36,12 @@
       "./dist/index.js"
     ],
     "channel": {
-      "id": "collab",
-      "label": "Collab",
-      "selectionLabel": "Collab (Team Chat)",
-      "detailLabel": "Collab Team Chat",
-      "docsPath": "/channels/collab",
-      "docsLabel": "collab"
+      "id": "borgee",
+      "label": "Borgee",
+      "selectionLabel": "Borgee (Team Chat)",
+      "detailLabel": "Borgee Team Chat",
+      "docsPath": "/channels/borgee",
+      "docsLabel": "borgee"
     }
   }
 }

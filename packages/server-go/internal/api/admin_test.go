@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"collab-server/internal/store"
-	"collab-server/internal/testutil"
+	"borgee-server/internal/store"
+	"borgee-server/internal/testutil"
 )
 
 func getAdminAndMemberIDs(t *testing.T, s *store.Store) (string, string) {

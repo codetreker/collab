@@ -195,7 +195,7 @@ describe('Admin, Agents, DM, Users API', () => {
       const memberId = seedMember(testDb, 'ApiKey');
       const createRes = await inject('POST', `/api/v1/admin/users/${memberId}/api-key`, adminId);
       expect(createRes.statusCode).toBe(200);
-      expect(JSON.parse(createRes.body).api_key).toMatch(/^col_/);
+      expect(JSON.parse(createRes.body).api_key).toMatch(/^bgr_/);
       const delRes = await inject('DELETE', `/api/v1/admin/users/${memberId}/api-key`, adminId);
       expect(delRes.statusCode).toBe(200);
     });
@@ -279,7 +279,7 @@ describe('Admin, Agents, DM, Users API', () => {
       const res = await inject('POST', '/api/v1/agents', memberId, { display_name: 'MyBot' });
       expect(res.statusCode).toBe(201);
       const body = JSON.parse(res.body);
-      expect(body.agent.api_key).toMatch(/^col_/);
+      expect(body.agent.api_key).toMatch(/^bgr_/);
       expect(body.agent.owner_id).toBe(memberId);
     });
 
@@ -326,7 +326,7 @@ describe('Admin, Agents, DM, Users API', () => {
       const agentId = seedAgent(testDb, adminId, 'RotateBot');
       const res = await inject('POST', `/api/v1/agents/${agentId}/rotate-api-key`, adminId);
       expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.body).api_key).toMatch(/^col_/);
+      expect(JSON.parse(res.body).api_key).toMatch(/^bgr_/);
     });
 
     it('gets agent permissions', async () => {

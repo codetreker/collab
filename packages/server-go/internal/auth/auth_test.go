@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"collab-server/internal/store"
+	"borgee-server/internal/store"
 )
 
 func TestHashAndCheckPassword(t *testing.T) {

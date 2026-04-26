@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"collab-server/internal/config"
-	"collab-server/internal/store"
-	"collab-server/internal/ws"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
+	"borgee-server/internal/ws"
 )
 
 func setupTestHub(t *testing.T) (*ws.Hub, *store.Store) {

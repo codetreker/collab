@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 )
 
 func setupTest(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
@@ -87,12 +87,12 @@ func TestLoginSuccess(t *testing.T) {
 	cookies := resp.Cookies()
 	found := false
 	for _, c := range cookies {
-		if c.Name == "collab_token" {
+		if c.Name == "borgee_token" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatal("expected collab_token cookie")
+		t.Fatal("expected borgee_token cookie")
 	}
 }
 
@@ -216,11 +216,11 @@ func TestLogout(t *testing.T) {
 	}
 
 	for _, c := range resp.Cookies() {
-		if c.Name == "collab_token" && c.MaxAge < 0 {
+		if c.Name == "borgee_token" && c.MaxAge < 0 {
 			return
 		}
 	}
-	t.Fatal("expected collab_token cookie to be cleared")
+	t.Fatal("expected borgee_token cookie to be cleared")
 }
 
 func TestGetMeAuthenticated(t *testing.T) {
@@ -239,7 +239,7 @@ func TestGetMeAuthenticated(t *testing.T) {
 
 	var cookie *http.Cookie
 	for _, c := range loginResp.Cookies() {
-		if c.Name == "collab_token" {
+		if c.Name == "borgee_token" {
 			cookie = c
 		}
 	}

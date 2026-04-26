@@ -23,8 +23,8 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - run: pnpm install --frozen-lockfile --filter @codetreker/collab-remote-agent
-      - run: pnpm --filter @codetreker/collab-remote-agent build
+      - run: pnpm install --frozen-lockfile --filter @codetreker/borgee-remote-agent
+      - run: pnpm --filter @codetreker/borgee-remote-agent build
       - name: Bump version
         working-directory: packages/remote-agent
         run: |

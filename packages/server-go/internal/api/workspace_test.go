@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"testing"
 
-	"collab-server/internal/testutil"
+	"borgee-server/internal/testutil"
 )
 
 func uploadWorkspaceFile(t *testing.T, serverURL, token, channelID, filename, content string) (int, map[string]any) {
@@ -25,7 +25,7 @@ func uploadWorkspaceFile(t *testing.T, serverURL, token, channelID, filename, co
 	req, _ := http.NewRequest("POST", serverURL+"/api/v1/channels/"+channelID+"/workspace/upload", &buf)
 	req.Header.Set("Content-Type", w.FormDataContentType())
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 	}
 
 	client := &http.Client{}
@@ -56,7 +56,7 @@ func TestWorkspacePermissions(t *testing.T) {
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
-	privCh := testutil.CreateChannel(t, ts.URL, adminToken, "private-ws", "private")
+	privCh := testutil.CreateChannel(t, ts.URL, adminToken, "private-ws-perm", "private")
 	privID := privCh["id"].(string)
 
 	status, data := uploadWorkspaceFile(t, ts.URL, adminToken, privID, "test.txt", "hello")

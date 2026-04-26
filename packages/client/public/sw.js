@@ -1,4 +1,4 @@
-const CACHE = 'collab-v1';
+const CACHE = 'borgee-v1';
 const SHELL = ['/', '/index.html'];
 
 self.addEventListener('install', (e) => {

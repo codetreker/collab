@@ -77,7 +77,7 @@ export class PluginWsClient {
     ws.addEventListener("open", () => {
       this.connectedAt = Date.now();
       this.attempt = 0;
-      console.log("[collab-plugin] WS connected");
+      console.log("[borgee-plugin] WS connected");
     });
 
     ws.addEventListener("message", (ev) => {
@@ -189,7 +189,7 @@ export class PluginWsClient {
     else this.attempt++;
 
     const delay = Math.min(BACKOFF_BASE_MS * Math.pow(2, this.attempt - 1), BACKOFF_MAX_MS);
-    console.log(`[collab-plugin] WS reconnecting in ${delay}ms (attempt ${this.attempt})`);
+    console.log(`[borgee-plugin] WS reconnecting in ${delay}ms (attempt ${this.attempt})`);
 
     this.reconnectTimer = setTimeout(() => {
       this.connect();

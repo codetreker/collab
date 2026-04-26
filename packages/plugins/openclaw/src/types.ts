@@ -1,8 +1,8 @@
 // ─── Plugin Config Types ─────────────────────────────────
 
-export type CollabTransport = "auto" | "sse" | "poll" | "ws";
+export type BorgeeTransport = "auto" | "sse" | "poll" | "ws";
 
-export type CollabAccountConfig = {
+export type BorgeeAccountConfig = {
   name?: string;
   enabled?: boolean;
   baseUrl?: string;
@@ -10,26 +10,26 @@ export type CollabAccountConfig = {
   botUserId?: string;
   botDisplayName?: string;
   pollTimeoutMs?: number;
-  transport?: CollabTransport;
+  transport?: BorgeeTransport;
   allowFrom?: Array<string | number>;
   defaultTo?: string;
 };
 
-export type CollabChannelConfig = CollabAccountConfig & {
-  accounts?: Record<string, Partial<CollabAccountConfig>>;
+export type BorgeeChannelConfig = BorgeeAccountConfig & {
+  accounts?: Record<string, Partial<BorgeeAccountConfig>>;
   defaultAccount?: string;
 };
 
 export type CoreConfig = {
   channels?: {
-    collab?: CollabChannelConfig;
+    borgee?: BorgeeChannelConfig;
   };
   session?: {
     store?: string;
   };
 };
 
-export type ResolvedCollabAccount = {
+export type ResolvedBorgeeAccount = {
   accountId: string;
   enabled: boolean;
   configured: boolean;
@@ -40,13 +40,13 @@ export type ResolvedCollabAccount = {
   botDisplayName: string;
   requireMention: boolean;
   pollTimeoutMs: number;
-  transport: CollabTransport;
-  config: CollabAccountConfig;
+  transport: BorgeeTransport;
+  config: BorgeeAccountConfig;
 };
 
-// ─── Collab Server API Types ─────────────────────────────
+// ─── Borgee Server API Types ─────────────────────────────
 
-export type CollabChannel = {
+export type BorgeeChannel = {
   id: string;
   name: string;
   topic: string;
@@ -55,7 +55,7 @@ export type CollabChannel = {
   member_count?: number;
 };
 
-export type CollabUser = {
+export type BorgeeUser = {
   id: string;
   display_name: string;
   role: 'admin' | 'member' | 'agent';
@@ -63,7 +63,7 @@ export type CollabUser = {
   require_mention?: boolean;
 };
 
-export type CollabMessage = {
+export type BorgeeMessage = {
   id: string;
   channel_id: string;
   sender_id: string;
@@ -76,7 +76,7 @@ export type CollabMessage = {
   mentions?: string[];
 };
 
-export type CollabEventKind =
+export type BorgeeEventKind =
   | 'message'
   | 'message_edited'
   | 'message_deleted'
@@ -86,15 +86,15 @@ export type CollabEventKind =
   | 'member_left'
   | 'reaction_update';
 
-export type CollabEvent = {
+export type BorgeeEvent = {
   cursor: number;
-  kind: CollabEventKind;
+  kind: BorgeeEventKind;
   channel_id: string;
   payload: string;
   created_at: number;
 };
 
-export type CollabPollResult = {
+export type BorgeePollResult = {
   cursor: number;
-  events: CollabEvent[];
+  events: BorgeeEvent[];
 };

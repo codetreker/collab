@@ -36,7 +36,7 @@ export function registerAgentRoutes(app: FastifyInstance): void {
     }
 
     const id = customId || uuidv4();
-    const apiKey = `col_${crypto.randomBytes(32).toString('hex')}`;
+    const apiKey = `bgr_${crypto.randomBytes(32).toString('hex')}`;
 
     const txn = db.transaction(() => {
       Q.createUser(db, id, display_name.trim(), 'agent', apiKey, null, null, user.id);
@@ -167,7 +167,7 @@ export function registerAgentRoutes(app: FastifyInstance): void {
       return reply.status(403).send({ error: 'Only the owner or admin can rotate this key' });
     }
 
-    const apiKey = `col_${crypto.randomBytes(32).toString('hex')}`;
+    const apiKey = `bgr_${crypto.randomBytes(32).toString('hex')}`;
     db.prepare('UPDATE users SET api_key = ? WHERE id = ?').run(apiKey, id);
 
     return { api_key: apiKey };

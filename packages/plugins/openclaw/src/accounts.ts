@@ -2,37 +2,37 @@ import { createAccountListHelpers } from "openclaw/plugin-sdk/account-helpers";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "openclaw/plugin-sdk/account-id";
 import { resolveMergedAccountConfig } from "openclaw/plugin-sdk/account-resolution";
 import { normalizeOptionalString } from "openclaw/plugin-sdk/text-runtime";
-import type { CollabAccountConfig, CoreConfig, ResolvedCollabAccount } from "./types.js";
+import type { BorgeeAccountConfig, CoreConfig, ResolvedBorgeeAccount } from "./types.js";
 
 const DEFAULT_POLL_TIMEOUT_MS = 30_000;
 
 const {
-  listAccountIds: listCollabAccountIds,
-  resolveDefaultAccountId: resolveDefaultCollabAccountId,
-} = createAccountListHelpers("collab", { normalizeAccountId });
+  listAccountIds: listBorgeeAccountIds,
+  resolveDefaultAccountId: resolveDefaultBorgeeAccountId,
+} = createAccountListHelpers("borgee", { normalizeAccountId });
 
-export { listCollabAccountIds, resolveDefaultCollabAccountId };
+export { listBorgeeAccountIds, resolveDefaultBorgeeAccountId };
 
-function resolveMergedCollabAccountConfig(
+function resolveMergedBorgeeAccountConfig(
   cfg: CoreConfig,
   accountId: string,
-): CollabAccountConfig {
-  return resolveMergedAccountConfig<CollabAccountConfig>({
-    channelConfig: cfg.channels?.collab as CollabAccountConfig | undefined,
-    accounts: cfg.channels?.collab?.accounts,
+): BorgeeAccountConfig {
+  return resolveMergedAccountConfig<BorgeeAccountConfig>({
+    channelConfig: cfg.channels?.borgee as BorgeeAccountConfig | undefined,
+    accounts: cfg.channels?.borgee?.accounts,
     accountId,
     omitKeys: ["defaultAccount"],
     normalizeAccountId,
   });
 }
 
-export function resolveCollabAccount(params: {
+export function resolveBorgeeAccount(params: {
   cfg: CoreConfig;
   accountId?: string | null;
-}): ResolvedCollabAccount {
+}): ResolvedBorgeeAccount {
   const accountId = normalizeAccountId(params.accountId);
-  const merged = resolveMergedCollabAccountConfig(params.cfg, accountId);
-  const baseEnabled = params.cfg.channels?.collab?.enabled !== false;
+  const merged = resolveMergedBorgeeAccountConfig(params.cfg, accountId);
+  const baseEnabled = params.cfg.channels?.borgee?.enabled !== false;
   const enabled = baseEnabled && merged.enabled !== false;
   const baseUrl = merged.baseUrl?.trim() ?? "";
   const apiKey = merged.apiKey?.trim() ?? "";
@@ -57,11 +57,11 @@ export function resolveCollabAccount(params: {
   };
 }
 
-export function listEnabledCollabAccounts(cfg: CoreConfig): ResolvedCollabAccount[] {
-  return listCollabAccountIds(cfg)
-    .map((accountId) => resolveCollabAccount({ cfg, accountId }))
+export function listEnabledBorgeeAccounts(cfg: CoreConfig): ResolvedBorgeeAccount[] {
+  return listBorgeeAccountIds(cfg)
+    .map((accountId) => resolveBorgeeAccount({ cfg, accountId }))
     .filter((account) => account.enabled);
 }
 
 export { DEFAULT_ACCOUNT_ID };
-export type { ResolvedCollabAccount } from "./types.js";
+export type { ResolvedBorgeeAccount } from "./types.js";

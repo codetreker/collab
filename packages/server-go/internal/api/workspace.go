@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 
 	"github.com/google/uuid"
 )

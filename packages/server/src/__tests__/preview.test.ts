@@ -111,7 +111,7 @@ describe('Public Channel Preview', () => {
     const joinRes = await app.inject({
       method: 'POST',
       url: `/api/v1/channels/${chId}/join`,
-      headers: { authorization: `Bearer col_${agentId}` },
+      headers: { authorization: `Bearer bgr_${agentId}` },
     });
     expect(joinRes.statusCode).toBe(403);
   });

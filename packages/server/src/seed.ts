@@ -43,7 +43,7 @@ export function seed(): void {
 
   for (const a of agents) {
     if (!getUserById(db, a.id)) {
-      const key = process.env[a.envKey] || `col_${crypto.randomBytes(24).toString('hex')}`;
+      const key = process.env[a.envKey] || `bgr_${crypto.randomBytes(24).toString('hex')}`;
       createUser(db, a.id, a.name, 'agent', key);
       console.log(`[seed] Created agent user: ${a.name} (API key: ${key})`);
     }

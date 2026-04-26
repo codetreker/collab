@@ -185,8 +185,8 @@ func (s *Store) GetReactionsByMessage(messageID string) ([]AggregatedReaction, e
 	for _, emoji := range emojiOrder {
 		users := emojiMap[emoji]
 		result = append(result, AggregatedReaction{
-			Emoji: emoji,
-			Count: len(users),
+			Emoji:   emoji,
+			Count:   len(users),
 			UserIDs: users,
 		})
 	}
@@ -422,5 +422,5 @@ func GenerateAPIKey() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return "col_" + hex.EncodeToString(b), nil
+	return "bgr_" + hex.EncodeToString(b), nil
 }

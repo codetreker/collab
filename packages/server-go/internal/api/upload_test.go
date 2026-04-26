@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"collab-server/internal/testutil"
+	"borgee-server/internal/testutil"
 )
 
 func createUploadRequest(t *testing.T, serverURL, token, fieldName, filename, contentType string, content []byte) *http.Request {
@@ -32,7 +32,7 @@ func createUploadRequest(t *testing.T, serverURL, token, fieldName, filename, co
 	req, _ := http.NewRequest("POST", serverURL+"/api/v1/upload", &buf)
 	req.Header.Set("Content-Type", w.FormDataContentType())
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 	}
 	return req
 }
@@ -113,7 +113,7 @@ func TestUpload(t *testing.T) {
 	t.Run("NoFile", func(t *testing.T) {
 		req, _ := http.NewRequest("POST", ts.URL+"/api/v1/upload", strings.NewReader(""))
 		req.Header.Set("Content-Type", "multipart/form-data; boundary=xxx")
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 		resp, err := client.Do(req)
 		if err != nil {
 			t.Fatal(err)

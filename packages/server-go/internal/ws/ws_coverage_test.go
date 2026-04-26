@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"collab-server/internal/store"
-	"collab-server/internal/testutil"
-	"collab-server/internal/ws"
+	"borgee-server/internal/store"
+	"borgee-server/internal/testutil"
+	"borgee-server/internal/ws"
 
 	"github.com/coder/websocket"
 )

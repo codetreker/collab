@@ -14,7 +14,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('collab-theme') as Theme | null;
+    const stored = localStorage.getItem('borgee-theme') as Theme | null;
     if (stored === 'light' || stored === 'dark') return stored;
     // Check system preference
     if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
@@ -23,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('collab-theme', theme);
+    localStorage.setItem('borgee-theme', theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {

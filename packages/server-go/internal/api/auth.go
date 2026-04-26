@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -152,7 +152,7 @@ func (h *AuthHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "collab_token",
+		Name:     "borgee_token",
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
@@ -210,7 +210,7 @@ func (h *AuthHandler) signAndSetCookie(w http.ResponseWriter, r *http.Request, u
 	}
 
 	cookie := &http.Cookie{
-		Name:     "collab_token",
+		Name:     "borgee_token",
 		Value:    signed,
 		Path:     "/",
 		HttpOnly: true,

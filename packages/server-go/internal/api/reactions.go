@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/store"
 )
 
 type ReactionHandler struct {

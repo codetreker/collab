@@ -5,23 +5,23 @@ import {
 import { getChatChannelMeta } from "openclaw/plugin-sdk/channel-plugin-common";
 import {
   DEFAULT_ACCOUNT_ID,
-  listCollabAccountIds,
-  resolveCollabAccount,
-  resolveDefaultCollabAccountId,
+  listBorgeeAccountIds,
+  resolveBorgeeAccount,
+  resolveDefaultBorgeeAccountId,
 } from "./accounts.js";
-import { collabPluginConfigSchema } from "./config-schema.js";
-import { startCollabGateway } from "./gateway.js";
-import { parseCollabTarget } from "./inbound.js";
-import { sendCollabText } from "./outbound.js";
+import { borgeePluginConfigSchema } from "./config-schema.js";
+import { startBorgeeGateway } from "./gateway.js";
+import { parseBorgeeTarget } from "./inbound.js";
+import { sendBorgeeText } from "./outbound.js";
 import type { ChannelPlugin } from "./runtime-api.js";
-import { applyCollabSetup } from "./setup.js";
-import { collabStatus } from "./status.js";
-import type { CoreConfig, ResolvedCollabAccount } from "./types.js";
+import { applyBorgeeSetup } from "./setup.js";
+import { borgeeStatus } from "./status.js";
+import type { CoreConfig, ResolvedBorgeeAccount } from "./types.js";
 
-const CHANNEL_ID = "collab" as const;
+const CHANNEL_ID = "borgee" as const;
 const meta = { ...getChatChannelMeta(CHANNEL_ID) };
 
-function buildCollabTarget(params: { channelId: string }): string {
+function buildBorgeeTarget(params: { channelId: string }): string {
   return `channel:${stripChannelPrefix(params.channelId)}`;
 }
 
@@ -30,44 +30,44 @@ function stripChannelPrefix(id: string): string {
   return trimmed.startsWith("channel:") ? trimmed.slice("channel:".length) : trimmed;
 }
 
-function normalizeCollabTarget(raw: string): string | undefined {
+function normalizeBorgeeTarget(raw: string): string | undefined {
   const trimmed = raw.trim();
   if (!trimmed) return undefined;
   return trimmed;
 }
 
-export const collabPlugin: ChannelPlugin<ResolvedCollabAccount> = createChatChannelPlugin({
+export const borgeePlugin: ChannelPlugin<ResolvedBorgeeAccount> = createChatChannelPlugin({
   base: {
     id: CHANNEL_ID,
     meta,
     capabilities: {
       chatTypes: ["group", "direct"],
     },
-    reload: { configPrefixes: ["channels.collab"] },
-    configSchema: collabPluginConfigSchema,
+    reload: { configPrefixes: ["channels.borgee"] },
+    configSchema: borgeePluginConfigSchema,
     setup: {
       applyAccountConfig: ({ cfg, accountId, input }) =>
-        applyCollabSetup({
+        applyBorgeeSetup({
           cfg,
           accountId,
           input: input as Record<string, unknown>,
         }),
     },
     config: {
-      listAccountIds: (cfg) => listCollabAccountIds(cfg as CoreConfig),
+      listAccountIds: (cfg) => listBorgeeAccountIds(cfg as CoreConfig),
       resolveAccount: (cfg, accountId) =>
-        resolveCollabAccount({ cfg: cfg as CoreConfig, accountId }),
-      defaultAccountId: (cfg) => resolveDefaultCollabAccountId(cfg as CoreConfig),
+        resolveBorgeeAccount({ cfg: cfg as CoreConfig, accountId }),
+      defaultAccountId: (cfg) => resolveDefaultBorgeeAccountId(cfg as CoreConfig),
       isConfigured: (account) => account.configured,
       resolveAllowFrom: ({ cfg, accountId }) =>
-        resolveCollabAccount({ cfg: cfg as CoreConfig, accountId }).config.allowFrom,
+        resolveBorgeeAccount({ cfg: cfg as CoreConfig, accountId }).config.allowFrom,
       resolveDefaultTo: ({ cfg, accountId }) =>
-        resolveCollabAccount({ cfg: cfg as CoreConfig, accountId }).config.defaultTo,
+        resolveBorgeeAccount({ cfg: cfg as CoreConfig, accountId }).config.defaultTo,
     },
     messaging: {
-      normalizeTarget: normalizeCollabTarget,
+      normalizeTarget: normalizeBorgeeTarget,
       parseExplicitTarget: ({ raw }) => {
-        const parsed = parseCollabTarget(raw);
+        const parsed = parseBorgeeTarget(raw);
         if (parsed.chatType === 'dm') {
           return {
             to: `dm:${parsed.userId ?? parsed.channelId}`,
@@ -75,7 +75,7 @@ export const collabPlugin: ChannelPlugin<ResolvedCollabAccount> = createChatChan
           };
         }
         return {
-          to: buildCollabTarget({ channelId: parsed.channelId }),
+          to: buildBorgeeTarget({ channelId: parsed.channelId }),
           chatType: "group",
         };
       },
@@ -87,7 +87,7 @@ export const collabPlugin: ChannelPlugin<ResolvedCollabAccount> = createChatChan
         hint: "<channel:channel_id> or <dm:user_id>",
       },
       resolveOutboundSessionRoute: ({ cfg, agentId, accountId, target }) => {
-        const parsed = parseCollabTarget(target);
+        const parsed = parseBorgeeTarget(target);
         const isDm = parsed.chatType === 'dm';
         return buildChannelOutboundSessionRoute({
           cfg,
@@ -99,15 +99,15 @@ export const collabPlugin: ChannelPlugin<ResolvedCollabAccount> = createChatChan
             id: parsed.channelId,
           },
           chatType: isDm ? "direct" : "group",
-          from: `collab:${accountId ?? DEFAULT_ACCOUNT_ID}`,
-          to: isDm ? `dm:${parsed.userId ?? parsed.channelId}` : buildCollabTarget({ channelId: parsed.channelId }),
+          from: `borgee:${accountId ?? DEFAULT_ACCOUNT_ID}`,
+          to: isDm ? `dm:${parsed.userId ?? parsed.channelId}` : buildBorgeeTarget({ channelId: parsed.channelId }),
         });
       },
     },
-    status: collabStatus,
+    status: borgeeStatus,
     gateway: {
       startAccount: async (ctx) => {
-        await startCollabGateway(CHANNEL_ID, meta.label, ctx);
+        await startBorgeeGateway(CHANNEL_ID, meta.label, ctx);
       },
     },
   },
@@ -118,7 +118,7 @@ export const collabPlugin: ChannelPlugin<ResolvedCollabAccount> = createChatChan
     attachedResults: {
       channel: CHANNEL_ID,
       sendText: async ({ cfg, to, text, accountId, replyToId }) =>
-        await sendCollabText({
+        await sendBorgeeText({
           cfg: cfg as CoreConfig,
           accountId,
           to,

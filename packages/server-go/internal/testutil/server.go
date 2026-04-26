@@ -9,9 +9,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"collab-server/internal/config"
-	"collab-server/internal/server"
-	"collab-server/internal/store"
+	"borgee-server/internal/config"
+	"borgee-server/internal/server"
+	"borgee-server/internal/store"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -112,11 +112,11 @@ func LoginAs(t *testing.T, serverURL, email, password string) string {
 	}
 
 	for _, c := range resp.Cookies() {
-		if c.Name == "collab_token" {
+		if c.Name == "borgee_token" {
 			return c.Value
 		}
 	}
-	t.Fatal("no collab_token cookie in login response")
+	t.Fatal("no borgee_token cookie in login response")
 	return ""
 }
 
@@ -135,7 +135,7 @@ func JSON(t *testing.T, method, url, token string, body any) (*http.Response, ma
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 	}
 
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}

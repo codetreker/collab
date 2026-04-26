@@ -2,13 +2,13 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk/config-runtime";
 import { DEFAULT_ACCOUNT_ID } from "./accounts.js";
 import type { CoreConfig } from "./types.js";
 
-export function applyCollabSetup(params: {
+export function applyBorgeeSetup(params: {
   cfg: OpenClawConfig;
   accountId: string;
   input: Record<string, unknown>;
 }): OpenClawConfig {
   const nextCfg = structuredClone(params.cfg) as CoreConfig;
-  const section = nextCfg.channels?.collab ?? {};
+  const section = nextCfg.channels?.borgee ?? {};
   const accounts = { ...section.accounts };
   const target =
     params.accountId === DEFAULT_ACCOUNT_ID ? { ...section } : { ...accounts[params.accountId] };
@@ -28,10 +28,10 @@ export function applyCollabSetup(params: {
 
   nextCfg.channels ??= {};
   if (params.accountId === DEFAULT_ACCOUNT_ID) {
-    nextCfg.channels.collab = { ...section, ...target };
+    nextCfg.channels.borgee = { ...section, ...target };
   } else {
     accounts[params.accountId] = target;
-    nextCfg.channels.collab = { ...section, accounts };
+    nextCfg.channels.borgee = { ...section, accounts };
   }
 
   return nextCfg as OpenClawConfig;

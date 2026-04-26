@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/store"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -282,7 +282,7 @@ func (h *AdminHandler) handleGenerateAPIKey(w http.ResponseWriter, r *http.Reque
 		writeJSONError(w, http.StatusInternalServerError, "Failed to generate key")
 		return
 	}
-	apiKey := "col_" + hex.EncodeToString(b)
+	apiKey := "bgr_" + hex.EncodeToString(b)
 
 	if err := h.Store.SetAPIKey(id, apiKey); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to set API key")

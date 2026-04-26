@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -36,7 +36,7 @@ func AuthMiddleware(s *store.Store, cfg *config.Config) func(http.Handler) http.
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// 1. Check cookie
-			if cookie, err := r.Cookie("collab_token"); err == nil {
+			if cookie, err := r.Cookie("borgee_token"); err == nil {
 				if user := ValidateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
 					next.ServeHTTP(w, setUserContext(r, user))
 					return
@@ -107,7 +107,7 @@ func AuthenticateFlexible(s *store.Store, cfg *config.Config, r *http.Request) *
 		}
 	}
 
-	if cookie, err := r.Cookie("collab_token"); err == nil {
+	if cookie, err := r.Cookie("borgee_token"); err == nil {
 		if user := ValidateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
 			return user
 		}

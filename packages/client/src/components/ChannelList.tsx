@@ -21,7 +21,7 @@ import { useAppContext } from "../context/AppContext";
 import * as api from "../lib/api";
 import type { Channel } from "../types";
 
-const STORAGE_KEY = 'collab:collapsed-groups';
+const STORAGE_KEY = 'borgee:collapsed-groups';
 
 function loadCollapsedGroups(): Record<string, boolean> {
   try {

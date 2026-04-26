@@ -5,10 +5,10 @@ import { RemoteAgent } from './agent.js';
 const program = new Command();
 
 program
-  .name('collab-remote-agent')
-  .description('Collab Remote Agent — expose local directories to Collab server')
-  .requiredOption('--server <url>', 'Collab server WebSocket URL (e.g. ws://localhost:4900)')
-  .requiredOption('--token <token>', 'Connection token from Collab UI')
+  .name('borgee-remote-agent')
+  .description('Borgee Remote Agent — expose local directories to Borgee server')
+  .requiredOption('--server <url>', 'Borgee server WebSocket URL (e.g. ws://localhost:4900)')
+  .requiredOption('--token <token>', 'Connection token from Borgee UI')
   .requiredOption('--dirs <dirs>', 'Comma-separated list of directories to expose')
   .parse(process.argv);
 

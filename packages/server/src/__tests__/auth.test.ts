@@ -236,7 +236,7 @@ describe('Auth API', () => {
       const body = JSON.parse(res.body);
       expect(body.user.email).toBe(testEmail);
       expect(body.user.password_hash).toBeUndefined();
-      expect(res.headers['set-cookie']).toContain('collab_token=');
+      expect(res.headers['set-cookie']).toContain('borgee_token=');
     });
 
     it('rejects wrong password', async () => {

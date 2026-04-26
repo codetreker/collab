@@ -1,18 +1,18 @@
-import { resolveCollabAccount } from "./accounts.js";
-import { sendCollabMessage, createOrGetCollabDm, addCollabReaction, removeCollabReaction, editCollabMessage, deleteCollabMessage } from "./api-client.js";
-import { parseCollabTarget } from "./inbound.js";
+import { resolveBorgeeAccount } from "./accounts.js";
+import { sendBorgeeMessage, createOrGetBorgeeDm, addBorgeeReaction, removeBorgeeReaction, editBorgeeMessage, deleteBorgeeMessage } from "./api-client.js";
+import { parseBorgeeTarget } from "./inbound.js";
 import { getWsClient } from "./ws-util.js";
-import type { CoreConfig, CollabMessage } from "./types.js";
+import type { CoreConfig, BorgeeMessage } from "./types.js";
 
-export async function sendCollabText(params: {
+export async function sendBorgeeText(params: {
   cfg: CoreConfig;
   accountId?: string | null;
   to: string;
   text: string;
   replyToId?: string | number | null;
 }): Promise<{ to: string; messageId: string }> {
-  const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
-  const parsed = parseCollabTarget(params.to);
+  const account = resolveBorgeeAccount({ cfg: params.cfg, accountId: params.accountId });
+  const parsed = parseBorgeeTarget(params.to);
 
   let channelId = parsed.channelId;
 
@@ -23,7 +23,7 @@ export async function sendCollabText(params: {
         const res = await wsClient.apiCall('POST', `/api/v1/dm/${encodeURIComponent(parsed.userId)}`) as { status: number; body: { channel: { id: string } } };
         channelId = res.body.channel.id;
       } catch {
-        const { channel } = await createOrGetCollabDm({
+        const { channel } = await createOrGetBorgeeDm({
           baseUrl: account.baseUrl,
           apiKey: account.apiKey,
           userId: parsed.userId,
@@ -31,7 +31,7 @@ export async function sendCollabText(params: {
         channelId = channel.id;
       }
     } else {
-      const { channel } = await createOrGetCollabDm({
+      const { channel } = await createOrGetBorgeeDm({
         baseUrl: account.baseUrl,
         apiKey: account.apiKey,
         userId: parsed.userId,
@@ -47,14 +47,14 @@ export async function sendCollabText(params: {
         content: params.text,
         content_type: 'text',
         reply_to_id: params.replyToId == null ? undefined : String(params.replyToId),
-      }) as { status: number; body: { message: CollabMessage } };
+      }) as { status: number; body: { message: BorgeeMessage } };
       return { to: params.to, messageId: res.body.message.id };
     } catch {
       // fall through to HTTP
     }
   }
 
-  const { message } = await sendCollabMessage({
+  const { message } = await sendBorgeeMessage({
     baseUrl: account.baseUrl,
     apiKey: account.apiKey,
     channelId,
@@ -68,14 +68,14 @@ export async function sendCollabText(params: {
   };
 }
 
-export async function handleCollabReaction(params: {
+export async function handleBorgeeReaction(params: {
   cfg: CoreConfig;
   accountId?: string | null;
   type: "add_reaction" | "remove_reaction";
   messageId: string;
   emoji: string;
 }): Promise<void> {
-  const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
+  const account = resolveBorgeeAccount({ cfg: params.cfg, accountId: params.accountId });
 
   const wsClient = getWsClient(account);
   if (wsClient) {
@@ -88,7 +88,7 @@ export async function handleCollabReaction(params: {
     }
   }
 
-  const fn = params.type === "add_reaction" ? addCollabReaction : removeCollabReaction;
+  const fn = params.type === "add_reaction" ? addBorgeeReaction : removeBorgeeReaction;
   await fn({
     baseUrl: account.baseUrl,
     apiKey: account.apiKey,
@@ -97,25 +97,25 @@ export async function handleCollabReaction(params: {
   });
 }
 
-export async function handleCollabMessageEdit(params: {
+export async function handleBorgeeMessageEdit(params: {
   cfg: CoreConfig;
   accountId?: string | null;
   messageId: string;
   content: string;
 }): Promise<{ messageId: string }> {
-  const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
+  const account = resolveBorgeeAccount({ cfg: params.cfg, accountId: params.accountId });
 
   const wsClient = getWsClient(account);
   if (wsClient) {
     try {
-      const res = await wsClient.apiCall('PUT', `/api/v1/messages/${encodeURIComponent(params.messageId)}`, { content: params.content }) as { status: number; body: { message: CollabMessage } };
+      const res = await wsClient.apiCall('PUT', `/api/v1/messages/${encodeURIComponent(params.messageId)}`, { content: params.content }) as { status: number; body: { message: BorgeeMessage } };
       return { messageId: res.body.message.id };
     } catch {
       // fall through to HTTP
     }
   }
 
-  const { message } = await editCollabMessage({
+  const { message } = await editBorgeeMessage({
     baseUrl: account.baseUrl,
     apiKey: account.apiKey,
     messageId: params.messageId,
@@ -124,12 +124,12 @@ export async function handleCollabMessageEdit(params: {
   return { messageId: message.id };
 }
 
-export async function handleCollabMessageDelete(params: {
+export async function handleBorgeeMessageDelete(params: {
   cfg: CoreConfig;
   accountId?: string | null;
   messageId: string;
 }): Promise<void> {
-  const account = resolveCollabAccount({ cfg: params.cfg, accountId: params.accountId });
+  const account = resolveBorgeeAccount({ cfg: params.cfg, accountId: params.accountId });
 
   const wsClient = getWsClient(account);
   if (wsClient) {
@@ -141,7 +141,7 @@ export async function handleCollabMessageDelete(params: {
     }
   }
 
-  await deleteCollabMessage({
+  await deleteBorgeeMessage({
     baseUrl: account.baseUrl,
     apiKey: account.apiKey,
     messageId: params.messageId,

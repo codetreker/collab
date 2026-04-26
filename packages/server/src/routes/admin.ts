@@ -206,7 +206,7 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    const apiKey = `col_${crypto.randomBytes(32).toString('hex')}`;
+    const apiKey = `bgr_${crypto.randomBytes(32).toString('hex')}`;
     db.prepare('UPDATE users SET api_key = ? WHERE id = ?').run(apiKey, id);
 
     return { api_key: apiKey };

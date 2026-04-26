@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -117,7 +117,7 @@ func TestAuthMiddleware_Cookie(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/", nil)
-	req.AddCookie(&http.Cookie{Name: "collab_token", Value: signed})
+	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: signed})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -128,7 +128,7 @@ func TestAuthMiddleware_Cookie(t *testing.T) {
 
 func TestAuthMiddleware_BearerAPIKey(t *testing.T) {
 	s := testStore(t)
-	apiKey := "col_testapikey123"
+	apiKey := "bgr_testapikey123"
 	user := &store.User{ID: "bearer-user", DisplayName: "Bearer", Role: "member", APIKey: &apiKey}
 	s.CreateUser(user)
 
@@ -216,7 +216,7 @@ func TestAuthMiddleware_DevBypassFallback(t *testing.T) {
 
 func TestAuthenticateFlexible(t *testing.T) {
 	s := testStore(t)
-	apiKey := "col_flexkey123"
+	apiKey := "bgr_flexkey123"
 	user := &store.User{ID: "flex-user", DisplayName: "Flex", Role: "member", APIKey: &apiKey}
 	s.CreateUser(user)
 
@@ -239,7 +239,7 @@ func TestAuthenticateFlexible(t *testing.T) {
 
 func TestAuthenticateFromAPIKey(t *testing.T) {
 	s := testStore(t)
-	apiKey := "col_fromkey123"
+	apiKey := "bgr_fromkey123"
 	user := &store.User{ID: "fromkey-user", DisplayName: "FromKey", Role: "member", APIKey: &apiKey}
 	s.CreateUser(user)
 
@@ -261,7 +261,7 @@ func TestAuthenticateFromAPIKey(t *testing.T) {
 
 func TestAuthenticateFromQuery(t *testing.T) {
 	s := testStore(t)
-	apiKey := "col_querykey123"
+	apiKey := "bgr_querykey123"
 	user := &store.User{ID: "query-user", DisplayName: "Query", Role: "member", APIKey: &apiKey}
 	s.CreateUser(user)
 

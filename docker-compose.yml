@@ -1,8 +1,8 @@
 services:
-  collab:
+  borgee:
     # NOTE: Production uses Harbor image via CI/CD pipeline.
     # For local dev, use 'pnpm dev' instead of docker compose.
-    image: collab:local
+    image: borgee:local
     restart: always
     ports:
       - "4900:4900"

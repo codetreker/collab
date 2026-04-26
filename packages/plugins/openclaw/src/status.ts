@@ -3,10 +3,10 @@ import {
   createComputedAccountStatusAdapter,
   createDefaultChannelRuntimeState,
 } from "./runtime-api.js";
-import type { ResolvedCollabAccount } from "./types.js";
+import type { ResolvedBorgeeAccount } from "./types.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const collabStatus: any = createComputedAccountStatusAdapter<ResolvedCollabAccount>({
+export const borgeeStatus: any = createComputedAccountStatusAdapter<ResolvedBorgeeAccount>({
   defaultRuntime: createDefaultChannelRuntimeState(DEFAULT_ACCOUNT_ID),
   buildChannelSummary: ({ snapshot }) => ({
     baseUrl: snapshot.baseUrl ?? "[missing]",

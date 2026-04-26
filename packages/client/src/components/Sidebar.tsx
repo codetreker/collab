@@ -97,7 +97,7 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h1 className="sidebar-title">Collab</h1>
+        <h1 className="sidebar-title">Borgee</h1>
         <div className="sidebar-actions">
           <button
             className="icon-btn"

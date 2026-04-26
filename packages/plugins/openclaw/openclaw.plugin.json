@@ -1,6 +1,6 @@
 {
-  "id": "collab",
-  "channels": ["collab"],
+  "id": "borgee",
+  "channels": ["borgee"],
   "skills": ["./skills"],
   "configSchema": {
     "type": "object",

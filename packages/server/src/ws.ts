@@ -14,9 +14,9 @@ interface JwtPayload {
   email: string;
 }
 
-function extractCollabCookie(cookieHeader: string | undefined): string | undefined {
+function extractBorgeeCookie(cookieHeader: string | undefined): string | undefined {
   if (!cookieHeader) return undefined;
-  const match = cookieHeader.match(/(?:^|;\s*)collab_token=([^;]+)/);
+  const match = cookieHeader.match(/(?:^|;\s*)borgee_token=([^;]+)/);
   return match?.[1];
 }
 
@@ -48,7 +48,7 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
   }
 
   // 2. JWT cookie auth (browser)
-  const jwtToken = extractCollabCookie(request.headers.cookie as string | undefined);
+  const jwtToken = extractBorgeeCookie(request.headers.cookie as string | undefined);
   if (jwtToken && JWT_SECRET) {
     try {
       const payload = jwt.verify(jwtToken, JWT_SECRET) as JwtPayload;
