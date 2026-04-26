@@ -292,6 +292,10 @@ func (h *WorkspaceHandler) handleMkdir(w http.ResponseWriter, r *http.Request) {
 	}
 
 	channelID := r.PathValue("channelId")
+	if !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
+		writeJSONError(w, http.StatusForbidden, "Not a member of this channel")
+		return
+	}
 
 	var body struct {
 		Name     string  `json:"name"`

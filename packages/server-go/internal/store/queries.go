@@ -754,7 +754,35 @@ func (s *Store) UpdateChannel(id string, updates map[string]any) error {
 
 func (s *Store) SoftDeleteChannel(id string) error {
 	now := time.Now().UnixMilli()
-	return s.db.Model(&Channel{}).Where("id = ?", id).Update("deleted_at", now).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&Channel{}).Where("id = ?", id).Update("deleted_at", now).Error; err != nil {
+			return err
+		}
+
+		var messages []Message
+		if err := tx.Select("id").Where("channel_id = ?", id).Find(&messages).Error; err != nil {
+			return err
+		}
+		messageIDs := make([]string, 0, len(messages))
+		for _, msg := range messages {
+			messageIDs = append(messageIDs, msg.ID)
+		}
+		if len(messageIDs) > 0 {
+			if err := tx.Model(&Message{}).Where("id IN ? AND deleted_at IS NULL", messageIDs).Update("deleted_at", now).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("message_id IN ?", messageIDs).Delete(&MessageReaction{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("message_id IN ?", messageIDs).Delete(&Mention{}).Error; err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("channel_id = ?", id).Delete(&ChannelMember{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *Store) MarkChannelRead(channelID, userID string) error {
