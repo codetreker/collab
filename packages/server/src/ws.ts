@@ -8,16 +8,24 @@ import { commandStore } from './command-store.js';
 import type { AgentCommand, User } from './types.js';
 
 const JWT_SECRET = process.env.JWT_SECRET ?? '';
+const JWT_COOKIE_NAME = 'borgee_token';
+const LEGACY_JWT_COOKIE_NAME = 'collab_token';
 
 interface JwtPayload {
   userId: string;
   email: string;
 }
 
-function extractBorgeeCookie(cookieHeader: string | undefined): string | undefined {
+function extractCookieValue(cookieHeader: string | undefined, name: string): string | undefined {
   if (!cookieHeader) return undefined;
-  const match = cookieHeader.match(/(?:^|;\s*)borgee_token=([^;]+)/);
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${escapedName}=([^;]+)`));
   return match?.[1];
+}
+
+function extractJwtCookie(cookieHeader: string | undefined): string | undefined {
+  return extractCookieValue(cookieHeader, JWT_COOKIE_NAME)
+    ?? extractCookieValue(cookieHeader, LEGACY_JWT_COOKIE_NAME);
 }
 
 async function authenticateWsRequest(request: { headers: Record<string, string | string[] | undefined>; url: string }): Promise<User | undefined> {
@@ -48,7 +56,7 @@ async function authenticateWsRequest(request: { headers: Record<string, string |
   }
 
   // 2. JWT cookie auth (browser)
-  const jwtToken = extractBorgeeCookie(request.headers.cookie as string | undefined);
+  const jwtToken = extractJwtCookie(request.headers.cookie as string | undefined);
   if (jwtToken && JWT_SECRET) {
     try {
       const payload = jwt.verify(jwtToken, JWT_SECRET) as JwtPayload;
