@@ -6,13 +6,11 @@ import Sidebar from './components/Sidebar';
 import ChannelView from './components/ChannelView';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
-import UserPicker from './components/UserPicker';
-import AdminPage from './components/AdminPage';
 import AgentManager from './components/AgentManager';
 import WorkspaceManager from './components/WorkspaceManager';
 import NodeManager from './components/NodeManager';
 import { useWebSocket } from './hooks/useWebSocket';
-import { setDevUserId, fetchMe, ApiError } from './lib/api';
+import { fetchMe, ApiError } from './lib/api';
 import './index.css';
 import 'highlight.js/styles/github.css';
 
@@ -23,7 +21,6 @@ function AppInner() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
   const [showWorkspaces, setShowWorkspaces] = useState(false);
@@ -67,7 +64,6 @@ function AppInner() {
   useEffect(() => {
     if (!authenticated) return;
     const init = async () => {
-      await actions.loadUsers();
       await actions.loadCurrentUser();
       await actions.loadPermissions();
       await actions.loadChannels();
@@ -99,18 +95,6 @@ function AppInner() {
     }
   }, [state.initialized, state.channels, subscribe]);
 
-  // Auto-set dev user if not set (dev mode only)
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    if (state.initialized && state.users.length > 0 && !state.currentUser) {
-      const admin = state.users.find(u => u.role === 'admin');
-      if (admin) {
-        setDevUserId(admin.id);
-        actions.loadCurrentUser();
-      }
-    }
-  }, [state.initialized, state.users, state.currentUser, actions]);
-
   const toggleSidebar = useCallback(() => {
     setSidebarOpen(o => !o);
   }, []);
@@ -120,7 +104,6 @@ function AppInner() {
   }, []);
 
   const closeAllViews = useCallback(() => {
-    setShowAdmin(false);
     setShowAgents(false);
     setShowWorkspaces(false);
     setShowRemoteNodes(false);
@@ -171,13 +154,11 @@ function AppInner() {
         <div className="sidebar-overlay" onClick={closeSidebar} />
       )}
       <div className={`sidebar-wrapper ${isMobile ? (sidebarOpen ? 'sidebar-open' : 'sidebar-closed') : ''}`}>
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAdminOpen={() => setShowAdmin(true)} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
       </div>
 
       <div className="main-content">
-        {showAdmin ? (
-          <AdminPage onBack={() => setShowAdmin(false)} />
-        ) : showAgents ? (
+        {showAgents ? (
           <AgentManager onBack={() => setShowAgents(false)} />
         ) : showWorkspaces ? (
           <WorkspaceManager onBack={() => setShowWorkspaces(false)} />
@@ -192,7 +173,6 @@ function AppInner() {
         )}
       </div>
 
-      {import.meta.env.DEV && <UserPicker />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // ─── REST API client ─────────────────────────────────────
 
-import type { Channel, ChannelGroup, Message, User, AdminUser, DmChannel, WorkspaceFile } from '../types';
+import type { Channel, ChannelGroup, Message, User, DmChannel, WorkspaceFile } from '../types';
 
 const BASE = '';  // Same origin via Vite proxy in dev, or same server in prod
 
@@ -171,6 +171,7 @@ export interface ChannelMember {
   user_id: string;
   display_name: string;
   role: string;
+  avatar_url?: string | null;
   joined_at: number;
 }
 
@@ -249,11 +250,6 @@ export async function deleteMessage(messageId: string): Promise<void> {
 }
 
 // ─── Users ──────────────────────────────────────────────
-
-export async function fetchUsers(): Promise<User[]> {
-  const data = await request<{ users: User[] }>('/api/v1/users');
-  return data.users;
-}
 
 export async function fetchMe(): Promise<User> {
   const data = await request<{ user: User }>('/api/v1/users/me');
@@ -340,118 +336,6 @@ export interface MyPermissionsResponse {
 
 export async function fetchMyPermissions(): Promise<MyPermissionsResponse> {
   return request<MyPermissionsResponse>('/api/v1/me/permissions');
-}
-
-// ─── Admin ──────────────────────────────────────────────
-
-export async function fetchAdminUsers(): Promise<AdminUser[]> {
-  const data = await request<{ users: AdminUser[] }>('/api/v1/admin/users');
-  return data.users;
-}
-
-export async function createAdminUser(data: {
-  id?: string;
-  email?: string;
-  password?: string;
-  display_name: string;
-  role: string;
-}): Promise<AdminUser> {
-  const res = await request<{ user: AdminUser }>('/api/v1/admin/users', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-  return res.user;
-}
-
-export async function updateAdminUser(
-  id: string,
-  data: { display_name?: string; password?: string; role?: string; require_mention?: boolean },
-): Promise<AdminUser> {
-  const res = await request<{ user: AdminUser }>(`/api/v1/admin/users/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-  return res.user;
-}
-
-export async function deleteAdminUser(id: string): Promise<void> {
-  await request<{ ok: boolean }>(`/api/v1/admin/users/${id}`, {
-    method: 'DELETE',
-  });
-}
-
-export async function generateApiKey(userId: string): Promise<{ api_key: string }> {
-  return request<{ api_key: string }>(`/api/v1/admin/users/${userId}/api-key`, {
-    method: 'POST',
-  });
-}
-
-export async function deleteApiKey(userId: string): Promise<void> {
-  await request<{ ok: boolean }>(`/api/v1/admin/users/${userId}/api-key`, {
-    method: 'DELETE',
-  });
-}
-
-// ─── Admin Permissions ─────────────────────────────────
-
-export async function fetchAdminUserPermissions(userId: string): Promise<MyPermissionsResponse> {
-  return request<MyPermissionsResponse>(`/api/v1/admin/users/${userId}/permissions`);
-}
-
-export async function grantAdminPermission(userId: string, permission: string, scope?: string): Promise<void> {
-  await request<{ ok: boolean }>(`/api/v1/admin/users/${userId}/permissions`, {
-    method: 'POST',
-    body: JSON.stringify({ permission, scope }),
-  });
-}
-
-export async function revokeAdminPermission(userId: string, permission: string, scope?: string): Promise<void> {
-  await request<{ ok: boolean }>(`/api/v1/admin/users/${userId}/permissions`, {
-    method: 'DELETE',
-    body: JSON.stringify({ permission, scope }),
-  });
-}
-
-export async function patchAdminUser(
-  id: string,
-  data: { display_name?: string; password?: string; role?: string; require_mention?: boolean; disabled?: boolean },
-): Promise<AdminUser> {
-  const res = await request<{ user: AdminUser }>(`/api/v1/admin/users/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-  return res.user;
-}
-
-// ─── Admin Invites ─────────────────────────────────────
-
-export interface InviteCode {
-  code: string;
-  created_by: string;
-  created_at: number;
-  expires_at: number | null;
-  used_by: string | null;
-  used_at: number | null;
-  note: string | null;
-}
-
-export async function fetchAdminInvites(): Promise<InviteCode[]> {
-  const data = await request<{ invites: InviteCode[] }>('/api/v1/admin/invites');
-  return data.invites;
-}
-
-export async function createAdminInvite(expiresInHours?: number, note?: string): Promise<InviteCode> {
-  const data = await request<{ invite: InviteCode }>('/api/v1/admin/invites', {
-    method: 'POST',
-    body: JSON.stringify({ expires_in_hours: expiresInHours, note }),
-  });
-  return data.invite;
-}
-
-export async function deleteAdminInvite(code: string): Promise<void> {
-  await request<{ ok: boolean }>(`/api/v1/admin/invites/${code}`, {
-    method: 'DELETE',
-  });
 }
 
 // ─── Auth Register ─────────────────────────────────────

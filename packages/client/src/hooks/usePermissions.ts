@@ -13,7 +13,6 @@ export function useCan(permission: string, scope?: string): boolean {
   const { currentUser, permissions } = state;
 
   if (!currentUser) return false;
-  if (currentUser.role === 'admin') return true;
 
   if (!permissions) return false;
 

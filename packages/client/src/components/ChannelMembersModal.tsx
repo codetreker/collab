@@ -11,6 +11,7 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
   const { showToast } = useToast();
   const channel = state.channels.find(c => c.id === channelId);
   const [members, setMembers] = useState<ChannelMember[]>([]);
+  const [candidateMembers, setCandidateMembers] = useState<ChannelMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [showAddList, setShowAddList] = useState(false);
@@ -42,8 +43,24 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (!showAddList) return;
+    const general = state.channels.find(c => c.name === 'general');
+    if (!general || general.id === channelId) {
+      setCandidateMembers([]);
+      return;
+    }
+    let cancelled = false;
+    fetchChannelMembers(general.id).then(next => {
+      if (!cancelled) setCandidateMembers(next);
+    }).catch(() => {
+      if (!cancelled) setCandidateMembers([]);
+    });
+    return () => { cancelled = true; };
+  }, [showAddList, state.channels, channelId]);
+
   const memberIds = new Set(members.map(m => m.user_id));
-  const nonMembers = state.users.filter(u => !memberIds.has(u.id));
+  const nonMembers = candidateMembers.filter(u => !memberIds.has(u.user_id));
 
   const handleAdd = async (userId: string) => {
     setAdding(true);
@@ -168,7 +185,7 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
               ))}
             </div>
 
-            {canManage && nonMembers.length > 0 && (
+            {canManage && !isGeneral && (
               <div className="add-member-section">
                 <button
                   className="btn btn-sm btn-primary"
@@ -179,19 +196,24 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
                 {showAddList && (
                   <div className="member-list add-member-list">
                     {nonMembers.map(u => (
-                      <div key={u.id} className="member-row">
+                      <div key={u.user_id} className="member-row">
                         <div className="user-avatar-small">{u.display_name[0]?.toUpperCase()}</div>
                         <span className="member-name">{u.display_name}</span>
                         {u.role === 'agent' && <span className="user-badge">Bot</span>}
                         <button
                           className="btn btn-sm btn-primary"
-                          onClick={() => handleAdd(u.id)}
+                          onClick={() => handleAdd(u.user_id)}
                           disabled={adding}
                         >
                           添加
                         </button>
                       </div>
                     ))}
+                    {nonMembers.length === 0 && (
+                      <div className="member-row">
+                        <span className="member-name">暂无可添加成员</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

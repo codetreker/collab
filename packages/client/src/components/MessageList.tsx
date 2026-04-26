@@ -1,9 +1,11 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import MessageItem from './MessageItem';
 import TypingIndicator from './TypingIndicator';
+import { fetchChannelMembers } from '../lib/api';
 
 import type { Message, PendingMessage } from '../types';
+import type { ChannelMember } from '../lib/api';
 
 function toPseudoMessage(p: PendingMessage): Message {
   return {
@@ -37,13 +39,41 @@ export default function MessageList({ channelId, previewMessages }: Props) {
   const isInitialLoad = useRef(true);
   const loadingOlder = useRef(false);
   const [showNewMsgBtn, setShowNewMsgBtn] = useState(false);
+  const [members, setMembers] = useState<ChannelMember[]>([]);
   const prevMessageCount = useRef(0);
+  const membersVersion = state.channelMembersVersion.get(channelId) ?? 0;
 
   const messages = previewMessages ?? (state.messages.get(channelId) ?? []);
   const pending = previewMessages ? [] : (state.pendingMessages.get(channelId) ?? []);
   const allMessages = [...messages, ...pending.map(toPseudoMessage)];
   const hasMore = state.hasMore.get(channelId) ?? false;
   const isLoading = state.loadingMessages.has(channelId);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchChannelMembers(channelId).then(next => {
+      if (!cancelled) setMembers(next);
+    }).catch(() => {
+      if (!cancelled) setMembers([]);
+    });
+    return () => { cancelled = true; };
+  }, [channelId, membersVersion]);
+
+  const userMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const member of members) map.set(member.user_id, member.display_name);
+    if (state.currentUser) map.set(state.currentUser.id, state.currentUser.display_name);
+    for (const msg of allMessages) {
+      if (msg.sender_name) map.set(msg.sender_id, msg.sender_name);
+    }
+    return map;
+  }, [members, state.currentUser, allMessages]);
+
+  const memberMap = useMemo(() => {
+    const map = new Map<string, ChannelMember>();
+    for (const member of members) map.set(member.user_id, member);
+    return map;
+  }, [members]);
 
   // Scroll to bottom on initial load or new message (if already at bottom)
   useEffect(() => {
@@ -201,7 +231,9 @@ export default function MessageList({ channelId, previewMessages }: Props) {
         <MessageItem
           key={msg.id}
           message={msg}
-          userMap={state.userMap}
+          userMap={userMap}
+          members={members}
+          memberMap={memberMap}
           currentUserId={state.currentUser?.id}
           currentUserRole={state.currentUser?.role}
           onRetry={msg._failed ? handleRetry : undefined}

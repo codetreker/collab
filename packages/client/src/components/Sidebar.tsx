@@ -2,22 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCan } from '../hooks/usePermissions';
-import { logout } from '../lib/api';
+import { fetchChannelMembers, logout } from '../lib/api';
 import ChannelList from './ChannelList';
 import CreateGroupModal from './CreateGroupModal';
 import type { DmChannel } from '../types';
+import type { ChannelMember } from '../lib/api';
 
 interface Props {
   onClose?: () => void;
   onChannelSelect?: () => void;
   onLogout?: () => void;
-  onAdminOpen?: () => void;
   onAgentsOpen?: () => void;
   onWorkspacesOpen?: () => void;
   onRemoteNodesOpen?: () => void;
 }
 
-export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpen, onAgentsOpen, onWorkspacesOpen, onRemoteNodesOpen }: Props) {
+export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOpen, onWorkspacesOpen, onRemoteNodesOpen }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const canCreateChannel = useCan('channel.create');
@@ -30,6 +30,21 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
   const [creating, setCreating] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+  const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
+
+  useEffect(() => {
+    if (!state.currentChannelId) {
+      setChannelMembers([]);
+      return;
+    }
+    let cancelled = false;
+    fetchChannelMembers(state.currentChannelId).then(members => {
+      if (!cancelled) setChannelMembers(members);
+    }).catch(() => {
+      if (!cancelled) setChannelMembers([]);
+    });
+    return () => { cancelled = true; };
+  }, [state.currentChannelId, state.channelMembersVersion]);
 
   useEffect(() => {
     actions.loadDmChannels();
@@ -178,14 +193,14 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
           {visibility === 'private' && (
           <div className="member-select-list">
             <div className="member-select-label">选择成员（可选）</div>
-            {state.users
-              .filter(u => u.id !== state.currentUser?.id)
+            {channelMembers
+              .filter(u => u.user_id !== state.currentUser?.id)
               .map(u => (
-                <label key={u.id} className="member-select-item">
+                <label key={u.user_id} className="member-select-item">
                   <input
                     type="checkbox"
-                    checked={selectedMemberIds.has(u.id)}
-                    onChange={() => toggleMember(u.id)}
+                    checked={selectedMemberIds.has(u.user_id)}
+                    onChange={() => toggleMember(u.user_id)}
                   />
                   <span>{u.display_name}</span>
                   {u.role === 'agent' && <span className="user-badge">Bot</span>}
@@ -214,7 +229,7 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
         dms={sortedDms}
         currentChannelId={state.currentChannelId}
         onlineUserIds={state.onlineUserIds}
-        users={state.users}
+        users={channelMembers}
         currentUserId={state.currentUser?.id}
         onSelectDm={handleSelect}
         onOpenDm={actions.openDm}
@@ -248,15 +263,6 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAdminOpe
             >
               ⏻
             </button>
-            {state.currentUser.role === 'admin' && onAdminOpen && (
-              <button
-                className="icon-btn"
-                title="Admin"
-                onClick={onAdminOpen}
-              >
-                ⚙
-              </button>
-            )}
             {state.currentUser.role !== 'agent' && onAgentsOpen && (
               <button
                 className="icon-btn"
@@ -313,15 +319,15 @@ function MergedDmList({ dms, currentChannelId, onlineUserIds, users, currentUser
   dms: DmChannel[];
   currentChannelId: string | null;
   onlineUserIds: Set<string>;
-  users: { id: string; display_name: string; role: string }[];
+  users: ChannelMember[];
   currentUserId?: string;
   onSelectDm: (id: string) => void;
   onOpenDm: (userId: string) => void;
 }) {
   const dmPeerIds = new Set(dms.map(dm => dm.peer.id));
-  const onlineOnly = users.filter(u => onlineUserIds.has(u.id) && u.id !== currentUserId && !dmPeerIds.has(u.id));
+  const availableMembers = users.filter(u => u.user_id !== currentUserId && !dmPeerIds.has(u.user_id));
 
-  if (dms.length === 0 && onlineOnly.length === 0) return null;
+  if (dms.length === 0 && availableMembers.length === 0) return null;
 
   return (
     <div className="dm-list">
@@ -335,16 +341,16 @@ function MergedDmList({ dms, currentChannelId, onlineUserIds, users, currentUser
           onClick={() => onSelectDm(dm.id)}
         />
       ))}
-      {onlineOnly.map(user => (
+      {availableMembers.map(user => (
         <button
-          key={user.id}
+          key={user.user_id}
           className="channel-item online-only-item"
-          onClick={() => onOpenDm(user.id)}
+          onClick={() => onOpenDm(user.user_id)}
           title={`私信 ${user.display_name}`}
         >
           <span className="user-avatar-small dm-avatar">
             {user.display_name[0]?.toUpperCase()}
-            <span className="online-dot avatar-status" />
+            {onlineUserIds.has(user.user_id) && <span className="online-dot avatar-status" />}
           </span>
           <span className="channel-name">{user.display_name}</span>
           {user.role === 'agent' && <span className="user-badge">Bot</span>}

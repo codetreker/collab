@@ -10,17 +10,20 @@ import { useLongPress } from '../hooks/useLongPress';
 import CommandResultCard from './CommandResultCard';
 import { trackCommand, getCommandStatus } from '../hooks/useCommandTracking';
 import type { Message } from '../types';
+import type { ChannelMember } from '../lib/api';
 
 interface Props {
   message: Message;
   userMap: Map<string, string>;
+  members: ChannelMember[];
+  memberMap: Map<string, ChannelMember>;
   currentUserId?: string;
   currentUserRole?: string;
   onRetry?: (message: Message) => void;
 }
 
-export default function MessageItem({ message, userMap, currentUserId, currentUserRole, onRetry }: Props) {
-  const { dispatch, state } = useAppContext();
+export default function MessageItem({ message, userMap, members, memberMap, currentUserId, currentUserRole, onRetry }: Props) {
+  const { dispatch } = useAppContext();
   const isSystem = message.sender_id === 'system';
   const senderName = isSystem ? '系统' : (message.sender_name ?? userMap.get(message.sender_id) ?? 'Unknown');
   const isOwn = message.sender_id === currentUserId;
@@ -64,9 +67,8 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
     return html;
   }, [message.content, message.content_type, message.mentions, userMap]);
 
-  const senderUser = state.users.find(u => u.id === message.sender_id);
-  const isAgentOwner = senderUser?.role === 'agent' && senderUser.owner_id === currentUserId;
-  const agentId = isAgentOwner ? message.sender_id : null;
+  const senderUser = memberMap.get(message.sender_id);
+  const agentId = senderUser?.role === 'agent' ? message.sender_id : null;
 
   const startEdit = useCallback(() => {
     setEditing(true);
@@ -167,7 +169,7 @@ export default function MessageItem({ message, userMap, currentUserId, currentUs
               onSave={saveEdit}
               onCancel={cancelEdit}
               disabled={editSaving}
-              users={state.users}
+              users={members}
             />
           ) : message.content_type === 'command' && commandData ? (
             <div className="message-command">

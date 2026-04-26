@@ -7,6 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': 'http://localhost:4900',
+      '/admin-api': 'http://localhost:4900',
       '/ws': {
         target: 'ws://localhost:4900',
         ws: true,
@@ -17,5 +18,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        admin: 'admin.html',
+      },
+    },
   },
 });
