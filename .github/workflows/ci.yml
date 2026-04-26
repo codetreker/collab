@@ -5,29 +5,13 @@ on:
     branches: [main]
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter @borgee/server --filter @borgee/client --filter borgee
-      - run: pnpm --filter @borgee/client build
-      - run: pnpm --filter @borgee/server build
-      - run: cd packages/server && npx vitest run --coverage
-
   go-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
       - name: Install dependencies
         run: cd packages/server-go && go mod download
       - name: Run tests with race detector

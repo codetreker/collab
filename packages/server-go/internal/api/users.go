@@ -16,6 +16,7 @@ type UserHandler struct {
 }
 
 func (h *UserHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+	mux.Handle("GET /api/v1/users", authMw(http.HandlerFunc(h.handleListUsers)))
 	mux.Handle("GET /api/v1/me/permissions", authMw(http.HandlerFunc(h.handleMyPermissions)))
 	mux.Handle("GET /api/v1/online", authMw(http.HandlerFunc(h.handleOnlineUsers)))
 }

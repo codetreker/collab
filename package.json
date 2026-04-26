@@ -4,8 +4,8 @@
   "private": true,
   "description": "Borgee — lightweight team chat platform",
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @borgee/server dev\" \"pnpm --filter @borgee/client dev\"",
-    "build": "pnpm --filter @borgee/client build && pnpm --filter @borgee/server build",
+    "dev": "pnpm --filter @borgee/client dev",
+    "build": "pnpm --filter @borgee/client build",
     "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
     "format": "prettier --write 'packages/*/src/**/*.{ts,tsx}'",
     "typecheck": "pnpm -r run typecheck"
@@ -13,7 +13,6 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "concurrently": "^9.0.0",
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.7.0",
@@ -21,7 +20,6 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "better-sqlite3",
       "esbuild"
     ]
   },
