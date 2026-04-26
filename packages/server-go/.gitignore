@@ -1,2 +1,5 @@
 .tmp/
 coverage.out
+.tmp/
+coverage.out
+coverage.html
