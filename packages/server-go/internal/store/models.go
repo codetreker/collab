@@ -12,7 +12,7 @@ type Channel struct {
 	Type       string  `gorm:"not null;default:channel;size:20" json:"type"`
 	DeletedAt  *int64  `gorm:"index" json:"deleted_at,omitempty"`
 	Position   string  `gorm:"not null;default:0|aaaaaa;size:50;index" json:"position"`
-	GroupID    *string `gorm:"size:36;index" json:"group_id,omitempty"`
+	GroupID    *string `gorm:"size:36" json:"group_id,omitempty"`
 }
 
 type ChannelGroup struct {
@@ -75,9 +75,9 @@ type Event struct {
 
 type UserPermission struct {
 	ID         uint    `gorm:"primaryKey;autoIncrement"`
-	UserID     string  `gorm:"not null;size:36;index;uniqueIndex:idx_user_permissions_unique,priority:1;index:idx_user_permissions_lookup,priority:1"`
-	Permission string  `gorm:"not null;size:100;uniqueIndex:idx_user_permissions_unique,priority:2;index:idx_user_permissions_lookup,priority:2"`
-	Scope      string  `gorm:"not null;default:*;size:255;uniqueIndex:idx_user_permissions_unique,priority:3;index:idx_user_permissions_lookup,priority:3"`
+	UserID     string  `gorm:"not null;size:36;index:idx_user_permissions_lookup"`
+	Permission string  `gorm:"not null;size:100"`
+	Scope      string  `gorm:"not null;default:*;size:255"`
 	GrantedBy  *string `gorm:"size:36"`
 	GrantedAt  int64   `gorm:"not null"`
 }
@@ -94,18 +94,18 @@ type InviteCode struct {
 
 type MessageReaction struct {
 	ID        string `gorm:"primaryKey;size:36"`
-	MessageID string `gorm:"not null;size:36;index;uniqueIndex:idx_reactions_unique,priority:1"`
-	UserID    string `gorm:"not null;size:36;index;uniqueIndex:idx_reactions_unique,priority:2"`
-	Emoji     string `gorm:"not null;size:64;uniqueIndex:idx_reactions_unique,priority:3"`
+	MessageID string `gorm:"not null;size:36;index"`
+	UserID    string `gorm:"not null;size:36;index"`
+	Emoji     string `gorm:"not null;size:64"`
 	CreatedAt int64  `gorm:"not null"`
 }
 
 type WorkspaceFile struct {
 	ID              string    `gorm:"primaryKey;size:36"`
-	UserID          string    `gorm:"not null;size:36;index;uniqueIndex:idx_workspace_files_unique,priority:1"`
-	ChannelID       string    `gorm:"not null;size:36;index;uniqueIndex:idx_workspace_files_unique,priority:2"`
-	ParentID        *string   `gorm:"size:36;index;uniqueIndex:idx_workspace_files_unique,priority:3"`
-	Name            string    `gorm:"not null;size:255;uniqueIndex:idx_workspace_files_unique,priority:4"`
+	UserID          string    `gorm:"not null;size:36;index"`
+	ChannelID       string    `gorm:"not null;size:36;index"`
+	ParentID        *string   `gorm:"size:36;index"`
+	Name            string    `gorm:"not null;size:255"`
 	IsDirectory     bool      `gorm:"not null;default:false"`
 	MimeType        string    `gorm:"size:255"`
 	SizeBytes       int64     `gorm:"not null;default:0"`
@@ -126,9 +126,9 @@ type RemoteNode struct {
 
 type RemoteBinding struct {
 	ID        string    `gorm:"primaryKey;size:36"`
-	NodeID    string    `gorm:"not null;size:36;index;uniqueIndex:idx_remote_bindings_unique,priority:1"`
-	ChannelID string    `gorm:"not null;size:36;index;uniqueIndex:idx_remote_bindings_unique,priority:2"`
-	Path      string    `gorm:"not null;size:1000;uniqueIndex:idx_remote_bindings_unique,priority:3"`
+	NodeID    string    `gorm:"not null;size:36;index"`
+	ChannelID string    `gorm:"not null;size:36;index"`
+	Path      string    `gorm:"not null;size:1000"`
 	Label     string    `gorm:"size:255"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }

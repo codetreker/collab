@@ -37,6 +37,14 @@ func (s *Store) Migrate() error {
 	// Re-enable FK constraints after migration
 	s.db.Exec("PRAGMA foreign_keys = ON")
 
+	// Create composite indexes that GORM AutoMigrate doesn't handle well with SQLite
+	s.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_permissions_unique ON user_permissions(user_id, permission, scope)")
+	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_user_permissions_lookup ON user_permissions(user_id, permission, scope)")
+	s.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_unique ON message_reactions(message_id, user_id, emoji)")
+	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_channels_group ON channels(group_id)")
+	s.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_workspace_files_unique ON workspace_files(user_id, channel_id, parent_id, name)")
+	s.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_remote_bindings_unique ON remote_bindings(node_id, channel_id, path)")
+
 	if err := s.seedBootstrapAdmin(); err != nil {
 		return fmt.Errorf("seed admin: %w", err)
 	}
