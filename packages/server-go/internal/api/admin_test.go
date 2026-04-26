@@ -38,9 +38,22 @@ func TestAdminListUsers(t *testing.T) {
 			t.Fatalf("expected at least 1 user, got %d", len(users))
 		}
 		for _, user := range users {
-			if user.(map[string]any)["api_key"] != nil {
+			row := user.(map[string]any)
+			if row["api_key"] != nil {
 				t.Fatal("admin user list must not expose api_key")
 			}
+		}
+
+		foundAdmin := false
+		for _, user := range users {
+			row := user.(map[string]any)
+			if row["role"] == "admin" {
+				foundAdmin = true
+				break
+			}
+		}
+		if !foundAdmin {
+			t.Fatal("expected admin user in admin user list")
 		}
 	})
 

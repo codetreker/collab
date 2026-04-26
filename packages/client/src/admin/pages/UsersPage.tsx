@@ -57,7 +57,7 @@ export default function UsersPage() {
                 <td>{user.deleted_at ? 'Deleted' : user.disabled ? 'Disabled' : 'Active'}</td>
                 <td>{formatDate(user.created_at)}</td>
                 <td>
-                  {!user.deleted_at && (
+                  {!user.deleted_at && user.role !== 'admin' && (
                     <div className="admin-actions">
                       {user.disabled ? (
                         <button className="btn btn-sm" onClick={() => setDisabled(user, false)}>Enable</button>

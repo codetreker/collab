@@ -14,6 +14,24 @@ import { fetchMe, ApiError } from './lib/api';
 import './index.css';
 import 'highlight.js/styles/github.css';
 
+const AUTH_READY_TIMEOUT_MS = 500;
+const AUTH_READY_POLL_MS = 50;
+
+async function waitForAuthReady(): Promise<void> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < AUTH_READY_TIMEOUT_MS) {
+    try {
+      await fetchMe();
+      return;
+    } catch (err) {
+      if (err instanceof ApiError && err.status !== 401) return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, AUTH_READY_POLL_MS));
+  }
+}
+
 function AppInner() {
   const { state, actions, dispatch, setSendWsMessage, setRegisterAckTimer } = useAppContext();
   const { subscribe, sendWsMessage, registerAckTimer } = useWebSocket();
@@ -63,19 +81,27 @@ function AppInner() {
   // Initialize app data after auth
   useEffect(() => {
     if (!authenticated) return;
+    let cancelled = false;
+
     const init = async () => {
-      await actions.loadCurrentUser();
-      await actions.loadPermissions();
-      await actions.loadChannels();
-      await actions.loadOnlineUsers();
-      dispatch({ type: 'SET_INITIALIZED' });
+      try {
+        await actions.loadCurrentUser();
+        await actions.loadPermissions();
+        await actions.loadChannels();
+        await actions.loadOnlineUsers();
+      } finally {
+        if (!cancelled) dispatch({ type: 'SET_INITIALIZED' });
+      }
     };
     init();
 
     const interval = setInterval(() => {
       actions.loadOnlineUsers();
     }, 30_000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [authenticated, actions, dispatch]);
 
   // Auto-select first channel if none selected
@@ -110,10 +136,9 @@ function AppInner() {
     setShowRemoteNodes(false);
   }, []);
 
-  const handleLogin = useCallback(() => {
-    setTimeout(() => {
-      setAuthenticated(true);
-    }, 50);
+  const handleLogin = useCallback(async () => {
+    await waitForAuthReady();
+    setAuthenticated(true);
   }, []);
 
   const handleLogout = useCallback(() => {

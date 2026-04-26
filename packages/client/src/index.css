@@ -85,6 +85,7 @@
 html, body, #root {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-primary);
 }
 
@@ -102,6 +103,7 @@ body {
 .app {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -111,6 +113,7 @@ body {
   align-items: center;
   justify-content: center;
   height: 100vh;
+  height: 100dvh;
   gap: 16px;
   color: var(--text-secondary);
 }
@@ -144,6 +147,7 @@ body {
 .sidebar {
   width: var(--sidebar-width);
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg-sidebar);
@@ -1839,6 +1843,7 @@ body {
     top: 0;
     left: 0;
     height: 100vh;
+    height: 100dvh;
     z-index: 200;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
@@ -2052,6 +2057,7 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-sidebar);
 }
 
@@ -2060,7 +2066,7 @@ body {
   border-radius: 12px;
   padding: 40px;
   width: 360px;
-  max-width: 90vw;
+  max-width: calc(100vw - 32px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 

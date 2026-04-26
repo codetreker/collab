@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { login } from '../lib/api';
 
 interface Props {
-  onLogin: () => void;
+  onLogin: () => void | Promise<void>;
   onRegister?: () => void;
 }
 
@@ -19,7 +19,7 @@ export default function LoginPage({ onLogin, onRegister }: Props) {
     setError('');
     try {
       await login(email, password);
-      onLogin();
+      await onLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

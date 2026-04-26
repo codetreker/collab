@@ -42,7 +42,7 @@ export interface AdminUser {
   id: string;
   display_name: string;
   email?: string | null;
-  role: 'member' | 'agent';
+  role: 'admin' | 'member' | 'agent';
   avatar_url?: string | null;
   require_mention?: boolean;
   owner_id?: string | null;
