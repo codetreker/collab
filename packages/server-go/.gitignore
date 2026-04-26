@@ -1,5 +1,4 @@
 .tmp/
 coverage.out
-.tmp/
-coverage.out
 coverage.html
+coverage_*.out
