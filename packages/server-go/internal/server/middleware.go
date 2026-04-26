@@ -63,6 +63,12 @@ func (sr *statusRecorder) Unwrap() http.ResponseWriter {
 	return sr.ResponseWriter
 }
 
+func (sr *statusRecorder) Flush() {
+	if flusher, ok := sr.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
 func loggerMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

@@ -1,13 +1,64 @@
 package api_test
 
 import (
+	"bufio"
+	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	"collab-server/internal/store"
 	"collab-server/internal/testutil"
 )
+
+func readSSEUntil(t *testing.T, resp *http.Response, want string) string {
+	t.Helper()
+	defer resp.Body.Close()
+
+	reader := bufio.NewReader(resp.Body)
+	var b strings.Builder
+	deadline := time.After(2 * time.Second)
+	for {
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for SSE content %q; got %q", want, b.String())
+		default:
+		}
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				continue
+			}
+			t.Fatalf("read SSE: %v", err)
+		}
+		b.WriteString(line)
+		if strings.Contains(b.String(), want) {
+			return b.String()
+		}
+	}
+}
+
+func openSSE(t *testing.T, req *http.Request) *http.Response {
+	t.Helper()
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("open SSE: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		t.Fatalf("expected SSE 200, got %d: %s", resp.StatusCode, body)
+	}
+	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {
+		resp.Body.Close()
+		t.Fatalf("expected text/event-stream, got %q", ct)
+	}
+	return resp
+}
 
 func TestSSEStream(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
@@ -37,19 +88,44 @@ func TestSSEStream(t *testing.T) {
 	}
 
 	t.Run("SSEStreamWithBearerKey", func(t *testing.T) {
-		t.Skip("SSE streaming requires http.Flusher which middleware's statusRecorder doesn't implement")
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/api/v1/stream", nil)
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		resp := openSSE(t, req)
+		readSSEUntil(t, resp, ":connected")
 	})
 
 	t.Run("SSEStreamWithQueryKey", func(t *testing.T) {
-		t.Skip("SSE streaming requires http.Flusher")
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/api/v1/stream?api_key="+apiKey, nil)
+		resp := openSSE(t, req)
+		readSSEUntil(t, resp, ":connected")
 	})
 
 	t.Run("SSEStreamWithCookie", func(t *testing.T) {
-		t.Skip("SSE streaming requires http.Flusher")
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/api/v1/stream", nil)
+		req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+		resp := openSSE(t, req)
+		readSSEUntil(t, resp, ":connected")
 	})
 
 	t.Run("SSEStreamWithLastEventID", func(t *testing.T) {
-		t.Skip("SSE streaming requires http.Flusher")
+		testutil.PostMessage(t, ts.URL, adminToken, generalID, "sse-backfill-test")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/api/v1/stream", nil)
+		req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+		req.Header.Set("Last-Event-ID", "0")
+		resp := openSSE(t, req)
+		got := readSSEUntil(t, resp, "event: new_message")
+		if !strings.Contains(got, "sse-backfill-test") {
+			t.Fatalf("expected backfill message in SSE stream, got %q", got)
+		}
 	})
 
 	t.Run("PollWithSinceID", func(t *testing.T) {

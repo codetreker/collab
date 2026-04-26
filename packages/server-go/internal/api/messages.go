@@ -91,8 +91,26 @@ func (h *MessageHandler) handleListMessages(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	type messageWithReactions struct {
+		store.MessageWithSender
+		Reactions []store.AggregatedReaction `json:"reactions"`
+	}
+	out := make([]messageWithReactions, len(msgs))
+	for i, msg := range msgs {
+		reactions, err := h.Store.GetReactionsByMessage(msg.ID)
+		if err != nil {
+			h.Logger.Error("failed to get message reactions", "error", err)
+			writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if reactions == nil {
+			reactions = []store.AggregatedReaction{}
+		}
+		out[i] = messageWithReactions{MessageWithSender: msg, Reactions: reactions}
+	}
+
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"messages": msgs,
+		"messages": out,
 		"has_more": hasMore,
 	})
 }

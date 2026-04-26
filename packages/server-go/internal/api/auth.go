@@ -228,11 +228,16 @@ func (h *AuthHandler) signAndSetCookie(w http.ResponseWriter, r *http.Request, u
 
 func sanitizeUser(user *store.User) map[string]any {
 	m := map[string]any{
-		"id":           user.ID,
-		"display_name": user.DisplayName,
-		"role":         user.Role,
-		"avatar_url":   user.AvatarURL,
-		"created_at":   user.CreatedAt,
+		"id":              user.ID,
+		"display_name":    user.DisplayName,
+		"role":            user.Role,
+		"avatar_url":      user.AvatarURL,
+		"created_at":      user.CreatedAt,
+		"last_seen_at":    user.LastSeenAt,
+		"require_mention": user.RequireMention,
+		"owner_id":        user.OwnerID,
+		"deleted_at":      user.DeletedAt,
+		"disabled":        user.Disabled,
 	}
 	if user.Email != nil {
 		m["email"] = *user.Email

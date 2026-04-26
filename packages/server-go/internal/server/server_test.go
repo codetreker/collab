@@ -14,6 +14,15 @@ import (
 	"collab-server/internal/store"
 )
 
+type flushResponseRecorder struct {
+	*httptest.ResponseRecorder
+	flushed bool
+}
+
+func (r *flushResponseRecorder) Flush() {
+	r.flushed = true
+}
+
 func testServer(t *testing.T) (*Server, *store.Store) {
 	t.Helper()
 	s, err := store.Open(":memory:")
@@ -206,6 +215,23 @@ func TestRequestIDMiddleware(t *testing.T) {
 	reqID := resp.Header.Get("X-Request-Id")
 	if reqID == "" {
 		t.Fatal("expected X-Request-Id header")
+	}
+}
+
+func TestStatusRecorderFlush(t *testing.T) {
+	base := &flushResponseRecorder{ResponseRecorder: httptest.NewRecorder()}
+	rec := &statusRecorder{ResponseWriter: base, status: http.StatusOK}
+	rec.WriteHeader(http.StatusCreated)
+	rec.Flush()
+
+	if rec.status != http.StatusCreated {
+		t.Fatalf("expected recorded status 201, got %d", rec.status)
+	}
+	if !base.flushed {
+		t.Fatal("expected underlying flusher to be called")
+	}
+	if rec.Unwrap() != base {
+		t.Fatal("expected unwrap to return underlying response writer")
 	}
 }
 
