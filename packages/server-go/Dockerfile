@@ -9,7 +9,7 @@ RUN npm ci
 COPY packages/client packages/client
 RUN npm run --workspace packages/client build
 
-FROM golang:1.22-bookworm AS go-builder
+FROM golang:1.25-bookworm AS go-builder
 WORKDIR /src/packages/server-go
 RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev sqlite3 libsqlite3-dev \
   && rm -rf /var/lib/apt/lists/*
