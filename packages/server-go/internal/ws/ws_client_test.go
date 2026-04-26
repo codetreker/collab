@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"collab-server/internal/store"
-	"collab-server/internal/testutil"
-	"collab-server/internal/ws"
+	"borgee-server/internal/store"
+	"borgee-server/internal/testutil"
+	"borgee-server/internal/ws"
 
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
@@ -122,7 +122,7 @@ func TestWSSendMessageEdgeCases(t *testing.T) {
 	t.Run("WithReplyTo", func(t *testing.T) {
 		writeMsg(t, ctx, conn, map[string]any{
 			"type": "send_message", "channel_id": generalID,
-			"content": "reply with ref",
+			"content":   "reply with ref",
 			"client_id": uuid.NewString(),
 		})
 		msg := drainUntil(t, ctx, conn, "message_ack")

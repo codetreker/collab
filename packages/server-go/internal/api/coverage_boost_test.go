@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"collab-server/internal/store"
-	"collab-server/internal/testutil"
+	"borgee-server/internal/store"
+	"borgee-server/internal/testutil"
 )
 
 func TestAPIKeyAuth(t *testing.T) {

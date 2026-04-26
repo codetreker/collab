@@ -10,9 +10,9 @@ import (
 	"os"
 	"testing"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 )
 
 func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
@@ -105,7 +105,7 @@ func loginAs(t *testing.T, url, email, password string) string {
 	resp, _ := http.Post(url+"/api/v1/auth/login", "application/json", bytes.NewReader(body))
 	defer resp.Body.Close()
 	for _, c := range resp.Cookies() {
-		if c.Name == "collab_token" {
+		if c.Name == "borgee_token" {
 			return c.Value
 		}
 	}
@@ -123,7 +123,7 @@ func jsonReq(t *testing.T, method, url, token string, body any) (*http.Response,
 	req, _ := http.NewRequest(method, url, r)
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 	}
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := client.Do(req)
@@ -277,7 +277,9 @@ func TestInternalChannelHandlers(t *testing.T) {
 	t.Run("TopicTooLong", func(t *testing.T) {
 		ch := createCh(t, ts.URL, memberToken, "topic-long-int", "public")
 		long := make([]byte, 251)
-		for i := range long { long[i] = 'a' }
+		for i := range long {
+			long[i] = 'a'
+		}
 		resp, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/"+ch["id"].(string)+"/topic", memberToken, map[string]string{"topic": string(long)})
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Fatalf("expected 400, got %d", resp.StatusCode)
@@ -291,7 +293,9 @@ func TestInternalChannelHandlers(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
-		if data["messages"] == nil { t.Fatal("expected messages") }
+		if data["messages"] == nil {
+			t.Fatal("expected messages")
+		}
 	})
 
 	t.Run("PreviewPrivate", func(t *testing.T) {
@@ -307,29 +311,43 @@ func TestInternalChannelHandlers(t *testing.T) {
 		chID := ch["id"].(string)
 
 		resp, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/"+chID, adminToken, map[string]any{"visibility": "invalid"})
-		if resp.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/"+chID, memberToken, map[string]any{"visibility": "private"})
-		if resp2.StatusCode != http.StatusForbidden { t.Fatalf("expected 403, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d", resp2.StatusCode)
+		}
 
 		resp3, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/"+chID, memberToken, map[string]any{"topic": "ok"})
-		if resp3.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp3.StatusCode) }
+		if resp3.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp3.StatusCode)
+		}
 	})
 
 	t.Run("CreateChannelEdgeCases", func(t *testing.T) {
 		resp, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channels", memberToken, map[string]string{"name": "   "})
-		if resp.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channels", memberToken, map[string]string{"name": "bad-vis", "visibility": "x"})
-		if resp2.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("JoinLeaveEdgeCases", func(t *testing.T) {
 		resp, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channels/nonexistent/join", adminToken, nil)
-		if resp.StatusCode != http.StatusNotFound { t.Fatalf("expected 404, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channels/"+generalID+"/leave", adminToken, nil)
-		if resp2.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("AddRemoveMember", func(t *testing.T) {
@@ -337,31 +355,50 @@ func TestInternalChannelHandlers(t *testing.T) {
 		chID := ch["id"].(string)
 		users, _ := s.ListUsers()
 		var memberID string
-		for _, u := range users { if u.Role == "member" { memberID = u.ID; break } }
+		for _, u := range users {
+			if u.Role == "member" {
+				memberID = u.ID
+				break
+			}
+		}
 
 		resp, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channels/"+chID+"/members", adminToken, map[string]string{"user_id": memberID})
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channels/"+chID+"/members", adminToken, map[string]string{})
-		if resp2.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp2.StatusCode)
+		}
 
 		resp3, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channels/"+chID+"/members", adminToken, map[string]string{"user_id": "nonexistent"})
-		if resp3.StatusCode != http.StatusNotFound { t.Fatalf("expected 404, got %d", resp3.StatusCode) }
+		if resp3.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d", resp3.StatusCode)
+		}
 
 		resp4, _ := jsonReq(t, "GET", ts.URL+"/api/v1/channels/"+chID+"/members", adminToken, nil)
-		if resp4.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp4.StatusCode) }
+		if resp4.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp4.StatusCode)
+		}
 
 		resp5, _ := jsonReq(t, "DELETE", ts.URL+"/api/v1/channels/"+chID+"/members/"+memberID, adminToken, nil)
-		if resp5.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp5.StatusCode) }
+		if resp5.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp5.StatusCode)
+		}
 
 		resp6, _ := jsonReq(t, "DELETE", ts.URL+"/api/v1/channels/"+generalID+"/members/"+memberID, adminToken, nil)
-		if resp6.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp6.StatusCode) }
+		if resp6.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp6.StatusCode)
+		}
 	})
 
 	t.Run("MarkRead", func(t *testing.T) {
 		ch := createCh(t, ts.URL, memberToken, "markread-int", "public")
 		resp, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/"+ch["id"].(string)+"/read", memberToken, nil)
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 	})
 
 	t.Run("ReorderChannel", func(t *testing.T) {
@@ -370,15 +407,21 @@ func TestInternalChannelHandlers(t *testing.T) {
 		resp, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/reorder", adminToken, map[string]any{
 			"channel_id": ch1["id"], "after_id": ch2["id"],
 		})
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/reorder", adminToken, map[string]any{})
-		if resp2.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("ChannelGroups", func(t *testing.T) {
 		resp, data := jsonReq(t, "POST", ts.URL+"/api/v1/channel-groups", adminToken, map[string]string{"name": "GrpInt"})
-		if resp.StatusCode != http.StatusCreated { t.Fatalf("expected 201, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("expected 201, got %d", resp.StatusCode)
+		}
 		gid := data["group"].(map[string]any)["id"].(string)
 
 		jsonReq(t, "PUT", ts.URL+"/api/v1/channel-groups/"+gid, adminToken, map[string]string{"name": "Updated"})
@@ -386,37 +429,53 @@ func TestInternalChannelHandlers(t *testing.T) {
 		jsonReq(t, "DELETE", ts.URL+"/api/v1/channel-groups/"+gid, adminToken, nil)
 
 		resp2, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channel-groups", adminToken, map[string]string{"name": ""})
-		if resp2.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("DeleteChannel", func(t *testing.T) {
 		ch := createCh(t, ts.URL, adminToken, "del-int", "public")
 		resp, _ := jsonReq(t, "DELETE", ts.URL+"/api/v1/channels/"+ch["id"].(string), adminToken, nil)
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "DELETE", ts.URL+"/api/v1/channels/"+ch["id"].(string), adminToken, nil)
-		if resp2.StatusCode != http.StatusNoContent { t.Fatalf("expected 204, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusNoContent {
+			t.Fatalf("expected 204, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("MessageSearch", func(t *testing.T) {
 		postMsg(t, ts.URL, adminToken, generalID, "uniquesearch123")
 		resp, _ := jsonReq(t, "GET", ts.URL+"/api/v1/channels/"+generalID+"/messages/search?q=uniquesearch123", adminToken, nil)
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "GET", ts.URL+"/api/v1/channels/"+generalID+"/messages/search?q=", adminToken, nil)
-		if resp2.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("MessageEdgeCases", func(t *testing.T) {
 		msg := postMsg(t, ts.URL, adminToken, generalID, "to-edit")
 		resp, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/messages/"+msg["id"].(string), adminToken, map[string]string{"content": "edited"})
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/messages/"+msg["id"].(string), adminToken, map[string]string{"content": ""})
-		if resp2.StatusCode != http.StatusBadRequest { t.Fatalf("expected 400, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp2.StatusCode)
+		}
 
 		resp3, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/messages/nonexistent", adminToken, map[string]string{"content": "x"})
-		if resp3.StatusCode != http.StatusNotFound { t.Fatalf("expected 404, got %d", resp3.StatusCode) }
+		if resp3.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d", resp3.StatusCode)
+		}
 
 		jsonReq(t, "DELETE", ts.URL+"/api/v1/messages/"+msg["id"].(string), adminToken, nil)
 		resp4, _ := jsonReq(t, "DELETE", ts.URL+"/api/v1/messages/"+msg["id"].(string), adminToken, nil)
@@ -433,54 +492,83 @@ func TestInternalChannelHandlers(t *testing.T) {
 	t.Run("DM", func(t *testing.T) {
 		users, _ := s.ListUsers()
 		var memberID string
-		for _, u := range users { if u.Role == "member" { memberID = u.ID; break } }
+		for _, u := range users {
+			if u.Role == "member" {
+				memberID = u.ID
+				break
+			}
+		}
 		resp, _ := jsonReq(t, "POST", ts.URL+"/api/v1/dm/"+memberID, adminToken, nil)
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "GET", ts.URL+"/api/v1/dm", adminToken, nil)
-		if resp2.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("Reactions", func(t *testing.T) {
 		msg := postMsg(t, ts.URL, adminToken, generalID, "react-int")
 		msgID := msg["id"].(string)
 		resp, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/messages/"+msgID+"/reactions", adminToken, map[string]string{"emoji": "👍"})
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "GET", ts.URL+"/api/v1/messages/"+msgID+"/reactions", adminToken, nil)
-		if resp2.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp2.StatusCode)
+		}
 
 		resp3, _ := jsonReq(t, "DELETE", ts.URL+"/api/v1/messages/"+msgID+"/reactions", adminToken, map[string]string{"emoji": "👍"})
-		if resp3.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp3.StatusCode) }
+		if resp3.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp3.StatusCode)
+		}
 	})
 
 	t.Run("Users", func(t *testing.T) {
 		resp, _ := jsonReq(t, "GET", ts.URL+"/api/v1/users", adminToken, nil)
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "GET", ts.URL+"/api/v1/me/permissions", adminToken, nil)
-		if resp2.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp2.StatusCode)
+		}
 
 		resp3, _ := jsonReq(t, "GET", ts.URL+"/api/v1/me/permissions", memberToken, nil)
-		if resp3.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp3.StatusCode) }
+		if resp3.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp3.StatusCode)
+		}
 
 		resp4, _ := jsonReq(t, "GET", ts.URL+"/api/v1/online", adminToken, nil)
-		if resp4.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp4.StatusCode) }
+		if resp4.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp4.StatusCode)
+		}
 	})
 
 	t.Run("Poll", func(t *testing.T) {
 		resp, _ := jsonReq(t, "POST", ts.URL+"/api/v1/poll", adminToken, map[string]any{"timeout_ms": 0})
-		if resp.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
 
 		resp2, _ := jsonReq(t, "POST", ts.URL+"/api/v1/poll", adminToken, map[string]any{
 			"timeout_ms": 0, "channel_ids": []string{generalID},
 		})
-		if resp2.StatusCode != http.StatusOK { t.Fatalf("expected 200, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("RemoteNodes", func(t *testing.T) {
 		resp, data := jsonReq(t, "POST", ts.URL+"/api/v1/remote/nodes", adminToken, map[string]string{"machine_name": "test"})
-		if resp.StatusCode != http.StatusCreated { t.Fatalf("expected 201, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("expected 201, got %d", resp.StatusCode)
+		}
 		nodeID := data["node"].(map[string]any)["id"].(string)
 
 		jsonReq(t, "GET", ts.URL+"/api/v1/remote/nodes", adminToken, nil)
@@ -491,7 +579,9 @@ func TestInternalChannelHandlers(t *testing.T) {
 		resp2, data2 := jsonReq(t, "POST", ts.URL+"/api/v1/remote/nodes/"+nodeID+"/bindings", adminToken, map[string]string{
 			"channel_id": generalID, "path": "/home", "label": "test",
 		})
-		if resp2.StatusCode != http.StatusCreated { t.Fatalf("expected 201, got %d", resp2.StatusCode) }
+		if resp2.StatusCode != http.StatusCreated {
+			t.Fatalf("expected 201, got %d", resp2.StatusCode)
+		}
 		bindingID := data2["binding"].(map[string]any)["id"].(string)
 
 		jsonReq(t, "GET", ts.URL+"/api/v1/remote/nodes/"+nodeID+"/bindings", adminToken, nil)
@@ -502,7 +592,9 @@ func TestInternalChannelHandlers(t *testing.T) {
 
 	t.Run("Agents", func(t *testing.T) {
 		resp, data := jsonReq(t, "POST", ts.URL+"/api/v1/agents", adminToken, map[string]any{"display_name": "Bot"})
-		if resp.StatusCode != http.StatusCreated { t.Fatalf("expected 201, got %d", resp.StatusCode) }
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("expected 201, got %d", resp.StatusCode)
+		}
 		aid := data["agent"].(map[string]any)["id"].(string)
 
 		jsonReq(t, "GET", ts.URL+"/api/v1/agents", adminToken, nil)
@@ -523,7 +615,12 @@ func TestInternalChannelHandlers(t *testing.T) {
 
 		users, _ := s.ListUsers()
 		var memberID string
-		for _, u := range users { if u.Role == "member" { memberID = u.ID; break } }
+		for _, u := range users {
+			if u.Role == "member" {
+				memberID = u.ID
+				break
+			}
+		}
 
 		jsonReq(t, "PATCH", ts.URL+"/api/v1/admin/users/"+memberID, adminToken, map[string]any{"require_mention": true})
 		jsonReq(t, "POST", ts.URL+"/api/v1/admin/users/"+memberID+"/api-key", adminToken, nil)

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"collab-server/internal/store"
-	"collab-server/internal/testutil"
+	"borgee-server/internal/store"
+	"borgee-server/internal/testutil"
 )
 
 func TestPollWithEvents(t *testing.T) {
@@ -83,7 +83,7 @@ func TestPollWithEvents(t *testing.T) {
 
 	t.Run("StreamHead", func(t *testing.T) {
 		req, _ := http.NewRequest("HEAD", ts.URL+"/api/v1/stream", nil)
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: adminToken})
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {

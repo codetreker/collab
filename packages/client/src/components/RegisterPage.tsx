@@ -77,7 +77,7 @@ export default function RegisterPage({ onLogin, onBack }: Props) {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 className="login-title">Collab</h1>
+        <h1 className="login-title">Borgee</h1>
         <h2 style={{ textAlign: 'center', fontSize: 16, marginBottom: 16, fontWeight: 400, color: 'var(--text-secondary)' }}>Create Account</h2>
         <form onSubmit={handleSubmit}>
           <input

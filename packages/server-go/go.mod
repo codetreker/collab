@@ -1,4 +1,4 @@
-module collab-server
+module borgee-server
 
 go 1.25.0
 

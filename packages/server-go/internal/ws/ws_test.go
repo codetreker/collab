@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"collab-server/internal/testutil"
+	"borgee-server/internal/testutil"
 
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
@@ -49,7 +49,7 @@ func dialWS(t *testing.T, serverURL, token string) *websocket.Conn {
 	wsURL := "ws" + serverURL[4:] + "/ws"
 	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
 		HTTPHeader: map[string][]string{
-			"Cookie": {"collab_token=" + token},
+			"Cookie": {"borgee_token=" + token},
 		},
 	})
 	if err != nil {

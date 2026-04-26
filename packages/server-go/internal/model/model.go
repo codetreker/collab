@@ -1,6 +1,6 @@
 package model
 
-import "collab-server/internal/store"
+import "borgee-server/internal/store"
 
 type contextKey string
 

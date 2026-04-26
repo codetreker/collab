@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 )
 
 type flushRecorder struct {
@@ -118,7 +118,7 @@ func exerciseAuthedHandler(t *testing.T, s *store.Store, cfg *config.Config, tok
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 	}
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -135,7 +135,7 @@ func rawReq(t *testing.T, method, url, token, contentType string, body io.Reader
 		req.Header.Set("Content-Type", contentType)
 	}
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -323,7 +323,7 @@ func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
 		body, contentType := typedMultipartBody(t, "image.png", "image/png", []byte("not really an image, content type is enough"))
 		req, _ := http.NewRequest("POST", uploadServer.URL+"/api/v1/upload", body)
 		req.Header.Set("Content-Type", contentType)
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatalf("upload request: %v", err)
@@ -342,7 +342,7 @@ func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
 		body, contentType := multipartBody(t, "big.txt", bytes.Repeat([]byte("x"), 11<<20))
 		req, _ := http.NewRequest("POST", ts.URL+"/api/v1/channels/"+generalID+"/workspace/upload", body)
 		req.Header.Set("Content-Type", contentType)
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatalf("workspace upload request: %v", err)
@@ -645,7 +645,7 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 	fileBody, contentType := multipartBody(t, "note.txt", []byte("hello"))
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/channels/"+generalID+"/workspace/upload", fileBody)
 	req.Header.Set("Content-Type", contentType)
-	req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: adminToken})
 	respHTTP, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("workspace upload: %v", err)
@@ -817,7 +817,7 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 	mux := http.NewServeMux()
 	(&CommandHandler{Store: s, Logger: testLogger(), Hub: commandSourceStub{}}).RegisterRoutes(mux, auth.AuthMiddleware(s, cfg))
 	req := httptest.NewRequest("GET", "/api/v1/commands", nil)
-	req.AddCookie(&http.Cookie{Name: "collab_token", Value: token})
+	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -939,7 +939,7 @@ func TestAuthPollAndMessageAdditionalBranches(t *testing.T) {
 	for _, target := range []string{"/api/v1/stream?api_key=" + apiKey, "/api/v1/stream"} {
 		req = httptest.NewRequest("GET", target, nil)
 		if target == "/api/v1/stream" {
-			req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+			req.AddCookie(&http.Cookie{Name: "borgee_token", Value: adminToken})
 		}
 		ctx, cancel = context.WithCancel(req.Context())
 		cancel()
@@ -967,7 +967,7 @@ func TestWorkspaceAndRemoteAdditionalBranches(t *testing.T) {
 	body, contentType := multipartBody(t, "fail.txt", []byte("hello"))
 	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/channels/"+generalID+"/workspace/upload", body)
 	req.Header.Set("Content-Type", contentType)
-	req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: adminToken})
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("workspace upload failure request: %v", err)
@@ -981,7 +981,7 @@ func TestWorkspaceAndRemoteAdditionalBranches(t *testing.T) {
 	body, contentType = multipartBody(t, "ok.txt", []byte("hello"))
 	req, _ = http.NewRequest("POST", ts.URL+"/api/v1/channels/"+generalID+"/workspace/upload", body)
 	req.Header.Set("Content-Type", contentType)
-	req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: adminToken})
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("workspace upload request: %v", err)

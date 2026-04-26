@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"collab-server/internal/testutil"
+	"borgee-server/internal/testutil"
 )
 
 func TestAPIGoldenCompatResponses(t *testing.T) {
@@ -17,7 +17,7 @@ func TestAPIGoldenCompatResponses(t *testing.T) {
 	if loginResp.StatusCode != http.StatusOK {
 		t.Fatalf("login status: got %d body %v", loginResp.StatusCode, loginBody)
 	}
-	token := cookieValue(t, loginResp, "collab_token")
+	token := cookieValue(t, loginResp, "borgee_token")
 	loginUser := requireObject(t, loginBody, "user")
 	requireFields(t, "login user", loginUser, []string{
 		"id", "display_name", "role", "avatar_url", "email", "created_at",

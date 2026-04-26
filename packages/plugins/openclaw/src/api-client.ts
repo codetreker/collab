@@ -1,11 +1,11 @@
 import http from "node:http";
 import https from "node:https";
 import type {
-  CollabChannel,
-  CollabEvent,
-  CollabMessage,
-  CollabPollResult,
-  CollabUser,
+  BorgeeChannel,
+  BorgeeEvent,
+  BorgeeMessage,
+  BorgeePollResult,
+  BorgeeUser,
 } from "./types.js";
 
 // ─── HTTP helpers ────────────────────────────────────────
@@ -61,7 +61,7 @@ async function request<T>(
             typeof parsed === "object" && parsed && "error" in parsed
               ? (parsed as { error: string }).error
               : undefined;
-          reject(new Error(errMsg || `Collab API ${method} ${path} failed: ${res.statusCode ?? 500}`));
+          reject(new Error(errMsg || `Borgee API ${method} ${path} failed: ${res.statusCode ?? 500}`));
           return;
         }
         resolve(parsed as T);
@@ -81,9 +81,9 @@ async function request<T>(
   });
 }
 
-// ─── Collab Server API Client ────────────────────────────
+// ─── Borgee Server API Client ────────────────────────────
 
-export class CollabApiClient {
+export class BorgeeApiClient {
   constructor(
     private readonly baseUrl: string,
     private readonly apiKey: string,
@@ -96,8 +96,8 @@ export class CollabApiClient {
     timeoutMs: number,
     channelIds?: string[],
     signal?: AbortSignal,
-  ): Promise<CollabPollResult> {
-    return await request<CollabPollResult>(
+  ): Promise<BorgeePollResult> {
+    return await request<BorgeePollResult>(
       this.baseUrl,
       "POST",
       "/api/v1/poll",
@@ -113,8 +113,8 @@ export class CollabApiClient {
 
   // ── Channels ──
 
-  async listChannels(): Promise<{ channels: CollabChannel[] }> {
-    return await request<{ channels: CollabChannel[] }>(
+  async listChannels(): Promise<{ channels: BorgeeChannel[] }> {
+    return await request<{ channels: BorgeeChannel[] }>(
       this.baseUrl,
       "GET",
       "/api/v1/channels",
@@ -129,8 +129,8 @@ export class CollabApiClient {
     channelId: string,
     content: string,
     opts?: { contentType?: string; replyToId?: string; mentions?: string[] },
-  ): Promise<{ message: CollabMessage }> {
-    return await request<{ message: CollabMessage }>(
+  ): Promise<{ message: BorgeeMessage }> {
+    return await request<{ message: BorgeeMessage }>(
       this.baseUrl,
       "POST",
       `/api/v1/channels/${encodeURIComponent(channelId)}/messages`,
@@ -147,14 +147,14 @@ export class CollabApiClient {
   async getMessages(
     channelId: string,
     opts?: { before?: number; after?: number; limit?: number },
-  ): Promise<{ messages: CollabMessage[]; has_more: boolean }> {
+  ): Promise<{ messages: BorgeeMessage[]; has_more: boolean }> {
     const params = new URLSearchParams();
     if (opts?.before != null) params.set("before", String(opts.before));
     if (opts?.after != null) params.set("after", String(opts.after));
     if (opts?.limit != null) params.set("limit", String(opts.limit));
     const qs = params.toString();
     const path = `/api/v1/channels/${encodeURIComponent(channelId)}/messages${qs ? `?${qs}` : ""}`;
-    return await request<{ messages: CollabMessage[]; has_more: boolean }>(
+    return await request<{ messages: BorgeeMessage[]; has_more: boolean }>(
       this.baseUrl,
       "GET",
       path,
@@ -187,8 +187,8 @@ export class CollabApiClient {
 
   // ── Edit / Delete ──
 
-  async editMessage(messageId: string, content: string): Promise<{ message: CollabMessage }> {
-    return await request<{ message: CollabMessage }>(
+  async editMessage(messageId: string, content: string): Promise<{ message: BorgeeMessage }> {
+    return await request<{ message: BorgeeMessage }>(
       this.baseUrl,
       "PUT",
       `/api/v1/messages/${encodeURIComponent(messageId)}`,
@@ -209,8 +209,8 @@ export class CollabApiClient {
 
   // ── Users ──
 
-  async listUsers(): Promise<{ users: CollabUser[] }> {
-    return await request<{ users: CollabUser[] }>(
+  async listUsers(): Promise<{ users: BorgeeUser[] }> {
+    return await request<{ users: BorgeeUser[] }>(
       this.baseUrl,
       "GET",
       "/api/v1/users",
@@ -219,8 +219,8 @@ export class CollabApiClient {
     );
   }
 
-  async getMe(): Promise<{ user: CollabUser }> {
-    return await request<{ user: CollabUser }>(
+  async getMe(): Promise<{ user: BorgeeUser }> {
+    return await request<{ user: BorgeeUser }>(
       this.baseUrl,
       "GET",
       "/api/v1/users/me",
@@ -236,7 +236,7 @@ export async function fetchBotIdentity(params: {
   baseUrl: string;
   apiKey: string;
 }): Promise<{ userId: string; displayName: string; requireMention: boolean }> {
-  const result = await request<{ user: CollabUser }>(
+  const result = await request<{ user: BorgeeUser }>(
     params.baseUrl,
     "GET",
     "/api/v1/users/me",
@@ -250,15 +250,15 @@ export async function fetchBotIdentity(params: {
   };
 }
 
-export async function pollCollabEvents(params: {
+export async function pollBorgeeEvents(params: {
   baseUrl: string;
   apiKey: string;
   cursor: number;
   timeoutMs: number;
   channelIds?: string[];
   signal?: AbortSignal;
-}): Promise<CollabPollResult> {
-  return await request<CollabPollResult>(
+}): Promise<BorgeePollResult> {
+  return await request<BorgeePollResult>(
     params.baseUrl,
     "POST",
     "/api/v1/poll",
@@ -272,7 +272,7 @@ export async function pollCollabEvents(params: {
   );
 }
 
-export async function sendCollabMessage(params: {
+export async function sendBorgeeMessage(params: {
   baseUrl: string;
   apiKey: string;
   channelId: string;
@@ -280,8 +280,8 @@ export async function sendCollabMessage(params: {
   contentType?: string;
   replyToId?: string;
   mentions?: string[];
-}): Promise<{ message: CollabMessage }> {
-  return await request<{ message: CollabMessage }>(
+}): Promise<{ message: BorgeeMessage }> {
+  return await request<{ message: BorgeeMessage }>(
     params.baseUrl,
     "POST",
     `/api/v1/channels/${encodeURIComponent(params.channelId)}/messages`,
@@ -295,7 +295,7 @@ export async function sendCollabMessage(params: {
   );
 }
 
-export async function addCollabReaction(params: {
+export async function addBorgeeReaction(params: {
   baseUrl: string;
   apiKey: string;
   messageId: string;
@@ -310,7 +310,7 @@ export async function addCollabReaction(params: {
   );
 }
 
-export async function removeCollabReaction(params: {
+export async function removeBorgeeReaction(params: {
   baseUrl: string;
   apiKey: string;
   messageId: string;
@@ -325,13 +325,13 @@ export async function removeCollabReaction(params: {
   );
 }
 
-export async function editCollabMessage(params: {
+export async function editBorgeeMessage(params: {
   baseUrl: string;
   apiKey: string;
   messageId: string;
   content: string;
-}): Promise<{ message: CollabMessage }> {
-  return await request<{ message: CollabMessage }>(
+}): Promise<{ message: BorgeeMessage }> {
+  return await request<{ message: BorgeeMessage }>(
     params.baseUrl,
     "PUT",
     `/api/v1/messages/${encodeURIComponent(params.messageId)}`,
@@ -340,7 +340,7 @@ export async function editCollabMessage(params: {
   );
 }
 
-export async function deleteCollabMessage(params: {
+export async function deleteBorgeeMessage(params: {
   baseUrl: string;
   apiKey: string;
   messageId: string;
@@ -354,12 +354,12 @@ export async function deleteCollabMessage(params: {
   );
 }
 
-export async function createOrGetCollabDm(params: {
+export async function createOrGetBorgeeDm(params: {
   baseUrl: string;
   apiKey: string;
   userId: string;
-}): Promise<{ channel: CollabChannel; peer: CollabUser }> {
-  return await request<{ channel: CollabChannel; peer: CollabUser }>(
+}): Promise<{ channel: BorgeeChannel; peer: BorgeeUser }> {
+  return await request<{ channel: BorgeeChannel; peer: BorgeeUser }>(
     params.baseUrl,
     "POST",
     `/api/v1/dm/${encodeURIComponent(params.userId)}`,

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"collab-server/internal/testutil"
+	"borgee-server/internal/testutil"
 )
 
 func TestAgentsCRUD(t *testing.T) {
@@ -338,7 +338,7 @@ func TestChannelAdvanced(t *testing.T) {
 			t.Fatalf("first delete expected 200, got %d", resp1.StatusCode)
 		}
 		req, _ := http.NewRequest("DELETE", ts.URL+"/api/v1/channels/"+chID, nil)
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: adminToken})
 		client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 		resp2, err := client.Do(req)
 		if err != nil {

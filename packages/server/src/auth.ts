@@ -19,7 +19,7 @@ if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('JWT_SECRET environment variable is required in production');
 }
 
-const COOKIE_NAME = 'collab_token';
+const COOKIE_NAME = 'borgee_token';
 
 interface JwtPayload {
   userId: string;
@@ -29,7 +29,7 @@ interface JwtPayload {
 function extractCookie(request: FastifyRequest): string | undefined {
   const cookieHeader = request.headers.cookie;
   if (!cookieHeader) return undefined;
-  const match = cookieHeader.match(/(?:^|;\s*)collab_token=([^;]+)/);
+  const match = cookieHeader.match(/(?:^|;\s*)borgee_token=([^;]+)/);
   return match?.[1];
 }
 

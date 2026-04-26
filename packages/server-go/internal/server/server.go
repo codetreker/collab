@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"collab-server/internal/api"
-	"collab-server/internal/auth"
-	"collab-server/internal/config"
-	"collab-server/internal/store"
-	"collab-server/internal/ws"
+	"borgee-server/internal/api"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
+	"borgee-server/internal/ws"
 )
 
 type Server struct {

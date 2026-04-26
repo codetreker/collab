@@ -165,7 +165,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', shutdown);
 
   await app.listen({ port: PORT, host: HOST });
-  console.log(`[server] Collab server listening on ${HOST}:${PORT}`);
+  console.log(`[server] Borgee server listening on ${HOST}:${PORT}`);
 }
 
 main().catch((err) => {

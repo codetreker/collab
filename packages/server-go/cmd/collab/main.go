@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"collab-server/internal/config"
-	"collab-server/internal/server"
-	"collab-server/internal/store"
+	"borgee-server/internal/config"
+	"borgee-server/internal/server"
+	"borgee-server/internal/store"
 )
 
 func main() {

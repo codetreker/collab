@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"collab-server/internal/store"
-	"collab-server/internal/testutil"
+	"borgee-server/internal/store"
+	"borgee-server/internal/testutil"
 )
 
 func readSSEUntil(t *testing.T, resp *http.Response, want string) string {
@@ -108,7 +108,7 @@ func TestSSEStream(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/api/v1/stream", nil)
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: adminToken})
 		resp := openSSE(t, req)
 		readSSEUntil(t, resp, ":connected")
 	})
@@ -119,7 +119,7 @@ func TestSSEStream(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/api/v1/stream", nil)
-		req.AddCookie(&http.Cookie{Name: "collab_token", Value: adminToken})
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: adminToken})
 		req.Header.Set("Last-Event-ID", "0")
 		resp := openSSE(t, req)
 		got := readSSEUntil(t, resp, "event: new_message")

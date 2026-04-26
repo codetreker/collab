@@ -13,7 +13,7 @@ permissions:
 
 env:
   REGISTRY: ${{ vars.REGISTRY }}
-  IMAGE: default/collab
+  IMAGE: default/borgee
   HARBOR_USER: ${{ vars.HARBOR_USER }}
 
 jobs:
@@ -46,15 +46,15 @@ jobs:
             mkdir -p /opt/dockers/collab-test
             cat > /opt/dockers/collab-test/docker-compose.yml << 'COMPEOF'
             services:
-              collab-test:
-                image: cr.codetrek.work/default/collab:test
-                container_name: collab-test
+              borgee-test:
+                image: cr.codetrek.work/default/borgee:test
+                container_name: borgee-test
                 restart: unless-stopped
                 user: "0:0"
                 ports:
                   - "4902:4900"
                 volumes:
-                  - collab-test-data:/app/data
+                  - borgee-test-data:/app/data
                 environment:
                   - HOST=0.0.0.0
                   - PORT=4900
@@ -65,7 +65,7 @@ jobs:
                   - CLIENT_DIST=/app/client/dist
                   - JWT_SECRET=test-env-jwt-secret-b07b08
             volumes:
-              collab-test-data:
+              borgee-test-data:
             COMPEOF
             cd /opt/dockers/collab-test
             docker compose pull

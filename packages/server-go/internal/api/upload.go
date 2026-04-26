@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/config"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/config"
 
 	"github.com/google/uuid"
 )

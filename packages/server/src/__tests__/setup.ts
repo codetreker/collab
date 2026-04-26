@@ -15,7 +15,7 @@ export function makeToken(userId: string, email = 'test@test.com'): string {
 }
 
 export function authCookie(userId: string, email?: string): string {
-  return `collab_token=${makeToken(userId, email)}`;
+  return `borgee_token=${makeToken(userId, email)}`;
 }
 
 export function seedMessage(db: Database.Database, channelId: string, senderId: string, content = 'hello', createdAt?: number, type = 'text'): string {
@@ -208,7 +208,7 @@ export function seedMember(db: Database.Database, name = 'Member'): string {
 export function seedAgent(db: Database.Database, ownerId: string, name = 'Bot'): string {
   const id = uuidv4();
   const now = Date.now();
-  db.prepare('INSERT INTO users (id, display_name, role, owner_id, api_key, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, name, 'agent', ownerId, `col_${id}`, now);
+  db.prepare('INSERT INTO users (id, display_name, role, owner_id, api_key, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, name, 'agent', ownerId, `bgr_${id}`, now);
   return id;
 }
 
@@ -371,7 +371,7 @@ export async function httpJson(port: number, method: string, path: string, cooki
   return { status: res.status, json, text, headers: res.headers };
 }
 
-export function createTmpDir(prefix = 'collab-test-'): string {
+export function createTmpDir(prefix = 'borgee-test-'): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 

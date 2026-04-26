@@ -1,15 +1,15 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-runtime";
 import { dispatchInboundReplyWithBase } from "openclaw/plugin-sdk/inbound-reply-dispatch";
-import { sendCollabMessage } from "./api-client.js";
-import { getCollabRuntime } from "./runtime.js";
-import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
+import { sendBorgeeMessage } from "./api-client.js";
+import { getBorgeeRuntime } from "./runtime.js";
+import type { BorgeeEvent, CoreConfig, ResolvedBorgeeAccount } from "./types.js";
 
-export async function handleCollabReactionInbound(params: {
+export async function handleBorgeeReactionInbound(params: {
   channelId: string;
   channelLabel: string;
-  account: ResolvedCollabAccount;
+  account: ResolvedBorgeeAccount;
   config: CoreConfig;
-  event: CollabEvent;
+  event: BorgeeEvent;
   payload: {
     message_id: string;
     emoji: string;
@@ -17,10 +17,10 @@ export async function handleCollabReactionInbound(params: {
     action: string;
   };
 }): Promise<void> {
-  const runtime = getCollabRuntime();
+  const runtime = getBorgeeRuntime();
   const p = params.payload;
   const rawChannelId = stripChannelPrefix(params.event.channel_id);
-  const target = buildCollabTarget(rawChannelId);
+  const target = buildBorgeeTarget(rawChannelId);
 
   const actionLabel = p.action === "added" ? "added" : "removed";
   const body = `[reaction_update] ${p.user_id} ${actionLabel} ${p.emoji} on message ${p.message_id}`;
@@ -44,7 +44,7 @@ export async function handleCollabReactionInbound(params: {
     BodyForAgent: body,
     RawBody: JSON.stringify(p),
     CommandBody: body,
-    From: buildCollabTarget(stripChannelPrefix(p.user_id)),
+    From: buildBorgeeTarget(stripChannelPrefix(p.user_id)),
     To: target,
     SessionKey: route.sessionKey,
     AccountId: route.accountId ?? params.account.accountId,
@@ -79,7 +79,7 @@ export async function handleCollabReactionInbound(params: {
           : "";
       if (!text.trim()) return;
 
-      await sendCollabMessage({
+      await sendBorgeeMessage({
         baseUrl: params.account.baseUrl,
         apiKey: params.account.apiKey,
         channelId: params.event.channel_id,
@@ -89,26 +89,26 @@ export async function handleCollabReactionInbound(params: {
     onRecordError: (error) => {
       throw error instanceof Error
         ? error
-        : new Error(`collab session record failed: ${String(error)}`);
+        : new Error(`borgee session record failed: ${String(error)}`);
     },
     onDispatchError: (error) => {
       throw error instanceof Error
         ? error
-        : new Error(`collab dispatch failed: ${String(error)}`);
+        : new Error(`borgee dispatch failed: ${String(error)}`);
     },
   });
 }
 
 /**
- * Target format for Collab:
+ * Target format for Borgee:
  *   channel:<channel_id>
  *
  * Note: the SDK's routing layer prepends `channel:` from peer.kind when
  * building session keys.  We must pass the *raw* UUID as `peer.id` so the
- * key becomes `agent:<id>:collab:channel:<uuid>` — not the double-prefixed
- * `agent:<id>:collab:channel:channel:<uuid>`.
+ * key becomes `agent:<id>:borgee:channel:<uuid>` — not the double-prefixed
+ * `agent:<id>:borgee:channel:channel:<uuid>`.
  */
-function buildCollabTarget(channelId: string): string {
+function buildBorgeeTarget(channelId: string): string {
   return `channel:${stripChannelPrefix(channelId)}`;
 }
 
@@ -120,7 +120,7 @@ function stripChannelPrefix(id: string): string {
   return trimmed.startsWith("channel:") ? trimmed.slice("channel:".length) : trimmed;
 }
 
-export function parseCollabTarget(raw: string): {
+export function parseBorgeeTarget(raw: string): {
   chatType: "channel" | "dm";
   channelId: string;
   userId?: string;
@@ -136,12 +136,12 @@ export function parseCollabTarget(raw: string): {
   return { chatType: "channel", channelId: trimmed };
 }
 
-export async function handleCollabInbound(params: {
+export async function handleBorgeeInbound(params: {
   channelId: string;
   channelLabel: string;
-  account: ResolvedCollabAccount;
+  account: ResolvedBorgeeAccount;
   config: CoreConfig;
-  event: CollabEvent;
+  event: BorgeeEvent;
   channelType?: 'channel' | 'dm';
   message: {
     id: string;
@@ -155,11 +155,11 @@ export async function handleCollabInbound(params: {
     reply_to_id?: string | null;
   };
 }): Promise<void> {
-  const runtime = getCollabRuntime();
+  const runtime = getBorgeeRuntime();
   const msg = params.message;
   const rawChannelId = stripChannelPrefix(msg.channel_id);
   const isDm = params.channelType === 'dm';
-  const target = isDm ? `dm:${rawChannelId}` : buildCollabTarget(rawChannelId);
+  const target = isDm ? `dm:${rawChannelId}` : buildBorgeeTarget(rawChannelId);
 
   const route = runtime.channel.routing.resolveAgentRoute({
     cfg: params.config as OpenClawConfig,
@@ -195,7 +195,7 @@ export async function handleCollabInbound(params: {
     BodyForAgent: msg.content,
     RawBody: msg.content,
     CommandBody: msg.content,
-    From: buildCollabTarget(stripChannelPrefix(msg.sender_id)),
+    From: buildBorgeeTarget(stripChannelPrefix(msg.sender_id)),
     To: target,
     SessionKey: route.sessionKey,
     AccountId: route.accountId ?? params.account.accountId,
@@ -232,7 +232,7 @@ export async function handleCollabInbound(params: {
           : "";
       if (!text.trim()) return;
 
-      await sendCollabMessage({
+      await sendBorgeeMessage({
         baseUrl: params.account.baseUrl,
         apiKey: params.account.apiKey,
         channelId: msg.channel_id,
@@ -243,12 +243,12 @@ export async function handleCollabInbound(params: {
     onRecordError: (error) => {
       throw error instanceof Error
         ? error
-        : new Error(`collab session record failed: ${String(error)}`);
+        : new Error(`borgee session record failed: ${String(error)}`);
     },
     onDispatchError: (error) => {
       throw error instanceof Error
         ? error
-        : new Error(`collab dispatch failed: ${String(error)}`);
+        : new Error(`borgee dispatch failed: ${String(error)}`);
     },
   });
 }

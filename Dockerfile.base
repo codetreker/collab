@@ -8,4 +8,4 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY packages/server/package.json packages/server/
 COPY packages/client/package.json packages/client/
 
-RUN pnpm install --frozen-lockfile --filter @collab/server --filter @collab/client --filter collab || pnpm install --filter @collab/server --filter @collab/client --filter collab
+RUN pnpm install --frozen-lockfile --filter @borgee/server --filter @borgee/client --filter borgee || pnpm install --filter @borgee/server --filter @borgee/client --filter borgee

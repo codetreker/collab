@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/store"
 )
 
 // MessageHandler handles message CRUD endpoints.

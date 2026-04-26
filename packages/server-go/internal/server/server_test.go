@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 )
 
 type flushResponseRecorder struct {

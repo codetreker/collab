@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/store"
 
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
@@ -241,7 +241,7 @@ func authenticateWS(hub *Hub, r *http.Request) *store.User {
 		}
 	}
 
-	if cookie, err := r.Cookie("collab_token"); err == nil {
+	if cookie, err := r.Cookie("borgee_token"); err == nil {
 		if user := auth.ValidateJWT(hub.store, hub.config.JWTSecret, cookie.Value); user != nil {
 			return user
 		}
@@ -308,10 +308,10 @@ func handleSendMessage(c *Client, msg wsMessage) {
 	nack := func(code, message string) {
 		c.SendJSON(map[string]any{
 			"type":              "message_nack",
-			"client_id":        clientMsgID,
+			"client_id":         clientMsgID,
 			"client_message_id": clientMsgID,
-			"code":             code,
-			"message":          message,
+			"code":              code,
+			"message":           message,
 		})
 	}
 
@@ -376,10 +376,10 @@ func handleSendMessage(c *Client, msg wsMessage) {
 
 	c.SendJSON(map[string]any{
 		"type":              "message_ack",
-		"client_id":        clientMsgID,
+		"client_id":         clientMsgID,
 		"client_message_id": clientMsgID,
-		"message_id":       created.ID,
-		"message":          created,
+		"message_id":        created.ID,
+		"message":           created,
 	})
 
 	payload := mustJSON(map[string]any{

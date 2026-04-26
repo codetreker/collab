@@ -30,7 +30,7 @@ export default function LoginPage({ onLogin, onRegister }: Props) {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 className="login-title">Collab</h1>
+        <h1 className="login-title">Borgee</h1>
         <form onSubmit={handleSubmit}>
           <input
             type="email"

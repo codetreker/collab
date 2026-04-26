@@ -1,11 +1,11 @@
 {
-  "name": "collab",
+  "name": "borgee",
   "version": "0.1.0",
   "private": true,
-  "description": "Collab — lightweight team chat platform",
+  "description": "Borgee — lightweight team chat platform",
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @collab/server dev\" \"pnpm --filter @collab/client dev\"",
-    "build": "pnpm --filter @collab/client build && pnpm --filter @collab/server build",
+    "dev": "concurrently -n server,client -c blue,green \"pnpm --filter @borgee/server dev\" \"pnpm --filter @borgee/client dev\"",
+    "build": "pnpm --filter @borgee/client build && pnpm --filter @borgee/server build",
     "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
     "format": "prettier --write 'packages/*/src/**/*.{ts,tsx}'",
     "typecheck": "pnpm -r run typecheck"

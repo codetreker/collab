@@ -86,7 +86,7 @@ export async function writeSafe(client: SSEClient, chunk: string): Promise<boole
 function extractCookie(request: FastifyRequest): string | undefined {
   const cookieHeader = request.headers.cookie;
   if (!cookieHeader) return undefined;
-  const match = cookieHeader.match(/(?:^|;\s*)collab_token=([^;]+)/);
+  const match = cookieHeader.match(/(?:^|;\s*)borgee_token=([^;]+)/);
   return match?.[1];
 }
 

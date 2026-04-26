@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 )
 
 type EventBroadcaster interface {

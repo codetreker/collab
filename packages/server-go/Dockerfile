@@ -6,9 +6,9 @@ WORKDIR /src
 RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/client/package.json packages/client/
-RUN pnpm install --frozen-lockfile --filter @collab/client
+RUN pnpm install --frozen-lockfile --filter @borgee/client
 COPY packages/client packages/client
-RUN pnpm --filter @collab/client build
+RUN pnpm --filter @borgee/client build
 
 FROM golang:1.25-bookworm AS go-builder
 WORKDIR /src/packages/server-go
@@ -22,7 +22,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/collab 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates sqlite3 libsqlite3-0 \
   && rm -rf /var/lib/apt/lists/* \
-  && useradd -r -u 10001 -g root collab
+  && useradd -r -u 10001 -g root borgee
 WORKDIR /app
 COPY --from=go-builder /out/collab /app/collab
 COPY --from=client-builder /src/packages/client/dist /app/client/dist

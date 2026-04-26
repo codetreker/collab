@@ -9,9 +9,9 @@ import (
 	"regexp"
 	"strings"
 
-	"collab-server/internal/auth"
-	"collab-server/internal/config"
-	"collab-server/internal/store"
+	"borgee-server/internal/auth"
+	"borgee-server/internal/config"
+	"borgee-server/internal/store"
 )
 
 func readJSON(r *http.Request, dst any) error {
@@ -79,7 +79,7 @@ func (h *ChannelHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Han
 func (h *ChannelHandler) handleListChannels(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -92,13 +92,13 @@ func (h *ChannelHandler) handleListChannels(w http.ResponseWriter, r *http.Reque
 		channels, err = h.Store.ListChannelsWithUnread(user.ID)
 	}
 	if err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to list channels")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to list channels")
 		return
 	}
 
 	groups, err := h.Store.ListChannelGroups()
 	if err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to list groups")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to list groups")
 		return
 	}
 
@@ -109,13 +109,13 @@ func (h *ChannelHandler) handleListChannels(w http.ResponseWriter, r *http.Reque
 		groups = []store.ChannelGroup{}
 	}
 
-	writeJSONResponse(w,http.StatusOK, map[string]any{"channels": channels, "groups": groups})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"channels": channels, "groups": groups})
 }
 
 func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -126,13 +126,13 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 		Visibility string   `json:"visibility"`
 	}
 	if err := readJSON(r, &body); err != nil {
-		writeJSONError(w,http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	slug := slugify(body.Name)
 	if slug == "" {
-		writeJSONError(w,http.StatusBadRequest, "Channel name is required")
+		writeJSONError(w, http.StatusBadRequest, "Channel name is required")
 		return
 	}
 
@@ -140,16 +140,16 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 		body.Visibility = "public"
 	}
 	if body.Visibility != "public" && body.Visibility != "private" {
-		writeJSONError(w,http.StatusBadRequest, "Visibility must be 'public' or 'private'")
+		writeJSONError(w, http.StatusBadRequest, "Visibility must be 'public' or 'private'")
 		return
 	}
 	if len(body.Topic) > 250 {
-		writeJSONError(w,http.StatusBadRequest, "Topic must be 250 characters or less")
+		writeJSONError(w, http.StatusBadRequest, "Topic must be 250 characters or less")
 		return
 	}
 
 	if existing, _ := h.Store.GetChannelByName(slug); existing != nil {
-		writeJSONError(w,http.StatusConflict, "Channel name already exists")
+		writeJSONError(w, http.StatusConflict, "Channel name already exists")
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 		Position:   position,
 	}
 	if err := h.Store.CreateChannel(ch); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to create channel")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create channel")
 		return
 	}
 
@@ -189,9 +189,9 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 
 	result, _ := h.Store.GetChannelWithCounts(ch.ID, user.ID)
 	if result == nil {
-		writeJSONResponse(w,http.StatusCreated, map[string]any{"channel": ch})
+		writeJSONResponse(w, http.StatusCreated, map[string]any{"channel": ch})
 	} else {
-		writeJSONResponse(w,http.StatusCreated, map[string]any{"channel": result})
+		writeJSONResponse(w, http.StatusCreated, map[string]any{"channel": result})
 	}
 
 	h.Store.CreateEvent(&store.Event{
@@ -206,19 +206,19 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 func (h *ChannelHandler) handleGetChannel(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	if !h.Store.CanAccessChannel(channelID, user.ID) {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	ch, err := h.Store.GetChannelWithCounts(channelID, user.ID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
@@ -231,51 +231,51 @@ func (h *ChannelHandler) handleGetChannel(w http.ResponseWriter, r *http.Request
 		"channel": ch,
 		"members": members,
 	}
-	writeJSONResponse(w,http.StatusOK, resp)
+	writeJSONResponse(w, http.StatusOK, resp)
 }
 
 func (h *ChannelHandler) handlePreviewChannel(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	ch, err := h.Store.GetChannelByID(channelID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	if ch.Visibility == "private" {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	msgs, err := h.Store.GetPreviewMessages(channelID, 50)
 	if err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to get messages")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to get messages")
 		return
 	}
 	if msgs == nil {
 		msgs = []store.PreviewMessage{}
 	}
 
-	writeJSONResponse(w,http.StatusOK, map[string]any{"messages": msgs, "channel": ch})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"messages": msgs, "channel": ch})
 }
 
 func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	ch, err := h.Store.GetChannelByID(channelID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
@@ -285,19 +285,19 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 		Visibility *string `json:"visibility"`
 	}
 	if err := readJSON(r, &body); err != nil {
-		writeJSONError(w,http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	topicOnly := body.Topic != nil && body.Name == nil && body.Visibility == nil
 	if topicOnly {
 		if !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
-			writeJSONError(w,http.StatusForbidden, "Must be a channel member to update topic")
+			writeJSONError(w, http.StatusForbidden, "Must be a channel member to update topic")
 			return
 		}
 	} else {
 		if !h.hasChannelPermission(user, "channel.manage_visibility", channelID) {
-			writeJSONError(w,http.StatusForbidden, "Forbidden")
+			writeJSONError(w, http.StatusForbidden, "Forbidden")
 			return
 		}
 	}
@@ -306,12 +306,12 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 	if body.Name != nil {
 		slug := slugify(*body.Name)
 		if slug == "" {
-			writeJSONError(w,http.StatusBadRequest, "Channel name is required")
+			writeJSONError(w, http.StatusBadRequest, "Channel name is required")
 			return
 		}
 		if slug != ch.Name {
 			if existing, _ := h.Store.GetChannelByName(slug); existing != nil {
-				writeJSONError(w,http.StatusConflict, "Channel name already exists")
+				writeJSONError(w, http.StatusConflict, "Channel name already exists")
 				return
 			}
 		}
@@ -319,14 +319,14 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 	}
 	if body.Topic != nil {
 		if len(*body.Topic) > 250 {
-			writeJSONError(w,http.StatusBadRequest, "Topic must be 250 characters or less")
+			writeJSONError(w, http.StatusBadRequest, "Topic must be 250 characters or less")
 			return
 		}
 		updates["topic"] = *body.Topic
 	}
 	if body.Visibility != nil {
 		if *body.Visibility != "public" && *body.Visibility != "private" {
-			writeJSONError(w,http.StatusBadRequest, "Visibility must be 'public' or 'private'")
+			writeJSONError(w, http.StatusBadRequest, "Visibility must be 'public' or 'private'")
 			return
 		}
 		updates["visibility"] = *body.Visibility
@@ -334,13 +334,13 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 
 	if len(updates) > 0 {
 		if err := h.Store.UpdateChannel(channelID, updates); err != nil {
-			writeJSONError(w,http.StatusInternalServerError, "Failed to update channel")
+			writeJSONError(w, http.StatusInternalServerError, "Failed to update channel")
 			return
 		}
 	}
 
 	result, _ := h.Store.GetChannelWithCounts(channelID, user.ID)
-	writeJSONResponse(w,http.StatusOK, map[string]any{"channel": result})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"channel": result})
 
 	h.Store.CreateEvent(&store.Event{
 		Kind:      "channel_updated",
@@ -355,13 +355,13 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 func (h *ChannelHandler) handleSetTopic(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	if !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
-		writeJSONError(w,http.StatusForbidden, "Must be a channel member")
+		writeJSONError(w, http.StatusForbidden, "Must be a channel member")
 		return
 	}
 
@@ -369,21 +369,21 @@ func (h *ChannelHandler) handleSetTopic(w http.ResponseWriter, r *http.Request) 
 		Topic string `json:"topic"`
 	}
 	if err := readJSON(r, &body); err != nil {
-		writeJSONError(w,http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if len(body.Topic) > 250 {
-		writeJSONError(w,http.StatusBadRequest, "Topic must be 250 characters or less")
+		writeJSONError(w, http.StatusBadRequest, "Topic must be 250 characters or less")
 		return
 	}
 
 	if err := h.Store.UpdateChannel(channelID, map[string]any{"topic": body.Topic}); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to update topic")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update topic")
 		return
 	}
 
 	result, _ := h.Store.GetChannelWithCounts(channelID, user.ID)
-	writeJSONResponse(w,http.StatusOK, map[string]any{"channel": result})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"channel": result})
 
 	h.Store.CreateEvent(&store.Event{
 		Kind:      "channel_updated",
@@ -398,33 +398,33 @@ func (h *ChannelHandler) handleSetTopic(w http.ResponseWriter, r *http.Request) 
 func (h *ChannelHandler) handleJoinChannel(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	if user.Role == "agent" {
-		writeJSONError(w,http.StatusForbidden, "Agents cannot self-join channels")
+		writeJSONError(w, http.StatusForbidden, "Agents cannot self-join channels")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	ch, err := h.Store.GetChannelByID(channelID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	if ch.Type == "dm" {
-		writeJSONError(w,http.StatusBadRequest, "Cannot join DM channels")
+		writeJSONError(w, http.StatusBadRequest, "Cannot join DM channels")
 		return
 	}
 	if ch.Visibility != "public" {
-		writeJSONError(w,http.StatusForbidden, "Cannot join private channels")
+		writeJSONError(w, http.StatusForbidden, "Cannot join private channels")
 		return
 	}
 
 	h.Store.AddChannelMember(&store.ChannelMember{ChannelID: channelID, UserID: user.ID})
-	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})
 
 	h.Store.CreateEvent(&store.Event{
 		Kind:      "user_joined",
@@ -439,28 +439,28 @@ func (h *ChannelHandler) handleJoinChannel(w http.ResponseWriter, r *http.Reques
 func (h *ChannelHandler) handleLeaveChannel(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	ch, err := h.Store.GetChannelByID(channelID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	if ch.Type == "dm" {
-		writeJSONError(w,http.StatusBadRequest, "Cannot leave DM channels")
+		writeJSONError(w, http.StatusBadRequest, "Cannot leave DM channels")
 		return
 	}
 	if ch.Name == "general" {
-		writeJSONError(w,http.StatusBadRequest, "Cannot leave #general")
+		writeJSONError(w, http.StatusBadRequest, "Cannot leave #general")
 		return
 	}
 
 	h.Store.RemoveChannelMember(channelID, user.ID)
-	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})
 
 	h.Store.CreateEvent(&store.Event{
 		Kind:      "user_left",
@@ -475,19 +475,19 @@ func (h *ChannelHandler) handleLeaveChannel(w http.ResponseWriter, r *http.Reque
 func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	ch, err := h.Store.GetChannelByID(channelID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	if ch.Type == "dm" {
-		writeJSONError(w,http.StatusBadRequest, "Cannot add members to DM channels")
+		writeJSONError(w, http.StatusBadRequest, "Cannot add members to DM channels")
 		return
 	}
 
@@ -495,17 +495,17 @@ func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request)
 		UserID string `json:"user_id"`
 	}
 	if err := readJSON(r, &body); err != nil {
-		writeJSONError(w,http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if body.UserID == "" {
-		writeJSONError(w,http.StatusBadRequest, "user_id is required")
+		writeJSONError(w, http.StatusBadRequest, "user_id is required")
 		return
 	}
 
 	target, err := h.Store.GetUserByID(body.UserID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "User not found")
+		writeJSONError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
@@ -513,14 +513,14 @@ func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request)
 		if user.Role != "admin" {
 			isOwner := target.OwnerID != nil && *target.OwnerID == user.ID
 			if !isOwner {
-				writeJSONError(w,http.StatusForbidden, "Only owner or admin can add agents")
+				writeJSONError(w, http.StatusForbidden, "Only owner or admin can add agents")
 				return
 			}
 		}
 	}
 
 	h.Store.AddChannelMember(&store.ChannelMember{ChannelID: channelID, UserID: body.UserID})
-	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})
 
 	h.Store.CreateEvent(&store.Event{
 		Kind:      "user_joined",
@@ -536,7 +536,7 @@ func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request)
 func (h *ChannelHandler) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -545,24 +545,24 @@ func (h *ChannelHandler) handleRemoveMember(w http.ResponseWriter, r *http.Reque
 
 	ch, err := h.Store.GetChannelByID(channelID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	if ch.Name == "general" {
-		writeJSONError(w,http.StatusBadRequest, "Cannot remove members from #general")
+		writeJSONError(w, http.StatusBadRequest, "Cannot remove members from #general")
 		return
 	}
 
 	if targetID != user.ID {
 		if !h.hasChannelPermission(user, "channel.manage_members", channelID) {
-			writeJSONError(w,http.StatusForbidden, "Forbidden")
+			writeJSONError(w, http.StatusForbidden, "Forbidden")
 			return
 		}
 	}
 
 	h.Store.RemoveChannelMember(channelID, targetID)
-	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})
 
 	h.Store.CreateEvent(&store.Event{
 		Kind:      "user_left",
@@ -578,53 +578,53 @@ func (h *ChannelHandler) handleRemoveMember(w http.ResponseWriter, r *http.Reque
 func (h *ChannelHandler) handleListMembers(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	if !h.Store.CanAccessChannel(channelID, user.ID) {
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	members, err := h.Store.GetChannelDetail(channelID)
 	if err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to list members")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to list members")
 		return
 	}
 	if members == nil {
 		members = []store.ChannelMemberInfo{}
 	}
 
-	writeJSONResponse(w,http.StatusOK, map[string]any{"members": members})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"members": members})
 }
 
 func (h *ChannelHandler) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	channelID := r.PathValue("channelId")
 	if !h.Store.IsChannelMember(channelID, user.ID) {
-		writeJSONError(w,http.StatusForbidden, "Must be a channel member")
+		writeJSONError(w, http.StatusForbidden, "Must be a channel member")
 		return
 	}
 
 	if err := h.Store.MarkChannelRead(channelID, user.ID); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to mark read")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to mark read")
 		return
 	}
 
-	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func (h *ChannelHandler) handleDeleteChannel(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -637,21 +637,21 @@ func (h *ChannelHandler) handleDeleteChannel(w http.ResponseWriter, r *http.Requ
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		writeJSONError(w,http.StatusNotFound, "Channel not found")
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
 	if ch.Type == "dm" {
-		writeJSONError(w,http.StatusBadRequest, "Cannot delete DM channels")
+		writeJSONError(w, http.StatusBadRequest, "Cannot delete DM channels")
 		return
 	}
 	if ch.Name == "general" {
-		writeJSONError(w,http.StatusBadRequest, "Cannot delete #general")
+		writeJSONError(w, http.StatusBadRequest, "Cannot delete #general")
 		return
 	}
 
 	if err := h.Store.SoftDeleteChannel(channelID); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to delete channel")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to delete channel")
 		return
 	}
 
@@ -667,13 +667,13 @@ func (h *ChannelHandler) handleDeleteChannel(w http.ResponseWriter, r *http.Requ
 		h.Hub.BroadcastEventToAll("channel_deleted", map[string]any{"channel_id": channelID})
 	}
 
-	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func (h *ChannelHandler) handleReorderChannel(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -689,7 +689,7 @@ func (h *ChannelHandler) handleReorderChannel(w http.ResponseWriter, r *http.Req
 			}
 		}
 		if !isOwner && user.Role != "admin" {
-			writeJSONError(w,http.StatusForbidden, "Forbidden")
+			writeJSONError(w, http.StatusForbidden, "Forbidden")
 			return
 		}
 	}
@@ -700,27 +700,27 @@ func (h *ChannelHandler) handleReorderChannel(w http.ResponseWriter, r *http.Req
 		GroupID   *string `json:"group_id"`
 	}
 	if err := readJSON(r, &body); err != nil {
-		writeJSONError(w,http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if body.ChannelID == "" {
-		writeJSONError(w,http.StatusBadRequest, "channel_id is required")
+		writeJSONError(w, http.StatusBadRequest, "channel_id is required")
 		return
 	}
 
 	before, after, err := h.Store.GetAdjacentChannelPositions(body.AfterID, body.GroupID)
 	if err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to calculate position")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to calculate position")
 		return
 	}
 
 	position := store.GenerateRankBetween(before, after)
 	if err := h.Store.UpdateChannelPosition(body.ChannelID, position, body.GroupID); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to reorder channel")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to reorder channel")
 		return
 	}
 
-	writeJSONResponse(w,http.StatusOK, map[string]any{
+	writeJSONResponse(w, http.StatusOK, map[string]any{
 		"channel": map[string]any{"id": body.ChannelID, "position": position, "group_id": body.GroupID},
 	})
 
@@ -738,19 +738,19 @@ func (h *ChannelHandler) handleReorderChannel(w http.ResponseWriter, r *http.Req
 func (h *ChannelHandler) handleListGroups(w http.ResponseWriter, r *http.Request) {
 	groups, err := h.Store.ListChannelGroups()
 	if err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to list groups")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to list groups")
 		return
 	}
 	if groups == nil {
 		groups = []store.ChannelGroup{}
 	}
-	writeJSONResponse(w,http.StatusOK, map[string]any{"groups": groups})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"groups": groups})
 }
 
 func (h *ChannelHandler) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -758,17 +758,17 @@ func (h *ChannelHandler) handleCreateGroup(w http.ResponseWriter, r *http.Reques
 		Name string `json:"name"`
 	}
 	if err := readJSON(r, &body); err != nil {
-		writeJSONError(w,http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	name := strings.TrimSpace(body.Name)
 	if name == "" {
-		writeJSONError(w,http.StatusBadRequest, "Group name is required")
+		writeJSONError(w, http.StatusBadRequest, "Group name is required")
 		return
 	}
 	if len(name) > 50 {
-		writeJSONError(w,http.StatusBadRequest, "Group name must be 50 characters or less")
+		writeJSONError(w, http.StatusBadRequest, "Group name must be 50 characters or less")
 		return
 	}
 
@@ -781,7 +781,7 @@ func (h *ChannelHandler) handleCreateGroup(w http.ResponseWriter, r *http.Reques
 		CreatedBy: user.ID,
 	}
 	if err := h.Store.CreateChannelGroup(group); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to create group")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create group")
 		return
 	}
 
@@ -793,25 +793,25 @@ func (h *ChannelHandler) handleCreateGroup(w http.ResponseWriter, r *http.Reques
 		h.Hub.BroadcastEventToAll("group_created", map[string]any{"group": group})
 	}
 
-	writeJSONResponse(w,http.StatusCreated, map[string]any{"group": group})
+	writeJSONResponse(w, http.StatusCreated, map[string]any{"group": group})
 }
 
 func (h *ChannelHandler) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	groupID := r.PathValue("groupId")
 	group, err := h.Store.GetChannelGroup(groupID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Group not found")
+		writeJSONError(w, http.StatusNotFound, "Group not found")
 		return
 	}
 
 	if group.CreatedBy != user.ID && user.Role != "admin" {
-		writeJSONError(w,http.StatusForbidden, "Only the group creator can rename it")
+		writeJSONError(w, http.StatusForbidden, "Only the group creator can rename it")
 		return
 	}
 
@@ -819,27 +819,27 @@ func (h *ChannelHandler) handleUpdateGroup(w http.ResponseWriter, r *http.Reques
 		Name string `json:"name"`
 	}
 	if err := readJSON(r, &body); err != nil {
-		writeJSONError(w,http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	name := strings.TrimSpace(body.Name)
 	if name == "" {
-		writeJSONError(w,http.StatusBadRequest, "Group name is required")
+		writeJSONError(w, http.StatusBadRequest, "Group name is required")
 		return
 	}
 	if len(name) > 50 {
-		writeJSONError(w,http.StatusBadRequest, "Group name must be 50 characters or less")
+		writeJSONError(w, http.StatusBadRequest, "Group name must be 50 characters or less")
 		return
 	}
 
 	if err := h.Store.UpdateChannelGroup(groupID, name); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to update group")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update group")
 		return
 	}
 
 	group.Name = name
-	writeJSONResponse(w,http.StatusOK, map[string]any{"group": group})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"group": group})
 
 	h.Store.CreateEvent(&store.Event{
 		Kind:    "group_updated",
@@ -853,30 +853,30 @@ func (h *ChannelHandler) handleUpdateGroup(w http.ResponseWriter, r *http.Reques
 func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
 	groupID := r.PathValue("groupId")
 	group, err := h.Store.GetChannelGroup(groupID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Group not found")
+		writeJSONError(w, http.StatusNotFound, "Group not found")
 		return
 	}
 
 	if group.CreatedBy != user.ID && user.Role != "admin" {
-		writeJSONError(w,http.StatusForbidden, "Only the group creator can delete it")
+		writeJSONError(w, http.StatusForbidden, "Only the group creator can delete it")
 		return
 	}
 
 	ungroupedIDs, err := h.Store.UngroupChannels(groupID)
 	if err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to ungroup channels")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to ungroup channels")
 		return
 	}
 
 	if err := h.Store.DeleteChannelGroup(groupID); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to delete group")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to delete group")
 		return
 	}
 
@@ -892,13 +892,13 @@ func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Reques
 		h.Hub.BroadcastEventToAll("group_deleted", map[string]any{"group_id": groupID})
 	}
 
-	writeJSONResponse(w,http.StatusOK, map[string]any{"ok": true, "ungrouped_channel_ids": ungroupedIDs})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true, "ungrouped_channel_ids": ungroupedIDs})
 }
 
 func (h *ChannelHandler) handleReorderGroup(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
-		writeJSONError(w,http.StatusUnauthorized, "Unauthorized")
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
@@ -907,39 +907,39 @@ func (h *ChannelHandler) handleReorderGroup(w http.ResponseWriter, r *http.Reque
 		AfterID *string `json:"after_id"`
 	}
 	if err := readJSON(r, &body); err != nil {
-		writeJSONError(w,http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if body.GroupID == "" {
-		writeJSONError(w,http.StatusBadRequest, "group_id is required")
+		writeJSONError(w, http.StatusBadRequest, "group_id is required")
 		return
 	}
 
 	group, err := h.Store.GetChannelGroup(body.GroupID)
 	if err != nil {
-		writeJSONError(w,http.StatusNotFound, "Group not found")
+		writeJSONError(w, http.StatusNotFound, "Group not found")
 		return
 	}
 
 	if group.CreatedBy != user.ID && user.Role != "admin" {
-		writeJSONError(w,http.StatusForbidden, "Only the group creator can reorder")
+		writeJSONError(w, http.StatusForbidden, "Only the group creator can reorder")
 		return
 	}
 
 	before, after, err := h.Store.GetAdjacentGroupPositions(body.AfterID)
 	if err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to calculate position")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to calculate position")
 		return
 	}
 
 	position := store.GenerateRankBetween(before, after)
 	if err := h.Store.UpdateGroupPosition(body.GroupID, position); err != nil {
-		writeJSONError(w,http.StatusInternalServerError, "Failed to reorder group")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to reorder group")
 		return
 	}
 
 	group.Position = position
-	writeJSONResponse(w,http.StatusOK, map[string]any{"group": group})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"group": group})
 
 	h.Store.CreateEvent(&store.Event{
 		Kind:    "groups_reordered",

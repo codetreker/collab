@@ -3,7 +3,7 @@ package ws_test
 import (
 	"testing"
 
-	"collab-server/internal/store"
+	"borgee-server/internal/store"
 )
 
 func TestHubPluginAndRemoteRegistration(t *testing.T) {

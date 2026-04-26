@@ -16,9 +16,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter @collab/server --filter @collab/client --filter collab
-      - run: pnpm --filter @collab/client build
-      - run: pnpm --filter @collab/server build
+      - run: pnpm install --frozen-lockfile --filter @borgee/server --filter @borgee/client --filter borgee
+      - run: pnpm --filter @borgee/client build
+      - run: pnpm --filter @borgee/server build
       - run: cd packages/server && npx vitest run --coverage
 
   go-test:
@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: cd packages/server-go && go mod download
       - name: Run tests with race detector
-        run: cd packages/server-go && go test ./... -race -coverprofile=coverage.out -coverpkg=collab-server/internal/api,collab-server/internal/auth,collab-server/internal/config,collab-server/internal/store,collab-server/internal/ws,collab-server/internal/server
+        run: cd packages/server-go && go test ./... -race -coverprofile=coverage.out -coverpkg=borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server
       - name: Check coverage threshold
         run: |
           COVERAGE=$(cd packages/server-go && go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')

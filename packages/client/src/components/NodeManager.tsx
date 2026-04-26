@@ -167,8 +167,8 @@ function NodeDetail({ node, online, channels, onDelete }: {
     setCopied(false);
   }, [loadBindings]);
 
-  const startCmd = `npx @collab/remote-agent --server wss://collab.codetrek.cn --token ${showToken ? node.connection_token : '••••••••'} --dirs /path/to/dir`;
-  const fullCmd = `npx @collab/remote-agent --server wss://collab.codetrek.cn --token ${node.connection_token} --dirs /path/to/dir`;
+  const startCmd = `npx @codetreker/borgee-remote-agent --server wss://collab.codetrek.cn --token ${showToken ? node.connection_token : '••••••••'} --dirs /path/to/dir`;
+  const fullCmd = `npx @codetreker/borgee-remote-agent --server wss://collab.codetrek.cn --token ${node.connection_token} --dirs /path/to/dir`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(fullCmd);

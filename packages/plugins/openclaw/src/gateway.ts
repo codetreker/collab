@@ -1,12 +1,12 @@
-import { fetchBotIdentity, pollCollabEvents } from "./api-client.js";
-import { handleCollabInbound, handleCollabReactionInbound } from "./inbound.js";
+import { fetchBotIdentity, pollBorgeeEvents } from "./api-client.js";
+import { handleBorgeeInbound, handleBorgeeReactionInbound } from "./inbound.js";
 import { readPersistedCursor, persistCursor } from "./cursor-store.js";
 import { probeSSE, runSSELoop } from "./sse-client.js";
 import { PluginWsClient } from "./ws-client.js";
 import { dispatchSSEEvent } from "./sse-client.js";
 import { readFile } from "./file-access.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
-import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
+import type { BorgeeEvent, CoreConfig, ResolvedBorgeeAccount } from "./types.js";
 
 const RETRY_BASE_MS = 1000;
 const RETRY_MAX_MS = 30_000;
@@ -35,9 +35,9 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 async function runPollLoop(params: {
   channelId: string;
   channelLabel: string;
-  account: ResolvedCollabAccount;
+  account: ResolvedBorgeeAccount;
   config: CoreConfig;
-  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  ctx: ChannelGatewayContext<ResolvedBorgeeAccount>;
   cursorRef: { value: number };
   /** Abort this poll session (but not the whole gateway) to retry SSE */
   sessionSignal: AbortSignal;
@@ -47,7 +47,7 @@ async function runPollLoop(params: {
 
   while (!params.ctx.abortSignal.aborted && !params.sessionSignal.aborted) {
     try {
-      const result = await pollCollabEvents({
+      const result = await pollBorgeeEvents({
         baseUrl: account.baseUrl,
         apiKey: account.apiKey,
         cursor: params.cursorRef.value,
@@ -73,7 +73,7 @@ async function runPollLoop(params: {
         if (senderId && senderId === account.botUserId) continue;
 
         if (event.kind === "reaction_update") {
-          await handleCollabReactionInbound({
+          await handleBorgeeReactionInbound({
             channelId: params.channelId,
             channelLabel: params.channelLabel,
             account,
@@ -96,14 +96,14 @@ async function runPollLoop(params: {
             if (!mentions.includes(account.botUserId)) continue;
           }
         }
-        await handleCollabInbound({
+        await handleBorgeeInbound({
           channelId: params.channelId,
           channelLabel: params.channelLabel,
           account,
           config: params.config,
           event,
           channelType: isDmChannel ? "dm" : "channel",
-          message: payload as Parameters<typeof handleCollabInbound>[0]["message"],
+          message: payload as Parameters<typeof handleBorgeeInbound>[0]["message"],
         });
       }
     } catch (error) {
@@ -114,7 +114,7 @@ async function runPollLoop(params: {
         RETRY_MAX_MS,
       );
       console.error(
-        `[collab-plugin] Poll error (retry #${consecutiveErrors} in ${backoff}ms):`,
+        `[borgee-plugin] Poll error (retry #${consecutiveErrors} in ${backoff}ms):`,
         error instanceof Error ? error.message : error,
       );
       try {
@@ -129,11 +129,11 @@ async function runPollLoop(params: {
 // ─── Bootstrap cursor from server ────────────────────────
 
 async function bootstrapCursor(params: {
-  account: ResolvedCollabAccount;
-  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  account: ResolvedBorgeeAccount;
+  ctx: ChannelGatewayContext<ResolvedBorgeeAccount>;
 }): Promise<number> {
   try {
-    const bootstrap = await pollCollabEvents({
+    const bootstrap = await pollBorgeeEvents({
       baseUrl: params.account.baseUrl,
       apiKey: params.account.apiKey,
       cursor: 0,
@@ -141,12 +141,12 @@ async function bootstrapCursor(params: {
       signal: params.ctx.abortSignal,
     });
     persistCursor(params.account.accountId, bootstrap.cursor);
-    console.log(`[collab-plugin] Bootstrapped cursor: ${bootstrap.cursor}`);
+    console.log(`[borgee-plugin] Bootstrapped cursor: ${bootstrap.cursor}`);
     return bootstrap.cursor;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     console.warn(
-      "[collab-plugin] Bootstrap poll failed, starting from cursor 0:",
+      "[borgee-plugin] Bootstrap poll failed, starting from cursor 0:",
       error instanceof Error ? error.message : error,
     );
     return 0;
@@ -155,14 +155,14 @@ async function bootstrapCursor(params: {
 
 // ─── Orchestrator ────────────────────────────────────────
 
-export async function startCollabGateway(
+export async function startBorgeeGateway(
   channelId: string,
   channelLabel: string,
-  ctx: ChannelGatewayContext<ResolvedCollabAccount>,
+  ctx: ChannelGatewayContext<ResolvedBorgeeAccount>,
 ): Promise<void> {
   const account = ctx.account;
   if (!account.configured) {
-    throw new Error(`Collab channel is not configured for account "${account.accountId}"`);
+    throw new Error(`Borgee channel is not configured for account "${account.accountId}"`);
   }
 
   if (!account.config.botUserId || !account.config.botDisplayName) {
@@ -179,11 +179,11 @@ export async function startCollabGateway(
       }
       account.requireMention = identity.requireMention;
       console.log(
-        `[collab-plugin] Bot identity: ${account.botDisplayName} (${account.botUserId})`,
+        `[borgee-plugin] Bot identity: ${account.botDisplayName} (${account.botUserId})`,
       );
     } catch (error) {
       throw new Error(
-        `[collab-plugin] Failed to fetch bot identity from ${account.baseUrl}: ${error instanceof Error ? error.message : String(error)}`,
+        `[borgee-plugin] Failed to fetch bot identity from ${account.baseUrl}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -206,7 +206,7 @@ export async function startCollabGateway(
 
   try {
     if (transport === "ws") {
-      console.log(`[collab-plugin] transport=ws`);
+      console.log(`[borgee-plugin] transport=ws`);
       await runWsTransport({
         channelId,
         channelLabel,
@@ -215,7 +215,7 @@ export async function startCollabGateway(
         ctx,
       });
     } else if (transport === "poll") {
-      console.log(`[collab-plugin] transport=poll (forced)`);
+      console.log(`[borgee-plugin] transport=poll (forced)`);
       const cursorRef = { value: cursor };
       const sessionCtrl = new AbortController();
       ctx.abortSignal.addEventListener("abort", () => sessionCtrl.abort(), { once: true });
@@ -265,9 +265,9 @@ export async function startCollabGateway(
 async function runAutoOrSse(params: {
   channelId: string;
   channelLabel: string;
-  account: ResolvedCollabAccount;
+  account: ResolvedBorgeeAccount;
   config: CoreConfig;
-  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  ctx: ChannelGatewayContext<ResolvedBorgeeAccount>;
   initialCursor: number;
   forceSSE: boolean;
 }): Promise<void> {
@@ -283,7 +283,7 @@ async function runAutoOrSse(params: {
 
     if (probe.status === 401 || probe.status === 403) {
       console.error(
-        `[collab-plugin] SSE auth failed (${probe.status}); stopping gateway`,
+        `[borgee-plugin] SSE auth failed (${probe.status}); stopping gateway`,
       );
       return;
     }
@@ -291,7 +291,7 @@ async function runAutoOrSse(params: {
     if (!probe.ok) {
       if (params.forceSSE) {
         console.warn(
-          `[collab-plugin] SSE probe failed (transport=sse forced); retrying in ${RETRY_MAX_MS}ms`,
+          `[borgee-plugin] SSE probe failed (transport=sse forced); retrying in ${RETRY_MAX_MS}ms`,
         );
         try {
           await sleep(RETRY_MAX_MS, abortSignal);
@@ -303,7 +303,7 @@ async function runAutoOrSse(params: {
 
       // Auto mode: fall back to poll, run SSE recovery probe every 5 min
       console.log(
-        `[collab-plugin] SSE unavailable; falling back to poll (will retry SSE every ${SSE_RECOVERY_INTERVAL_MS / 1000}s)`,
+        `[borgee-plugin] SSE unavailable; falling back to poll (will retry SSE every ${SSE_RECOVERY_INTERVAL_MS / 1000}s)`,
       );
       const sessionCtrl = new AbortController();
       const onAbort = (): void => sessionCtrl.abort();
@@ -317,7 +317,7 @@ async function runAutoOrSse(params: {
             signal: abortSignal,
           });
           if (p.ok) {
-            console.log(`[collab-plugin] SSE available again; switching from poll → SSE`);
+            console.log(`[borgee-plugin] SSE available again; switching from poll → SSE`);
             sessionCtrl.abort();
           }
         })();
@@ -343,7 +343,7 @@ async function runAutoOrSse(params: {
     }
 
     // SSE available — run loop
-    console.log(`[collab-plugin] transport=sse (${params.account.accountId})`);
+    console.log(`[borgee-plugin] transport=sse (${params.account.accountId})`);
     const result = await runSSELoop({
       channelId: params.channelId,
       channelLabel: params.channelLabel,
@@ -364,7 +364,7 @@ async function runAutoOrSse(params: {
 
     if (result.reason === "auth") {
       console.error(
-        `[collab-plugin] SSE auth failed (${result.status}); stopping gateway`,
+        `[borgee-plugin] SSE auth failed (${result.status}); stopping gateway`,
       );
       return;
     }
@@ -375,9 +375,9 @@ async function runAutoOrSse(params: {
 async function runWsTransport(params: {
   channelId: string;
   channelLabel: string;
-  account: ResolvedCollabAccount;
+  account: ResolvedBorgeeAccount;
   config: CoreConfig;
-  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  ctx: ChannelGatewayContext<ResolvedBorgeeAccount>;
 }): Promise<void> {
   const { account, ctx } = params;
 
@@ -398,9 +398,9 @@ async function runWsTransport(params: {
       }
     }
 
-    const collabEvent: CollabEvent = {
+    const borgeeEvent: BorgeeEvent = {
       cursor: 0,
-      kind: event as CollabEvent["kind"],
+      kind: event as BorgeeEvent["kind"],
       channel_id: (payload.channel_id as string) ?? "",
       payload: JSON.stringify(data),
       created_at: Date.now(),
@@ -410,7 +410,7 @@ async function runWsTransport(params: {
       channelLabel: params.channelLabel,
       account,
       config: params.config,
-      event: collabEvent,
+      event: borgeeEvent,
     });
   });
 

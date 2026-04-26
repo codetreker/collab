@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"collab-server/internal/testutil"
+	"borgee-server/internal/testutil"
 )
 
 func TestChannelCRUD(t *testing.T) {

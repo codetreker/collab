@@ -1,5 +1,5 @@
 {
-  "name": "@codetreker/collab-remote-agent",
+  "name": "@codetreker/borgee-remote-agent",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -14,7 +14,7 @@
     "access": "public"
   },
   "bin": {
-    "collab-remote-agent": "dist/index.js"
+    "borgee-remote-agent": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",

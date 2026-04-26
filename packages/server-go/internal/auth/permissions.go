@@ -2,7 +2,7 @@ package auth
 
 import "net/http"
 
-import "collab-server/internal/store"
+import "borgee-server/internal/store"
 
 func RequirePermission(s *store.Store, permission string, scopeResolver func(r *http.Request) string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

@@ -1,10 +1,10 @@
 import http from "node:http";
 import https from "node:https";
 import type { IncomingMessage, ClientRequest } from "node:http";
-import { handleCollabInbound, handleCollabReactionInbound } from "./inbound.js";
+import { handleBorgeeInbound, handleBorgeeReactionInbound } from "./inbound.js";
 import type { ChannelGatewayContext } from "./runtime-api.js";
 import { persistCursor } from "./cursor-store.js";
-import type { CollabEvent, CoreConfig, ResolvedCollabAccount } from "./types.js";
+import type { BorgeeEvent, CoreConfig, ResolvedBorgeeAccount } from "./types.js";
 
 // ─── SSE frame parser ───────────────────────────────────
 
@@ -81,7 +81,7 @@ class SSEParser {
 
 export interface SSEClientEvents {
   onOpen?: () => void;
-  onMessage: (event: CollabEvent) => void | Promise<void>;
+  onMessage: (event: BorgeeEvent) => void | Promise<void>;
   onHeartbeat?: () => void;
   onError: (err: { status?: number; message: string; fatal: boolean }) => void;
   onClose?: () => void;
@@ -193,9 +193,9 @@ export function connectSSE(params: {
           } catch {
             /* non-JSON payload — leave channelId empty */
           }
-          const event: CollabEvent = {
+          const event: BorgeeEvent = {
             cursor,
-            kind: kind as CollabEvent["kind"],
+            kind: kind as BorgeeEvent["kind"],
             channel_id: channelId,
             payload: payloadStr,
             created_at: Date.now(),
@@ -241,9 +241,9 @@ export function connectSSE(params: {
 export async function dispatchSSEEvent(params: {
   channelId: string;
   channelLabel: string;
-  account: ResolvedCollabAccount;
+  account: ResolvedBorgeeAccount;
   config: CoreConfig;
-  event: CollabEvent;
+  event: BorgeeEvent;
 }): Promise<void> {
   const { account, event } = params;
 
@@ -258,7 +258,7 @@ export async function dispatchSSEEvent(params: {
     }
     const userId = payload.user_id;
     if (userId && userId === account.botUserId) return;
-    await handleCollabReactionInbound({
+    await handleBorgeeReactionInbound({
       channelId: params.channelId,
       channelLabel: params.channelLabel,
       account: params.account,
@@ -309,14 +309,14 @@ export async function dispatchSSEEvent(params: {
     }
   }
 
-  await handleCollabInbound({
+  await handleBorgeeInbound({
     channelId: params.channelId,
     channelLabel: params.channelLabel,
     account: params.account,
     config: params.config,
     event,
     channelType: isDmChannel ? "dm" : "channel",
-    message: payload as Parameters<typeof handleCollabInbound>[0]["message"],
+    message: payload as Parameters<typeof handleBorgeeInbound>[0]["message"],
   });
 
   if (event.cursor > 0) {
@@ -327,9 +327,9 @@ export async function dispatchSSEEvent(params: {
 export async function runSSEOnce(params: {
   channelId: string;
   channelLabel: string;
-  account: ResolvedCollabAccount;
+  account: ResolvedBorgeeAccount;
   config: CoreConfig;
-  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  ctx: ChannelGatewayContext<ResolvedBorgeeAccount>;
   lastEventId?: number;
   heartbeatTimeoutMs?: number;
   onOpen?: () => void;
@@ -379,14 +379,14 @@ export async function runSSEOnce(params: {
             });
           } catch (err) {
             console.error(
-              "[collab-plugin] SSE dispatch error:",
+              "[borgee-plugin] SSE dispatch error:",
               err instanceof Error ? err.message : err,
             );
           }
         },
         onError: (err) => {
           if (err.fatal) {
-            console.error(`[collab-plugin] SSE fatal: ${err.message}`);
+            console.error(`[borgee-plugin] SSE fatal: ${err.message}`);
             done({ reason: "auth", status: err.status });
           } else {
             done({ reason: "closed", status: err.status });
@@ -503,9 +503,9 @@ export interface SSELoopResult {
 export async function runSSELoop(params: {
   channelId: string;
   channelLabel: string;
-  account: ResolvedCollabAccount;
+  account: ResolvedBorgeeAccount;
   config: CoreConfig;
-  ctx: ChannelGatewayContext<ResolvedCollabAccount>;
+  ctx: ChannelGatewayContext<ResolvedBorgeeAccount>;
   getLastEventId: () => number | undefined;
 }): Promise<SSELoopResult> {
   const signal = params.ctx.abortSignal;
@@ -543,7 +543,7 @@ export async function runSSELoop(params: {
       ctx: params.ctx,
       lastEventId: params.getLastEventId(),
       onOpen: () => {
-        console.log(`[collab-plugin] SSE connected (${params.account.accountId})`);
+        console.log(`[borgee-plugin] SSE connected (${params.account.accountId})`);
       },
     });
 
@@ -559,7 +559,7 @@ export async function runSSELoop(params: {
 
     const delay = Math.min(RECONNECT_BASE_MS * 2 ** Math.max(0, attempt - 1), RECONNECT_MAX_MS);
     console.warn(
-      `[collab-plugin] SSE disconnected (${result.reason}); reconnecting in ${delay}ms`,
+      `[borgee-plugin] SSE disconnected (${result.reason}); reconnecting in ${delay}ms`,
     );
     try {
       await sleepAbortable(delay, signal);
