@@ -43,8 +43,8 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
           script: |
-            mkdir -p /opt/dockers/collab-test
-            cat > /opt/dockers/collab-test/docker-compose.yml << 'COMPEOF'
+            mkdir -p /opt/dockers/borgee-test
+            cat > /opt/dockers/borgee-test/docker-compose.yml << 'COMPEOF'
             services:
               borgee-test:
                 image: cr.codetrek.work/default/borgee:test
@@ -67,7 +67,7 @@ jobs:
             volumes:
               borgee-test-data:
             COMPEOF
-            cd /opt/dockers/collab-test
+            cd /opt/dockers/borgee-test
             docker compose pull
             docker compose up -d
             sleep 5

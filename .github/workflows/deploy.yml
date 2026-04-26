@@ -63,8 +63,8 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
           script: |
-            mkdir -p /opt/dockers/collab-staging
-            cat > /opt/dockers/collab-staging/docker-compose.yml << 'COMPEOF'
+            mkdir -p /opt/dockers/borgee-staging
+            cat > /opt/dockers/borgee-staging/docker-compose.yml << 'COMPEOF'
             services:
               borgee-staging:
                 image: ${{ env.REGISTRY }}/${{ env.IMAGE }}:staging
@@ -89,7 +89,7 @@ jobs:
             volumes:
               borgee-staging-data:
             COMPEOF
-            cd /opt/dockers/collab-staging
+            cd /opt/dockers/borgee-staging
             docker compose pull
             docker compose up -d
             sleep 5
@@ -120,8 +120,8 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
           script: |
-            mkdir -p /opt/dockers/collab
-            cat > /opt/dockers/collab/docker-compose.yml << 'COMPEOF'
+            mkdir -p /opt/dockers/borgee
+            cat > /opt/dockers/borgee/docker-compose.yml << 'COMPEOF'
             services:
               borgee:
                 image: ${{ env.REGISTRY }}/${{ env.IMAGE }}:prod
@@ -146,7 +146,7 @@ jobs:
             volumes:
               borgee-data:
             COMPEOF
-            cd /opt/dockers/collab
+            cd /opt/dockers/borgee
             docker compose pull
             docker compose up -d
             sleep 5
