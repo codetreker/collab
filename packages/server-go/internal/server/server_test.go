@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,9 +10,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"borgee-server/internal/config"
 	"borgee-server/internal/store"
+	"borgee-server/internal/ws"
+
+	"github.com/gorilla/websocket"
 )
 
 type flushResponseRecorder struct {
@@ -135,6 +140,26 @@ func TestCORSHeaders(t *testing.T) {
 	}
 }
 
+func TestCORSProductionAllowedOrigin(t *testing.T) {
+	nextCalled := false
+	handler := corsMiddleware(false, "https://app.example", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusAccepted)
+	}))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://app.example")
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted || !nextCalled {
+		t.Fatalf("expected next handler status 202, got %d next=%v", rec.Code, nextCalled)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://app.example" {
+		t.Fatalf("expected allowed origin header, got %q", got)
+	}
+}
+
 func TestSecurityHeaders(t *testing.T) {
 	srv, _ := testServer(t)
 	ts := httptest.NewServer(srv.Handler())
@@ -193,6 +218,16 @@ func TestReadJSON_Invalid(t *testing.T) {
 	}
 }
 
+func TestReadJSON_TooLarge(t *testing.T) {
+	body := strings.NewReader(`{"payload":"` + strings.Repeat("x", 1<<20) + `"}`)
+	req := httptest.NewRequest("POST", "/", body)
+	var dst map[string]string
+	err := ReadJSON(req, &dst)
+	if err == nil || !strings.Contains(err.Error(), "too large") {
+		t.Fatalf("expected too large error, got %v", err)
+	}
+}
+
 func TestParseIDParam(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	id := ParseIDParam(req, "id")
@@ -215,6 +250,29 @@ func TestRequestIDMiddleware(t *testing.T) {
 	reqID := resp.Header.Get("X-Request-Id")
 	if reqID == "" {
 		t.Fatal("expected X-Request-Id header")
+	}
+}
+
+func TestRequestIDFromContextMissing(t *testing.T) {
+	if got := RequestIDFromContext(context.Background()); got != "" {
+		t.Fatalf("expected empty request id, got %q", got)
+	}
+}
+
+func TestRecoverMiddlewareWritesErrorOnPanic(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	handler := recoverMiddleware(logger, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("boom")
+	}))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest("GET", "/panic", nil))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Internal server error") {
+		t.Fatalf("expected error body, got %q", rec.Body.String())
 	}
 }
 
@@ -246,6 +304,160 @@ func TestRateLimiter(t *testing.T) {
 	}
 }
 
+func TestRateLimiterUsesAuthBucket(t *testing.T) {
+	rl := newRateLimiter()
+	rl.authRate = 0
+	rl.authMax = 1
+	rl.apiMax = 0
+	ip := "198.51.100.12"
+
+	if !rl.allow(ip, true) {
+		t.Fatal("expected first auth request to be allowed")
+	}
+	if rl.allow(ip, true) {
+		t.Fatal("expected exhausted auth bucket to reject request")
+	}
+}
+
+func TestRateLimitMiddlewareRejectsExhaustedClient(t *testing.T) {
+	rl := newRateLimiter()
+	rl.apiRate = 0
+	rl.apiMax = 1
+
+	nextCalls := 0
+	handler := rateLimitMiddleware(rl, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextCalls++
+		w.WriteHeader(http.StatusAccepted)
+	}))
+
+	req := httptest.NewRequest("GET", "/api/v1/channels", nil)
+	req.RemoteAddr = "203.0.113.9:1234"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected first request accepted, got %d", rec.Code)
+	}
+
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected rate limited response, got %d", rec.Code)
+	}
+	if nextCalls != 1 {
+		t.Fatalf("expected next called once, got %d", nextCalls)
+	}
+}
+
+func TestClientIPSources(t *testing.T) {
+	tests := []struct {
+		name   string
+		setup  func(*http.Request)
+		remote string
+		want   string
+	}{
+		{
+			name: "forwarded for trims first hop",
+			setup: func(r *http.Request) {
+				r.Header.Set("X-Forwarded-For", " 198.51.100.7, 198.51.100.8")
+			},
+			remote: "10.0.0.1:1111",
+			want:   "198.51.100.7",
+		},
+		{
+			name: "real ip",
+			setup: func(r *http.Request) {
+				r.Header.Set("X-Real-IP", "198.51.100.9")
+			},
+			remote: "10.0.0.1:1111",
+			want:   "198.51.100.9",
+		},
+		{
+			name:   "remote without port",
+			setup:  func(r *http.Request) {},
+			remote: "198.51.100.10",
+			want:   "198.51.100.10",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/", nil)
+			req.RemoteAddr = tt.remote
+			tt.setup(req)
+			if got := clientIP(req); got != tt.want {
+				t.Fatalf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestRateLimiterRefills(t *testing.T) {
+	rl := newRateLimiter()
+	rl.apiRate = 10
+	rl.apiMax = 2
+	ip := "198.51.100.11"
+
+	if !rl.allow(ip, false) || !rl.allow(ip, false) {
+		t.Fatal("expected initial tokens to allow requests")
+	}
+	if rl.allow(ip, false) {
+		t.Fatal("expected exhausted bucket to reject request")
+	}
+
+	key := ip + ":false"
+	rl.mu.Lock()
+	rl.clients[key].lastTime = time.Now().Add(-time.Second)
+	rl.mu.Unlock()
+	if !rl.allow(ip, false) {
+		t.Fatal("expected elapsed time to refill bucket")
+	}
+}
+
+func TestHandleStaticNotFoundBranches(t *testing.T) {
+	srv, _ := testServer(t)
+
+	for _, path := range []string{"/ws/missing", "/missing.js", "/nested-route"} {
+		t.Run(path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			srv.handleStatic(rec, httptest.NewRequest("GET", path, nil))
+			if rec.Code != http.StatusNotFound {
+				t.Fatalf("expected 404, got %d", rec.Code)
+			}
+		})
+	}
+}
+
+func TestProtectedMessageRouteResolvesChannelScope(t *testing.T) {
+	srv, s := testServer(t)
+	srv.cfg.DevAuthBypass = true
+
+	user := &store.User{DisplayName: "Scoped Sender", Role: "member"}
+	if err := s.CreateUser(user); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if err := s.GrantDefaultPermissions(user.ID, "member"); err != nil {
+		t.Fatalf("grant permissions: %v", err)
+	}
+
+	ch := &store.Channel{Name: "scoped", Visibility: "public", CreatedBy: user.ID, Type: "channel", Position: store.GenerateInitialRank()}
+	if err := s.CreateChannel(ch); err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	if err := s.AddChannelMember(&store.ChannelMember{ChannelID: ch.ID, UserID: user.ID}); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/channels/"+ch.ID+"/messages", strings.NewReader(`{"content":"scoped hello"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Dev-User-Id", user.ID)
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected message creation through protected route, got %d body %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestHub(t *testing.T) {
 	srv, _ := testServer(t)
 	if srv.Hub() == nil {
@@ -256,12 +468,18 @@ func TestHub(t *testing.T) {
 func TestAdapters(t *testing.T) {
 	srv, _ := testServer(t)
 	hub := srv.Hub()
+	hub.CommandStore().Register("conn-1", "agent-1", "Agent One", []ws.AgentCommand{
+		{Name: "deploy", Description: "Deploy service", Usage: "/deploy <service>"},
+	})
 
 	// hubCommandAdapter
 	ca := &hubCommandAdapter{hub: hub}
 	cmds := ca.GetAllCommands()
-	if cmds == nil {
-		t.Fatal("expected non-nil commands")
+	if len(cmds) != 1 || cmds[0].AgentID != "agent-1" || len(cmds[0].Commands) != 1 {
+		t.Fatalf("unexpected commands: %#v", cmds)
+	}
+	if cmds[0].Commands[0].Name != "deploy" || cmds[0].Commands[0].Usage == "" {
+		t.Fatalf("unexpected command mapping: %#v", cmds[0].Commands[0])
 	}
 
 	// hubRemoteAdapter
@@ -286,6 +504,64 @@ func TestAdapters(t *testing.T) {
 	_, _, err = pa.ProxyPluginRequest("nonexistent", "read_file", "/test", nil)
 	if err == nil {
 		t.Fatal("expected error for disconnected plugin")
+	}
+}
+
+func TestHubPluginAdapterProxySuccess(t *testing.T) {
+	srv, s := testServer(t)
+	apiKey := "bgr_plugin_proxy_success"
+	agent := &store.User{DisplayName: "Proxy Bot", Role: "agent", APIKey: &apiKey}
+	if err := s.CreateUser(agent); err != nil {
+		t.Fatalf("create agent: %v", err)
+	}
+
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/ws/plugin?apiKey=" + apiKey
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial plugin ws: %v", err)
+	}
+	defer conn.Close()
+
+	type proxyResult struct {
+		status int
+		body   []byte
+		err    error
+	}
+	done := make(chan proxyResult, 1)
+	adapter := &hubPluginAdapter{hub: srv.Hub()}
+	go func() {
+		status, body, err := adapter.ProxyPluginRequest(agent.ID, http.MethodGet, "/files", nil)
+		done <- proxyResult{status: status, body: body, err: err}
+	}()
+
+	var req map[string]any
+	if err := conn.ReadJSON(&req); err != nil {
+		t.Fatalf("read proxy request: %v", err)
+	}
+	if req["type"] != "request" || req["id"] == "" {
+		t.Fatalf("unexpected proxy request: %v", req)
+	}
+	if err := conn.WriteJSON(map[string]any{
+		"type": "response",
+		"id":   req["id"],
+		"data": map[string]any{"ok": true},
+	}); err != nil {
+		t.Fatalf("write proxy response: %v", err)
+	}
+
+	select {
+	case result := <-done:
+		if result.err != nil {
+			t.Fatalf("proxy request failed: %v", result.err)
+		}
+		if result.status != http.StatusOK || !strings.Contains(string(result.body), "ok") {
+			t.Fatalf("unexpected proxy result status=%d body=%s", result.status, result.body)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for proxy result")
 	}
 }
 

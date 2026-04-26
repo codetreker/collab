@@ -1,18 +1,23 @@
 package testutil
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	"borgee-server/internal/config"
 	"borgee-server/internal/server"
 	"borgee-server/internal/store"
 
+	"github.com/gorilla/websocket"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -136,6 +141,7 @@ func JSON(t *testing.T, method, url, token string, body any) (*http.Response, ma
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -165,6 +171,54 @@ func CreateChannel(t *testing.T, serverURL, token, name, visibility string) map[
 	return ch
 }
 
+func GetGeneralChannelID(t *testing.T, serverURL, token string) string {
+	t.Helper()
+	resp, data := JSON(t, http.MethodGet, serverURL+"/api/v1/channels", token, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list channels: status %d, body %v", resp.StatusCode, data)
+	}
+	channels, ok := data["channels"].([]any)
+	if !ok {
+		t.Fatalf("expected channels array, got %v", data)
+	}
+	for _, raw := range channels {
+		ch, ok := raw.(map[string]any)
+		if ok && ch["name"] == "general" {
+			id, ok := ch["id"].(string)
+			if !ok || id == "" {
+				t.Fatalf("expected non-empty general channel id in %v", ch)
+			}
+			return id
+		}
+	}
+	t.Fatal("general channel not found")
+	return ""
+}
+
+func GetUserIDByName(t *testing.T, serverURL, token, displayName string) string {
+	t.Helper()
+	resp, data := JSON(t, http.MethodGet, serverURL+"/api/v1/users", token, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list users: status %d, body %v", resp.StatusCode, data)
+	}
+	users, ok := data["users"].([]any)
+	if !ok {
+		t.Fatalf("expected users array, got %v", data)
+	}
+	for _, raw := range users {
+		u, ok := raw.(map[string]any)
+		if ok && u["display_name"] == displayName {
+			id, ok := u["id"].(string)
+			if !ok || id == "" {
+				t.Fatalf("expected non-empty user id in %v", u)
+			}
+			return id
+		}
+	}
+	t.Fatalf("user %q not found", displayName)
+	return ""
+}
+
 func PostMessage(t *testing.T, serverURL, token, channelID, content string) map[string]any {
 	t.Helper()
 	resp, data := JSON(t, "POST", serverURL+"/api/v1/channels/"+channelID+"/messages", token, map[string]string{
@@ -175,4 +229,161 @@ func PostMessage(t *testing.T, serverURL, token, channelID, content string) map[
 	}
 	msg, _ := data["message"].(map[string]any)
 	return msg
+}
+
+func DialWS(t *testing.T, serverURL, path, token string) *websocket.Conn {
+	t.Helper()
+	if path == "" {
+		path = "/ws"
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
+	wsURL := "ws" + strings.TrimPrefix(serverURL, "http") + path
+	header := http.Header{}
+	if token != "" {
+		header.Set("Cookie", "borgee_token="+url.QueryEscape(token))
+		header.Set("Authorization", "Bearer "+token)
+	}
+
+	dialer := websocket.Dialer{HandshakeTimeout: 5 * time.Second}
+	conn, _, err := dialer.Dial(wsURL, header)
+	if err != nil {
+		t.Fatalf("ws dial %s: %v", path, err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	return conn
+}
+
+func WSWriteJSON(t *testing.T, conn *websocket.Conn, v any) {
+	t.Helper()
+	if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatalf("ws set write deadline: %v", err)
+	}
+	if err := conn.WriteJSON(v); err != nil {
+		t.Fatalf("ws write json: %v", err)
+	}
+}
+
+func WSReadJSON(t *testing.T, conn *websocket.Conn) map[string]any {
+	t.Helper()
+	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatalf("ws set read deadline: %v", err)
+	}
+	var msg map[string]any
+	if err := conn.ReadJSON(&msg); err != nil {
+		t.Fatalf("ws read json: %v", err)
+	}
+	return msg
+}
+
+func WSReadUntil(t *testing.T, conn *websocket.Conn, eventType string) map[string]any {
+	t.Helper()
+	for {
+		msg := WSReadJSON(t, conn)
+		if msg["type"] == eventType {
+			return msg
+		}
+	}
+}
+
+type SSEEvent struct {
+	Event string
+	ID    string
+	Data  string
+}
+
+type SSEClient struct {
+	resp    *http.Response
+	scanner *bufio.Scanner
+}
+
+func DialSSE(t *testing.T, serverURL, token string) *SSEClient {
+	return DialSSEWithLastEventID(t, serverURL, token, "")
+}
+
+func DialSSEWithLastEventID(t *testing.T, serverURL, token, lastID string) *SSEClient {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, serverURL+"/api/v1/stream", nil)
+	if err != nil {
+		t.Fatalf("new sse request: %v", err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	if lastID != "" {
+		req.Header.Set("Last-Event-ID", lastID)
+	}
+	if token != "" {
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("sse connect: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		t.Fatalf("sse connect status %d: %s", resp.StatusCode, b)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	client := &SSEClient{resp: resp, scanner: scanner}
+	t.Cleanup(client.Close)
+	return client
+}
+
+func (c *SSEClient) Close() {
+	if c != nil && c.resp != nil && c.resp.Body != nil {
+		c.resp.Body.Close()
+	}
+}
+
+func (c *SSEClient) ReadEvent(t *testing.T) SSEEvent {
+	t.Helper()
+	event := SSEEvent{}
+	for c.scanner.Scan() {
+		line := c.scanner.Text()
+		if line == "" {
+			if event.Event != "" || event.ID != "" || event.Data != "" {
+				return event
+			}
+			continue
+		}
+		if strings.HasPrefix(line, ":") {
+			continue
+		}
+		if v, ok := strings.CutPrefix(line, "event: "); ok {
+			event.Event = v
+			continue
+		}
+		if v, ok := strings.CutPrefix(line, "id: "); ok {
+			event.ID = v
+			continue
+		}
+		if v, ok := strings.CutPrefix(line, "data: "); ok {
+			if event.Data != "" {
+				event.Data += "\n"
+			}
+			event.Data += v
+		}
+	}
+	if err := c.scanner.Err(); err != nil {
+		t.Fatalf("sse read: %v", err)
+	}
+	t.Fatal("sse stream ended")
+	return SSEEvent{}
+}
+
+func CreateAgent(t *testing.T, serverURL, token, displayName string) map[string]any {
+	t.Helper()
+	resp, data := JSON(t, http.MethodPost, serverURL+"/api/v1/agents", token, map[string]any{
+		"display_name": displayName,
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create agent %q: status %d, body %v", displayName, resp.StatusCode, data)
+	}
+	agent, _ := data["agent"].(map[string]any)
+	return agent
 }
