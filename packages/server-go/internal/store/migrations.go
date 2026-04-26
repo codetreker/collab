@@ -12,6 +12,9 @@ import (
 )
 
 func (s *Store) Migrate() error {
+	// Disable FK constraints during migration to avoid issues with table recreation
+	s.db.Exec("PRAGMA foreign_keys = OFF")
+
 	if err := s.db.AutoMigrate(
 		&User{},
 		&ChannelGroup{},
@@ -27,8 +30,12 @@ func (s *Store) Migrate() error {
 		&RemoteNode{},
 		&RemoteBinding{},
 	); err != nil {
+		s.db.Exec("PRAGMA foreign_keys = ON")
 		return fmt.Errorf("auto migrate: %w", err)
 	}
+
+	// Re-enable FK constraints after migration
+	s.db.Exec("PRAGMA foreign_keys = ON")
 
 	if err := s.seedBootstrapAdmin(); err != nil {
 		return fmt.Errorf("seed admin: %w", err)
