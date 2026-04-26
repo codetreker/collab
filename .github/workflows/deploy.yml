@@ -23,10 +23,12 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter @borgee/server --filter @borgee/client --filter borgee
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/server-go/go.mod
+      - run: pnpm install --frozen-lockfile --filter @borgee/client --filter borgee
       - run: pnpm --filter @borgee/client build
-      - run: pnpm --filter @borgee/server build
-      - run: cd packages/server && npx vitest run --coverage
+      - run: cd packages/server-go && go test ./...
 
   deploy-staging:
     needs: test
@@ -43,25 +45,10 @@ jobs:
       - name: Login to Harbor
         run: echo '${{ secrets.HARBOR_API_TOKEN }}' | docker login ${{ env.REGISTRY }} -u '${{ env.HARBOR_USER }}' --password-stdin
 
-      - name: Build base image if needed
-        id: base
-        run: |
-          BASE_HASH=$(cat Dockerfile.base pnpm-lock.yaml | sha256sum | cut -c1-8)
-          echo "base_hash=$BASE_HASH" >> "$GITHUB_OUTPUT"
-          if docker pull ${{ env.REGISTRY }}/default/borgee-base:${BASE_HASH} 2>/dev/null; then
-            echo "✅ Base image exists, skipping build"
-          else
-            echo "🔨 Building base image..."
-            docker build -f Dockerfile.base \
-              -t ${{ env.REGISTRY }}/default/borgee-base:${BASE_HASH} .
-            docker push ${{ env.REGISTRY }}/default/borgee-base:${BASE_HASH}
-          fi
-          docker tag ${{ env.REGISTRY }}/default/borgee-base:${BASE_HASH} borgee-base:${BASE_HASH}
-
-      - name: Build and push
+      - name: Build and push (Go server)
         run: |
           docker build \
-            --build-arg BASE_TAG=${{ steps.base.outputs.base_hash }} \
+            -f packages/server-go/Dockerfile \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.tag.outputs.build_tag }} \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE }}:staging \
             .
@@ -76,7 +63,33 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
           script: |
-            cd /opt/dockers/collab-staging
+            mkdir -p /opt/dockers/borgee-staging
+            cat > /opt/dockers/borgee-staging/docker-compose.yml << 'COMPEOF'
+            services:
+              borgee-staging:
+                image: ${{ env.REGISTRY }}/${{ env.IMAGE }}:staging
+                container_name: borgee-staging
+                restart: unless-stopped
+                user: "0:0"
+                ports:
+                  - "4901:4900"
+                volumes:
+                  - borgee-staging-data:/app/data
+                environment:
+                  - HOST=0.0.0.0
+                  - PORT=4900
+                  - NODE_ENV=production
+                  - DATABASE_PATH=/app/data/collab.db
+                  - UPLOAD_DIR=/app/data/uploads
+                  - WORKSPACE_DIR=/app/data/workspaces
+                  - CLIENT_DIST=/app/client/dist
+                  - JWT_SECRET=${{ secrets.JWT_SECRET }}
+                  - ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+                  - ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            volumes:
+              borgee-staging-data:
+            COMPEOF
+            cd /opt/dockers/borgee-staging
             docker compose pull
             docker compose up -d
             sleep 5
@@ -107,7 +120,33 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
           script: |
-            cd /opt/dockers/collab
+            mkdir -p /opt/dockers/borgee
+            cat > /opt/dockers/borgee/docker-compose.yml << 'COMPEOF'
+            services:
+              borgee:
+                image: ${{ env.REGISTRY }}/${{ env.IMAGE }}:prod
+                container_name: borgee
+                restart: unless-stopped
+                user: "0:0"
+                ports:
+                  - "4900:4900"
+                volumes:
+                  - borgee-data:/app/data
+                environment:
+                  - HOST=0.0.0.0
+                  - PORT=4900
+                  - NODE_ENV=production
+                  - DATABASE_PATH=/app/data/collab.db
+                  - UPLOAD_DIR=/app/data/uploads
+                  - WORKSPACE_DIR=/app/data/workspaces
+                  - CLIENT_DIST=/app/client/dist
+                  - JWT_SECRET=${{ secrets.JWT_SECRET }}
+                  - ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+                  - ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            volumes:
+              borgee-data:
+            COMPEOF
+            cd /opt/dockers/borgee
             docker compose pull
             docker compose up -d
             sleep 5
