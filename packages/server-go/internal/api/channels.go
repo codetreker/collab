@@ -631,6 +631,12 @@ func (h *ChannelHandler) handleDeleteChannel(w http.ResponseWriter, r *http.Requ
 	channelID := r.PathValue("channelId")
 	ch, err := h.Store.GetChannelByID(channelID)
 	if err != nil {
+		// Check if channel exists but is already deleted — idempotent 204
+		chDeleted, errD := h.Store.GetChannelIncludingDeleted(channelID)
+		if errD == nil && chDeleted != nil && chDeleted.DeletedAt != nil {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		writeJSONError(w,http.StatusNotFound, "Channel not found")
 		return
 	}
