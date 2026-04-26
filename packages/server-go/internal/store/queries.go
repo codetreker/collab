@@ -754,7 +754,35 @@ func (s *Store) UpdateChannel(id string, updates map[string]any) error {
 
 func (s *Store) SoftDeleteChannel(id string) error {
 	now := time.Now().UnixMilli()
-	return s.db.Model(&Channel{}).Where("id = ?", id).Update("deleted_at", now).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&Channel{}).Where("id = ?", id).Update("deleted_at", now).Error; err != nil {
+			return err
+		}
+
+		var messages []Message
+		if err := tx.Select("id").Where("channel_id = ?", id).Find(&messages).Error; err != nil {
+			return err
+		}
+		messageIDs := make([]string, 0, len(messages))
+		for _, msg := range messages {
+			messageIDs = append(messageIDs, msg.ID)
+		}
+		if len(messageIDs) > 0 {
+			if err := tx.Model(&Message{}).Where("id IN ? AND deleted_at IS NULL", messageIDs).Update("deleted_at", now).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("message_id IN ?", messageIDs).Delete(&MessageReaction{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("message_id IN ?", messageIDs).Delete(&Mention{}).Error; err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("channel_id = ?", id).Delete(&ChannelMember{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *Store) MarkChannelRead(channelID, userID string) error {
@@ -1004,14 +1032,14 @@ func (s *Store) CreateDmChannel(userID1, userID2 string) (*Channel, error) {
 
 func (s *Store) ListDmChannelsForUser(userID string) ([]DmChannelInfo, error) {
 	type rawRow struct {
-		ID             string `gorm:"column:id"`
-		Name           string `gorm:"column:name"`
-		CreatedAt      int64  `gorm:"column:created_at"`
-		PeerID         string `gorm:"column:peer_id"`
-		PeerName       string `gorm:"column:peer_name"`
-		PeerAvatar     string `gorm:"column:peer_avatar"`
-		PeerRole       string `gorm:"column:peer_role"`
-		UnreadCount    int    `gorm:"column:unread_count"`
+		ID             string  `gorm:"column:id"`
+		Name           string  `gorm:"column:name"`
+		CreatedAt      int64   `gorm:"column:created_at"`
+		PeerID         string  `gorm:"column:peer_id"`
+		PeerName       string  `gorm:"column:peer_name"`
+		PeerAvatar     string  `gorm:"column:peer_avatar"`
+		PeerRole       string  `gorm:"column:peer_role"`
+		UnreadCount    int     `gorm:"column:unread_count"`
 		LastMsgContent *string `gorm:"column:last_msg_content"`
 		LastMsgAt      *int64  `gorm:"column:last_msg_at"`
 		LastMsgSender  *string `gorm:"column:last_msg_sender"`
