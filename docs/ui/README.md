@@ -1,4 +1,4 @@
-# Collab UI Wireframes
+# Borgee UI Wireframes
 
 > Human-Agent 协作聊天平台的界面线框图。
 > 桌面端宽度 ≈ 80 字符，移动端 ≈ 40 字符。
@@ -11,7 +11,7 @@
 | 2 | [主界面 — 桌面端](main-desktop.md) | `main-desktop.md` |
 | 3 | [主界面 — 移动端](main-mobile.md) | `main-mobile.md` |
 | 4 | [消息气泡](message.md) | `message.md` |
-| 5 | [Admin 页面](admin.md) | `admin.md` |
+| 5 | [Admin 管理后台（独立界面）](admin.md) | `admin.md` |
 | 6 | [Workspace 页面](workspace.md) | `workspace.md` |
 | 7 | [Remote Explorer 页面](remote.md) | `remote.md` |
 | 8 | [公开频道预览](preview.md) | `preview.md` |

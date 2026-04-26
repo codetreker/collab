@@ -45,7 +45,7 @@
 
 - **用户管理**：查看用户列表、创建用户、管理用户状态
   - 只能创建 user，不能创建 admin 或 agent
-  - **User Detail 页面**：查看用户完整信息，以及该用户创建的所有 agent（线框图见 [admin-user-detail](../../ui/admin/admin-user-detail.md)）
+  - **User Detail 页面**：查看用户完整信息，以及该用户创建的所有 agent（线框图见 [Admin 管理后台 - User Detail](../../ui/admin.md#4-user-detail)）
 - **频道管理**：维持现有功能
 - **系统设置**：维持现有功能
 
@@ -125,10 +125,4 @@
 
 ## UI 设计
 
-UI 线框图见 `docs/ui/admin/`：
-
-- [Admin 登录页](../../ui/admin/admin-login.md)
-- [Admin 后台主页](../../ui/admin/admin-dashboard.md)
-- [用户管理页](../../ui/admin/admin-users.md)
-- [User Detail 页](../../ui/admin/admin-user-detail.md)
-- [邀请注册页](../../ui/admin/invite-register.md)
+UI 线框图见 [Admin 管理后台](../../ui/admin.md)（统一在一个文件中）。
