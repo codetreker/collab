@@ -171,6 +171,54 @@ func CreateChannel(t *testing.T, serverURL, token, name, visibility string) map[
 	return ch
 }
 
+func GetGeneralChannelID(t *testing.T, serverURL, token string) string {
+	t.Helper()
+	resp, data := JSON(t, http.MethodGet, serverURL+"/api/v1/channels", token, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list channels: status %d, body %v", resp.StatusCode, data)
+	}
+	channels, ok := data["channels"].([]any)
+	if !ok {
+		t.Fatalf("expected channels array, got %v", data)
+	}
+	for _, raw := range channels {
+		ch, ok := raw.(map[string]any)
+		if ok && ch["name"] == "general" {
+			id, ok := ch["id"].(string)
+			if !ok || id == "" {
+				t.Fatalf("expected non-empty general channel id in %v", ch)
+			}
+			return id
+		}
+	}
+	t.Fatal("general channel not found")
+	return ""
+}
+
+func GetUserIDByName(t *testing.T, serverURL, token, displayName string) string {
+	t.Helper()
+	resp, data := JSON(t, http.MethodGet, serverURL+"/api/v1/users", token, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list users: status %d, body %v", resp.StatusCode, data)
+	}
+	users, ok := data["users"].([]any)
+	if !ok {
+		t.Fatalf("expected users array, got %v", data)
+	}
+	for _, raw := range users {
+		u, ok := raw.(map[string]any)
+		if ok && u["display_name"] == displayName {
+			id, ok := u["id"].(string)
+			if !ok || id == "" {
+				t.Fatalf("expected non-empty user id in %v", u)
+			}
+			return id
+		}
+	}
+	t.Fatalf("user %q not found", displayName)
+	return ""
+}
+
 func PostMessage(t *testing.T, serverURL, token, channelID, content string) map[string]any {
 	t.Helper()
 	resp, data := JSON(t, "POST", serverURL+"/api/v1/channels/"+channelID+"/messages", token, map[string]string{
@@ -252,12 +300,19 @@ type SSEClient struct {
 }
 
 func DialSSE(t *testing.T, serverURL, token string) *SSEClient {
+	return DialSSEWithLastEventID(t, serverURL, token, "")
+}
+
+func DialSSEWithLastEventID(t *testing.T, serverURL, token, lastID string) *SSEClient {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, serverURL+"/api/v1/stream", nil)
 	if err != nil {
 		t.Fatalf("new sse request: %v", err)
 	}
 	req.Header.Set("Accept", "text/event-stream")
+	if lastID != "" {
+		req.Header.Set("Last-Event-ID", lastID)
+	}
 	if token != "" {
 		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
 		req.Header.Set("Authorization", "Bearer "+token)

@@ -10,7 +10,7 @@ import (
 func TestP0APIKeyAuthScenarios(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
-	channelID := getGeneralChannelID(t, ts.URL, adminToken)
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)
 
 	agent := testutil.CreateAgent(t, ts.URL, adminToken, "API Key Bot")
 	agentID := stringField(t, agent, "id")

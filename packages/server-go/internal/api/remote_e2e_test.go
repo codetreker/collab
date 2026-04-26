@@ -11,7 +11,7 @@ import (
 func TestP1RemoteNodeBasics(t *testing.T) {
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
-	channelID := getGeneralChannelID(t, ts.URL, token)
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, token)
 
 	resp, data := testutil.JSON(t, http.MethodPost, ts.URL+"/api/v1/remote/nodes", token, map[string]string{"machine_name": "ci-node"})
 	requireStatus(t, resp, http.StatusCreated, data)

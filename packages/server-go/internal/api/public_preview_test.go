@@ -10,12 +10,16 @@ import (
 func TestP1PublicPreview(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
-	memberID := getUserIDByName(t, ts.URL, adminToken, "Member")
-	publicID := getGeneralChannelID(t, ts.URL, adminToken)
+	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
+	memberID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Member")
+	publicID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)
 
 	testutil.PostMessage(t, ts.URL, adminToken, publicID, "public preview visible")
 
 	resp, data := testutil.JSON(t, http.MethodGet, ts.URL+"/api/v1/channels/"+publicID+"/preview", "", nil)
+	requireStatus(t, resp, http.StatusUnauthorized, data)
+
+	resp, data = testutil.JSON(t, http.MethodGet, ts.URL+"/api/v1/channels/"+publicID+"/preview", memberToken, nil)
 	requireStatus(t, resp, http.StatusOK, data)
 	if data["channel"].(map[string]any)["id"] != publicID {
 		t.Fatalf("preview returned wrong channel: %v", data)
@@ -30,6 +34,6 @@ func TestP1PublicPreview(t *testing.T) {
 	requireStatus(t, resp, http.StatusOK, data)
 	testutil.PostMessage(t, ts.URL, adminToken, privateID, "private preview hidden")
 
-	resp, data = testutil.JSON(t, http.MethodGet, ts.URL+"/api/v1/channels/"+privateID+"/preview", "", nil)
+	resp, data = testutil.JSON(t, http.MethodGet, ts.URL+"/api/v1/channels/"+privateID+"/preview", memberToken, nil)
 	requireStatus(t, resp, http.StatusNotFound, data)
 }

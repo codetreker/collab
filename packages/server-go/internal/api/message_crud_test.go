@@ -12,8 +12,8 @@ func TestP0MessageCRUD(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
-	channelID := getGeneralChannelID(t, ts.URL, adminToken)
-	memberID := getUserIDByName(t, ts.URL, adminToken, "Member")
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)
+	memberID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Member")
 
 	root := testutil.PostMessage(t, ts.URL, adminToken, channelID, "root searchable message")
 	rootID := stringField(t, root, "id")

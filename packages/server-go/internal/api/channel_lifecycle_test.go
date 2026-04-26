@@ -24,39 +24,6 @@ func stringField(t *testing.T, m map[string]any, key string) string {
 	return v
 }
 
-func getUserIDByName(t *testing.T, serverURL, token, displayName string) string {
-	t.Helper()
-	resp, data := testutil.JSON(t, http.MethodGet, serverURL+"/api/v1/users", token, nil)
-	requireStatus(t, resp, http.StatusOK, data)
-	users, ok := data["users"].([]any)
-	if !ok {
-		t.Fatalf("expected users array, got %v", data)
-	}
-	for _, raw := range users {
-		u := raw.(map[string]any)
-		if u["display_name"] == displayName {
-			return stringField(t, u, "id")
-		}
-	}
-	t.Fatalf("user %q not found", displayName)
-	return ""
-}
-
-func getGeneralChannelID(t *testing.T, serverURL, token string) string {
-	t.Helper()
-	resp, data := testutil.JSON(t, http.MethodGet, serverURL+"/api/v1/channels", token, nil)
-	requireStatus(t, resp, http.StatusOK, data)
-	channels := data["channels"].([]any)
-	for _, raw := range channels {
-		ch := raw.(map[string]any)
-		if ch["name"] == "general" {
-			return stringField(t, ch, "id")
-		}
-	}
-	t.Fatal("general channel not found")
-	return ""
-}
-
 func containsObjectWithID(items []any, id string) bool {
 	for _, raw := range items {
 		m, ok := raw.(map[string]any)

@@ -12,8 +12,8 @@ func TestP0UserDeleteCascadesAgentsAndData(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
-	memberID := getUserIDByName(t, ts.URL, adminToken, "Member")
-	generalID := getGeneralChannelID(t, ts.URL, adminToken)
+	memberID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Member")
+	generalID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)
 
 	agent := testutil.CreateAgent(t, ts.URL, memberToken, "Owned Cascade Bot")
 	agentID := stringField(t, agent, "id")

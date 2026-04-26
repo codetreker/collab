@@ -11,7 +11,7 @@ import (
 func TestP1WorkspaceFullFlow(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
-	channelID := getGeneralChannelID(t, ts.URL, token)
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, token)
 
 	status, uploadData := uploadWorkspaceFile(t, ts.URL, token, channelID, "notes.txt", "draft")
 	if status != http.StatusCreated {

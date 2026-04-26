@@ -13,8 +13,8 @@ func TestP2ConcurrentHumanAgentMessages(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
-	memberID := getUserIDByName(t, ts.URL, adminToken, "Member")
-	channelID := getGeneralChannelID(t, ts.URL, adminToken)
+	memberID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Member")
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)
 
 	agent := testutil.CreateAgent(t, ts.URL, memberToken, "P2 Relay Bot")
 	agentKey := stringField(t, agent, "api_key")

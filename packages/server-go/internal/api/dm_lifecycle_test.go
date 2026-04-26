@@ -11,8 +11,8 @@ func TestP0DMLifecycle(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
-	adminID := getUserIDByName(t, ts.URL, adminToken, "Admin")
-	memberID := getUserIDByName(t, ts.URL, adminToken, "Member")
+	adminID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Admin")
+	memberID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Member")
 
 	resp, data := testutil.JSON(t, http.MethodPost, ts.URL+"/api/v1/dm/"+adminID, adminToken, nil)
 	requireStatus(t, resp, http.StatusBadRequest, data)

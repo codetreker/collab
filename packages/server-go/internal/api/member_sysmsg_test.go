@@ -12,7 +12,7 @@ func TestP2MemberChangeSystemMessages(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
-	memberID := getUserIDByName(t, ts.URL, adminToken, "Member")
+	memberID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Member")
 
 	ch := testutil.CreateChannel(t, ts.URL, adminToken, "P2 Member Changes", "private")
 	channelID := stringField(t, ch, "id")

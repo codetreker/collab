@@ -10,7 +10,7 @@ import (
 func TestP1SlashCommandsE2E(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
-	channelID := getGeneralIDForTokenRotation(t, ts.URL, adminToken)
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)
 
 	resp, data := testutil.JSON(t, http.MethodPost, ts.URL+"/api/v1/agents", adminToken, map[string]any{
 		"display_name": "Deploy Bot",

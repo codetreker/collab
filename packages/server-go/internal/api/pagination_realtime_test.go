@@ -12,7 +12,7 @@ import (
 func TestP1PaginationPlusRealtimePush(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
-	channelID := getGeneralChannelID(t, ts.URL, token)
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, token)
 
 	var firstCreatedAt int64
 	for i := 0; i < 5; i++ {

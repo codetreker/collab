@@ -11,7 +11,7 @@ func TestP0ReactionE2EWithWebSocketPush(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
-	channelID := getGeneralChannelID(t, ts.URL, adminToken)
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)
 
 	msg := testutil.PostMessage(t, ts.URL, adminToken, channelID, "react in real time")
 	messageID := stringField(t, msg, "id")

@@ -10,7 +10,7 @@ import (
 func TestP0TokenRotationKeepsWebSocketAlive(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	firstToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
-	channelID := getGeneralIDForTokenRotation(t, ts.URL, firstToken)
+	channelID := testutil.GetGeneralChannelID(t, ts.URL, firstToken)
 
 	conn := testutil.DialWS(t, ts.URL, "/ws", firstToken)
 	testutil.WSWriteJSON(t, conn, map[string]string{"type": "subscribe", "channel_id": channelID})
@@ -36,17 +36,4 @@ func TestP0TokenRotationKeepsWebSocketAlive(t *testing.T) {
 	if !ok || pushData["message"] == nil {
 		t.Fatalf("expected existing websocket to receive message after rotation, got %v", push)
 	}
-}
-
-func getGeneralIDForTokenRotation(t *testing.T, serverURL, token string) string {
-	t.Helper()
-	_, data := testutil.JSON(t, "GET", serverURL+"/api/v1/channels", token, nil)
-	for _, raw := range data["channels"].([]any) {
-		ch := raw.(map[string]any)
-		if ch["name"] == "general" {
-			return ch["id"].(string)
-		}
-	}
-	t.Fatal("general channel not found")
-	return ""
 }

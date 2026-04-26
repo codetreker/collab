@@ -15,7 +15,7 @@ func TestP0ChannelDeleteCascades(t *testing.T) {
 
 	ch := testutil.CreateChannel(t, ts.URL, adminToken, "Cascade Room", "private")
 	channelID := stringField(t, ch, "id")
-	memberID := getUserIDByName(t, ts.URL, adminToken, "Member")
+	memberID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Member")
 
 	resp, data := testutil.JSON(t, http.MethodPost, ts.URL+"/api/v1/channels/"+channelID+"/members", adminToken, map[string]string{"user_id": memberID})
 	requireStatus(t, resp, http.StatusOK, data)
