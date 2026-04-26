@@ -27,7 +27,7 @@ export default function ChannelView({ channelId }: Props) {
 
   const channel = state.channels.find(c => c.id === channelId);
   const dmChannel = state.dmChannels.find(dm => dm.id === channelId);
-  const isDm = !!dmChannel;
+  const isDm = !!dmChannel?.peer;
   const isMember = channel?.is_member !== false;
   const isPublicPreview = !isDm && channel && !isMember && channel.visibility !== 'private';
 
@@ -86,7 +86,7 @@ export default function ChannelView({ channelId }: Props) {
     };
   }, [channelId]);
 
-  if (!channel && !dmChannel) {
+  if (!channel && !isDm) {
     return (
       <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100% - ${keyboardHeight}px)` } : undefined}>
         <div className="channel-empty">

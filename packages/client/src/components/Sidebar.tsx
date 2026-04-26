@@ -298,16 +298,18 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
 }
 
 function DmItem({ dm, active, online, onClick }: { dm: DmChannel; active: boolean; online: boolean; onClick: () => void }) {
+  const peerName = dm.peer?.display_name ?? dm.name ?? 'DM';
+
   return (
     <button
       className={`channel-item ${active ? 'channel-item-active' : ''}`}
       onClick={onClick}
     >
       <span className="user-avatar-small dm-avatar">
-        {dm.peer.display_name[0]?.toUpperCase()}
+        {peerName[0]?.toUpperCase()}
         {online && <span className="online-dot avatar-status" />}
       </span>
-      <span className="channel-name">{dm.peer.display_name}</span>
+      <span className="channel-name">{peerName}</span>
       {dm.unread_count > 0 && (
         <span className="unread-badge">{dm.unread_count > 99 ? '99+' : dm.unread_count}</span>
       )}
@@ -324,15 +326,16 @@ function MergedDmList({ dms, currentChannelId, onlineUserIds, users, currentUser
   onSelectDm: (id: string) => void;
   onOpenDm: (userId: string) => void;
 }) {
-  const dmPeerIds = new Set(dms.map(dm => dm.peer.id));
+  const validDms = dms.filter(dm => dm.peer?.id);
+  const dmPeerIds = new Set(validDms.map(dm => dm.peer.id));
   const availableMembers = users.filter(u => u.user_id !== currentUserId && !dmPeerIds.has(u.user_id));
 
-  if (dms.length === 0 && availableMembers.length === 0) return null;
+  if (validDms.length === 0 && availableMembers.length === 0) return null;
 
   return (
     <div className="dm-list">
       <div className="online-header">私信</div>
-      {dms.map(dm => (
+      {validDms.map(dm => (
         <DmItem
           key={dm.id}
           dm={dm}

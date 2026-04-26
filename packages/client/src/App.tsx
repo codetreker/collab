@@ -80,8 +80,9 @@ function AppInner() {
 
   // Auto-select first channel if none selected
   useEffect(() => {
-    if (state.initialized && !state.currentChannelId && state.channels.length > 0) {
-      actions.selectChannel(state.channels[0]!.id);
+    const firstChannel = state.channels[0];
+    if (state.initialized && !state.currentChannelId && firstChannel) {
+      actions.selectChannel(firstChannel.id);
     }
   }, [state.initialized, state.currentChannelId, state.channels, actions]);
 
@@ -110,7 +111,9 @@ function AppInner() {
   }, []);
 
   const handleLogin = useCallback(() => {
-    setAuthenticated(true);
+    setTimeout(() => {
+      setAuthenticated(true);
+    }, 50);
   }, []);
 
   const handleLogout = useCallback(() => {
