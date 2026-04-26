@@ -13,37 +13,29 @@ import (
 
 func (s *Store) Migrate() error {
 	// Disable FK constraints during migration to avoid issues with table recreation
-	s.db.Exec("PRAGMA foreign_keys = OFF")
+	if err := s.execMigrationSQL("disable foreign keys", "PRAGMA foreign_keys = OFF"); err != nil {
+		return err
+	}
 
-	if err := s.db.AutoMigrate(
-		&User{},
-		&ChannelGroup{},
-		&Channel{},
-		&Message{},
-		&ChannelMember{},
-		&Mention{},
-		&Event{},
-		&UserPermission{},
-		&InviteCode{},
-		&MessageReaction{},
-		&WorkspaceFile{},
-		&RemoteNode{},
-		&RemoteBinding{},
-	); err != nil {
+	if err := s.createSchema(); err != nil {
 		s.db.Exec("PRAGMA foreign_keys = ON")
-		return fmt.Errorf("auto migrate: %w", err)
+		return err
+	}
+
+	if err := s.applyColumnMigrations(); err != nil {
+		s.db.Exec("PRAGMA foreign_keys = ON")
+		return err
+	}
+
+	if err := s.createSchemaIndexes(); err != nil {
+		s.db.Exec("PRAGMA foreign_keys = ON")
+		return err
 	}
 
 	// Re-enable FK constraints after migration
-	s.db.Exec("PRAGMA foreign_keys = ON")
-
-	// Create composite indexes that GORM AutoMigrate doesn't handle well with SQLite
-	s.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_permissions_unique ON user_permissions(user_id, permission, scope)")
-	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_user_permissions_lookup ON user_permissions(user_id, permission, scope)")
-	s.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_unique ON message_reactions(message_id, user_id, emoji)")
-	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_channels_group ON channels(group_id)")
-	s.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_workspace_files_unique ON workspace_files(user_id, channel_id, parent_id, name)")
-	s.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_remote_bindings_unique ON remote_bindings(node_id, channel_id, path)")
+	if err := s.execMigrationSQL("enable foreign keys", "PRAGMA foreign_keys = ON"); err != nil {
+		return err
+	}
 
 	if err := s.seedBootstrapAdmin(); err != nil {
 		return fmt.Errorf("seed admin: %w", err)
@@ -73,6 +65,215 @@ func (s *Store) Migrate() error {
 		return fmt.Errorf("cleanup DM members: %w", err)
 	}
 
+	return nil
+}
+
+func (s *Store) createSchema() error {
+	return s.execMigrationSQL("create schema", `
+CREATE TABLE IF NOT EXISTS channels (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL UNIQUE,
+  topic       TEXT DEFAULT '',
+  visibility  TEXT DEFAULT 'public' CHECK(visibility IN ('public','private')),
+  created_at  INTEGER NOT NULL,
+  created_by  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id           TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  role         TEXT DEFAULT 'member',
+  avatar_url   TEXT,
+  api_key      TEXT UNIQUE,
+  created_at   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id            TEXT PRIMARY KEY,
+  channel_id    TEXT NOT NULL REFERENCES channels(id),
+  sender_id     TEXT NOT NULL REFERENCES users(id),
+  content       TEXT NOT NULL,
+  content_type  TEXT DEFAULT 'text',
+  reply_to_id   TEXT REFERENCES messages(id),
+  created_at    INTEGER NOT NULL,
+  edited_at     INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS channel_members (
+  channel_id    TEXT NOT NULL REFERENCES channels(id),
+  user_id       TEXT NOT NULL REFERENCES users(id),
+  joined_at     INTEGER NOT NULL,
+  last_read_at  INTEGER,
+  PRIMARY KEY (channel_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS mentions (
+  id          TEXT PRIMARY KEY,
+  message_id  TEXT NOT NULL REFERENCES messages(id),
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  channel_id  TEXT NOT NULL REFERENCES channels(id)
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  cursor      INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind        TEXT NOT NULL,
+  channel_id  TEXT NOT NULL,
+  payload     TEXT NOT NULL,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_permissions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  permission  TEXT NOT NULL,
+  scope       TEXT NOT NULL DEFAULT '*',
+  granted_by  TEXT REFERENCES users(id),
+  granted_at  INTEGER NOT NULL,
+  UNIQUE(user_id, permission, scope)
+);
+
+CREATE TABLE IF NOT EXISTS invite_codes (
+  code        TEXT PRIMARY KEY,
+  created_by  TEXT NOT NULL REFERENCES users(id),
+  created_at  INTEGER NOT NULL,
+  expires_at  INTEGER,
+  used_by     TEXT REFERENCES users(id),
+  used_at     INTEGER,
+  note        TEXT
+);
+
+CREATE TABLE IF NOT EXISTS message_reactions (
+  id          TEXT PRIMARY KEY,
+  message_id  TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  emoji       TEXT NOT NULL,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS workspace_files (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  channel_id TEXT NOT NULL REFERENCES channels(id),
+  parent_id TEXT REFERENCES workspace_files(id),
+  name TEXT NOT NULL,
+  is_directory INTEGER NOT NULL DEFAULT 0,
+  mime_type TEXT,
+  size_bytes INTEGER DEFAULT 0,
+  source TEXT DEFAULT 'upload',
+  source_message_id TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(user_id, channel_id, parent_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS remote_nodes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  machine_name TEXT NOT NULL,
+  connection_token TEXT NOT NULL UNIQUE,
+  last_seen_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS remote_bindings (
+  id TEXT PRIMARY KEY,
+  node_id TEXT NOT NULL REFERENCES remote_nodes(id) ON DELETE CASCADE,
+  channel_id TEXT NOT NULL REFERENCES channels(id),
+  path TEXT NOT NULL,
+  label TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(node_id, channel_id, path)
+);
+
+CREATE TABLE IF NOT EXISTS channel_groups (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  position    TEXT NOT NULL,
+  created_by  TEXT NOT NULL REFERENCES users(id),
+  created_at  INTEGER NOT NULL
+);
+`)
+}
+
+func (s *Store) applyColumnMigrations() error {
+	columns := []struct {
+		table  string
+		name   string
+		ddl    string
+		label  string
+	}{
+		{"channel_members", "last_read_at", "ALTER TABLE channel_members ADD COLUMN last_read_at INTEGER", "add channel_members.last_read_at"},
+		{"users", "email", "ALTER TABLE users ADD COLUMN email TEXT", "add users.email"},
+		{"users", "password_hash", "ALTER TABLE users ADD COLUMN password_hash TEXT", "add users.password_hash"},
+		{"users", "last_seen_at", "ALTER TABLE users ADD COLUMN last_seen_at INTEGER", "add users.last_seen_at"},
+		{"users", "require_mention", "ALTER TABLE users ADD COLUMN require_mention INTEGER DEFAULT 1", "add users.require_mention"},
+		{"channels", "type", "ALTER TABLE channels ADD COLUMN type TEXT DEFAULT 'channel'", "add channels.type"},
+		{"channels", "visibility", "ALTER TABLE channels ADD COLUMN visibility TEXT DEFAULT 'public'", "add channels.visibility"},
+		{"channels", "deleted_at", "ALTER TABLE channels ADD COLUMN deleted_at INTEGER", "add channels.deleted_at"},
+		{"users", "owner_id", "ALTER TABLE users ADD COLUMN owner_id TEXT REFERENCES users(id)", "add users.owner_id"},
+		{"users", "deleted_at", "ALTER TABLE users ADD COLUMN deleted_at INTEGER", "add users.deleted_at"},
+		{"users", "disabled", "ALTER TABLE users ADD COLUMN disabled INTEGER DEFAULT 0", "add users.disabled"},
+		{"messages", "deleted_at", "ALTER TABLE messages ADD COLUMN deleted_at INTEGER", "add messages.deleted_at"},
+		{"channels", "position", "ALTER TABLE channels ADD COLUMN position TEXT DEFAULT '0|aaaaaa'", "add channels.position"},
+		{"channels", "group_id", "ALTER TABLE channels ADD COLUMN group_id TEXT REFERENCES channel_groups(id) ON DELETE SET NULL", "add channels.group_id"},
+	}
+
+	for _, col := range columns {
+		exists, err := s.columnExists(col.table, col.name)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+		if err := s.execMigrationSQL(col.label, col.ddl); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Store) createSchemaIndexes() error {
+	return s.execMigrationSQL("create schema indexes", `
+CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_mentions_user ON mentions(user_id, channel_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_owner_id ON users(owner_id);
+CREATE INDEX IF NOT EXISTS idx_user_permissions_user ON user_permissions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_permissions_lookup ON user_permissions(user_id, permission, scope);
+CREATE INDEX IF NOT EXISTS idx_invite_codes_used ON invite_codes(used_by);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_unique ON message_reactions(message_id, user_id, emoji);
+CREATE INDEX IF NOT EXISTS idx_reactions_message ON message_reactions(message_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_files_user_channel ON workspace_files(user_id, channel_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_files_parent ON workspace_files(parent_id);
+CREATE INDEX IF NOT EXISTS idx_remote_nodes_user ON remote_nodes(user_id);
+CREATE INDEX IF NOT EXISTS idx_channels_position ON channels(position);
+CREATE INDEX IF NOT EXISTS idx_channel_groups_position ON channel_groups(position);
+CREATE INDEX IF NOT EXISTS idx_channels_group ON channels(group_id);
+`)
+}
+
+func (s *Store) columnExists(table, name string) (bool, error) {
+	var cols []struct {
+		Name string `gorm:"column:name"`
+	}
+	if err := s.db.Raw("PRAGMA table_info(" + table + ")").Scan(&cols).Error; err != nil {
+		return false, fmt.Errorf("inspect %s columns: %w", table, err)
+	}
+	for _, col := range cols {
+		if col.Name == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (s *Store) execMigrationSQL(label, sql string) error {
+	if err := s.db.Exec(sql).Error; err != nil {
+		return fmt.Errorf("%s: %w", label, err)
+	}
 	return nil
 }
 
