@@ -31,28 +31,34 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 		JWTSecret:     "test-secret",
 		NodeEnv:       "development",
 		DevAuthBypass: false,
+		AdminUser:     "admin",
+		AdminPassword: "password123",
 		UploadDir:     t.TempDir(),
 		WorkspaceDir:  t.TempDir(),
 		ClientDist:    t.TempDir(),
 		CORSOrigin:    "*",
 	}
 
-	adminHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
-	adminEmail := "admin@test.com"
-	admin := &store.User{
-		DisplayName:  "Admin",
+	memberHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	ownerEmail := "owner@test.com"
+	owner := &store.User{
+		DisplayName:  "Owner",
 		Role:         "admin",
-		Email:        &adminEmail,
-		PasswordHash: string(adminHash),
+		Email:        &ownerEmail,
+		PasswordHash: string(memberHash),
 	}
-	if err := s.CreateUser(admin); err != nil {
-		t.Fatalf("create admin: %v", err)
+	if err := s.CreateUser(owner); err != nil {
+		t.Fatalf("create owner: %v", err)
 	}
-	if err := s.GrantDefaultPermissions(admin.ID, "admin"); err != nil {
-		t.Fatalf("grant admin perms: %v", err)
+	if err := s.GrantDefaultPermissions(owner.ID, "admin"); err != nil {
+		t.Fatalf("grant owner perms: %v", err)
+	}
+	for _, permission := range []string{"channel.delete", "channel.manage_members", "channel.manage_visibility", "message.delete"} {
+		if err := s.GrantPermission(&store.UserPermission{UserID: owner.ID, Permission: permission, Scope: "*"}); err != nil {
+			t.Fatalf("grant owner %s: %v", permission, err)
+		}
 	}
 
-	memberHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
 	memberEmail := "member@test.com"
 	member := &store.User{
 		DisplayName:  "Member",
@@ -69,20 +75,20 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 
 	s.DB().Create(&store.InviteCode{
 		Code:      "test-invite",
-		CreatedBy: admin.ID,
+		CreatedBy: "admin",
 	})
 
 	general := &store.Channel{
 		Name:       "general",
 		Visibility: "public",
-		CreatedBy:  admin.ID,
+		CreatedBy:  owner.ID,
 		Type:       "channel",
 		Position:   store.GenerateInitialRank(),
 	}
 	if err := s.CreateChannel(general); err != nil {
 		t.Fatalf("create general: %v", err)
 	}
-	s.AddChannelMember(&store.ChannelMember{ChannelID: general.ID, UserID: admin.ID})
+	s.AddChannelMember(&store.ChannelMember{ChannelID: general.ID, UserID: owner.ID})
 	s.AddChannelMember(&store.ChannelMember{ChannelID: general.ID, UserID: member.ID})
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -94,6 +100,30 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	})
 
 	return ts, s, cfg
+}
+
+func LoginAsAdmin(t *testing.T, serverURL string) string {
+	t.Helper()
+
+	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "password123"})
+	resp, err := http.Post(serverURL+"/admin-api/v1/auth/login", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("admin login request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("admin login failed (%d): %s", resp.StatusCode, b)
+	}
+
+	for _, c := range resp.Cookies() {
+		if c.Name == "borgee_admin_token" {
+			return c.Value
+		}
+	}
+	t.Fatal("no borgee_admin_token cookie in admin login response")
+	return ""
 }
 
 func LoginAs(t *testing.T, serverURL, email, password string) string {
@@ -136,6 +166,7 @@ func JSON(t *testing.T, method, url, token string, body any) (*http.Response, ma
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_admin_token", Value: token})
 	}
 
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}

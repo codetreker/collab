@@ -10,7 +10,7 @@ import (
 
 func TestPollWithEvents(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", adminToken, nil)
 	channels := chData["channels"].([]any)
@@ -61,7 +61,7 @@ func TestPollWithEvents(t *testing.T) {
 		apiKey, _ := store.GenerateAPIKey()
 		users, _ := s.ListUsers()
 		for _, u := range users {
-			if u.Role == "admin" {
+			if u.Email != nil && *u.Email == "owner@test.com" {
 				s.SetAPIKey(u.ID, apiKey)
 				break
 			}

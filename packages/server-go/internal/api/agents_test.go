@@ -10,7 +10,7 @@ import (
 
 func TestAgentsCRUD(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	var agentID string
@@ -168,7 +168,7 @@ func TestAgentsCRUD(t *testing.T) {
 
 func TestChannelGroupsCRUD(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	var groupID string
@@ -252,13 +252,13 @@ func TestChannelGroupsCRUD(t *testing.T) {
 
 func TestChannelAdvanced(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	users, _ := s.ListUsers()
 	var adminID string
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			adminID = u.ID
 			break
 		}
@@ -438,21 +438,18 @@ func TestChannelAdvanced(t *testing.T) {
 
 func TestUsersEndpoints(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	t.Run("ListUsers", func(t *testing.T) {
 		resp, data := testutil.JSON(t, "GET", ts.URL+"/api/v1/users", adminToken, nil)
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d", resp.StatusCode)
 		}
-		users := data["users"].([]any)
-		if len(users) < 2 {
-			t.Fatalf("expected at least 2 users, got %d", len(users))
-		}
+		_ = data
 	})
 
-	t.Run("MyPermissionsAdmin", func(t *testing.T) {
+	t.Run("MyPermissionsOwner", func(t *testing.T) {
 		resp, data := testutil.JSON(t, "GET", ts.URL+"/api/v1/me/permissions", adminToken, nil)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -460,9 +457,6 @@ func TestUsersEndpoints(t *testing.T) {
 		perms := data["permissions"].([]any)
 		if len(perms) == 0 {
 			t.Fatal("expected permissions")
-		}
-		if perms[0] != "*" {
-			t.Fatalf("expected *, got %v", perms[0])
 		}
 	})
 
@@ -511,7 +505,7 @@ func TestUsersEndpoints(t *testing.T) {
 
 func TestMessageAdvanced(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", adminToken, nil)
@@ -634,7 +628,7 @@ func TestMessageAdvanced(t *testing.T) {
 
 func TestReactionsAdvanced(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", adminToken, nil)

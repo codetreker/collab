@@ -27,12 +27,14 @@ func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.
 	}
 
 	cfg := &config.Config{
-		JWTSecret:    "test-secret",
-		NodeEnv:      "development",
-		UploadDir:    t.TempDir(),
-		WorkspaceDir: t.TempDir(),
-		ClientDist:   t.TempDir(),
-		CORSOrigin:   "*",
+		JWTSecret:     "test-secret",
+		NodeEnv:       "development",
+		AdminUser:     "admin",
+		AdminPassword: "password123",
+		UploadDir:     t.TempDir(),
+		WorkspaceDir:  t.TempDir(),
+		ClientDist:    t.TempDir(),
+		CORSOrigin:    "*",
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
@@ -75,11 +77,14 @@ func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.
 	pollH.RegisterRoutes(mux, authMw)
 
 	// Seed data
-	adminHash, _ := auth.HashPassword("password123")
-	adminEmail := "admin@test.com"
-	admin := &store.User{DisplayName: "Admin", Role: "admin", Email: &adminEmail, PasswordHash: adminHash}
-	s.CreateUser(admin)
-	s.GrantDefaultPermissions(admin.ID, "admin")
+	ownerHash, _ := auth.HashPassword("password123")
+	ownerEmail := "owner@test.com"
+	owner := &store.User{DisplayName: "Owner", Role: "admin", Email: &ownerEmail, PasswordHash: ownerHash}
+	s.CreateUser(owner)
+	s.GrantDefaultPermissions(owner.ID, "admin")
+	for _, permission := range []string{"channel.delete", "channel.manage_members", "channel.manage_visibility", "message.delete"} {
+		s.GrantPermission(&store.UserPermission{UserID: owner.ID, Permission: permission, Scope: "*"})
+	}
 
 	memberHash, _ := auth.HashPassword("password123")
 	memberEmail := "member@test.com"
@@ -87,12 +92,12 @@ func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.
 	s.CreateUser(member)
 	s.GrantDefaultPermissions(member.ID, "member")
 
-	general := &store.Channel{Name: "general", Visibility: "public", CreatedBy: admin.ID, Type: "channel", Position: store.GenerateInitialRank()}
+	general := &store.Channel{Name: "general", Visibility: "public", CreatedBy: owner.ID, Type: "channel", Position: store.GenerateInitialRank()}
 	s.CreateChannel(general)
-	s.AddChannelMember(&store.ChannelMember{ChannelID: general.ID, UserID: admin.ID})
+	s.AddChannelMember(&store.ChannelMember{ChannelID: general.ID, UserID: owner.ID})
 	s.AddChannelMember(&store.ChannelMember{ChannelID: general.ID, UserID: member.ID})
 
-	s.DB().Create(&store.InviteCode{Code: "test-invite", CreatedBy: admin.ID})
+	s.DB().Create(&store.InviteCode{Code: "test-invite", CreatedBy: "admin"})
 
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
@@ -124,6 +129,7 @@ func jsonReq(t *testing.T, method, url, token string, body any) (*http.Response,
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: "borgee_admin_token", Value: token})
 	}
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := client.Do(req)
@@ -262,7 +268,7 @@ func TestSlugifyFunc(t *testing.T) {
 func TestInternalChannelHandlers(t *testing.T) {
 	_ = os.Setenv("TMPDIR", os.TempDir())
 	ts, s, _ := setupFullTestServer(t)
-	adminToken := loginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
 	generalID := getGeneralID(t, ts.URL, adminToken)
 
@@ -356,7 +362,7 @@ func TestInternalChannelHandlers(t *testing.T) {
 		users, _ := s.ListUsers()
 		var memberID string
 		for _, u := range users {
-			if u.Role == "member" {
+			if u.Email != nil && *u.Email == "member@test.com" {
 				memberID = u.ID
 				break
 			}
@@ -530,8 +536,8 @@ func TestInternalChannelHandlers(t *testing.T) {
 
 	t.Run("Users", func(t *testing.T) {
 		resp, _ := jsonReq(t, "GET", ts.URL+"/api/v1/users", adminToken, nil)
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404, got %d", resp.StatusCode)
 		}
 
 		resp2, _ := jsonReq(t, "GET", ts.URL+"/api/v1/me/permissions", adminToken, nil)
@@ -609,9 +615,9 @@ func TestInternalChannelHandlers(t *testing.T) {
 	})
 
 	t.Run("Admin", func(t *testing.T) {
-		jsonReq(t, "GET", ts.URL+"/api/v1/admin/users", adminToken, nil)
-		jsonReq(t, "GET", ts.URL+"/api/v1/admin/channels", adminToken, nil)
-		jsonReq(t, "GET", ts.URL+"/api/v1/admin/invites", adminToken, nil)
+		jsonReq(t, "GET", ts.URL+"/admin-api/v1/users", adminToken, nil)
+		jsonReq(t, "GET", ts.URL+"/admin-api/v1/channels", adminToken, nil)
+		jsonReq(t, "GET", ts.URL+"/admin-api/v1/invites", adminToken, nil)
 
 		users, _ := s.ListUsers()
 		var memberID string
@@ -622,9 +628,9 @@ func TestInternalChannelHandlers(t *testing.T) {
 			}
 		}
 
-		jsonReq(t, "PATCH", ts.URL+"/api/v1/admin/users/"+memberID, adminToken, map[string]any{"require_mention": true})
-		jsonReq(t, "POST", ts.URL+"/api/v1/admin/users/"+memberID+"/api-key", adminToken, nil)
-		jsonReq(t, "DELETE", ts.URL+"/api/v1/admin/users/"+memberID+"/api-key", adminToken, nil)
-		jsonReq(t, "GET", ts.URL+"/api/v1/admin/users/"+memberID+"/permissions", adminToken, nil)
+		jsonReq(t, "PATCH", ts.URL+"/admin-api/v1/users/"+memberID, adminToken, map[string]any{"require_mention": true})
+		jsonReq(t, "POST", ts.URL+"/admin-api/v1/users/"+memberID+"/api-key", adminToken, nil)
+		jsonReq(t, "DELETE", ts.URL+"/admin-api/v1/users/"+memberID+"/api-key", adminToken, nil)
+		jsonReq(t, "GET", ts.URL+"/admin-api/v1/users/"+memberID+"/permissions", adminToken, nil)
 	})
 }

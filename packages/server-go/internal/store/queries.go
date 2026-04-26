@@ -1004,14 +1004,14 @@ func (s *Store) CreateDmChannel(userID1, userID2 string) (*Channel, error) {
 
 func (s *Store) ListDmChannelsForUser(userID string) ([]DmChannelInfo, error) {
 	type rawRow struct {
-		ID             string `gorm:"column:id"`
-		Name           string `gorm:"column:name"`
-		CreatedAt      int64  `gorm:"column:created_at"`
-		PeerID         string `gorm:"column:peer_id"`
-		PeerName       string `gorm:"column:peer_name"`
-		PeerAvatar     string `gorm:"column:peer_avatar"`
-		PeerRole       string `gorm:"column:peer_role"`
-		UnreadCount    int    `gorm:"column:unread_count"`
+		ID             string  `gorm:"column:id"`
+		Name           string  `gorm:"column:name"`
+		CreatedAt      int64   `gorm:"column:created_at"`
+		PeerID         string  `gorm:"column:peer_id"`
+		PeerName       string  `gorm:"column:peer_name"`
+		PeerAvatar     string  `gorm:"column:peer_avatar"`
+		PeerRole       string  `gorm:"column:peer_role"`
+		UnreadCount    int     `gorm:"column:unread_count"`
 		LastMsgContent *string `gorm:"column:last_msg_content"`
 		LastMsgAt      *int64  `gorm:"column:last_msg_at"`
 		LastMsgSender  *string `gorm:"column:last_msg_sender"`

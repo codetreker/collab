@@ -18,7 +18,7 @@ import (
 
 func TestWSSendMessageEdgeCases(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", token, nil)
 	channels := chData["channels"].([]any)
@@ -146,7 +146,7 @@ func TestWSSendMessageEdgeCases(t *testing.T) {
 
 func TestWSSubscribePrivateChannel(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	priv := testutil.CreateChannel(t, ts.URL, adminToken, "ws-priv", "private")
@@ -171,7 +171,7 @@ func TestWSRegisterCommands(t *testing.T) {
 	users, _ := s.ListUsers()
 	var adminID string
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			adminID = u.ID
 			break
 		}
@@ -219,7 +219,7 @@ func TestWSRegisterCommands(t *testing.T) {
 
 func TestWSRegisterCommandsNonAgent(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	conn := dialWS(t, ts.URL, token)
 	defer conn.Close(websocket.StatusNormalClosure, "")
@@ -283,7 +283,7 @@ func TestWSAuthenticateWSExported(t *testing.T) {
 
 func TestWSListCommands(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	resp, _ := testutil.JSON(t, "GET", ts.URL+"/api/v1/commands", adminToken, nil)
 	if resp.StatusCode != http.StatusOK {

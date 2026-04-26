@@ -94,8 +94,15 @@ func (s *Server) SetupRoutes() {
 	dmHandler.RegisterRoutes(s.mux, authMw)
 
 	// Admin
-	adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
-	adminHandler.RegisterRoutes(s.mux, authMw)
+	if s.cfg.AdminUser == "" || s.cfg.AdminPassword == "" {
+		s.logger.Warn("admin routes disabled; ADMIN_USER and ADMIN_PASSWORD must be set")
+	} else {
+		adminMw := api.AdminAuthMiddleware(s.cfg)
+		adminAuthHandler := &api.AdminAuthHandler{Config: s.cfg, Logger: s.logger}
+		adminAuthHandler.RegisterRoutes(s.mux, adminMw)
+		adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
+		adminHandler.RegisterRoutes(s.mux, adminMw)
+	}
 
 	// Agents
 	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}}

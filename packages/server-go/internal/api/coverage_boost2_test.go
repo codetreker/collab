@@ -66,7 +66,7 @@ func TestSSEStream(t *testing.T) {
 	users, _ := s.ListUsers()
 	var adminID string
 	for _, u := range users {
-		if u.Role == "admin" {
+		if u.Email != nil && *u.Email == "owner@test.com" {
 			adminID = u.ID
 			break
 		}
@@ -74,7 +74,7 @@ func TestSSEStream(t *testing.T) {
 	apiKey, _ := store.GenerateAPIKey()
 	s.SetAPIKey(adminID, apiKey)
 
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", adminToken, nil)
 	channels := chData["channels"].([]any)
@@ -152,14 +152,14 @@ func TestMemberNonAdminEndpoints(t *testing.T) {
 			method string
 			path   string
 		}{
-			{"GET", "/api/v1/admin/users"},
-			{"GET", "/api/v1/admin/invites"},
-			{"GET", "/api/v1/admin/channels"},
+			{"GET", "/admin-api/v1/users"},
+			{"GET", "/admin-api/v1/invites"},
+			{"GET", "/admin-api/v1/channels"},
 		}
 		for _, ep := range endpoints {
 			resp, _ := testutil.JSON(t, ep.method, ts.URL+ep.path, memberToken, nil)
-			if resp.StatusCode != http.StatusForbidden {
-				t.Fatalf("%s %s: expected 403, got %d", ep.method, ep.path, resp.StatusCode)
+			if resp.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("%s %s: expected 401, got %d", ep.method, ep.path, resp.StatusCode)
 			}
 		}
 	})
@@ -167,7 +167,7 @@ func TestMemberNonAdminEndpoints(t *testing.T) {
 
 func TestSearchInPrivateChannel(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	privCh := testutil.CreateChannel(t, ts.URL, adminToken, "search-priv", "private")
@@ -190,7 +190,7 @@ func TestSearchInPrivateChannel(t *testing.T) {
 
 func TestChannelReorderWithGroup(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	// Create group
 	_, gData := testutil.JSON(t, "POST", ts.URL+"/api/v1/channel-groups", adminToken, map[string]string{"name": "Reorder Group"})
@@ -210,7 +210,7 @@ func TestChannelReorderWithGroup(t *testing.T) {
 
 func TestGroupNameTooLong(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	longName := ""
 	for i := 0; i < 60; i++ {
@@ -224,7 +224,7 @@ func TestGroupNameTooLong(t *testing.T) {
 
 func TestAdminChannelsDMCreation(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	users, _ := s.ListUsers()
 	var memberID string
@@ -255,7 +255,7 @@ func TestAdminChannelsDMCreation(t *testing.T) {
 
 func TestCreateChannelWithMemberIDs(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	users, _ := s.ListUsers()
 	var memberID string
@@ -278,7 +278,7 @@ func TestCreateChannelWithMemberIDs(t *testing.T) {
 
 func TestCreateChannelWithTopic(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	resp, data := testutil.JSON(t, "POST", ts.URL+"/api/v1/channels", adminToken, map[string]any{
 		"name":  "with-topic",
@@ -293,7 +293,7 @@ func TestCreateChannelWithTopic(t *testing.T) {
 
 func TestMessageEditNotFound(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	resp, _ := testutil.JSON(t, "PUT", ts.URL+"/api/v1/messages/nonexistent", adminToken, map[string]string{
 		"content": "test",
@@ -305,7 +305,7 @@ func TestMessageEditNotFound(t *testing.T) {
 
 func TestWorkspaceNonMember(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	privCh := testutil.CreateChannel(t, ts.URL, adminToken, "ws-nonmember", "private")
@@ -319,7 +319,7 @@ func TestWorkspaceNonMember(t *testing.T) {
 
 func TestMessageCommandContentType(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	_, chData := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels", adminToken, nil)
 	channels := chData["channels"].([]any)
@@ -343,9 +343,9 @@ func TestMessageCommandContentType(t *testing.T) {
 
 func TestAdminUpdateUserNotFound(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
-	resp, _ := testutil.JSON(t, "DELETE", ts.URL+"/api/v1/admin/users/nonexistent/api-key", adminToken, nil)
+	resp, _ := testutil.JSON(t, "DELETE", ts.URL+"/admin-api/v1/users/nonexistent/api-key", adminToken, nil)
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)
 	}
@@ -353,7 +353,7 @@ func TestAdminUpdateUserNotFound(t *testing.T) {
 
 func TestMessageWithExplicitMentionIDs(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	users, _ := s.ListUsers()
 	var memberID string
@@ -391,7 +391,7 @@ func TestMessageWithExplicitMentionIDs(t *testing.T) {
 
 func TestRemoteNodeNotFoundScenarios(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
 	t.Run("ListBindingsNotFound", func(t *testing.T) {
 		resp, _ := testutil.JSON(t, "GET", ts.URL+"/api/v1/remote/nodes/nonexistent/bindings", adminToken, nil)

@@ -16,7 +16,7 @@ import (
 
 func (s *Store) ListAdminUsers() ([]User, error) {
 	var users []User
-	err := s.db.Where("deleted_at IS NULL").Find(&users).Error
+	err := s.db.Where("deleted_at IS NULL AND role <> ?", "admin").Find(&users).Error
 	return users, err
 }
 

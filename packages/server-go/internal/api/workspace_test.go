@@ -53,7 +53,7 @@ func readBody(resp *http.Response, v *map[string]any) {
 
 func TestWorkspacePermissions(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
 	privCh := testutil.CreateChannel(t, ts.URL, adminToken, "private-ws-perm", "private")
