@@ -23,6 +23,7 @@ packages/
 |------|------|
 | [`concept-model.md`](concept-model.md) | **核心概念模型：组织、人、agent**（**最先读这里**） |
 | [`channel-model.md`](channel-model.md) | **Channel / DM / Workspace 形状层规范** |
+| [`canvas-vision.md`](canvas-vision.md) | **画布 / 文档协作愿景：workspace = artifact 集合** |
 | [`overview.md`](overview.md) | 系统全景图 + 跨进程消息流 + 关键术语 |
 | [`agents.md`](agents.md) | Agent 在系统中的身份模型、API key、接入路径选择 |
 | [`server/`](server/README.md) | `server-go`：路由、auth、realtime |

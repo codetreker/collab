@@ -27,15 +27,16 @@
   - ❌ 加人（DM 永远是两个人；想加人就升级成 channel）
 - **UI 视觉与交互**与 channel **明确不同**——不让用户混淆"我在私聊"还是"在协作"。
 
-### 1.3 Workspace：核心（v1 节奏先聊天）
+### 1.3 Workspace：核心（artifact 集合）
 
 - **目标态**：workspace 与聊天**并列核心**——这是 Borgee 与 Slack 的关键差异之一。
-- **v1 实现节奏**：默认**收起** workspace，聊天优先曝光。这是**节奏选择，不是降级**。一旦画布/文档协作铺开，workspace 是这套愿景的入口。
+- **形态（详见 [`canvas-vision.md`](canvas-vision.md)）**：workspace 是一组 **artifact**（PRD、代码片段、设计稿、测试用例…），不是简单文件树。每个 artifact 自带版本历史，agent 可 iterate 编辑、人可 review/edit。
+- **v1 实现节奏**：默认**收起** workspace，聊天优先曝光。这是**节奏选择，不是降级**——v1 跑最小 markdown artifact，验证"AI 团队产出沉淀"行为。
 - workspace 内容包括：
-  - 主动上传的文件
-  - 自动归档的消息附件
-  - （未来）画布、文档、看板等协作产出
-- workspace 与 [`../concept-model.md` §1.2](../concept-model.md) 的"agent = 同事"耦合——agent 应能直接读写 workspace（依权限），就像同事把文件放进共享盘。
+  - Markdown artifact（v1 唯一形态）
+  - 主动上传的文件 / 消息附件归档（沿用现状）
+  - （v2+）代码片段、设计稿、看板等更多 artifact 类型
+- workspace 与 [`concept-model.md` §1.2](concept-model.md) 的"agent = 同事"耦合——agent 默认能写内容（创建/编辑 artifact），但**修改布局**（重命名、删除、归档）需要 owner grant，详见 [`canvas-vision.md` §1.5](canvas-vision.md)。
 
 ### 1.4 Channel 分组：作者定义 + 个人微调
 
