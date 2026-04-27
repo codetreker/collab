@@ -1,0 +1,10 @@
+-- Phase 0 / INFRA-1a seed contract.
+--
+-- This file is the canonical seed for the migrations package's E2E
+-- acceptance harness. It is intentionally empty: the framework's contract is
+-- "starting from a blank database, Engine.Run applies every registered
+-- migration in order and records each in schema_migrations".
+--
+-- Future Phase 1+ tests append minimal fixture rows here only when a
+-- migration's correctness depends on pre-existing data (e.g. backfill).
+-- Per v0 strategy (no backfill) this file stays empty until v1.
