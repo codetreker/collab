@@ -82,7 +82,15 @@ jobs:
           )
 
           changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
-          echo "Changed files:"
+          echo "Changed files (raw):"
+          echo "$changed"
+
+          # Filter out files that don't change behavior. Keep these in sync
+          # with exclude_globs in .github/lint-current-sync.yml.
+          # NOTE: hard-coded here on purpose — Actions has no yq by default,
+          # and a 6-line filter is cheaper than a YAML parser dependency.
+          changed=$(echo "$changed" | grep -Ev '(_test\.go$|\.test\.tsx?$|\.spec\.tsx?$|/__snapshots__/|/testdata/)' || true)
+          echo "Changed files (after exclude_globs filter):"
           echo "$changed"
 
           # If the PR body explicitly opts out with 'N/A' under Current 同步,

@@ -33,6 +33,8 @@ packages/remote-agent/        → docs/current/remote-agent/
 
 PR 改了某 `code_prefix` 但没改对应 `docs_prefix` → fail。
 
+**`exclude_globs`**: 仅改 `_test.go` / `*.test.ts(x)` / `*.spec.ts(x)` / `__snapshots__/` / `testdata/` 不算"行为变更", 不触发 current-sync (飞马 review on PR #170)。配置在 `.github/lint-current-sync.yml` 顶部 `exclude_globs:` + workflow 里的过滤 grep, 两处保持同步。
+
 **Opt-out**: PR body `## Current 同步` 区块下写 `- N/A — <理由>` 时降级为 warning, 不阻断。reviewer 在 review 时人肉判断理由是否成立。
 
 ## 2. PR 模板

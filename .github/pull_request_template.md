@@ -2,21 +2,27 @@
 
 <!-- Describe the change in 1-3 sentences. Why, not what. -->
 
-## Blueprint: <module> §X.Y
+## Blueprint
 
 <!--
 Required (规则 4 + 闸 2 grep). Cite the blueprint module + section this PR
-delivers. At least one `Blueprint:` line MUST be present.
+delivers. At least one line starting with `Blueprint:` AND containing `§`
+MUST be present (not the heading above — a real line below).
 Example:
   Blueprint: concept-model §1.1, §2
   Blueprint: plugin-protocol §1.6
 -->
+
+Blueprint: <module> §X.Y
 
 ## Touches
 
 <!--
 Required. Comma-separated subsystems this PR modifies. Pick from:
   server, client, plugin, helper, remote-agent, docs, ci
+
+The CI lint greps for a line starting with `Touches:` (the line below the
+heading), not the heading itself. Keep both.
 
 If you list 2 OR MORE subsystems, you MUST split this PR into:
   1. an interface-contract PR (≤300 lines: schema / proto / API types)

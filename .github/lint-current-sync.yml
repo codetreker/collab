@@ -3,8 +3,23 @@
 # Each entry: a code path prefix that, if any file under it changes in a PR,
 # REQUIRES the matching docs/current/ subtree to also be touched.
 #
+# `exclude_globs` skips files that don't change behavior (pure tests, build
+# artifacts) so unit-test-only PRs don't get flagged.
+#
 # Consumed by .github/workflows/lint.yml step "current sync lint".
 # Adding a module: append below; do not delete entries (modules persist).
+
+# Files matching any of these globs are NEVER considered a "code change" for
+# current-sync purposes. Test files and snapshots don't change behavior, so
+# they shouldn't force a docs/current update. (飞马 review on PR #170.)
+exclude_globs:
+  - "**/*_test.go"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+  - "**/__snapshots__/**"
+  - "**/testdata/**"
 
 modules:
   - name: server
