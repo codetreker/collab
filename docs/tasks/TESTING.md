@@ -43,6 +43,7 @@
 | T-106 | 非 owner 拉 agent | 别人拉你的 agent | 403 |
 | T-107 | 频道删除幂等 | DELETE 两次 | 200 → 204 |
 | T-108 | #general 保护 | DELETE #general | 403 |
+| T-109 | Agent 创建（UI） | 用户在前端 Agents Tab 创建 Agent | 201 + API key 返回 |
 
 ### 频道成员管理
 
