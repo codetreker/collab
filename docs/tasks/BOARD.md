@@ -33,4 +33,8 @@
 | COL-BUG-022 | Admin Create User 不应允许创建 agent；user 列表不应显示 agent | Backlog | 战马 | — | — | agent 由用户自己创建，Admin UI 的 Create User 禁止选 agent；user 列表只显示用户不显示 agent |
 | COL-BUG-023 | 默认管理员 userid 用整个邮箱，应只取 @ 前面部分 | Backlog | 战马 | — | — | 创建默认 admin 时 userid 取 email 的 local-part（建军 04-26 提） |
 | COL-BUG-024 | /api/v1/users 缺 admin 权限校验，member 能看到所有用户 | Backlog | 战马 | — | — | P0 安全问题：admin 接口需完全独立，/users 只允许 admin 访问（建军 04-26 提，关联 COL-B27） |
-| COL-BUG-025 | Prod WS 连接断开（“连接已断开”红色横幅） | Backlog | 战马 | — | — | prod 上 WebSocket 断连，实时消息不可用（建军 04-26 发现） |
+| COL-BUG-025 | Prod WS 连接断开（“连接已断开”红色横幅） | Backlog | 战马 | — | — | P2 WS race condition，重连成功不影响使用 |
+| COL-BUG-026 | 用户创建 Agent 报错（permissions JSON 不兼容） | Done | 战马 | — | [#161](https://github.com/codetreker/borgee/pull/161) | PR #161 hotfix 已上 prod |
+| COL-BUG-027 | 用户创建频道失败 | Backlog | 战马 | — | — | P0 prod 上用户建不了 channel（建军 04-27 发现） |
+| COL-BUG-028 | Agent 在线列表消失 | Backlog | 战马 | — | — | P1 侧边栏 agent 在线状态不显示（建军 04-27 发现） |
+| COL-BUG-029 | 侧边栏底部用户区域去掉名字，只保留头像 | Backlog | 战马 | — | — | UI 优化（建军 04-27 提） |
