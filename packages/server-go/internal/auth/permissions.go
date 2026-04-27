@@ -30,6 +30,13 @@ func RequirePermission(s *store.Store, permission string, scopeResolver func(r *
 			}
 
 			for _, p := range perms {
+				// AP-0: a wildcard `(*, *)` row grants the bearer every
+				// capability at every scope. Humans get this by default at
+				// registration; bundle-narrowed accounts (AP-2) won't have it.
+				if p.Permission == "*" && p.Scope == "*" {
+					next.ServeHTTP(w, r)
+					return
+				}
 				if p.Permission == permission && (p.Scope == "*" || p.Scope == scope) {
 					next.ServeHTTP(w, r)
 					return

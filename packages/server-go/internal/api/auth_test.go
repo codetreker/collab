@@ -156,6 +156,23 @@ func TestRegisterSuccess(t *testing.T) {
 		json.NewDecoder(resp.Body).Decode(&errResp)
 		t.Fatalf("expected 201, got %d: %v", resp.StatusCode, errResp)
 	}
+
+	// AP-0 acceptance: the freshly-registered human owns exactly one
+	// permission row, the wildcard (*, *).
+	var created store.User
+	if err := s.DB().Where("email = ?", "new@test.com").First(&created).Error; err != nil {
+		t.Fatalf("lookup new user: %v", err)
+	}
+	perms, err := s.ListUserPermissions(created.ID)
+	if err != nil {
+		t.Fatalf("list perms: %v", err)
+	}
+	if len(perms) != 1 {
+		t.Fatalf("AP-0: expected 1 default permission row, got %d", len(perms))
+	}
+	if perms[0].Permission != "*" || perms[0].Scope != "*" {
+		t.Fatalf("AP-0: expected (*, *), got (%s, %s)", perms[0].Permission, perms[0].Scope)
+	}
 }
 
 func TestRegisterDuplicateEmail(t *testing.T) {

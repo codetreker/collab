@@ -84,6 +84,8 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 | ULID | 全表 ULID, 删 INT | 永久混用 + `type ID string` 抽象 (野马原始版本立场) | (待 ID 模块时填) | — |
 | Cursor 形态 | opaque string 直换 | 兼容期 INT cursor 解析 | (待 cursor 模块时填) | — |
 | schema_migrations 框架 | forward-only, 无 Down 反向脚本 | 不需补 Down — v1 切换走 backup/restore 策略 (checklist §"backup / restore 流程已演练") | Phase 0 / INFRA-1a | DONE |
+| 默认权限 human=`(*,*)` | 注册写一行通配, UI bundle 未上 | AP-2 落地后改写注册路径: 写默认 bundle (Messaging/Workspace 等) 而非 `(*, *)`; 已存在用户走数据迁移脚本把 `(*, *)` 拆成对应 bundle 集合 (按业务历史用过的 capability 推断) | Phase 1 / AP-0 | TODO |
+| `auth.RequirePermission` 通配匹配 | 短路 `(*, *)` 行为全权 | AP-2 拿掉 `(*, *)` 默认后, 此分支自然消亡; 同时回写 unit test (现在加是为了测 AP-0 acceptance) | Phase 1 / AP-0 | TODO |
 | main 已知 flaky test (`internal/server`) | 容忍 (CI rerun 兜底) | 修两处 goroutine leak: rateLimiter.cleanup ticker 未 Stop + Hub.StartHeartbeat 5min chan receive 退出路径; 单测 race + leak detector 必须 0 报警 | Phase 0 audit / 来自 #170 CI 偶发 fail | TODO |
 | ... | ... | ... | ... | ... |
 

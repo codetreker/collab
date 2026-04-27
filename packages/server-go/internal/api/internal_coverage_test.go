@@ -322,8 +322,10 @@ func TestInternalChannelHandlers(t *testing.T) {
 		}
 
 		resp2, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/"+chID, memberToken, map[string]any{"visibility": "private"})
-		if resp2.StatusCode != http.StatusForbidden {
-			t.Fatalf("expected 403, got %d", resp2.StatusCode)
+		// AP-0: humans default to (*, *), so a member token now passes the
+		// visibility-manage gate. Phase 4 AP-1/AP-3 will narrow this back.
+		if resp2.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200 (AP-0 wildcard), got %d", resp2.StatusCode)
 		}
 
 		resp3, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/"+chID, memberToken, map[string]any{"topic": "ok"})
