@@ -9,6 +9,8 @@
 |------|------|------|
 | `clock` | `internal/testutil/clock/` | Clock 接口 + Real / Fake 实现, 替代 `time.Now()` 直调 |
 | `db` | `internal/testutil/db/` | 内存 sqlite + fixture seeder, 每用例独立隔离 |
+| `regression` | `internal/testutil/regression/` | 闸 5 回归入册, 已合 milestone 的 4.1 acceptance 自动入册 |
+| `regression_suite` | `internal/testutil/regression_suite/` | `make regression` 的 dispatcher |
 | (legacy) | `internal/testutil/server.go` | 历史遗留, 启服务 + ws 工具, 保留不动 |
 
 ## clock 子包 (INFRA-1b.1)
@@ -76,6 +78,7 @@ require.True(t, limiter.Allow())
 |-----|---------|
 | `internal/testutil/clock` | 100.0% |
 | `internal/testutil/db` | 91.7% |
+| `internal/testutil/regression` | 100.0% |
 
 跑法:
 ```
@@ -86,7 +89,61 @@ cd packages/server-go && go test ./internal/testutil/clock/... -cover
 
 - [x] **1b.1**: Clock 抽象 + Fake/Real 双实现, ≥ 80% 覆盖率, 1 demo 用例
 - [x] **1b.2**: 内存 sqlite + fixture seeder, ≥ 80% 覆盖率
-- [ ] 1b.3: 回归测试入册机制 + Makefile target
+- [x] **1b.3**: 回归测试入册机制 + Makefile target
+
+## regression 子包 (INFRA-1b.3)
+
+### 目的
+
+闸 5 (README.md §测试 + regression 防护硬规则) 要求: **已合并 milestone 的 4.1 acceptance 自动入册**, 后续 milestone 改 schema 不能打穿之前的不变量。
+
+### 用法
+
+每个 milestone 的 acceptance 测试在自己的测试文件 `init()` 里登记:
+
+```go
+package cm1_test
+
+import (
+    "testing"
+    "borgee-server/internal/testutil/regression"
+)
+
+func init() {
+    regression.Register("CM-1", "users.org_id NOT NULL backfill",
+        func(t *testing.T) {
+            // ... 不变量断言
+        })
+}
+```
+
+然后在 `internal/testutil/regression_suite/suite_test.go` 加一行 blank import:
+
+```go
+import (
+    _ "borgee-server/internal/cm1_test_or_wherever"
+)
+```
+
+之后:
+- `go test ./...` 不变, 该测试还是作为常规单测跑
+- `make regression` 走 dispatcher 把所有 Register 过的入口跑一遍, 名字 `<milestone>/<name>`
+
+### 不变量
+
+- 重复 (milestone, name) → `panic` (强制审计可追溯)
+- 空 milestone / 空 name / nil fn → `panic`
+- registry 为空时 RunAll 调 `t.Skip` 而不是 fail (Phase 0 落地时尚无 entry)
+- `Entries()` 返回**拷贝** + 按 (milestone, name) 排序 (输出稳定)
+
+### Makefile 入口
+
+```makefile
+make regression
+# go test ./internal/testutil/regression_suite -run TestRegressionSuite -v
+```
+
+后续每个 milestone 关闭时, 烈马在 PR review 阶段确认: "本 milestone 的 4.1 acceptance 是否已 Register + 是否已加 blank import 到 regression_suite"。
 
 ## db 子包 (INFRA-1b.2)
 
