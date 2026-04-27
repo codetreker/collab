@@ -53,3 +53,42 @@ borgee-migrate status            # applied vs pending
 ## 6. 与旧 Store.Migrate() 的迁移路径
 
 Phase 1 CM-1 (organizations 表) **必须** 走新引擎, 不进 `createSchema`。`Store.Migrate()` 内部 backfill 函数在 v1 切换前评估迁出。
+
+## 7. 已注册迁移清单
+
+| version | name | 来源 | 备注 |
+|---|---|---|---|
+| 1 | `infra_1a_dummy_marker` | Phase 0 / INFRA-1a | 建 `_migrations_marker(version, note)`, 端到端验证引擎。 |
+| 2 | `cm_1_1_organizations` | Phase 1 / CM-1.1 | 见下节。 |
+
+### 7.1 v2 — `cm_1_1_organizations`
+
+Blueprint: concept-model.md §1.1 + §2 (1 person = 1 org, UI 永久不暴露; 数据层 org first-class)。
+
+DDL:
+
+```sql
+CREATE TABLE IF NOT EXISTS organizations (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+ALTER TABLE users           ADD COLUMN org_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE channels        ADD COLUMN org_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE messages        ADD COLUMN org_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE workspace_files ADD COLUMN org_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE remote_nodes    ADD COLUMN org_id TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS idx_users_org_id           ON users(org_id);
+CREATE INDEX IF NOT EXISTS idx_channels_org_id        ON channels(org_id);
+CREATE INDEX IF NOT EXISTS idx_messages_org_id        ON messages(org_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_files_org_id ON workspace_files(org_id);
+CREATE INDEX IF NOT EXISTS idx_remote_nodes_org_id    ON remote_nodes(org_id);
+```
+
+**v0 stance — `NOT NULL DEFAULT ''`**: 现有行直接拿到空串, 不做 backfill。CM-1.2 会让注册流程开始写真值; v0 dev DB 可"删库重建", 不再回填历史空串行。这条 v0 债已在 `docs/implementation/README.md` audit 表登记 (`organizations 表` + `users.org_id NOT NULL`)。
+
+**v1 切换路径**: 单独 PR — 先一次性 backfill `org_id`, 再追加新 migration 把 default 拿掉 (forward-only, 不改 v2 body)。
+
+**资源表覆盖**: CM-3 将开始基于 `org_id` 直查这五张表 (channels / messages / workspace_files / remote_nodes), 故索引在 CM-1.1 一并落地, 避免 Phase 2 切流时再补索引。`users.org_id` 用于 CM-1.3 admin stats GROUP BY 与 CM-1.2 注册流程 owner→org 关联。
