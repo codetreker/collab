@@ -30,7 +30,10 @@ func (h *UserHandler) handleMyPermissions(w http.ResponseWriter, r *http.Request
 
 	var permissions []string
 	var details []map[string]any
-	if user.Role == "admin" {
+
+	// Both admin and member get wildcard permissions on user-side.
+	// Admin permissions are handled separately via /admin-api/v1/*.
+	if user.Role == "admin" || user.Role == "member" {
 		permissions = []string{"*"}
 		details = []map[string]any{{"id": 0, "permission": "*", "scope": "*", "granted_by": nil, "granted_at": 0}}
 	} else {
