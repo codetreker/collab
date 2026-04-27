@@ -16,26 +16,8 @@ type UserHandler struct {
 }
 
 func (h *UserHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
-	mux.Handle("GET /api/v1/users", authMw(http.HandlerFunc(h.handleListUsers)))
 	mux.Handle("GET /api/v1/me/permissions", authMw(http.HandlerFunc(h.handleMyPermissions)))
 	mux.Handle("GET /api/v1/online", authMw(http.HandlerFunc(h.handleOnlineUsers)))
-}
-
-// GET /api/v1/users
-func (h *UserHandler) handleListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.Store.ListUsers()
-	if err != nil {
-		h.Logger.Error("failed to list users", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-
-	sanitized := make([]map[string]any, len(users))
-	for i, u := range users {
-		sanitized[i] = sanitizeUserPublic(&u)
-	}
-
-	writeJSONResponse(w, http.StatusOK, map[string]any{"users": sanitized})
 }
 
 // GET /api/v1/me/permissions

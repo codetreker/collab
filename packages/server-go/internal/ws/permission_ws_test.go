@@ -55,16 +55,5 @@ func TestP1WebSocketPermissionChanges(t *testing.T) {
 
 func getWSUserIDByName(t *testing.T, serverURL, token, displayName string) string {
 	t.Helper()
-	resp, data := testutil.JSON(t, http.MethodGet, serverURL+"/api/v1/users", token, nil)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list users status %d: %v", resp.StatusCode, data)
-	}
-	for _, raw := range data["users"].([]any) {
-		user := raw.(map[string]any)
-		if user["display_name"] == displayName {
-			return user["id"].(string)
-		}
-	}
-	t.Fatalf("user %q not found", displayName)
-	return ""
+	return testutil.GetUserIDByName(t, serverURL, token, displayName)
 }

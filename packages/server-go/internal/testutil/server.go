@@ -239,9 +239,11 @@ func GetGeneralChannelID(t *testing.T, serverURL, token string) string {
 
 func GetUserIDByName(t *testing.T, serverURL, token, displayName string) string {
 	t.Helper()
-	resp, data := JSON(t, http.MethodGet, serverURL+"/api/v1/users", token, nil)
+	// Use admin API since /api/v1/users is removed
+	adminToken := LoginAsAdmin(t, serverURL)
+	resp, data := JSON(t, http.MethodGet, serverURL+"/admin-api/v1/users", adminToken, nil)
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list users: status %d, body %v", resp.StatusCode, data)
+		t.Fatalf("admin list users: status %d, body %v", resp.StatusCode, data)
 	}
 	users, ok := data["users"].([]any)
 	if !ok {
