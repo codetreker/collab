@@ -36,7 +36,7 @@
 - **Owner**: 飞马 / 战马 / 野马 / 烈马
 - **范围**: PWA manifest; service worker (offline shell); Web Push 通知; iOS/Android 可装
 - **不在范围**: native app ❌ (永不做)
-- **依赖**: CS-1
+- **依赖**: CS-1, **DL-4 (server 端 Web Push gateway 提供 VAPID 签名推送)**
 - **预估**: ⚡ v0 1 周
 - **Acceptance**: E2E (iPhone Safari 装到桌面 → 收到 push)
 

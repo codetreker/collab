@@ -38,6 +38,23 @@
 - **依赖**: ADM-1
 - **预估**: ⚡ v0 1 周
 
+### DL-4: server-side services (plugin manifest API + Web Push gateway) ⚠️ must-fix 收口
+
+> 飞马 review 新发现: HB-1 / CS-3 都建在不存在的后端上 — server 端 plugin manifest 与 Web Push gateway 没归任何模块, 必须独立 milestone 收口, 否则两个 client 模块各自假设。
+
+- **目标**: 收口 server 端 plugin registry + Web Push gateway, 给 HB-1 / CS-3 提供必要的后端服务。
+- **Owner**: 飞马 (主, 服务边界设计) / 战马 / 野马 / 烈马
+- **范围**:
+  - **plugin manifest API**: `GET /api/v1/plugins/manifest/<id>` 返回 (url / sha256 / signature / capabilities); 服务端单一注册表 (v0 写死 config 文件即可, registry v1+ 才需要)
+  - **Web Push gateway**: 服务端 VAPID 签名 + push subscription 入表 (`push_subscriptions(user_id, endpoint, keys, created_at)`) + 通知发送 worker
+- **不在范围**: plugin 自动更新 ❌; 多源 registry ❌; push notification 内容渲染 (CS-3 负责); FCM/APNs 直连 ❌ (Web Push 标准协议即可)
+- **依赖**: 无 (可跟 BPP-1 并行)
+- **预估**: ⚡ v0 1 周
+- **Acceptance**:
+  - 数据契约: manifest API schema + push_subscriptions 表
+  - 行为不变量 4.1: 签名校验失败的 manifest → daemon 拒绝安装 (单测)
+  - E2E (与 CS-3 配合): 用户在 Mobile PWA 订阅 → 服务端 push → 用户收到
+
 ## 3. 不在 data-layer 范围
 
 - backup / restore (v0→v1 切换 checklist 单独做)
@@ -50,3 +67,4 @@
 | DL-1 | data-layer §4.A | A 必修 5 条接口锁定 |
 | DL-2 | data-layer §3.1 + §3.4 | events 双流 + 必落清单 |
 | DL-3 | data-layer §5 | 凭指标切, 不凭感觉切 |
+| DL-4 | (实施补缺口) | server 端 plugin manifest + Web Push gateway, 给 HB-1/CS-3 提供后端 |

@@ -17,8 +17,9 @@
 
 - **目标**: blueprint §1.1 — 内部双 daemon, install-butler 负责 plugin 下载/校验/安装。
 - **Owner**: 飞马 (review 安全模型) / 战马 / 野马 / 烈马
-- **范围**: daemon 启动 + IPC 接口; 从 server 拉 plugin manifest; 签名校验; 安装到本地路径
-- **不在范围**: plugin 自动更新 (v1+); 多源 registry ❌
+- **范围**: daemon 启动 + IPC 接口; 从 server 拉 plugin manifest (依赖 server 端 manifest API, 见 data-layer **DL-4 server-side-services**); 签名校验; 安装到本地路径
+- **不在范围**: plugin 自动更新 (v1+); 多源 registry ❌; **server 端 manifest API → DL-4**
+- **依赖**: **DL-4 (server-side-services 提供 plugin manifest API)**
 - **预估**: ⚡ v0 1-2 周
 - **Acceptance**: E2E (用户点装 plugin → daemon 下载装好可启动)
 
@@ -43,11 +44,29 @@
 
 ### HB-4: 信任五支柱可见 ⭐
 
-- **目标**: blueprint §2 — 五支柱 (开源 / 签名 / 可审计日志 / 可吊销 / 限定能力) 在 UI 可被用户读到。
+- **目标**: blueprint §2 — 五支柱 (开源 / 签名 / 可审计日志 / 可吊销 / 限定能力) 在 UI 可被用户读到; **同时收口蓝图 §1.5 v1 release 硬指标** (见下表)。
 - **Owner**: 野马 (主, demo 签字) / 战马 / 飞马 / 烈马
-- **范围**: Helper 设置页可看每条支柱状态; 审计日志可导出
-- **预估**: ⚡ v0 4-5 天
-- **Acceptance**: 用户感知签字 4.2 (野马: "我作为用户敢装这个 daemon")
+- **范围**: Helper 设置页可看每条支柱状态; 审计日志可导出; v1 release gate 数字化指标全过
+- **预估**: ⚡ v0 4-5 天 + 硬指标补 3-4 天
+- **Acceptance** (⭐ 标志性, 4.1+4.2 双挂):
+  - 行为不变量 4.1: 五支柱状态 API 返回结构稳定 (合约测试) + 审计日志格式 schema 锁定
+  - 行为不变量 4.1 + 数据契约 (Helper v1 release gate, 见下)
+  - 用户感知签字 4.2 (野马: "作为用户我敢装这个 daemon", 截 3 张: 五支柱状态页 / 情境授权弹窗 / 撤销后行为)
+
+#### Helper v1 release gate (蓝图 §1.5 硬指标)
+
+> 烈马要求: "硬指标"必须数字化, 否则只能 4.2 主观签字, 不算可重复。
+
+| 指标 | 阈值 | 测量方式 | Owner |
+|------|------|---------|-------|
+| Helper 启动时间 (冷启动) | < 800 ms | benchmark 单测 (CI) | 战马 / 烈马 |
+| Helper 崩溃率 (内部 dogfood 1 周) | < 0.1% (1 千次会话最多 1 次) | 崩溃报告统计 | 烈马 |
+| 签名校验失败率 (合法 plugin) | 0% | 合约测试 (CI) | 烈马 |
+| 审计日志格式 | 锁定 JSON schema (含 actor / action / target / when / scope) | schema 文件 + 校验单测 | 飞马 / 烈马 |
+| 撤销 grant → daemon 立即拒绝 | < 100 ms | 行为不变量单测 | 烈马 |
+| 任何写类 IPC 调用 | 一律拒绝 (v1 仅读) | 单测覆盖每种写法 | 烈马 |
+
+**HB-4 关闭条件**: 上述 6 行指标全过 + 野马签字 + 截屏。任意一行不达标 → ⭐ milestone 不能关。
 
 ## 3. 不在 host-bridge 范围
 

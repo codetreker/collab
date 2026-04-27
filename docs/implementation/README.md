@@ -97,11 +97,17 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 继承 11 轮讨论时飞马野马提出的 form:
 
 1. **PR ≤ 3 天**, **Milestone ≤ 2 周** —— 控制反馈循环
-2. **可验证四选一**: e2e 断言 / 蓝图行为对照 / 数据契约 / 行为不变量 —— 每 PR 至少一种
+2. **可验证四选一**: e2e 断言 / 蓝图行为对照 / 数据契约 / 行为不变量 —— 每 PR 至少一种; **标志性 milestone 强制 4.1+4.2 双挂**
 3. **5 秒看完路径** —— [`execution-plan.md`](00-foundation/execution-plan.md) 是源头, [`roadmap.md`](00-foundation/roadmap.md) 是缩略图
-4. **PR 描述强制**: `Blueprint: <模块> §X.Y` —— 让追溯无歧义
+4. **PR 描述强制**: `Blueprint: <模块> §X.Y` + `Touches:` + `Current 同步:` 三个区块齐 —— 让追溯无歧义
 5. **Milestone 末必须可发版** —— 中间态用 feature flag 隐藏
-6. **current 同步硬规则**: 每个 PR 合并前必须更新 [`../current/<module>/`](../current/) 对应章节; 烈马在 acceptance 验收时 review current 同步度。代码先合 + current 后补 = 不允许。
+6. **current 同步硬规则**: 每 PR 改 `internal/<module>/` 必须同步改 `docs/current/<module>/`, **CI lint 卡 merge** (无同步 = fail); 烈马在 PR review 阶段确认。
+7. **跨模块 PR 协议**: PR `Touches` 含 ≥ 2 子系统时 (server+plugin+client) 必须一次合并 monorepo 单 PR, 不串行。
+8. **revert 优先**: v0 阶段 main 跑不起来 → 直接 `git revert` + push, 不写 schema 回滚。
+9. **测试 + regression 防护硬规则** (闸 5):
+   - 每 PR 合并前: 单元测试 (新增/改动覆盖率 ≥ 80%, CI 强制) + 至少 1 条集成测试 (跨模块 happy path E2E) + seed 脚本 (`testdata/<milestone>/seed.sql`, v0 删库后一键复现)
+   - 每 Phase gate 前: 全回归套件跑绿; 已合并 milestone 的 4.1 acceptance 自动入册, 烈马维护清单
+   - 不写测试 = 后续 milestone 改 schema 打穿前面 milestone, 发现不了
 
 ---
 

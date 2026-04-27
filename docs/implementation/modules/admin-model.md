@@ -12,14 +12,21 @@
 
 ## 2. Milestones
 
-### ADM-1: admin SPA 独立 + 元数据/内容硬隔离
+### ADM-1: admin SPA 独立 + 元数据/内容硬隔离 + 用户隐私承诺可见
 
-- **目标**: blueprint §1.1 + §1.3 — admin 独立 SPA, 内容必须用户授权才能读。
+- **目标**: blueprint §1.1 + §1.3 + 核心 §13 — admin 独立 SPA, 内容必须用户授权; **用户侧能读到 admin 能看 X / 看不到 Y 的承诺**。
 - **Owner**: 飞马 (review 边界) / 战马 / 野马 (隐私立场) / 烈马
-- **范围**: 独立 admin SPA 路由; 中间件强制只允许"元数据"接口 (org / user 列表 / 计数 / 状态), 内容接口 (messages / artifacts) 必须带用户授权 token
+- **范围**:
+  - 独立 admin SPA 路由
+  - 中间件强制只允许"元数据"接口 (org / user 列表 / 计数 / 状态)
+  - 内容接口 (messages / artifacts) 必须带用户授权 token
+  - **用户设置页加"隐私承诺"区**: 显式列 admin 能看到 (org / user list / count / status) vs 看不到 (message body / artifact 内容) — 野马 P2
 - **依赖**: CM-1 (org_id 聚合)
 - **预估**: ⚡ v0 1-2 周
-- **Acceptance**: 行为不变量 4.1 (无授权访问内容 → 拒绝, 单测) + 数据契约 (元数据接口枚举表)
+- **Acceptance**:
+  - 行为不变量 4.1 (无授权访问内容 → 拒绝, 单测)
+  - 数据契约 (元数据 vs 内容接口枚举表)
+  - 用户感知截屏 4.2 (野马: 用户设置页"隐私承诺"区, 截 1 张, 验立场 §13)
 
 ### ADM-2: 分层透明 (用户可见性) ⭐
 
@@ -28,7 +35,9 @@
 - **范围**: `admin_actions(actor_id, target_user_id, action, when)` 表; 用户设置页可看自己被 admin 影响的记录
 - **依赖**: ADM-1
 - **预估**: ⚡ v0 1 周
-- **Acceptance**: E2E + 用户感知签字 (野马: "作为用户我知道 admin 干了什么")
+- **Acceptance** (⭐ 标志性, 4.1+4.2 双挂):
+  - 行为不变量 4.1: 任何 admin action → 自动写一行 admin_actions (单测覆盖每种 action 类型)
+  - 用户感知签字 4.2 (野马: "作为用户我知道 admin 干了什么", 截 3 张: 用户设置 audit 列表 / 某条 admin action 详情 / 时间线视图)
 
 ### ADM-3: admin 来源 C 混合 (用户 + key)
 
@@ -46,6 +55,6 @@
 
 | Milestone | §X.Y | 立场一句话 |
 |-----------|------|-----------|
-| ADM-1 | admin-model §1.1 + §1.3 | 独立 SPA + 元数据/内容硬隔离 |
+| ADM-1 | admin-model §1.1 + §1.3 + 核心 §13 | 独立 SPA + 元数据/内容硬隔离 + 用户侧隐私承诺可见 |
 | ADM-2 | admin-model §1.4 | 分层透明, 用户看到自己被影响什么 |
 | ADM-3 | admin-model §1.2 | C 混合: 用户升级 + admin key bootstrap |

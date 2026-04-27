@@ -29,7 +29,10 @@
   - CV-1.1 schema + 创建 API (战马 / 飞马 / 烈马 数据契约)
   - CV-1.2 版本不可变约束 + 列表 API (战马 / 飞马 / 烈马 行为不变量: 旧版本不可改)
   - CV-1.3 workspace UI 列 artifacts (战马 / 飞马 / 野马 立场 / 烈马 E2E)
-- **Acceptance**: E2E (agent 创建 note → 用户 workspace 看到) + 行为不变量 (版本不可变) + 用户感知签字 (野马: "感觉 workspace 里有东西在长出来")
+- **Acceptance** (⭐ 标志性 milestone, 4.1+4.2 双挂):
+  - E2E (agent 创建 note → 用户 workspace 看到)
+  - 行为不变量 4.1 (版本不可变: `UPDATE artifact_versions WHERE created_at < now()` 单测预期 0 行)
+  - 用户感知签字 4.2 (野马跑 demo, 截 3 张固定步骤: artifact 列表初始 / 添加新版本后列表 / v1↔v2 切换)
 
 ### CV-2: 锚点对话 (anchor comments)
 
@@ -39,7 +42,7 @@
 - **不在范围**: agent 之间互发 anchor ❌ (蓝图明确禁止)
 - **依赖**: CV-1
 - **预估**: ⚡ v0 4-5 天
-- **Acceptance**: E2E (用户加锚点 → agent 收到 → 出新版本) + 行为不变量 (agent → agent 锚点拒绝, 单测)
+- **Acceptance**: E2E (用户加锚点 → agent 收到 → 出新版本) + 行为不变量 4.1 (agent→agent 锚点拒绝, 单测)
 
 ### CV-3: D-lite 画布渲染
 
@@ -55,9 +58,9 @@
 - **目标**: 把 CV-1~3 串成"agent 持续 iterate workspace artifact"的完整体验。
 - **Owner**: 野马 (主) / 战马 / 飞马 / 烈马
 - **范围**: agent 收 anchor comment → 起草新版本 → 用户对比 v1/v2 → 决定保留
-- **依赖**: CV-1, CV-2, CV-3, CM-4 (agent 在线感)
+- **依赖**: CV-1, CV-2, CV-3, CM-4 (agent 在线感), **RT-1 (artifact 推送, 否则只能轮询, demo 垮)**
 - **预估**: ⚡ v0 1 周
-- **Acceptance**: E2E + 用户感知签字 (野马: "agent 像在工作不是在等指令")
+- **Acceptance**: E2E + 用户感知签字 4.2 (野马: "agent 像在工作不是在等指令", 截屏: 锚点提交 / 新版本推送通知 / v1/v2 diff)
 
 ## 3. 不在 canvas-vision 范围
 

@@ -1,53 +1,64 @@
 # Implementation · Realtime
 
 > 蓝图: [`../../blueprint/realtime.md`](../../blueprint/realtime.md)
-> 现状: 当前已有 messages 推送, 但没有"活物感"动效, 没有 artifact 推送, 离线回放有 bug
+> 现状: 当前已有 messages 推送, 但没有"活物感"动效, 没有 artifact 推送, 离线回放未拆人/agent
 > 阶段: ⚡ v0
-> 所属 Phase: Phase 4
+> 所属 Phase: **RT-1 在 Phase 3 (CV-4 demo 必需), RT-2/RT-3 在 Phase 4**
 
 ## 1. 现状 → 目标 概览
 
-**现状**: 推送框架有, 但 "agent 在工作" 的活物感缺失; artifact 推送完全没有; 离线回放未拆人/agent。
-**目标**: blueprint 四条立场 — 活物感 B+ 轻动效 (artifact 场景 C 强调), artifact 推送 agent 自决, 离线回放人/agent 拆分, 多端 A 全推。
-**主要差距**: artifact 推送 / 回放拆分 / 智能推 v1 末优化。
+**现状**: 推送框架有, "agent 在工作"活物感缺失; artifact 推送无; 离线回放未拆人/agent; thinking 无 subject 反约束未实施。
+**目标**: blueprint §1.1~§1.4 + 核心 §11 — 活物感 B+ 轻动效, artifact 推送 agent 自决, 离线回放人/agent 拆, 多端 A 全推, **沉默胜于假 loading (thinking 必带 subject, 无 subject 不渲染)**。
 
 ## 2. Milestones
 
-### RT-1: artifact 推送 (BPP frame)
+### RT-1: artifact 推送 (Phase 3, CV-4 demo 必需)
 
-- **目标**: blueprint §1.2 — artifact 推送 agent 自决, 不是 server 强推。
+- **目标**: blueprint §1.2 — artifact 推送 agent 自决, 非 server 强推。
 - **Owner**: 飞马 / 战马 / 野马 / 烈马
-- **范围**: BPP 数据面 frame `ArtifactUpdated` (agent 主动发); server 转发到对应 workspace 的所有在线 client
+- **范围**: BPP 数据面 frame `ArtifactUpdated` (agent 主动发); server 转发到 workspace 在线 client
 - **依赖**: BPP-1, CV-1
 - **预估**: ⚡ v0 4-5 天
-- **Acceptance**: E2E (agent push artifact → 用户秒看到)
+- **Acceptance**: E2E (agent push artifact → 用户秒看到, 无需轮询)
 
-### RT-2: 离线回放 (人/agent 拆分) ⭐
+### RT-2: 离线回放 (人/agent 拆分)
 
-- **目标**: blueprint §1.3 — 人和 agent 离线回放策略不同 (人重时间序, agent 重补漏)。
+> 野马 review: 取消 ⭐ 标志性 — 离线回放是健壮性, RT-3 升 ⭐ 替代。
+
+- **目标**: blueprint §1.3 — 人/agent 回放策略不同 (人重时间序, agent 重补漏)。
 - **Owner**: 飞马 / 战马 / 野马 (立场关键) / 烈马
-- **范围**: 回放 cursor (events 表 + 双流); 人客户端拉时间序; agent 重连拉自上次 ack 后的 missing
-- **依赖**: BPP-1, DL-2 (events 表)
+- **范围**: 回放 cursor (events 双流); 人拉时间序; agent 重连拉 missing
+- **依赖**: BPP-1, DL-2
 - **预估**: ⚡ v0 1 周
-- **Acceptance**: 行为不变量 (agent 不漏 frame, 单测) + E2E (用户离线 1 小时, 上线后 inbox 顺序正确)
+- **Acceptance**: 行为不变量 4.1 (agent 不漏 frame, 单测) + E2E (用户离线 1h 后 inbox 顺序正确)
 
-### RT-3: 多端在线全推 + 活物感动效
+### RT-3: 多端全推 + 活物感 + thinking subject 反约束 ⭐
 
-- **目标**: blueprint §1.4 + §1.1 — 多端 A 全推, 主界面 B+ 轻动效。
-- **Owner**: 飞马 / 战马 / 野马 / 烈马
-- **范围**: 多端 socket 全推 (后续 v1 末优化为智能推); thinking indicator / typing dots 等轻动效
+> 野马 review: 升 ⭐ — 活物感比离线回放更产品立场 (核心 §11)。
+
+- **目标**: blueprint §1.4 + §1.1 + 核心 §11 — 多端 A 全推, 主界面 B+ 轻动效, **沉默胜于假 loading**。
+- **Owner**: 野马 (主, demo+签字) / 战马 / 飞马 / 烈马
+- **范围**:
+  - 多端 socket 全推 (v1 末优化智能推)
+  - thinking indicator / typing dots
+  - **thinking subject 反约束**: agent frame 缺 subject → server reject + UI 不渲染 (核心 §11 立场)
 - **预估**: ⚡ v0 1 周
-- **Acceptance**: 用户感知签字 (野马: "感觉 agent 在动")
+- **Acceptance** (⭐ 标志性, 4.1+4.2 双挂):
+  - 行为不变量 4.1: nil subject 的 typing/thinking frame → server reject + UI 不渲染 (单测; BPP-1 已有 grep 校验, 这里加端到端单测)
+  - 用户感知签字 4.2 (野马跑 demo 截 3 张):
+    - thinking 带 subject (例: "正在搜索 docs...")
+    - 多端同步 (两个 client 同时看到)
+    - **反约束截屏**: agent 试图发 nil subject → UI 空白, 不出现裸 spinner (验立场底线)
 
 ## 3. 不在 realtime 范围
 
 - 智能推 (per-device 优化) → v1 末
-- BPP 协议本身 → BPP
+- BPP 协议本身 → plugin-protocol
 
 ## 4. Blueprint 反查表
 
 | Milestone | §X.Y | 立场一句话 |
 |-----------|------|-----------|
 | RT-1 | realtime §1.2 | artifact 推送 agent 自决 |
-| RT-2 | realtime §1.3 | 人/agent 回放策略拆 |
-| RT-3 | realtime §1.4 + §1.1 | 多端全推 + 轻动效活物感 |
+| RT-2 | realtime §1.3 | 人/agent 回放策略拆, 不漏不重 |
+| RT-3 | realtime §1.4 + §1.1 + 核心 §11 | 多端全推 + 轻动效活物感 + thinking 必带 subject |

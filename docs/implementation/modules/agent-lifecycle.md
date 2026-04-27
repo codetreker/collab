@@ -25,24 +25,28 @@
 - **预估**: ⚡ v0 1 周
 - **Acceptance**: 行为不变量 4.1 (状态机非法转移单测) + 蓝图行为对照 §2.3
 
-### AL-2: agent 配置 SSOT + 热更新
+### AL-2: agent 配置 SSOT + 热更新 (拆 a/b)
 
-- **目标**: blueprint §2.1 加条 — agent 配置走平台下发, 不在 agent 平台里, 热更新立即生效。
-- **Owner**: 飞马 / 战马 / 野马 / 烈马
-- **范围**: `agent_configs(agent_id, schema_version, blob, updated_at)` 表; BPP 控制面 `ConfigUpdated` frame; plugin 收到立即 reload
-- **依赖**: BPP-1 (协议骨架)
-- **预估**: ⚡ v0 1 周
-- **Acceptance**: E2E (改 config → plugin 1s 内 reload) + 行为不变量 (并发 update idempotent)
+- **目标**: blueprint §2.1 加条 + 核心 §9 — 配置 SSOT 在平台, 热更新立即生效。
+- **Owner**: 飞马 / 战马 / 野马 (立场: 改 prompt 立刻生效, 不重启) / 烈马
+- **范围 (拆 2 个 PR)**:
+  - **AL-2a** `agent_configs(agent_id, schema_version, blob, updated_at)` 表 + update API; agent 端 reload 走轮询 (临时, 等 AL-2b)
+  - **AL-2b** BPP `ConfigUpdated` frame; plugin 收到立即 reload — **必须跟 BPP-3 同 PR 合**, 防止 frame 字段改两次 (战马 D5 锁紧)
+- **依赖**: AL-2a 无前置 (可并行 CM-*); AL-2b 依赖 BPP-1, 与 BPP-3 同合
+- **预估**: ⚡ v0 AL-2a 4 天 + AL-2b 4 天 (与 BPP-3 联合)
+- **Acceptance**:
+  - AL-2a: 数据契约 (config 表 + update API) + 行为不变量 4.1 (并发 update idempotent)
+  - AL-2b: E2E (改 config → 下条对话已生效, 不重启) + **用户感知截屏 4.2** (修改前 prompt / 修改后下条响应, 验证 §9 立场)
 
 ### AL-3: presence 完整版
 
 - **目标**: 把 CM-4 的 minimal presence 扩到 multi-session + heartbeat 超时 + (可选) 跨进程 (留接口)。
 - **Owner**: 飞马 (review 接口稳定) / 战马 / 野马 / 烈马
-- **范围**: heartbeat (10s 间隔, 30s 超时); 同 agent 多 session; 超时自动清理
+- **范围**: heartbeat (10s 间隔, 30s 超时); 同 agent 多 session (复用 CM-4 已锁定的 `Sessions(userID) []SessionID`); 超时自动清理
 - **不在范围**: 跨进程 (Redis backed) ❌ — 留接口, 实现 v1+
-- **依赖**: CM-4
+- **依赖**: CM-4 (presence 接口契约已含 Sessions)
 - **预估**: ⚡ v0 4-5 天
-- **Acceptance**: 行为不变量 (heartbeat 超时 → IsOnline=false, 单测)
+- **Acceptance**: 行为不变量 4.1 (heartbeat 超时 → IsOnline=false 单测; Sessions 多端去重单测) + **接口签名 snapshot test** (CM-4 锁定的 IsOnline + Sessions 签名不变, 烈马要求)
 
 ### AL-4: 退役 = 禁用 (删除藏高级)
 
@@ -62,6 +66,7 @@
 | Milestone | §X.Y | 立场一句话 |
 |-----------|------|-----------|
 | AL-1 | agent-lifecycle §2.3 | 四态 + 故障可解释 |
-| AL-2 | agent-lifecycle §2.1 加条 | 配置 SSOT 在平台, 热更新 |
-| AL-3 | (实施加条) | presence 完整版, 不阻塞产品 |
+| AL-2a | agent-lifecycle §2.1 加条 + 核心 §9 | 配置 SSOT 表 + update API |
+| AL-2b | agent-lifecycle §2.1 加条 + 核心 §9 | 配置热更新 BPP frame, 改 prompt 立即生效不重启 |
+| AL-3 | (实施加条) | presence 完整版, 复用 CM-4 接口契约 |
 | AL-4 | agent-lifecycle §2.4 | 退役 = 禁用, 删除高级 |

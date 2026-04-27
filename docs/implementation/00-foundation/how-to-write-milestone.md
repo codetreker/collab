@@ -97,11 +97,24 @@
 > 标志性 milestone 关闭前, 由野马 (PM) 跑一遍 demo, 主观签字"X 立场成立", **截关键步骤 3-5 张截屏留档** (AI 团队不录视频)。
 
 例:
-> 野马跑 CM-4 demo: 邀请 → 接受 → @ 离线 → 收到 system message。主观签字"看起来像同事不像 bot", 截 3-5 张关键截屏存入 `docs/evidence/cm-4/` 目录。
+> 野马跑 CM-4 demo: 邀请 → 接受 → @ 离线 → 收到 system message。主观签字"看起来像同事不像 bot", 截 3-5 张关键截屏存入 `docs/evidence/cm-4/` 目录。截屏 commit 时附 `blueprint-sha.txt` 记录当时 blueprint 版本。
 
 适用: 标志性 milestone (产品立场层); 强制留截屏 (而非视频, AI 团队), 方便后续若有人改坏立场拿截屏对照。
 
 > ⚠️ **底线**: 4.1 和 4.2 不能互相替代。工程端不能用单测把 4.2 糊弄过去, 产品端也不能用主观签字代替 4.1 的可重复断言。
+
+> ⭐ **标志性 milestone 强制 4.1 + 4.2 双挂**: 任何标志性 milestone (PROGRESS 列 ⭐ 的) 必须同时给出 4.1 (CI 单测) 和 4.2 (野马签字 + 截屏)。单挂 4.2 = 不可重复 = 烈马打回。
+
+---
+
+## CI 与 seed 契约 (烈马底线)
+
+每个 milestone 在合并前必须挂以下两件:
+
+1. **seed 脚本** `testdata/<milestone>/seed.sql` — 删库后用此脚本构建 acceptance fixture, "删库 + seed + 跑 acceptance" 在 CI 中一键复现。v0 删库重建场景下, 没有 seed = acceptance 一次性。
+2. **回归测试入册** — milestone 关闭打 ✅ 时, 该 milestone 的所有 4.1 acceptance 自动进 CI 回归套件。每次 Phase gate 关闭时全部跑一遍, 任意 fail = gate 不通过。
+
+烈马在 PR review 阶段验证这两件存在, 缺即打回。
 
 ---
 
@@ -123,12 +136,22 @@
 ## Blueprint: <module> §X.Y
 <引用相关蓝图段落, 让 reviewer 知道这条改动锚定的产品立场>
 
+## Touches
+<server | client | plugin | helper | docs | testdata — 列出本 PR 触达的子系统>
+
 ## Acceptance
-<四选一其中一种>
+<四选一其中一种, 标志性 milestone 4.1 + 4.2 双挂>
+
+## Current 同步
+<本 PR 改动的 `docs/current/<module>/` 文件清单。空则填 "N/A — <理由>", 烈马签字>
 
 ## Stage: ⚡ v0 / 🛡️ v1
 <标记当前阶段,提示 reviewer 用对应严格度审>
 ```
+
+> **跨模块 PR 协议**: 当 `Touches` 含 ≥ 2 个子系统 (例: server+plugin+client), 必须**一次合并** (monorepo 单 PR), 不允许串行 3 个 PR — v0 BPP 协议变化必须 plugin 同步发版。
+> **PR revert 流程**: v0 阶段 main 跑不起来 → 直接 `git revert <sha>` + push, main 走 fast-forward。不写回滚 schema 脚本 (v0 允许删库)。
+> **CI lint**: PR 改 `internal/<module>/` 但没改 `docs/current/<module>/` → CI fail。 烈马在 PR review 阶段确认 Current 同步区块填了。
 
 ## 模块文档末尾必备: Blueprint 反查表 (闸 3)
 
