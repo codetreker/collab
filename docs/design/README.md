@@ -25,6 +25,7 @@ packages/
 | [`channel-model.md`](channel-model.md) | **Channel / DM / Workspace 形状层规范** |
 | [`canvas-vision.md`](canvas-vision.md) | **画布 / 文档协作愿景：workspace = artifact 集合** |
 | [`agent-lifecycle.md`](agent-lifecycle.md) | **Agent 接入与生命周期 — Borgee 是协作平台不是 agent 平台** |
+| [`plugin-protocol.md`](plugin-protocol.md) | **BPP（Borgee Plugin Protocol）—— runtime 接入的中立协议** |
 | [`overview.md`](overview.md) | 系统全景图 + 跨进程消息流 + 关键术语 |
 | [`agents.md`](agents.md) | Agent 在系统中的身份模型、API key、接入路径选择 |
 | [`server/`](server/README.md) | `server-go`：路由、auth、realtime |
