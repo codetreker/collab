@@ -40,10 +40,35 @@
 |------|------|
 | `@飞马` mention | 只 ping 飞马，**不**抄送 owner |
 | 主动 DM 飞马 | 任何人都能直接发起，**不**需要先经过 owner |
-| Agent 离线时被 mention | TBD：默认进死信；产品决策（是否 fallback 到 owner）待定 |
+| Agent **离线**时被 mention | **owner 收到一条"飞马离线"系统提示（不转发原始消息内容）**——见 §4.1 |
 | Agent **创建**资源（channel、文件、上传） | **归 owner 所有**——说话归 agent，创造归 owner |
 
-> 这条规则把 agent 提升到真正的协作伙伴，而不是"远程操作 owner 账号的代理"。代价是 agent 离线/被禁用时 owner 默认收不到通知，需要产品上有补偿机制。
+> 这条规则把 agent 提升到真正的协作伙伴，而不是"远程操作 owner 账号的代理"。代价是 agent 离线/被禁用时 owner 默认看不到对话内容，但能感知"有人找过我的 agent"。
+
+### 4.1 离线 fallback 规则（已落定）
+
+**决策（飞马 + 野马 2026-04-27）**：选 B（实用主义），既不让 owner 失明（破坏体验），也不让原始消息泄露（破坏 agent 隐私边界）。
+
+- **触发条件**：mention 路由层判定目标 agent 当前**没有 active session**（无 WS / plugin / poll 连接）。
+- **行为**：给 agent 的 owner 写一条 `type=system` message 到 owner 与该 agent 之间的内置 DM 频道，文本形如"飞马 当前离线，#foo 中有人 @ 了它，你可能需要处理"。
+- **不做的事**：
+  - 不转发原消息内容（保持 agent 私信边界）
+  - 不重复推送（同一 agent 短时间内连续被 @ 时合并通知，节流策略 v1 用最简单的"每 channel 5 分钟内只推一次"）
+- **代码影响点**：mention 路由（`internal/api/messages.go: CreateMessageFull` 之后的 mention 写入处）、presence 检测（hub.OnlineUsers + plugin connection map）。
+
+### 4.2 跨 org 邀请 agent 进 channel（已落定）
+
+**决策（飞马 + 野马 2026-04-27）**：默认 B（异步邀请审批） + 可选 C（agent 级别开关 escape hatch）。
+
+- **默认流程（B）**：
+  1. 任何 channel 成员触发"邀请 X org 的 agent"。
+  2. 系统给该 agent 的 owner 写一条 system message 到 owner 的内置 inbox DM："建军想邀请 飞马 进入 #foo channel"——附带"同意 / 拒绝"快捷按钮。
+  3. owner 同意 → agent 加入 channel；拒绝 / 超时（建议 7 天）→ 邀请失效。
+  4. 状态机：`pending → approved | rejected | expired`，落 `agent_invitations(id, channel_id, agent_id, requested_by, state, created_at, decided_at)` 表。
+- **Escape hatch（C）**：owner 可以在 agent 配置里勾选"允许任何 org 邀请此 agent"——勾上之后跳过审批，邀请直接生效。这是 power user 选项，**默认关闭**。
+- **A 选项被否决**（要求 owner 必须先在 channel 里）：阻塞异步协作，跨时区场景体验差。
+
+> **责任归属语义**：B 默认保证"agent 进我的 channel 一定经过它 owner 同意"；C 让 owner 显式声明"我对这个 agent 完全放权"。两条都是 owner 的主动决定，不存在"别人替我决定我的 agent 去哪"。
 
 ## 5. 接入方式的不对称
 
@@ -72,12 +97,18 @@
 | Agent 创建资源归 owner | `created_by` 是 agent；要查 owner 必须 `JOIN owner_id` | 一旦 `org_id` 加上，`SELECT * WHERE org_id = ?` 直接拿到 org 内全部资源 |
 | Channel 分组纯视觉 | 全 org 共享 | 暂不动，**文档已明示语义** |
 
-## 8. 落地建议（独立讨论，非本文承诺）
+## 8. 落地建议（org_id 迁移：已纳入下一步）
 
-加 `org_id` 是一次**广覆盖但低风险**的迁移：
+**决策（飞马 + 野马 2026-04-27）**：选 A，**现在做**。
+
+- **技术理由**：迁移成本窗口现在最小（数据量小、表少、UI 完全无耦合）。等"多人 org"需求落地再补，`owner_id` 隐式语义已扩散进 N 处 query，回填代价翻倍。
+- **产品理由**：P4（多用户注册）即将上线，"我的 agent"列表、资源归属查询都需要 org 边界。如果 P4 数据先落，再补 org 维度会要打补丁。
+- **不做的事**：UI 不暴露 `org_id`、API payload 不返回，**用户完全感知不到**这一层。
+
+加 `org_id` 是一次**广覆盖但低风险**的迁移，分 5 步：
 
 1. 建 `organizations` 表 (`id`, `name`, `created_at`)。
-2. `users` 加 `org_id` 列，回填脚本：每个 `role!='agent'` 的 user 创建一个 org，`role='agent'` 的 user 继承 `owner_id` 对应 user 的 org。
+2. `users` 加 `org_id` 列，回填脚本：每个 `role!='agent'` 的 user 创建一个 org（默认 name = `<display_name>'s org`），`role='agent'` 的 user 继承 `owner_id` 对应 user 的 org。
 3. 在主要带 owner 语义的表（`messages`, `channels`, `workspace_files`, `remote_nodes`）上**加索引但不加 FK**，由 application 层维护一致性，避免 cascade 风暴。
 4. 不开放任何 `/orgs` 端点，不在 API payload 里返回 `org_id`，让 UI **完全感知不到**这个概念存在。
 5. 内部查询逐步切到 "with org_id 视图"——优先用在 admin stats、agent 列表、 future quota/billing 这种全局聚合上。
