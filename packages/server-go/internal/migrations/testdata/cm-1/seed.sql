@@ -1,0 +1,11 @@
+-- Phase 1 / CM-1 seed placeholder.
+--
+-- Empty by design: CM-1.1 (organizations table + org_id NULL columns on
+-- users/channels/messages/agents) is a pure schema migration. v0 strategy
+-- forbids backfill scripts, so there is no fixture data to seed.
+--
+-- CM-1.2 will add an "auto-create org on registration" path; if a fixture
+-- becomes necessary at that point, append rows here.
+--
+-- This file exists to satisfy the G1 闸 5 seed contract
+-- (testdata/<milestone>/seed.sql per implementation/README.md §测试 + regression).

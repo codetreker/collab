@@ -20,6 +20,10 @@
 | `workspace_files` | `id`, `user_id`, `channel_id`, `parent_id`, `name`, `is_directory`, `mime_type`, `size_bytes`, `source` (`upload` / `message`), `source_message_id` | per-channel 文件树 |
 | `remote_nodes` | `id`, `user_id`, `machine_name`, `connection_token` UNIQUE, `last_seen_at` | `remote-agent` 注册 |
 | `remote_bindings` | `id`, `node_id`, `channel_id`, `path`, `label`，UNIQUE(`node_id`,`channel_id`,`path`) | channel ↔ 远端目录绑定 |
+| `organizations` | `id`, `name`, `created_at` | Phase 1 / CM-1.1 (`schema_migrations` v2)。1 person = 1 org, UI 永不暴露; 数据层 first-class。见 `migrations.md §7.1`。 |
+| `schema_migrations` | `version` PK, `applied_at`, `name` | Phase 0 / INFRA-1a。版本化迁移引擎状态表。 |
+
+**`org_id` 列**: CM-1.1 给 `users / channels / messages / workspace_files / remote_nodes` 各加一列 `org_id TEXT NOT NULL DEFAULT ''` + 同名 `idx_*_org_id` 索引。v0 默认空串占位 (audit 表登记), CM-1.2 起注册流程开始写真值, CM-3 切到基于 `org_id` 直查。
 
 ## 2. 迁移策略
 

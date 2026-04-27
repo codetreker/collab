@@ -179,6 +179,14 @@ func TestValidateRejectsBadInput(t *testing.T) {
 
 func TestDefaultRegistryRunsClean(t *testing.T) {
 	db := openMem(t)
+	// CM-1.1 ALTERs five legacy tables that store.createSchema normally
+	// builds. Recreate the minimum surface here so the migration package
+	// stays self-contained at test time.
+	for _, name := range []string{"users", "channels", "messages", "workspace_files", "remote_nodes"} {
+		if err := db.Exec("CREATE TABLE " + name + " (id TEXT PRIMARY KEY)").Error; err != nil {
+			t.Fatalf("create %s: %v", name, err)
+		}
+	}
 	if err := Default(db).Run(0); err != nil {
 		t.Fatalf("default run: %v", err)
 	}

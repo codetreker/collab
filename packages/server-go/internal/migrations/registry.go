@@ -28,6 +28,7 @@ var All = []Migration{
 )`).Error
 		},
 	},
+	cm11Organizations,
 }
 
 // Default returns an Engine wired to db with All registered.
