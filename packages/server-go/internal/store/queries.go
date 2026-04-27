@@ -164,6 +164,50 @@ func (s *Store) CreateUser(user *User) error {
 	return s.db.Create(user).Error
 }
 
+// CreateOrgForUser creates a new Organization and links it to the given user
+// (CM-1.2). Used by the register path and admin-created humans: 1 person =
+// 1 org in v0. The user.OrgID field is updated in-place on success.
+//
+// Blueprint: docs/implementation/modules/concept-model.md §CM-1.2; concept §1.1.
+//
+// Atomicity: org row + users.org_id update happen in a single transaction so
+// a failure cannot leave a user with an empty org_id (the column is NOT NULL
+// DEFAULT '' but app-layer contract is that registered users always have a
+// non-empty org_id — verified by tests). If you call this for a user that
+// already has org_id != "", the call is a no-op and returns nil.
+func (s *Store) CreateOrgForUser(user *User, orgName string) (*Organization, error) {
+	if user == nil || user.ID == "" {
+		return nil, errors.New("user with ID is required")
+	}
+	if user.OrgID != "" {
+		// Already has an org; idempotent no-op so callers can be tolerant.
+		var existing Organization
+		if err := s.db.Where("id = ?", user.OrgID).First(&existing).Error; err == nil {
+			return &existing, nil
+		}
+		return nil, nil
+	}
+	org := &Organization{
+		ID:        uuid.NewString(),
+		Name:      orgName,
+		CreatedAt: time.Now().UnixMilli(),
+	}
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(org).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&User{}).Where("id = ?", user.ID).Update("org_id", org.ID).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	user.OrgID = org.ID
+	return org, nil
+}
+
 func (s *Store) ListUsers() ([]User, error) {
 	var users []User
 	err := s.db.Where("deleted_at IS NULL").Find(&users).Error

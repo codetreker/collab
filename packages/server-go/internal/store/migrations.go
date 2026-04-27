@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"borgee-server/internal/migrations"
 )
 
 func (s *Store) Migrate() error {
@@ -55,6 +57,15 @@ func (s *Store) Migrate() error {
 
 	if err := s.cleanupDMExtraMembers(); err != nil {
 		return fmt.Errorf("cleanup DM members: %w", err)
+	}
+
+	// Run forward-only registry migrations (CM-1.1+) after legacy createSchema
+	// so columns like users.org_id exist for app-layer code (CM-1.2). The
+	// engine is idempotent — already-applied versions are skipped via
+	// schema_migrations. cmd/migrate also runs this after Migrate(); having
+	// it here keeps in-process boot (cmd/collab) and tests on the same path.
+	if err := migrations.Default(s.db).Run(0); err != nil {
+		return fmt.Errorf("forward-only migrations: %w", err)
 	}
 
 	return nil

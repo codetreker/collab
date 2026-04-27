@@ -35,6 +35,20 @@ type User struct {
 	OwnerID        *string `gorm:"size:36;index" json:"owner_id,omitempty"`
 	DeletedAt      *int64  `gorm:"index" json:"deleted_at,omitempty"`
 	Disabled       bool    `gorm:"not null;default:false" json:"disabled"`
+	// OrgID is the user's organization (CM-1.2). Blueprint §1.1 forbids UI
+	// exposure, hence json:"-" — every API serializer is hand-built map and
+	// must NOT include org_id. Column added by migration cm_1_1_organizations
+	// (NOT NULL DEFAULT '').
+	OrgID string `gorm:"column:org_id;not null;default:'';size:36;index" json:"-"`
+}
+
+// Organization is the data-layer container for a person's resources
+// (CM-1.2, blueprint concept-model §1.1 + §2). 1 person = 1 org in v0; UI
+// permanently does not expose org_id.
+type Organization struct {
+	ID        string `gorm:"primaryKey;size:36" json:"id"`
+	Name      string `gorm:"not null;size:100" json:"name"`
+	CreatedAt int64  `gorm:"not null" json:"created_at"`
 }
 
 type Message struct {

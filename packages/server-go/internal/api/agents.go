@@ -115,6 +115,9 @@ func (h *AgentHandler) handleCreateAgent(w http.ResponseWriter, r *http.Request)
 		AvatarURL:   body.AvatarURL,
 		OwnerID:     &user.ID,
 		APIKey:      &apiKey,
+		// CM-1.2: agent inherits owner's org. Blueprint §1.1: agents are
+		// resources that belong to a person's org, not separate orgs.
+		OrgID: user.OrgID,
 	}
 
 	if err := h.Store.CreateUser(agent); err != nil {

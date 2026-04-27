@@ -157,6 +157,18 @@ func TestRegisterSuccess(t *testing.T) {
 		t.Fatalf("expected 201, got %d: %v", resp.StatusCode, errResp)
 	}
 
+	// CM-1.2 acceptance: API response must NOT expose org_id (blueprint §1.1).
+	// Decode the user object out of the response and check for absence.
+	var regResp struct {
+		User map[string]any `json:"user"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&regResp); err != nil {
+		t.Fatalf("decode register response: %v", err)
+	}
+	if _, leaked := regResp.User["org_id"]; leaked {
+		t.Fatalf("CM-1.2: register response leaked org_id (%v) — sanitizer must not include it", regResp.User["org_id"])
+	}
+
 	// AP-0 acceptance: the freshly-registered human owns exactly one
 	// permission row, the wildcard (*, *).
 	var created store.User
@@ -172,6 +184,25 @@ func TestRegisterSuccess(t *testing.T) {
 	}
 	if perms[0].Permission != "*" || perms[0].Scope != "*" {
 		t.Fatalf("AP-0: expected (*, *), got (%s, %s)", perms[0].Permission, perms[0].Scope)
+	}
+
+	// CM-1.2 acceptance: registered user has a non-empty org_id pointing at
+	// an organizations row that exists. 1 person = 1 org in v0.
+	if created.OrgID == "" {
+		t.Fatalf("CM-1.2: expected non-empty org_id on registered user")
+	}
+	var org store.Organization
+	if err := s.DB().Where("id = ?", created.OrgID).First(&org).Error; err != nil {
+		t.Fatalf("CM-1.2: org row for user.org_id=%q not found: %v", created.OrgID, err)
+	}
+	// Org count: only the new user's org should exist. systemUser was created
+	// via the test helper which doesn't auto-create orgs, so count == 1.
+	var orgCount int64
+	if err := s.DB().Model(&store.Organization{}).Count(&orgCount).Error; err != nil {
+		t.Fatalf("count organizations: %v", err)
+	}
+	if orgCount != 1 {
+		t.Fatalf("CM-1.2: expected exactly 1 organization after register, got %d", orgCount)
 	}
 }
 

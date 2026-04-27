@@ -177,6 +177,13 @@ func (h *AdminHandler) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// CM-1.2: admin-created humans get an auto-org too (same contract as
+	// /api/v1/auth/register). Blueprint §1.1: 1 person = 1 org in v0.
+	if _, err := h.Store.CreateOrgForUser(user, body.DisplayName+"'s org"); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create organization")
+		return
+	}
+
 	h.Store.GrantDefaultPermissions(user.ID, user.Role)
 	h.Store.AddUserToPublicChannels(user.ID)
 
