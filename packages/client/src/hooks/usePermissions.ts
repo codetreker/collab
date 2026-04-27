@@ -20,7 +20,7 @@ export function useCan(permission: string, scope?: string): boolean {
 
   return permissions.some(
     (p) =>
-      p.permission === permission &&
+      (p.permission === '*' || p.permission === permission) &&
       (p.scope === '*' || (normalizedScope != null && p.scope === normalizedScope)),
   );
 }
