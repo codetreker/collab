@@ -31,6 +31,7 @@ packages/
 | [`auth-permissions.md`](auth-permissions.md) | **权限模型：ABAC 存储 + UI bundle，跨 org 只减不加** |
 | [`admin-model.md`](admin-model.md) | **Admin 与隐私契约：元数据可管，内容不可读** |
 | [`data-layer.md`](data-layer.md) | **数据层总账 + 分布式 ready 三层（必修/可换/必重写）** |
+| [`client-shape.md`](client-shape.md) | **Client：一份 SPA + Tauri 桌面壳 + Mobile PWA 三个分发** |
 | [`overview.md`](overview.md) | 系统全景图 + 跨进程消息流 + 关键术语 |
 | [`agents.md`](agents.md) | Agent 在系统中的身份模型、API key、接入路径选择 |
 | [`server/`](server/README.md) | `server-go`：路由、auth、realtime |
