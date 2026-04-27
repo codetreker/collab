@@ -28,16 +28,18 @@
   - 数据契约 (元数据 vs 内容接口枚举表)
   - 用户感知截屏 4.2 (野马: 用户设置页"隐私承诺"区, 截 1 张, 验立场 §13)
 
-### ADM-2: 分层透明 (用户可见性) ⭐
+### ADM-2: 分层透明 (用户可见性)
+
+> 野马 R2: **取消 ⭐ 标志性** — 分层透明只对 admin 可感, 普通用户零感知, 留 ⭐ 浪费 PM 签字时间。降级为内部 milestone, 不进野马签字流。
 
 - **目标**: blueprint §1.4 — 用户能看到 admin 对自己做了什么 (audit log 用户视角)。
-- **Owner**: 野马 (立场主) / 战马 / 飞马 / 烈马
+- **Owner**: 野马 (立场主, 但不签字闸 4) / 战马 / 飞马 / 烈马
 - **范围**: `admin_actions(actor_id, target_user_id, action, when)` 表; 用户设置页可看自己被 admin 影响的记录
 - **依赖**: ADM-1
 - **预估**: ⚡ v0 1 周
-- **Acceptance** (⭐ 标志性, 4.1+4.2 双挂):
+- **Acceptance**:
   - 行为不变量 4.1: 任何 admin action → 自动写一行 admin_actions (单测覆盖每种 action 类型)
-  - 用户感知签字 4.2 (野马: "作为用户我知道 admin 干了什么", 截 3 张: 用户设置 audit 列表 / 某条 admin action 详情 / 时间线视图)
+  - E2E: admin 改用户 role → 用户设置页 audit 列表多一行
 
 ### ADM-3: admin 来源 C 混合 (用户 + key)
 

@@ -24,16 +24,17 @@
   - 数据契约: frame schema 文件存在
   - E2E: OpenClaw plugin 用新协议连上 server (relay 模式) + 1 个 plugin 用 direct 模式连上
   - 行为不变量 4.1 (验证 §7 "Borgee 不带 runtime"): `grep -rE "openai|anthropic|hermes|os/exec|spawn|fork" apps/server/internal/` 命中 = 0; CI lint 强制
-  - 行为不变量 4.1 (验证 §11): plugin 发 typing/thinking frame 时 subject 字段为空 → server 拒绝并日志 (单测覆盖)
 
-### BPP-2: 抽象语义层 (plugin → server)
+> 注: §11 thinking subject 反约束 **挪到 BPP-2 (语义层)** — 战马 R2 调整, BPP-1 只做 frame+WS+grep 才能 2 周 hold 住。
 
-- **目标**: blueprint §1.3 — plugin 调 server 不直对 REST, 走抽象语义层。
+### BPP-2: 抽象语义层 (plugin → server) + thinking subject 反约束
+
+- **目标**: blueprint §1.3 + 核心 §11 — plugin 调 server 不直对 REST, 走抽象语义层; **沉默胜于假 loading: typing/thinking 必带 subject, 无 subject reject**。
 - **Owner**: 飞马 / 战马 / 野马 / 烈马
-- **范围**: `SendMessage / GetChannel / RequestPermission / ReportStatus` 等语义动作, 不暴露 HTTP path
+- **范围**: `SendMessage / GetChannel / RequestPermission / ReportStatus` 等语义动作, 不暴露 HTTP path; **typing/thinking 语义动作 schema 含 subject 必填字段, server 端校验拒绝 nil subject**
 - **依赖**: BPP-1
 - **预估**: ⚡ v0 1 周
-- **Acceptance**: 蓝图行为对照 §1.3 (grep plugin 代码无 HTTP path)
+- **Acceptance**: 蓝图行为对照 §1.3 (grep plugin 代码无 HTTP path) + 行为不变量 4.1 (typing/thinking nil subject → server reject + 日志, 单测覆盖)
 
 ### BPP-3: 配置 SSOT + 热更新 (与 AL-2b 同合)
 
@@ -62,7 +63,7 @@
 
 | Milestone | §X.Y | 立场一句话 |
 |-----------|------|-----------|
-| BPP-1 | plugin-protocol §1.1 + §1.2 + agent-lifecycle §2.2 + 核心 §7 + §11 | BPP 中立 + 直连 flag + server 不带 runtime + thinking 必带 subject |
-| BPP-2 | plugin-protocol §1.3 | plugin 调 server 走语义层不直对 REST |
+| BPP-1 | plugin-protocol §1.1 + §1.2 + agent-lifecycle §2.2 + 核心 §7 | BPP 中立 + 直连 flag + server 不带 runtime |
+| BPP-2 | plugin-protocol §1.3 + 核心 §11 | 语义层 + thinking 必带 subject (无 subject reject) |
 | BPP-3 | plugin-protocol §1.4 + §1.5 | 配置 SSOT, 热更新分类生效 |
 | BPP-4 | plugin-protocol §1.6 | 失联可解释, 联动状态 |

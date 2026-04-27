@@ -57,11 +57,11 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 | G0.1 schema_migrations 能跑 | 跑一次"假"迁移 (创建一张废弃表), 检查 `schema_migrations` 表有记录 | 战马 (实现) / 烈马 (验证) |
 | G0.2 acceptance 验证脚本 | 跑通 1 条 fail case + 1 条 pass case 两个样例, 证明验收脚本能区分 | 烈马 (设计验收脚本) |
 | G0.3 PR 模板生效 | 至少 1 个 PR 用模板合进 main, 三区块齐全 | 飞马 (review 把关) |
-| G0.4 测试 harness 可用 | fake clock + 内存 sqlite + fixture seeder 至少 1 个用例跑通 | 战马 / 烈马 |
-| G0.5 current sync CI lint 工作 | 提交一个故意不同步的 PR, CI fail; 修好后 pass | 烈马 |
+| G0.4 (软 gate) 测试 harness 可用 | fake clock + 内存 sqlite + fixture seeder 至少 1 个用例跑通; 软 gate = 不卡 Phase 0 退出, 但 Phase 1 第一个 PR 必须满足 | 战马 / 烈马 |
+| G0.5 (软 gate) current sync CI lint 工作 | 提交一个故意不同步的 PR, CI fail; 修好后 pass; 软 gate 同上 | 烈马 |
 | **G0.audit** | v0 代码债 audit 表本 Phase 行已登记 | 飞马 |
 
-**预估**: 1.5 周 (v0; INFRA-1b 加进来后)
+**预估**: 2 周 (v0; 战马 R2 实测; INFRA-1b 三件 ≈ 1 周 + CI lint + PR 模板 lint ≈ 3 天)
 
 ---
 
@@ -115,8 +115,8 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 | G2.1 邀请审批 E2E | A 邀请 B 的 agent → B 在 inbox 看到 quick action → 接受后 agent 自动加 channel | 战马 / 烈马 |
 | G2.2 离线 fallback E2E | A @ B-bot (B-bot 离线) → B 5 秒内收到 system message | 战马 / 烈马 |
 | G2.3 节流不变量 (B.1) | 5 分钟内多次 @ → 系统只发 1 条 system message (单测可断言) | 烈马 (单测) |
-| G2.4 用户感知签字 (B.2) | 野马跑 demo 主观签字"看起来像同事不像 bot", 留 3-5 张关键截屏; **截屏清单必含**: 邀请通知 / 接受后成员列表 / 离线通知 / 节流第 6 次无通知 / **左栏团队感知** (打开 app 第一眼看到 "我 + N agent" 列表, 验证立场 §1.4) | **野马** (闸 4) |
-| G2.5 presence 接口契约 | `IsOnline(userID) bool` + `Sessions(userID) []SessionID` 接口已锁; 注册/注销时机已定型, agent-lifecycle (AL-3) 进来不重做 | 飞马 (契约设计) / 战马 (实现) |
+| G2.4 用户感知签字 (B.2) | 野马跑 demo 主观签字"看起来像同事不像 bot", 留 3-5 张关键截屏; **截屏清单必含**: 邀请通知 / 接受后成员列表 / 离线通知 / 节流第 6 次无通知 / **左栏团队感知** (打开 app 第一眼看到 "我 + N agent" 列表; 列表中 agent 项必显 subject 文案"在做什么", 验证立场 §1.4 + §11 联动 — 野马 R2 加条); demo 中 **口播一次"agent↔agent 协作 Phase 4 支持"** (§1.3 体感断档兜底) | **野马** (闸 4) |
+| G2.5 presence 接口契约 | 接口 `IsOnline + Sessions` 锁死路径 `internal/presence/contract.go` (烈马 snapshot test); **触发点 = BPP frame 建连**, Phase 2 用 stub 桥接 (无 BPP), BPP-1 上线后切真 frame, 不算返工 (飞马 R2 锁定) | 飞马 (契约设计) / 战马 (实现) |
 | **G2.audit** | v0 代码债 audit 表本 Phase 新增行已登记 (agent_invitations / presence map / 节流策略) | 飞马 |
 
 **预估**: 2-3 周 (v0)
@@ -144,11 +144,11 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 
 | Gate | 证据 | Owner |
 |------|------|-------|
-| G3.1 artifact 创建 + 推送 E2E | agent 创建 note → 用户 workspace 秒看到 (RT-1 推送, 非轮询) | 战马 / 烈马 |
+| G3.1 artifact 创建 + 推送 E2E (RT-1 推送非轮询) | agent 创建 note → 用户秒看到, 不需刷新 | 战马 / 烈马 |
 | G3.2 锚点对话 E2E | 用户加锚点 → agent 收到 → 出新版本 | 战马 / 烈马 |
-| G3.3 用户感知签字 (CV-1 ⭐) | 野马跑 demo 签字"agent 像在工作不是在等指令"; 截屏: artifact 列表更新 / v1→v2 diff / 锚点对话 | **野马** |
-| G3.4 协作场骨架 (CHN-4) | E2E: 新建 channel → 默认 workspace → 邀 agent → 放 artifact 占位 | 战马 / 烈马 |
-| **G3.audit** | v0 代码债 audit 行已登记 (artifacts 表 / artifact_versions / anchor_comments / RT-1 frame) | 飞马 |
+| G3.3 用户感知签字 (CV-1 ⭐) | 野马跑 demo, 截 3 张: artifact 列表 / 添加新版本 / v1↔v2 切换 | **野马** |
+| G3.4 协作场骨架 (CHN-4) E2E + **同 channel chat / artifact 双 tab 截屏** (§6 双支柱, 野马 R2) | 新建 channel → 默认 workspace → 邀 agent → 放 artifact; 双 tab 各 1 张截屏 | 战马 / 烈马 + 野马 (双 tab 截屏) |
+| **G3.audit** | v0 代码债 audit 行已登记 (artifacts / artifact_versions / anchor_comments / RT-1 frame) | 飞马 |
 
 **预估**: 4-6 周 (v0)
 
@@ -161,6 +161,7 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 - 任何"灰度切 v1 的前置" (backup / 监控 / 协议版本) → 在 v0 收尾时做
 
 **已知依赖锁紧 (PROGRESS 同步绘制)**:
+- **DL-4 必须先于 HB-1 / CS-3** (server 端 plugin manifest API + Web Push gateway 是它们的前置, 飞马 R2 锁定排序)
 - **BPP-1 → AL-2 → BPP-3** 串行 (AL-2 拆 a/b: a=config 表, b=BPP frame, b 跟 BPP-3 同合)
 - **CM-5** (agent↔agent 协作, 新增) 依赖 CM-4
 - **HB-1** 依赖 server-side-services (plugin manifest API)
@@ -246,12 +247,14 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 **Owner**: 烈马 (主) + 战马 (写测试) + 飞马 (review 覆盖)
 **做法**:
 - **每 PR 合并前** 必须挂:
-  - 单元测试 (新增/改动逻辑覆盖率 ≥ 80%, CI 强制)
+  - 单元测试 (覆盖率口径: **含分支文件 cyclomatic > 1**, ≥ 80%; **schema/migration PR 豁免** — 飞马 R2 收紧。烈马维护 PR 类型 → 标尺映射)
   - 集成测试 (跨模块改动: server↔plugin / server↔client 至少 1 条 happy path E2E)
   - seed 脚本 `testdata/<milestone>/seed.sql` (v0 删库后一键复现 fixture)
 - **每 Phase gate 前** 必须跑:
   - 全回归套件: 已 ✅ 的所有 milestone acceptance 一次跑, 任意 fail = gate 不通过
+  - **回归套件强制顺序: 先 seed → 再 migration → 再 assert** (不允许 reuse 已建库, 烈马 R2; 否则 Phase 3 改 schema 把 Phase 1 打穿但发现不了)
   - 已合并 milestone 的 4.1 acceptance 自动入册回归套件 (烈马维护清单)
+- **UI 层 E2E** 缺自动化时, 以 4.2 关键截屏代替 (烈马 R2 nice-to-have)
 **证据**: CI 报告 + coverage 数字 + 回归绿屏截图。
 **作用**: v0 阶段开发节奏快, 不写测试 = 后面 milestone 改 schema 把前面 milestone 打穿, 发现不了。这道闸是开发的"安全网"。
 

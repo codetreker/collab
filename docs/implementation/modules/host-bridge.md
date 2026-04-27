@@ -56,15 +56,16 @@
 #### Helper v1 release gate (蓝图 §1.5 硬指标)
 
 > 烈马要求: "硬指标"必须数字化, 否则只能 4.2 主观签字, 不算可重复。
+> **测量基准锁定 (烈马 R2)**: 启动时间在 CI runner (GitHub Actions ubuntu-latest, 4 vCPU 16 GB) 上测量; 本机数字仅参考, 以 CI 为准。
 
-| 指标 | 阈值 | 测量方式 | Owner |
-|------|------|---------|-------|
-| Helper 启动时间 (冷启动) | < 800 ms | benchmark 单测 (CI) | 战马 / 烈马 |
-| Helper 崩溃率 (内部 dogfood 1 周) | < 0.1% (1 千次会话最多 1 次) | 崩溃报告统计 | 烈马 |
-| 签名校验失败率 (合法 plugin) | 0% | 合约测试 (CI) | 烈马 |
-| 审计日志格式 | 锁定 JSON schema (含 actor / action / target / when / scope) | schema 文件 + 校验单测 | 飞马 / 烈马 |
-| 撤销 grant → daemon 立即拒绝 | < 100 ms | 行为不变量单测 | 烈马 |
-| 任何写类 IPC 调用 | 一律拒绝 (v1 仅读) | 单测覆盖每种写法 | 烈马 |
+| 指标 | 阈值 | 测量方式 | 基准环境 | Owner |
+|------|------|---------|---------|-------|
+| Helper 启动时间 (冷启动) | < 800 ms | benchmark 单测 (CI) | GitHub Actions ubuntu-latest 4vCPU 16GB | 战马 / 烈马 |
+| Helper 崩溃率 (内部 dogfood 1 周) | < 0.1% (1 千次会话最多 1 次) | 崩溃报告统计 | 内部 dogfood (建军/飞马/野马/烈马 4 人 1 周) | 烈马 |
+| 签名校验失败率 (合法 plugin) | 0% | 合约测试 (CI) | CI | 烈马 |
+| 审计日志格式 | 锁定 JSON schema (含 actor / action / target / when / scope) | schema 文件 + 校验单测 | CI | 飞马 / 烈马 |
+| 撤销 grant → daemon 立即拒绝 | < 100 ms | 行为不变量单测 | CI | 烈马 |
+| 任何写类 IPC 调用 | 一律拒绝 (v1 仅读) | 单测覆盖每种写法 | CI | 烈马 |
 
 **HB-4 关闭条件**: 上述 6 行指标全过 + 野马签字 + 截屏。任意一行不达标 → ⭐ milestone 不能关。
 

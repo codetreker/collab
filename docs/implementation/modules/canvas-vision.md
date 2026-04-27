@@ -60,7 +60,10 @@
 - **范围**: agent 收 anchor comment → 起草新版本 → 用户对比 v1/v2 → 决定保留
 - **依赖**: CV-1, CV-2, CV-3, CM-4 (agent 在线感), **RT-1 (artifact 推送, 否则只能轮询, demo 垮)**
 - **预估**: ⚡ v0 1 周
-- **Acceptance**: E2E + 用户感知签字 4.2 (野马: "agent 像在工作不是在等指令", 截屏: 锚点提交 / 新版本推送通知 / v1/v2 diff)
+- **Acceptance**:
+  - E2E: 用户加 anchor → agent 起新版本 → **新版本 5 秒内可见, 且不需要刷新页面** (烈马 R2 收紧, 取代主观"像在工作")
+  - 行为不变量 4.1: timer 单测 — anchor 提交到推送的延迟 ≤ 5s (RT-1 推送路径覆盖)
+  - 用户感知签字 4.2 (野马: 截 3 张: 锚点提交 / 新版本推送通知 / v1/v2 diff)
 
 ## 3. 不在 canvas-vision 范围
 

@@ -102,12 +102,13 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 4. **PR 描述强制**: `Blueprint: <模块> §X.Y` + `Touches:` + `Current 同步:` 三个区块齐 —— 让追溯无歧义
 5. **Milestone 末必须可发版** —— 中间态用 feature flag 隐藏
 6. **current 同步硬规则**: 每 PR 改 `internal/<module>/` 必须同步改 `docs/current/<module>/`, **CI lint 卡 merge** (无同步 = fail); 烈马在 PR review 阶段确认。
-7. **跨模块 PR 协议**: PR `Touches` 含 ≥ 2 子系统时 (server+plugin+client) 必须一次合并 monorepo 单 PR, 不串行。
+7. **跨模块 PR 协议**: PR `Touches` 含 ≥ 2 子系统时 (server+plugin+client) 必须先合 **接口契约 PR (≤ 300 行: schema + frame + interface)** 锁住, 再合实现 PR。一次 diff > 2000 行 reviewer 看不动 (战马 R2)。
 8. **revert 优先**: v0 阶段 main 跑不起来 → 直接 `git revert` + push, 不写 schema 回滚。
 9. **测试 + regression 防护硬规则** (闸 5):
-   - 每 PR 合并前: 单元测试 (新增/改动覆盖率 ≥ 80%, CI 强制) + 至少 1 条集成测试 (跨模块 happy path E2E) + seed 脚本 (`testdata/<milestone>/seed.sql`, v0 删库后一键复现)
-   - 每 Phase gate 前: 全回归套件跑绿; 已合并 milestone 的 4.1 acceptance 自动入册, 烈马维护清单
+   - 每 PR 合并前: 单元测试 (含分支文件 cyclomatic > 1 覆盖率 ≥ 80%, schema/migration PR 豁免, CI 强制) + 至少 1 条集成测试 (跨模块 happy path E2E) + seed 脚本 (`testdata/<milestone>/seed.sql`, v0 删库后一键复现)
+   - 每 Phase gate 前: 全回归套件强制 **先 seed → 再 migration → 再 assert** (不 reuse 已建库, 烈马 R2); 已合并 milestone 的 4.1 acceptance 自动入册, 烈马维护清单
    - 不写测试 = 后续 milestone 改 schema 打穿前面 milestone, 发现不了
+   - **UI 层 E2E** 缺自动化时, 以 4.2 关键截屏代替 (烈马 R2 nice-to-have)
 
 ---
 

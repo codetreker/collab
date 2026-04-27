@@ -100,11 +100,11 @@
   - "Escape hatch (允许任何人邀请)" 开关 ❌(blueprint §5.2 power user, v1+)
   - 邀请通知的 push notification ❌(等 client-shape 模块)
   - 完整 presence (含状态推送 / 多端) ❌(等 agent-lifecycle / realtime 模块, 本 milestone 仅最小集)
-- **Presence 接口契约 (锁死, agent-lifecycle 进来时不重做)**:
+- **Presence 接口契约 (锁死, 路径 `internal/presence/contract.go`, 烈马 R2 锁定)**:
   - `Presence.IsOnline(userID string) bool` — 单端在线查询入口
-  - `Presence.Sessions(userID string) []SessionID` — 多端会话列表 (AL-3 完整 presence 不重做接口的关键, 飞马 N3 锁定)
-  - `Presence.Register(userID, sessionID)` — 调用时机: agent 建立 BPP 连接后
-  - `Presence.Unregister(userID, sessionID)` — 调用时机: BPP 连接断开 / heartbeat 超时
+  - `Presence.Sessions(userID string) []SessionID` — 多端会话列表 (AL-3 完整 presence 不重做接口的关键, 飞马 N3)
+  - `Presence.Register(userID, sessionID)` — 触发点 = BPP frame 建连 (Phase 2 用 stub 桥接, BPP-1 上线后切真 frame, 不算返工 — 飞马 R2)
+  - `Presence.Unregister(userID, sessionID)` — 触发点 = BPP 连接断开 / heartbeat 超时
   - 实现: 进程内 `sync.Map`, 不持久化, 重启即清零 (v0 接受)
 - **依赖**: CM-1 (org_id 落地)
 - **预估**: ⚡ v0 阶段 3 周 (战马实测; CM-4.0 schema 前置 + CM-4.3 拆 a/b)
@@ -116,9 +116,11 @@
 | CM-4.0 | schema (agent_invitations + 节流表) + 状态机单测 (非法转移 reject) | 数据契约 + 行为不变量 4.1 |
 | CM-4.1 | 邀请创建/同意/拒绝 API | 数据契约 + 行为不变量 (重复同意 idempotent) |
 | CM-4.2 | 邀请通知 UI (inbox DM quick action) + 接受后自动 join channel | E2E: A 邀请 → B 同意 → agent 出现在 channel 成员列表 |
-| CM-4.3a | minimal presence map (接口含 IsOnline + Sessions) + 注册/注销 | 数据契约 (接口契约文件) + 行为不变量 (Sessions 多端去重) |
+| CM-4.3a | minimal presence map (接口含 IsOnline + Sessions, 路径 `internal/presence/contract.go`) + 注册/注销 (Phase 2 用 stub 桥接) | 数据契约 (接口契约文件 + snapshot test) + 行为不变量 4.1 (**单端单测**; 多端去重压测留 AL-3 — 战马 R2) |
 | CM-4.3b | 离线检测 + system message 写入 | E2E (离线 → owner 收到通知) |
-| CM-4.4 | 5 分钟节流 + 端到端串通 + 用户感知签字 + 截屏 | 行为不变量 4.1 (节流计数, fake clock 单测) + 4.2 (野马签字 + 5 张关键截屏) |
+| CM-4.4 | 5 分钟节流 + 端到端串通 | 行为不变量 4.1 (节流计数, fake clock 单测) + E2E |
+
+> **CM-4.4 PR merge 与签字解耦 (战马 R2)**: PR 只挂 4.1 节流单测 + E2E, 即可 merge。**4.2 用户感知签字 + 5 张关键截屏走闸 4 独立流程**, 在 CM-4 milestone 关闭时进行 (Phase 2 退出 gate G2.4), 不阻塞 PR merge — 防止"demo 不过整个 PR 被堵"。
 
 #### Acceptance spec (CM-4 整体, E2E)
 
@@ -138,7 +140,9 @@
 > - 接受后成员列表 (agent 在 #foo)
 > - 离线通知 (owner 的 DM 收到 system message)
 > - 节流第 6 次无通知 (5 分钟内只收 1 条, 验立场)
-> - **左栏团队感知** (打开 app 第一眼看到"我 + N 个 agent"列表, 验证立场 §1.4 "团队感知主体验" — X1 冲突裁决)
+> - **左栏团队感知** (打开 app 第一眼看到"我 + N 个 agent"列表, **每个 agent 项必显 subject 文案"在做什么"** — 验证立场 §1.4 + §11 联动, 野马 R2 加条)
+>
+> **Demo 中口播一次"agent↔agent 协作 Phase 4 支持"** (§1.3 体感断档兜底, 野马 R2)。
 >
 > 同目录放 `blueprint-sha.txt` 记录当时蓝图 commit。
 
@@ -148,14 +152,14 @@
 
 > X2 冲突裁决: 不塞 CM-4, 单独 milestone 放 Phase 4。理由: CM-4 已覆盖"邀请+离线+节流+presence"4 件事, 再塞 agent↔agent 会污染标志性 demo; 而 §1.3 协作语义需先有蓝图最小可观测定义 (烈马要求), 单独节奏更清晰。
 
-- **目标**: blueprint §1.3 — agent 间独立协作允许, 但有边界 (扩权仍 owner-only, AP-3 已覆盖)。
+- **目标**: blueprint §1.3 — agent 间独立协作允许, 但有边界 (扩权仍 owner-only, AP-3 已覆盖)。蓝图 §1.3 已锁定**最小可观测协作语义**: "协作 = message + capability 调用 (留 audit), 不含 secret 共享" (烈马 R2)。
 - **Owner**: 飞马 / 战马 / 野马 (立场: 协作允许 vs 扩权禁止) / 烈马
 - **范围**:
   - 复用 message 路径: agent A 在同 channel 给 agent B 发 message, 不需 owner 介入
-  - audit log: agent↔agent 调用留 audit (供 ADM-2 分层透明用)
+  - capability 调用: agent A 调 agent B 已 grant 的 capability, 留 audit log (供 ADM-2 分层透明用)
   - 边界单测: agent A 不能借 agent B 的 capability 扩自己的权 (走 AP-3 owner-only 审批)
 - **不在范围**: agent 共享 secret / agent 互相绕过权限 ❌
-- **依赖**: CM-4 (presence + 邀请就位), AP-3 (owner-only 边界)
+- **依赖**: CM-4 (presence + 邀请就位), **AP-3 (跨 org owner-only 边界, 飞马 R2 加补)**
 - **预估**: ⚡ v0 阶段 1 周
 - **Acceptance**: E2E (agent A 在 #foo 调 agent B 的 message capability, 不需 owner 同意; B 收到并响应) + 行为不变量 4.1 (扩权请求被 owner-only 拒绝 — 单测)
 
