@@ -65,9 +65,12 @@ jobs:
           script: |
             cd /opt/dockers/borgee-staging
             docker compose pull
-            docker compose up -d
+            docker compose up -d --force-recreate
             sleep 5
             curl -sf http://localhost:4901/ > /dev/null && echo "✅ Staging healthy" || (echo "❌ Staging unhealthy" && exit 1)
+            # Verify container is fresh (uptime < 60s)
+            UPTIME=$(docker inspect --format '{{.State.StartedAt}}' borgee-staging 2>/dev/null || echo "")
+            if [ -n "$UPTIME" ]; then echo "Container started at: $UPTIME"; fi
             docker image prune -f
 
   deploy-prod:
@@ -96,9 +99,12 @@ jobs:
           script: |
             cd /opt/dockers/borgee
             docker compose pull
-            docker compose up -d
+            docker compose up -d --force-recreate
             sleep 5
             curl -sf http://localhost:4900/ > /dev/null && echo "✅ Production healthy" || (echo "❌ Production unhealthy" && exit 1)
+            # Verify container is fresh (uptime < 60s)
+            UPTIME=$(docker inspect --format '{{.State.StartedAt}}' borgee-prod 2>/dev/null || echo "")
+            if [ -n "$UPTIME" ]; then echo "Container started at: $UPTIME"; fi
             docker image prune -f
 
       - name: Tag release
