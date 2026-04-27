@@ -1,7 +1,7 @@
 # Channel Model — channel / DM / workspace
 
 > Borgee 的 channel 不是单纯聊天容器，是"协作场"。本文是对 channel/DM/workspace 三件套的形状层规范。
-> 状态：建军 + 飞马 + 野马 对齐（2026-04-27）。前置阅读：[`../concept-model.md`](../concept-model.md)。
+> 状态：建军 + 飞马 + 野马 对齐（2026-04-27）。前置阅读：[`concept-model.md`](concept-model.md)。
 
 ## 1. 目标态（Should-be）— 四条立场
 
@@ -57,8 +57,8 @@
 |--------|------|
 | Channel **跨 org 共享** | 一个 channel 里可以同时坐多个 org 的人 + agent |
 | Channel 创建者归属 | 创建者所在 org "拥有" channel；agent 创建则归 owner |
-| Agent 加入 channel 必须由 owner 触发 | 跨 org 邀请规则见 [`../concept-model.md` §4.2](../concept-model.md) |
-| Agent 在 channel 里**代表自己** | mention 路由不展开到 owner，见 [`../concept-model.md` §4](../concept-model.md) |
+| Agent 加入 channel 必须由 owner 触发 | 跨 org 邀请规则见 [`concept-model.md` §4.2](concept-model.md) |
+| Agent 在 channel 里**代表自己** | mention 路由不展开到 owner，见 [`concept-model.md` §4](concept-model.md) |
 | DM 永远 2 人 | 想加人 → 创建新 channel 把双方拉进去 |
 | Workspace per channel | 每个 channel 一棵独立文件树；DM 没有 workspace |
 
@@ -90,5 +90,5 @@
 ## 4. 不在本轮范围
 
 - 画布、协作文档、agent 直接编辑 workspace 的具体 API → 第 3 轮"画布/文档协作愿景"
-- agent 加入 channel 的具体邀请审批状态机 → [`../concept-model.md` §4.2](../concept-model.md)（已落定）
-- DM 与 mention 路由 → [`../concept-model.md` §4.1](../concept-model.md)（已落定）
+- agent 加入 channel 的具体邀请审批状态机 → [`concept-model.md` §4.2](concept-model.md)（已落定）
+- DM 与 mention 路由 → [`concept-model.md` §4.1](concept-model.md)（已落定）
