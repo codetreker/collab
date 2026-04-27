@@ -27,6 +27,8 @@
 
 **自动建 org (CM-1.2)**: `POST /api/v1/auth/register` 与管理员 `POST /api/v1/admin/users` 在创建 user 之后立即在同一事务中创建一行 `organizations(id=uuid, name="<DisplayName>'s org")` 并把 `users.org_id` 更新为新 org 的 id。失败则注册整体 5xx, 不留孤儿用户。Agent 创建 (`POST /api/v1/agents`) 继承所有人的 `org_id` (blueprint §1.1: agents 是 org 内资源, 不独立成 org)。schema 已允许空串, 但 app-layer 契约：注册路径产出的 user 永远 `org_id != ''`; v1 后续在 column constraint 上收紧。API 序列化 (`sanitizeUser` / `sanitizeUserAdmin`) 永不暴露 `org_id` (UI 不可见, blueprint §1.1)。
 
+**Admin stats by org (CM-1.3)**: `GET /admin-api/v1/stats` 与 `GET /api/v1/admin/stats` 在原 `user_count / channel_count / online_count` 之外新增 `by_org: [{org_id, user_count, channel_count}, ...]` 字段。聚合见 `store.StatsByOrg()`: 对 `users` / `channels` 各跑一次 `GROUP BY org_id` (均过滤 `deleted_at IS NULL`) 后按 `org_id` 合并 + 字典序排序。空串 (`""`) 不丢弃, 显式作为一个 bucket 出现, 让 v0 历史孤儿数据可见 (audit 已登记)。验证不变量: `Σ by_org[*].user_count == user_count`, `Σ by_org[*].channel_count == channel_count`。Blueprint §2 "数据层一等公民"行为对照点。
+
 ## 2. 迁移策略
 
 `store.Migrate()` 是幂等函数：

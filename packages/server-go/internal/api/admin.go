@@ -79,10 +79,19 @@ func (h *AdminHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// CM-1.3: surface per-org aggregation. Blueprint §2 — organizations
+	// is data-layer first-class; admin stats must show "按 org 聚合".
+	byOrg, err := h.Store.StatsByOrg()
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to aggregate by org")
+		return
+	}
+
 	writeJSONResponse(w, http.StatusOK, map[string]any{
 		"user_count":    userCount,
 		"channel_count": channelCount,
 		"online_count":  len(online),
+		"by_org":        byOrg,
 	})
 }
 
