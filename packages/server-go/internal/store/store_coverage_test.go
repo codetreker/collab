@@ -719,8 +719,12 @@ func TestPermissionOps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(perms) < 3 {
-		t.Fatalf("expected at least 3 perms, got %d", len(perms))
+	// AP-0: humans default to a single (*, *) row.
+	if len(perms) != 1 {
+		t.Fatalf("expected 1 perm for member, got %d", len(perms))
+	}
+	if perms[0].Permission != "*" || perms[0].Scope != "*" {
+		t.Fatalf("expected (*, *), got (%s, %s)", perms[0].Permission, perms[0].Scope)
 	}
 
 	s.GrantCreatorPermissions(u.ID, "member", "ch-123", nil)

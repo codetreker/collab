@@ -303,12 +303,25 @@ func (s *Store) AddUserToPublicChannels(userID string) error {
 	return nil
 }
 
+// GrantDefaultPermissions writes the role's default permission grants. Per
+// AP-0 (Phase 1) the rules are:
+//
+//   - role "member": one row (`*`, `*`) — humans default to full capability,
+//     UI bundles will narrow this in AP-2 (no role names).
+//   - role "agent":  one row (`message.send`, `*`) — agents are minimal by
+//     default; owners grant capabilities explicitly per blueprint §3.
+//   - any other role (incl. "admin"): nothing. Admin is implicit `*` checked
+//     in middleware; explicit grants would shadow that contract.
+//
+// Blueprint: docs/implementation/modules/auth-permissions.md §AP-0; concept §3.
 func (s *Store) GrantDefaultPermissions(userID string, role string) error {
 	var perms []string
 	switch role {
 	case "member":
-		perms = []string{"channel.create", "message.send", "agent.manage"}
+		// AP-0: human full-capability default, single (*, *) row.
+		perms = []string{"*"}
 	case "agent":
+		// AP-0: agent minimum default, message.send only.
 		perms = []string{"message.send"}
 	default:
 		return nil

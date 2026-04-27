@@ -67,13 +67,16 @@ http.Server.Serve       # 0.0.0.0:4900
 
 **Admin auth 完全独立**：`borgee_admin_token` cookie 或 Bearer，密码是明文环境变量比较，只有 `ADMIN_USER` 与 `ADMIN_PASSWORD` 都设置时 admin 路由才注册。
 
-**权限**（PRD F1）：
+**权限**（PRD F1 + AP-0 Phase 1 立场）：
 
 - `user_permissions(user_id, permission, scope)`，UNIQUE。
-- 注册默认权限：`channel.create`、`message.send`、`agent.manage`。
+- **AP-0 默认权限**（Phase 1 起）：
+  - 注册新 human (`role=member`) → 一行 `(*, *)`，全权。
+  - 创建 agent (`role=agent`) → 一行 `(message.send, *)`，最小权。
+  - admin (`role=admin`) → 不写默认行，admin 角色在中间件隐式过 `*`。
 - 频道创建者迁移时回填 `channel.delete / channel.manage_members / channel.manage_visibility`，scope=`channel:<id>`。
-- Admin 总是有 `["*"]`。
-- 中间件 `auth.RequirePermission(perm)` 在 router 层面强制。
+- 中间件 `auth.RequirePermission(perm)`：admin 直放; 其他角色按 `user_permissions` 匹配, **额外** 把 `(*, *)` 视作通配通过, 再按 (`perm`, `*`) 或 (`perm`, scope) 精确匹配。
+- v0 stance: AP-0 是过渡形态。Phase 4 AP-1 (三层 scope) + AP-2 (UI bundle) 会把 human 默认从 `(*, *)` 收窄到按 capability bundle 授权; bundle 名按能力 (Messaging / Workspace), **不** 按角色 (PM / Dev)。
 
 ## 4. 存储层 (`internal/store/`)
 

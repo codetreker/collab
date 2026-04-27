@@ -270,7 +270,12 @@ func (s *Store) execMigrationSQL(label, sql string) error {
 }
 
 func (s *Store) backfillDefaultPermissions() error {
-	memberPerms := []string{"channel.create", "message.send", "agent.manage"}
+	// AP-0 (Phase 1): humans default to a single (*, *) row; agents to one
+	// (message.send, *). Older v0 dev DBs may carry the legacy
+	// (channel.create / message.send / agent.manage) triple — we leave those
+	// rows alone (UNIQUE-guarded FirstOrCreate is additive only) so the boot
+	// path stays "delete db and rebuild" friendly without surprise reductions.
+	memberPerms := []string{"*"}
 	agentPerms := []string{"message.send"}
 
 	var members []User

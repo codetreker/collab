@@ -30,7 +30,7 @@
 3. `applyColumnMigrations()` — 一个 `ALTER TABLE ADD COLUMN` 列表，每条用 `columnExists()` 守卫
 4. `createSchemaIndexes()` — 索引
 5. `PRAGMA foreign_keys = ON`
-6. **回填**：默认权限（`channel.create / message.send / agent.manage`）、creator 的频道级权限、LexoRank 重平衡（默认 `"0|aaaaaa"` 的 channel）、DM 去重（按双方 id 排序检测重复）
+6. **回填**：默认权限（AP-0: human → `(*, *)`; agent → `(message.send, *)`; 旧 v0 dev DB 上残留的 `channel.create / message.send / agent.manage` 三元组不主动清, 只增不减）、creator 的频道级权限、LexoRank 重平衡（默认 `"0|aaaaaa"` 的 channel）、DM 去重（按双方 id 排序检测重复）
 
 **约束**：只允许加列，不允许改/删；要重命名或删列必须新建表 + 拷贝数据 + drop。没有版本表，因此每次启动跑全量幂等迁移。
 

@@ -962,6 +962,11 @@ func (h *ChannelHandler) hasChannelPermission(user *store.User, permission, chan
 	}
 	scope := fmt.Sprintf("channel:%s", channelID)
 	for _, p := range perms {
+		// AP-0: humans default to (*, *); bundle-narrowed accounts (AP-2) will
+		// not have this row and fall through to the explicit match below.
+		if p.Permission == "*" && p.Scope == "*" {
+			return true
+		}
 		if p.Permission == permission && (p.Scope == "*" || p.Scope == scope) {
 			return true
 		}
