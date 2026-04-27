@@ -1,12 +1,41 @@
 package api
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 
 	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
+
+// flexPermissions accepts both string array ["perm"] and object array [{permission:"perm",scope:"s"}].
+type permEntry struct {
+	Permission string `json:"permission"`
+	Scope      string `json:"scope"`
+}
+
+type flexPermissions []permEntry
+
+func (fp *flexPermissions) UnmarshalJSON(data []byte) error {
+	// Try object array first
+	var objs []permEntry
+	if err := json.Unmarshal(data, &objs); err == nil {
+		*fp = objs
+		return nil
+	}
+	// Try string array
+	var strs []string
+	if err := json.Unmarshal(data, &strs); err != nil {
+		return err
+	}
+	result := make([]permEntry, len(strs))
+	for i, s := range strs {
+		result[i] = permEntry{Permission: s}
+	}
+	*fp = result
+	return nil
+}
 
 type AgentHandler struct {
 	Store  *store.Store
@@ -58,13 +87,10 @@ func (h *AgentHandler) handleCreateAgent(w http.ResponseWriter, r *http.Request)
 	}
 
 	var body struct {
-		ID          string `json:"id"`
-		DisplayName string `json:"display_name"`
-		AvatarURL   string `json:"avatar_url"`
-		Permissions []struct {
-			Permission string `json:"permission"`
-			Scope      string `json:"scope"`
-		} `json:"permissions"`
+		ID          string            `json:"id"`
+		DisplayName string            `json:"display_name"`
+		AvatarURL   string            `json:"avatar_url"`
+		Permissions flexPermissions   `json:"permissions"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
@@ -287,10 +313,7 @@ func (h *AgentHandler) handleSetPermissions(w http.ResponseWriter, r *http.Reque
 	}
 
 	var body struct {
-		Permissions []struct {
-			Permission string `json:"permission"`
-			Scope      string `json:"scope"`
-		} `json:"permissions"`
+		Permissions flexPermissions `json:"permissions"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
