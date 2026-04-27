@@ -30,6 +30,10 @@ var All = []Migration{
 	},
 }
 
+// G0.5 throwaway: intentionally modify internal/ without touching
+// docs/current/server/, to prove the current-sync lint actually fails.
+// This change is reverted before any PR ships.
+//
 // Default returns an Engine wired to db with All registered.
 func Default(db *gorm.DB) *Engine {
 	e := New(db)
