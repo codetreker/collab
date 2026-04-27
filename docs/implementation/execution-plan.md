@@ -12,8 +12,9 @@
 
 1. **价值闭环驱动**: 每个 Phase 退出后, 都能拿出一段"团队可感知"的东西 (能 demo / 能读到一个产品立场), 不允许出现"做完了 7 张表但什么都看不见"的中间态。
 2. **约束在边界, 自由在内部**: Phase 之间是硬 gate (没跑过 gate 不进下一 Phase); Phase 内部 milestone 顺序 / PR 拆分允许调整。
-3. **gate = 证据**: 每个 gate 必须挂可重复跑的证据 (E2E 命令 / SQL 查询 / demo 视频 / 反查表), 而不是"觉得做完了"。
+3. **gate = 证据**: 每个 gate 必须挂可重复跑的证据 (E2E 命令 / SQL 查询 / demo 关键截屏 / 反查表), 而不是"觉得做完了"。
 4. **不偏离的机制**: 4 道闸门嵌在流程里 (见 §"防偏离闸门"), 不是事后审计。
+5. **每步分工明确**: 任何 milestone / PR / gate 都有命名 owner — 飞马 (review) / 战马 (dev) / 野马 (PM) / 烈马 (QA)。详见各 Phase 表格的 Owner 列。
 
 ---
 
@@ -50,11 +51,11 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 
 **Phase 0 退出 gate** (必须全过):
 
-| Gate | 证据 |
-|------|------|
-| G0.1 schema_migrations 能跑 | 跑一次"假"迁移 (创建一张废弃表), 检查 `schema_migrations` 表有记录 |
-| G0.2 数据契约 acceptance 形态可行 | 用一条样例 (例: `users.org_id 列存在`) 跑通验收脚本 |
-| G0.3 PR 模板生效 | 至少 1 个 PR 用模板合进 main, `Blueprint:` 锚点齐全 |
+| Gate | 证据 | Owner |
+|------|------|-------|
+| G0.1 schema_migrations 能跑 | 跑一次"假"迁移 (创建一张废弃表), 检查 `schema_migrations` 表有记录 | 战马 (实现) / 烈马 (验证) |
+| G0.2 数据契约 acceptance 形态可行 | 用一条样例 (例: `users.org_id 列存在`) 跑通验收脚本 | 烈马 (设计验收脚本) |
+| G0.3 PR 模板生效 | 至少 1 个 PR 用模板合进 main, `Blueprint:` 锚点齐全 | 飞马 (review 把关) |
 
 **预估**: 1 周 (v0)
 
@@ -76,13 +77,13 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 
 **Phase 1 退出 gate** (必须全过):
 
-| Gate | 证据 |
-|------|------|
-| G1.1 数据层 org_id 落地 | SQL: `organizations` 表存在, `users.org_id` NOT NULL, 索引存在 |
-| G1.2 注册自动建 org (E2E) | 新注册 human → `organizations` 多一行, user.org_id 指向它 |
-| G1.3 agent 继承 owner org | admin API 创建 agent → agent.org_id = owner.org_id |
-| G1.4 读路径直查 (蓝图行为对照) | `grep` 代码: 主要业务表的"我的列表"查询走 `WHERE org_id = ?` 而不是 JOIN owner_id |
-| G1.5 UI 不泄漏 org_id | 任何 user-facing API 响应里没有 `org_id` 字段 (合约测试) |
+| Gate | 证据 | Owner |
+|------|------|-------|
+| G1.1 数据层 org_id 落地 | SQL: `organizations` 表存在, `users.org_id` NOT NULL, 索引存在 | 战马 (迁移) / 烈马 (SQL 验证) |
+| G1.2 注册自动建 org (E2E) | 新注册 human → `organizations` 多一行, user.org_id 指向它 | 战马 (实现) / 烈马 (E2E) |
+| G1.3 agent 继承 owner org | admin API 创建 agent → agent.org_id = owner.org_id | 战马 / 烈马 |
+| G1.4 读路径直查 (蓝图行为对照) | `grep` 代码: 主要业务表的"我的列表"查询走 `WHERE org_id = ?` 而不是 JOIN owner_id | 飞马 (代码 review) |
+| G1.5 UI 不泄漏 org_id | 任何 user-facing API 响应里没有 `org_id` 字段 (合约测试) | 烈马 (合约测试) / 野马 (立场把关) |
 
 **预估**: 2-3 周 (v0)
 
@@ -104,13 +105,13 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 
 **Phase 2 退出 gate** (必须全过):
 
-| Gate | 证据 |
-|------|------|
-| G2.1 邀请审批 E2E | A 邀请 B 的 agent → B 在 inbox 看到 quick action → 接受后 agent 自动加 channel |
-| G2.2 离线 fallback E2E | A @ B-bot (B-bot 离线) → B 5 秒内收到 system message |
-| G2.3 节流不变量 (B.1) | 5 分钟内多次 @ → 系统只发 1 条 system message (单测可断言) |
-| G2.4 用户感知签字 (B.2) | 野马跑一遍 demo, 主观签字"看起来像同事不像 bot", 录 60-90s 视频 |
-| G2.5 presence 接口契约 | `IsOnline(userID) bool` 接口 + 注册/注销时机已定型, agent-lifecycle 模块进来时不需要重做 |
+| Gate | 证据 | Owner |
+|------|------|-------|
+| G2.1 邀请审批 E2E | A 邀请 B 的 agent → B 在 inbox 看到 quick action → 接受后 agent 自动加 channel | 战马 / 烈马 |
+| G2.2 离线 fallback E2E | A @ B-bot (B-bot 离线) → B 5 秒内收到 system message | 战马 / 烈马 |
+| G2.3 节流不变量 (B.1) | 5 分钟内多次 @ → 系统只发 1 条 system message (单测可断言) | 烈马 (单测) |
+| G2.4 用户感知签字 (B.2) | 野马跑一遍 demo, 主观签字"看起来像同事不像 bot", 留 3-5 张关键截屏 | **野马** (闸 4) |
+| G2.5 presence 接口契约 | `IsOnline(userID) bool` 接口 + 注册/注销时机已定型, agent-lifecycle 模块进来时不需要重做 | 飞马 (契约设计) / 战马 (实现) |
 
 **预估**: 2-3 周 (v0)
 
@@ -124,7 +125,7 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 
 **包含 milestone**: channel-model M-1 + canvas-vision M-1 (各模块文档详写)
 
-**Phase 3 退出 gate**: 第二段 demo — channel 内开 workspace, agent 产出 artifact, 人类可 anchor comment。野马签字 + 视频。
+**Phase 3 退出 gate**: 第二段 demo — channel 内开 workspace, agent 产出 artifact, 人类可 anchor comment。野马签字 + 关键截屏。
 
 **预估**: 待 Phase 2 退出后, 各模块文档下钻时再定。
 
@@ -177,6 +178,7 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 ### 闸 1 — 模板自检
 
 **触发时机**: how-to-write-milestone.md 改动后, 或新模块文档第一次起草时。
+**Owner**: 飞马 (执行)
 **做法**: 用模板写一个 5 行 skeleton (只填章节标题), 检查章节套不套得上。
 **证据**: skeleton 文件本身 + 一行说明"哪一节套不上 / 全套上"。
 **作用**: 防止模板与现实脱节。
@@ -184,6 +186,7 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 ### 闸 2 — 蓝图锚点 grep
 
 **触发时机**: 每个模块文档的 milestone 章节定稿时。
+**Owner**: 飞马 (执行)
 **做法**: `grep -n "§" docs/implementation/<module>.md`, 检查每个 milestone 都有 blueprint §X.Y 锚点。
 **证据**: grep 输出贴在 PR 描述里。
 **作用**: 防止 milestone 立场漂移成"工程顺手活"。
@@ -191,16 +194,18 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 ### 闸 3 — Blueprint 反查表
 
 **触发时机**: 每个模块文档末尾必须有此表。
+**Owner**: 野马 (写"立场一句话") + 飞马 (review 表完整性)
 **做法**: 一张表, 列 `Milestone | Blueprint §X.Y | 立场一句话`。一句话写不出 = 立场漂移, 打回。
 **证据**: 表本身。
 **作用**: 比 grep 多一层"立场可读性"——不只查锚点存在, 逼你说人话。
 
-### 闸 4 — 标志性 milestone 野马签字 + demo 视频
+### 闸 4 — 标志性 milestone 野马签字 + demo 关键截屏
 
 **触发时机**: roadmap 标记为"标志性" 的 milestone 关闭前 (当前: CM-4 / canvas-vision M-1; 后续每模块各 1 个)。
-**做法**: 野马本人跑一遍 demo, 签字, 录 60-90s 视频留档。
-**证据**: 视频文件 + 签字记录 (commit / issue comment)。
-**作用**: 防止做出来不是那回事; 后续若有人改坏"agent 同事感"等立场, 拿视频对照即知。
+**Owner**: **野马** (主) + 战马 (准备 demo 环境) + 烈马 (跑 acceptance)
+**做法**: 野马本人跑一遍 demo, 签字, 留 3-5 张关键步骤截屏存入 `docs/evidence/<milestone>/`。AI 团队不录视频。
+**证据**: 截屏文件 + 签字记录 (commit / issue comment)。
+**作用**: 防止做出来不是那回事; 后续若有人改坏立场, 拿截屏对照即知。
 
 ---
 

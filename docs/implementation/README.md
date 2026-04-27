@@ -64,9 +64,30 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 - [ ] Public API 版本协商机制 (`protocol_version` header) 已就位
 - [ ] BPP 灰度发版机制已就位 (plugin 端先发, server 端后)
 - [ ] 监控 + 阈值哨已就位 (data-layer §5)
+- [ ] **v0 代码债 audit 表已结清** (见下)
 
 未到 checklist 完成 → 可继续 v0 激进模式;
 完成后 → 邀请第一个用户,**同步切换到 v1 模式**,所有人遵守。
+
+### v0 代码债 audit (每 milestone 关闭时必更)
+
+> 每个 v0 阶段做的"破坏式选择"都登记在这, v1 切换前逐条结清。
+> **每完成一个 v0 milestone, 必须更新一行**, 否则 Phase gate 不算通过 (见 [`execution-plan.md`](execution-plan.md))。
+
+| 改动 | v0 做法 | v1 切回要补的事 | 关联 Phase / Milestone | 状态 |
+|------|---------|----------------|-----------------------|------|
+| organizations 表 | 删库重建 | forward-only 迁移脚本 + backfill | Phase 1 / CM-1 | TODO |
+| users.org_id NOT NULL | 直接加列 | 现网数据 backfill 脚本 + 迁移期 nullable | Phase 1 / CM-1 | TODO |
+| events 表 | 直接换 schema | 旧 events 留 view 兼容 | (待 events 模块时填) | — |
+| BPP 协议 | 直接换 | plugin 灰度发版 + protocol_version 协商 | (待 BPP 模块时填) | — |
+| ULID | 全表 ULID, 删 INT | 永久混用 + `type ID string` 抽象 (野马原始版本立场) | (待 ID 模块时填) | — |
+| Cursor 形态 | opaque string 直换 | 兼容期 INT cursor 解析 | (待 cursor 模块时填) | — |
+| ... | ... | ... | ... | ... |
+
+**填表规则**:
+- "改动" — 一句话写清做了什么破坏式动作
+- "v1 切回要补的事" — 越具体越好, 不要写"加迁移", 写"forward-only 0042_users_org_id.sql, 步骤: ..."
+- "状态" — TODO / IN PROGRESS / DONE
 
 ---
 
@@ -75,21 +96,39 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 继承 11 轮讨论时飞马野马提出的 form:
 
 1. **PR ≤ 3 天**, **Milestone ≤ 2 周** —— 控制反馈循环
-2. **可验证三选一**: e2e 断言 / 蓝图行为对照 / 数据契约 —— 每 PR 至少一种
-3. **5 秒看完路径** —— [`roadmap.md`](roadmap.md) 是单一来源
+2. **可验证四选一**: e2e 断言 / 蓝图行为对照 / 数据契约 / 行为不变量 —— 每 PR 至少一种
+3. **5 秒看完路径** —— [`execution-plan.md`](execution-plan.md) 是源头, [`roadmap.md`](roadmap.md) 是缩略图
 4. **PR 描述强制**: `Blueprint: <模块> §X.Y` —— 让追溯无歧义
 5. **Milestone 末必须可发版** —— 中间态用 feature flag 隐藏
 
 ---
 
-## 文档导航
+## 团队分工 (4 角色)
+
+| 代号 | 职责 | 主要输出 | 在闸门里 |
+|------|------|---------|---------|
+| **飞马** (team-lead + architect) | 架构决策 / PR review / 拆分 milestone / 守护立场 | 模块文档定版 / PR review approval / 闸 1+2 | 闸 1 模板自检 / 闸 2 grep 锚点 |
+| **战马** (dev) | 实现 / 写代码 / 写单测 / 写迁移脚本 | PR 主体代码 + commit | — |
+| **野马** (PM) | 产品立场把关 / 验收 demo / 写文档反查表立场一句话 | 标志性 milestone 签字 + 3-5 张关键截屏 | 闸 3 反查表立场 / 闸 4 签字+截屏 |
+| **烈马** (QA) | acceptance spec 跑通 / E2E 自动化 / 行为不变量测试 | acceptance 跑通报告 + 测试代码 | 每 PR 的 acceptance 都由烈马验证 |
+
+**分工原则**:
+- **每个 milestone 必须挂 4 个 owner**: 飞马 (review) / 战马 (实现) / 野马 (立场) / 烈马 (验证)
+- **每个 PR 必须挂 2 个 owner**: 战马 (作者) + 飞马 (review)。acceptance 由烈马跑过才允许 merge
+- **标志性 milestone (⭐) 关闭前**: 野马必须签字 + 留 3-5 张关键截屏 (闸 4 强制, AI 团队不录视频)
+- 任何角色看到立场漂移 / 偏离, 都有"打回"权 — 不是单点决策
+
+详见各模块 milestone 表格的 "Owner" 列。
+
+---
 
 | 文档 | 内容 |
 |------|------|
-| [`roadmap.md`](roadmap.md) | 全部 milestone 一览 (5 秒看完) |
-| [`how-to-write-milestone.md`](how-to-write-milestone.md) | milestone 模板 + acceptance spec 三选一规范 |
-| [`concept-model.md`](concept-model.md) | concept-model 模块的实施 (CM-1 ~ CM-4) |
-| `<其它模块>.md` | 待建,跟 [`../blueprint/`](../blueprint/) 各模块一一对应 |
+| [`execution-plan.md`](execution-plan.md) | **源头**: 5 Phase + 退出 gate + 4 道防偏离闸门 |
+| [`roadmap.md`](roadmap.md) | execution-plan 缩略图 (按模块依赖排序) |
+| [`how-to-write-milestone.md`](how-to-write-milestone.md) | milestone 模板 + acceptance 四选一 + 反查表规范 |
+| [`concept-model.md`](concept-model.md) | concept-model 模块的实施 (CM-1, CM-3, CM-4) |
+| `<其它模块>.md` | 各模块大纲文件 (与 [`../blueprint/`](../blueprint/) 一一对应) |
 
 ## 与 blueprint 的对应
 
