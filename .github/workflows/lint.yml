@@ -1,0 +1,113 @@
+name: PR lint
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  pr-template:
+    name: PR template (Blueprint / Touches / Current 同步)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR body has required blocks
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          fail=0
+          if [ -z "${BODY:-}" ]; then
+            echo "::error::PR body is empty. Use the PR template."
+            exit 1
+          fi
+
+          # 闸 2 grep: at least one `Blueprint:` line with §X.Y anchor
+          if ! echo "$BODY" | grep -E '^[[:space:]]*Blueprint:[[:space:]].+§' >/dev/null; then
+            echo "::error::PR body missing 'Blueprint: <module> §X.Y' line"
+            fail=1
+          fi
+
+          # Touches: header
+          if ! echo "$BODY" | grep -E '^[[:space:]]*Touches:[[:space:]].+' >/dev/null; then
+            echo "::error::PR body missing 'Touches: <subsystems>' line"
+            fail=1
+          fi
+
+          # Current 同步 section heading
+          if ! echo "$BODY" | grep -F 'Current 同步' >/dev/null; then
+            echo "::error::PR body missing 'Current 同步' section"
+            fail=1
+          fi
+
+          # Acceptance section heading
+          if ! echo "$BODY" | grep -E '^##[[:space:]]*Acceptance' >/dev/null; then
+            echo "::error::PR body missing '## Acceptance' section"
+            fail=1
+          fi
+
+          # Stage line
+          if ! echo "$BODY" | grep -E '^[[:space:]]*Stage:[[:space:]](v0|v1)' >/dev/null; then
+            echo "::error::PR body missing 'Stage: v0' (or v1) line"
+            fail=1
+          fi
+
+          if [ "$fail" -ne 0 ]; then
+            echo "PR template lint failed. See .github/pull_request_template.md"
+            exit 1
+          fi
+          echo "PR template ok"
+
+  current-sync:
+    name: current sync (规则 6)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Lint current 同步
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          # Map: code_prefix -> docs_prefix (kept in sync with .github/lint-current-sync.yml)
+          declare -A MAP=(
+            ["packages/server-go/internal/"]="docs/current/server/"
+            ["packages/server-go/cmd/"]="docs/current/server/"
+            ["packages/client/src/"]="docs/current/client/"
+            ["packages/plugins/"]="docs/current/plugin/"
+            ["packages/helper/"]="docs/current/helper/"
+            ["packages/remote-agent/"]="docs/current/remote-agent/"
+          )
+
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          echo "Changed files:"
+          echo "$changed"
+
+          # If the PR body explicitly opts out with 'N/A' under Current 同步,
+          # we still warn but do not fail. The reviewer reads the reason.
+          opted_out=0
+          if echo "$BODY" | grep -E 'Current 同步' -A 5 | grep -E '^[[:space:]]*-?[[:space:]]*N/A' >/dev/null; then
+            opted_out=1
+          fi
+
+          fail=0
+          for prefix in "${!MAP[@]}"; do
+            docs_prefix="${MAP[$prefix]}"
+            if echo "$changed" | grep -E "^${prefix}" >/dev/null; then
+              if echo "$changed" | grep -E "^${docs_prefix}" >/dev/null; then
+                echo "ok: $prefix touched, $docs_prefix also updated"
+              elif [ "$opted_out" -eq 1 ]; then
+                echo "::warning::$prefix touched without $docs_prefix update; PR body declares N/A"
+              else
+                echo "::error::$prefix touched but $docs_prefix not updated (规则 6)"
+                fail=1
+              fi
+            fi
+          done
+
+          if [ "$fail" -ne 0 ]; then
+            echo "current 同步 lint failed. Update docs/current/ or declare 'N/A — <reason>' under '## Current 同步'."
+            exit 1
+          fi

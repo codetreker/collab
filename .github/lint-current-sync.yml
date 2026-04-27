@@ -1,0 +1,27 @@
+# lint-current-sync — module → docs/current path mapping
+#
+# Each entry: a code path prefix that, if any file under it changes in a PR,
+# REQUIRES the matching docs/current/ subtree to also be touched.
+#
+# Consumed by .github/workflows/lint.yml step "current sync lint".
+# Adding a module: append below; do not delete entries (modules persist).
+
+modules:
+  - name: server
+    code_prefix: packages/server-go/internal/
+    docs_prefix: docs/current/server/
+  - name: server-cmd
+    code_prefix: packages/server-go/cmd/
+    docs_prefix: docs/current/server/
+  - name: client
+    code_prefix: packages/client/src/
+    docs_prefix: docs/current/client/
+  - name: plugin-openclaw
+    code_prefix: packages/plugins/
+    docs_prefix: docs/current/plugin/
+  - name: helper
+    code_prefix: packages/helper/
+    docs_prefix: docs/current/helper/
+  - name: remote-agent
+    code_prefix: packages/remote-agent/
+    docs_prefix: docs/current/remote-agent/
