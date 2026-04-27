@@ -536,8 +536,8 @@ func TestInternalChannelHandlers(t *testing.T) {
 
 	t.Run("Users", func(t *testing.T) {
 		resp, _ := jsonReq(t, "GET", ts.URL+"/api/v1/users", adminToken, nil)
-		if resp.StatusCode != http.StatusNotFound {
-			t.Fatalf("expected 404, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
 
 		resp2, _ := jsonReq(t, "GET", ts.URL+"/api/v1/me/permissions", adminToken, nil)

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 
 	"golang.org/x/crypto/bcrypt"
@@ -19,23 +20,44 @@ type AdminHandler struct {
 
 func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	wrap := func(f http.HandlerFunc) http.Handler { return authMw(http.HandlerFunc(f)) }
+	h.registerRoutes(mux, "/admin-api/v1", wrap)
+}
 
-	mux.Handle("GET /admin-api/v1/stats", wrap(h.handleStats))
-	mux.Handle("GET /admin-api/v1/users", wrap(h.handleListUsers))
-	mux.Handle("POST /admin-api/v1/users", wrap(h.handleCreateUser))
-	mux.Handle("PATCH /admin-api/v1/users/{id}", wrap(h.handleUpdateUser))
-	mux.Handle("DELETE /admin-api/v1/users/{id}", wrap(h.handleDeleteUser))
-	mux.Handle("GET /admin-api/v1/users/{id}/agents", wrap(h.handleListUserAgents))
-	mux.Handle("POST /admin-api/v1/users/{id}/api-key", wrap(h.handleGenerateAPIKey))
-	mux.Handle("DELETE /admin-api/v1/users/{id}/api-key", wrap(h.handleDeleteAPIKey))
-	mux.Handle("GET /admin-api/v1/users/{id}/permissions", wrap(h.handleGetPermissions))
-	mux.Handle("POST /admin-api/v1/users/{id}/permissions", wrap(h.handleGrantPermission))
-	mux.Handle("DELETE /admin-api/v1/users/{id}/permissions", wrap(h.handleRevokePermission))
-	mux.Handle("POST /admin-api/v1/invites", wrap(h.handleCreateInvite))
-	mux.Handle("GET /admin-api/v1/invites", wrap(h.handleListInvites))
-	mux.Handle("DELETE /admin-api/v1/invites/{code}", wrap(h.handleDeleteInvite))
-	mux.Handle("GET /admin-api/v1/channels", wrap(h.handleListChannels))
-	mux.Handle("DELETE /admin-api/v1/channels/{id}/force", wrap(h.handleForceDeleteChannel))
+func (h *AdminHandler) RegisterAppRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+	wrap := func(f http.HandlerFunc) http.Handler {
+		return authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := auth.UserFromContext(r.Context())
+			if user == nil {
+				writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+				return
+			}
+			if user.Role != "admin" {
+				writeJSONError(w, http.StatusForbidden, "Forbidden")
+				return
+			}
+			f(w, r)
+		}))
+	}
+	h.registerRoutes(mux, "/api/v1/admin", wrap)
+}
+
+func (h *AdminHandler) registerRoutes(mux *http.ServeMux, prefix string, wrap func(http.HandlerFunc) http.Handler) {
+	mux.Handle("GET "+prefix+"/stats", wrap(h.handleStats))
+	mux.Handle("GET "+prefix+"/users", wrap(h.handleListUsers))
+	mux.Handle("POST "+prefix+"/users", wrap(h.handleCreateUser))
+	mux.Handle("PATCH "+prefix+"/users/{id}", wrap(h.handleUpdateUser))
+	mux.Handle("DELETE "+prefix+"/users/{id}", wrap(h.handleDeleteUser))
+	mux.Handle("GET "+prefix+"/users/{id}/agents", wrap(h.handleListUserAgents))
+	mux.Handle("POST "+prefix+"/users/{id}/api-key", wrap(h.handleGenerateAPIKey))
+	mux.Handle("DELETE "+prefix+"/users/{id}/api-key", wrap(h.handleDeleteAPIKey))
+	mux.Handle("GET "+prefix+"/users/{id}/permissions", wrap(h.handleGetPermissions))
+	mux.Handle("POST "+prefix+"/users/{id}/permissions", wrap(h.handleGrantPermission))
+	mux.Handle("DELETE "+prefix+"/users/{id}/permissions", wrap(h.handleRevokePermission))
+	mux.Handle("POST "+prefix+"/invites", wrap(h.handleCreateInvite))
+	mux.Handle("GET "+prefix+"/invites", wrap(h.handleListInvites))
+	mux.Handle("DELETE "+prefix+"/invites/{code}", wrap(h.handleDeleteInvite))
+	mux.Handle("GET "+prefix+"/channels", wrap(h.handleListChannels))
+	mux.Handle("DELETE "+prefix+"/channels/{id}/force", wrap(h.handleForceDeleteChannel))
 }
 
 func (h *AdminHandler) handleStats(w http.ResponseWriter, r *http.Request) {

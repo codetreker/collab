@@ -102,6 +102,7 @@ func (s *Server) SetupRoutes() {
 		adminAuthHandler.RegisterRoutes(s.mux, adminMw)
 		adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
 		adminHandler.RegisterRoutes(s.mux, adminMw)
+		adminHandler.RegisterAppRoutes(s.mux, authMw)
 	}
 
 	// Agents

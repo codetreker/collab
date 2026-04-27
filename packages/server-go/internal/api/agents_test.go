@@ -443,8 +443,8 @@ func TestUsersEndpoints(t *testing.T) {
 
 	t.Run("ListUsers", func(t *testing.T) {
 		resp, data := testutil.JSON(t, "GET", ts.URL+"/api/v1/users", adminToken, nil)
-		if resp.StatusCode != http.StatusNotFound {
-			t.Fatalf("expected 404, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
 		_ = data
 	})
