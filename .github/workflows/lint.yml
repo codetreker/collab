@@ -72,9 +72,13 @@ jobs:
         run: |
           set -euo pipefail
           # Map: code_prefix -> docs_prefix (kept in sync with .github/lint-current-sync.yml)
+          # Note: admin SPA lives physically under packages/client/src/ but is its
+          # own module with separate cookie / auth / docs. Longest-prefix-wins
+          # below ensures admin/* files don't also trigger the generic client rule.
           declare -A MAP=(
             ["packages/server-go/internal/"]="docs/current/server/"
             ["packages/server-go/cmd/"]="docs/current/server/"
+            ["packages/client/src/admin/"]="docs/current/admin/"
             ["packages/client/src/"]="docs/current/client/"
             ["packages/plugins/"]="docs/current/plugin/"
             ["packages/helper/"]="docs/current/helper/"
@@ -100,18 +104,35 @@ jobs:
             opted_out=1
           fi
 
+          # Sort prefixes by length descending so longest-prefix wins per file.
+          # (Bash associative arrays don't preserve insertion order.)
+          prefixes_sorted=$(for p in "${!MAP[@]}"; do echo "${#p} $p"; done | sort -rn | awk '{print $2}')
+
+          # For each changed file, attribute it to the longest matching code prefix.
+          # A rule is "triggered" only if at least one file's longest match is that prefix.
+          declare -A TRIGGERED=()
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            for prefix in $prefixes_sorted; do
+              case "$f" in
+                "$prefix"*)
+                  TRIGGERED[$prefix]=1
+                  break
+                  ;;
+              esac
+            done
+          done <<< "$changed"
+
           fail=0
-          for prefix in "${!MAP[@]}"; do
+          for prefix in "${!TRIGGERED[@]}"; do
             docs_prefix="${MAP[$prefix]}"
-            if echo "$changed" | grep -E "^${prefix}" >/dev/null; then
-              if echo "$changed" | grep -E "^${docs_prefix}" >/dev/null; then
-                echo "ok: $prefix touched, $docs_prefix also updated"
-              elif [ "$opted_out" -eq 1 ]; then
-                echo "::warning::$prefix touched without $docs_prefix update; PR body declares N/A"
-              else
-                echo "::error::$prefix touched but $docs_prefix not updated (规则 6)"
-                fail=1
-              fi
+            if echo "$changed" | grep -E "^${docs_prefix}" >/dev/null; then
+              echo "ok: $prefix touched, $docs_prefix also updated"
+            elif [ "$opted_out" -eq 1 ]; then
+              echo "::warning::$prefix touched without $docs_prefix update; PR body declares N/A"
+            else
+              echo "::error::$prefix touched but $docs_prefix not updated (规则 6)"
+              fail=1
             fi
           done
 

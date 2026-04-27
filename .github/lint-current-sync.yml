@@ -28,6 +28,12 @@ modules:
   - name: server-cmd
     code_prefix: packages/server-go/cmd/
     docs_prefix: docs/current/server/
+  # admin SPA is physically nested under client/ but is its own module
+  # (separate auth, separate cookie, separate docs/current/admin/). Listed
+  # before `client` so the longest-prefix match wins.
+  - name: admin
+    code_prefix: packages/client/src/admin/
+    docs_prefix: docs/current/admin/
   - name: client
     code_prefix: packages/client/src/
     docs_prefix: docs/current/client/
