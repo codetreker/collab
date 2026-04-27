@@ -134,6 +134,16 @@ func (h *AuthHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// CM-1.2: 1 person = 1 org. Auto-create on register; UI never exposes
+	// org_id (blueprint §1.1). Failure here aborts registration so we never
+	// leave an orphan user with empty org_id — the data contract is enforced
+	// at the app layer until CM-3 promotes (org_id, ...) lookups.
+	if _, err := h.Store.CreateOrgForUser(user, displayName+"'s org"); err != nil {
+		h.Logger.Error("failed to create organization for user", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
 	if err := h.Store.ConsumeInviteCode(body.InviteCode, user.ID); err != nil {
 		h.Logger.Error("failed to consume invite code", "error", err)
 	}
