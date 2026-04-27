@@ -441,12 +441,11 @@ func TestUsersEndpoints(t *testing.T) {
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
-	t.Run("ListUsers", func(t *testing.T) {
-		resp, data := testutil.JSON(t, "GET", ts.URL+"/api/v1/users", adminToken, nil)
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected 200, got %d", resp.StatusCode)
+	t.Run("ListUsersRemoved", func(t *testing.T) {
+		resp, _ := testutil.JSON(t, "GET", ts.URL+"/api/v1/users", adminToken, nil)
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("expected 404 (removed), got %d", resp.StatusCode)
 		}
-		_ = data
 	})
 
 	t.Run("MyPermissionsOwner", func(t *testing.T) {

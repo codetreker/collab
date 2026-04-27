@@ -280,7 +280,7 @@ func TestHTTPErrorBranches(t *testing.T) {
 		body   any
 		want   int
 	}{
-		{"removed-users", "GET", "/api/v1/users", "", nil, http.StatusUnauthorized},
+		{"removed-users", "GET", "/api/v1/users", "", nil, http.StatusNotFound},
 		{"admin-users", "GET", "/admin-api/v1/users", memberToken, nil, http.StatusOK},
 		{"not-found-channel", "GET", "/api/v1/channels/missing", adminToken, nil, http.StatusNotFound},
 		{"bad-admin-create-json", "POST", "/admin-api/v1/users", adminToken, map[string]any{"display_name": ""}, http.StatusBadRequest},
@@ -598,7 +598,6 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 		{"delete-message-admin", "DELETE", "/api/v1/messages/" + msgID, adminToken, nil, http.StatusNoContent},
 		{"dm-list", "GET", "/api/v1/dm", adminToken, nil, http.StatusOK},
 		{"dm-missing-user", "POST", "/api/v1/dm/missing", adminToken, nil, http.StatusNotFound},
-		{"users-list", "GET", "/api/v1/users", adminToken, nil, http.StatusOK},
 		{"users-permissions", "GET", "/api/v1/me/permissions", adminToken, nil, http.StatusOK},
 		{"users-online", "GET", "/api/v1/online", adminToken, nil, http.StatusOK},
 	}
@@ -783,9 +782,6 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 		}},
 		{"remote-list", "GET /api/v1/remote/nodes", "GET", "/api/v1/remote/nodes", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
 			return (&RemoteHandler{Store: s, Logger: testLogger()}).handleListNodes
-		}},
-		{"user-list", "GET /api/v1/users", "GET", "/api/v1/users", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
-			return (&UserHandler{Store: s, Logger: testLogger()}).handleListUsers
 		}},
 		{"user-online", "GET /api/v1/online", "GET", "/api/v1/online", "", func(s *store.Store, _ *config.Config) http.HandlerFunc {
 			return (&UserHandler{Store: s, Logger: testLogger()}).handleOnlineUsers
