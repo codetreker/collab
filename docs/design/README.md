@@ -28,6 +28,7 @@ packages/
 | [`plugin-protocol.md`](plugin-protocol.md) | **BPP（Borgee Plugin Protocol）—— runtime 接入的中立协议** |
 | [`host-bridge.md`](host-bridge.md) | **Borgee Helper：用户机器上的特权进程（信任五支柱）** |
 | [`realtime.md`](realtime.md) | **推送 / 状态 / 回放：v1 让用户感到 AI 在工作的最小集** |
+| [`auth-permissions.md`](auth-permissions.md) | **权限模型：ABAC 存储 + UI bundle，跨 org 只减不加** |
 | [`overview.md`](overview.md) | 系统全景图 + 跨进程消息流 + 关键术语 |
 | [`agents.md`](agents.md) | Agent 在系统中的身份模型、API key、接入路径选择 |
 | [`server/`](server/README.md) | `server-go`：路由、auth、realtime |
