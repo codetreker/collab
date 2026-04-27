@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"borgee-server/internal/config"
+	"borgee-server/internal/migrations"
 	"borgee-server/internal/server"
 	"borgee-server/internal/store"
 )
@@ -40,6 +41,14 @@ func main() {
 
 	if err := s.Migrate(); err != nil {
 		logger.Error("migration failed", "error", err)
+		os.Exit(1)
+	}
+
+	// INFRA-1a: forward-only versioned migrations. Coexists with the legacy
+	// Store.Migrate() above during v0; new schema (Phase 1+) lands here as
+	// numbered migrations. See internal/migrations and docs/current/server/migrations.md.
+	if err := migrations.Default(s.DB()).Run(0); err != nil {
+		logger.Error("schema_migrations failed", "error", err)
 		os.Exit(1)
 	}
 
