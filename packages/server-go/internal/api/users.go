@@ -29,8 +29,10 @@ func (h *UserHandler) handleMyPermissions(w http.ResponseWriter, r *http.Request
 	}
 
 	var permissions []string
+	var details []map[string]any
 	if user.Role == "admin" {
 		permissions = []string{"*"}
+		details = []map[string]any{{"id": 0, "permission": "*", "scope": "*", "granted_by": nil, "granted_at": 0}}
 	} else {
 		perms, err := h.Store.ListUserPermissions(user.ID)
 		if err != nil {
@@ -40,13 +42,24 @@ func (h *UserHandler) handleMyPermissions(w http.ResponseWriter, r *http.Request
 		}
 		for _, p := range perms {
 			permissions = append(permissions, fmt.Sprintf("%s:%s", p.Permission, p.Scope))
+			details = append(details, map[string]any{
+				"id":         p.ID,
+				"permission": p.Permission,
+				"scope":      p.Scope,
+				"granted_by": p.GrantedBy,
+				"granted_at": p.GrantedAt,
+			})
 		}
+	}
+	if details == nil {
+		details = []map[string]any{}
 	}
 
 	writeJSONResponse(w, http.StatusOK, map[string]any{
 		"user_id":     user.ID,
 		"role":        user.Role,
 		"permissions": permissions,
+		"details":     details,
 	})
 }
 
