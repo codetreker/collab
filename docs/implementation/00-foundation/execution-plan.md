@@ -144,7 +144,7 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 ## v0 → v1 切换 checklist
 
 > v0 阶段允许破坏式升级 (删库重建, 直接换协议)。v1 阶段 (第一个外部用户上线后) 切严格模式。
-> 详见 [`README.md`](README.md) §阶段策略。
+> 详见 [`../README.md`](../README.md) §阶段策略。
 
 **v0 → v1 切换前必须完成**:
 

@@ -7,8 +7,8 @@
 ```markdown
 # Implementation · <Module Name>
 
-> 蓝图: [`../blueprint/<module>.md`](../blueprint/<module>.md)
-> 现状: [`../current/<module>/`](../current/<module>/) 或 inline 简述
+> 蓝图: [`../../blueprint/<module>.md`](../../blueprint/<module>.md)
+> 现状: [`../../current/<module>/`](../../current/<module>/) 或 inline 简述
 > 阶段: ⚡ v0 / 🛡️ v1 (见 README §阶段策略)
 
 ## 1. 现状 → 目标 概览
@@ -56,7 +56,7 @@
 中等强度。
 
 格式:
-> 实现满足 [`../blueprint/<module>.md`](../blueprint/<module>.md) §X.Y 的规则: "<引用原文一段>"。
+> 实现满足 [`../../blueprint/<module>.md`](../../blueprint/<module>.md) §X.Y 的规则: "<引用原文一段>"。
 
 例:
 > 实现满足 blueprint/concept-model §1.2 的规则: "Agent 默认权限最小化(`message.send`),由 owner 显式 grant 进一步能力"。

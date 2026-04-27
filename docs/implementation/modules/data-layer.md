@@ -1,11 +1,11 @@
 # Implementation · Data Layer (剩余)
 
-> 蓝图: [`../blueprint/data-layer.md`](../blueprint/data-layer.md)
+> 蓝图: [`../../blueprint/data-layer.md`](../../blueprint/data-layer.md)
 > 现状: 大部分总账已落 (随各模块进表), 剩 events 双流 / 阈值哨 / 分布式 ready 接口抽象
 > 阶段: ⚡ v0 + 部分 v1 准备
 > 所属 Phase: Phase 4 (DL-2/DL-3 部分作 v0→v1 切换 checklist 准备)
 
-> 注: INFRA-1 (schema_migrations 框架) **属于 Phase 0**, 不在本模块拆出, 见 [`execution-plan.md`](execution-plan.md) Phase 0。
+> 注: INFRA-1 (schema_migrations 框架) **属于 Phase 0**, 不在本模块拆出, 见 [`execution-plan.md`](../00-foundation/execution-plan.md) Phase 0。
 
 ## 1. 现状 → 目标 概览
 

@@ -3,9 +3,10 @@
 > 这一目录是**实施层** —— 把 [`../current/`](../current/) 的代码现状一步一步推到 [`../blueprint/`](../blueprint/) 的目标态。
 > 形式: milestone 列表 + per-milestone PR + acceptance spec。
 >
-> **路径可见性入口**: [`roadmap.md`](roadmap.md) (5 秒看完)
-> **写 milestone 文档的规范**: [`how-to-write-milestone.md`](how-to-write-milestone.md)
-> **第一个模块样板**: [`concept-model.md`](concept-model.md)
+> **进度打勾**: [`PROGRESS.md`](PROGRESS.md) (所有 milestone 状态一览)
+> **路径可见性入口**: [`00-foundation/roadmap.md`](00-foundation/roadmap.md) (5 秒看完)
+> **写 milestone 文档的规范**: [`00-foundation/how-to-write-milestone.md`](00-foundation/how-to-write-milestone.md)
+> **第一个模块样板**: [`modules/concept-model.md`](modules/concept-model.md)
 
 ---
 
@@ -72,7 +73,7 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 ### v0 代码债 audit (每 milestone 关闭时必更)
 
 > 每个 v0 阶段做的"破坏式选择"都登记在这, v1 切换前逐条结清。
-> **每完成一个 v0 milestone, 必须更新一行**, 否则 Phase gate 不算通过 (见 [`execution-plan.md`](execution-plan.md))。
+> **每完成一个 v0 milestone, 必须更新一行**, 否则 Phase gate 不算通过 (见 [`execution-plan.md`](00-foundation/execution-plan.md))。
 
 | 改动 | v0 做法 | v1 切回要补的事 | 关联 Phase / Milestone | 状态 |
 |------|---------|----------------|-----------------------|------|
@@ -97,9 +98,10 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 
 1. **PR ≤ 3 天**, **Milestone ≤ 2 周** —— 控制反馈循环
 2. **可验证四选一**: e2e 断言 / 蓝图行为对照 / 数据契约 / 行为不变量 —— 每 PR 至少一种
-3. **5 秒看完路径** —— [`execution-plan.md`](execution-plan.md) 是源头, [`roadmap.md`](roadmap.md) 是缩略图
+3. **5 秒看完路径** —— [`execution-plan.md`](00-foundation/execution-plan.md) 是源头, [`roadmap.md`](00-foundation/roadmap.md) 是缩略图
 4. **PR 描述强制**: `Blueprint: <模块> §X.Y` —— 让追溯无歧义
 5. **Milestone 末必须可发版** —— 中间态用 feature flag 隐藏
+6. **current 同步硬规则**: 每个 PR 合并前必须更新 [`../current/<module>/`](../current/) 对应章节; 烈马在 acceptance 验收时 review current 同步度。代码先合 + current 后补 = 不允许。
 
 ---
 
@@ -122,13 +124,16 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 
 ---
 
+## 文档导航
+
 | 文档 | 内容 |
 |------|------|
-| [`execution-plan.md`](execution-plan.md) | **源头**: 5 Phase + 退出 gate + 4 道防偏离闸门 |
-| [`roadmap.md`](roadmap.md) | execution-plan 缩略图 (按模块依赖排序) |
-| [`how-to-write-milestone.md`](how-to-write-milestone.md) | milestone 模板 + acceptance 四选一 + 反查表规范 |
-| [`concept-model.md`](concept-model.md) | concept-model 模块的实施 (CM-1, CM-3, CM-4) |
-| `<其它模块>.md` | 各模块大纲文件 (与 [`../blueprint/`](../blueprint/) 一一对应) |
+| [`PROGRESS.md`](PROGRESS.md) | **进度打勾**: 所有 Phase / milestone / PR / gate 的状态 |
+| [`00-foundation/execution-plan.md`](00-foundation/execution-plan.md) | **源头**: 5 Phase + 退出 gate + 4 道防偏离闸门 |
+| [`00-foundation/roadmap.md`](00-foundation/roadmap.md) | execution-plan 缩略图 (按模块依赖排序) |
+| [`00-foundation/how-to-write-milestone.md`](00-foundation/how-to-write-milestone.md) | milestone 模板 + acceptance 四选一 + 反查表规范 |
+| [`modules/concept-model.md`](modules/concept-model.md) | concept-model 模块 (CM-1, CM-3, CM-4) |
+| [`modules/<其它>.md`](modules/) | 各模块大纲, 与 [`../blueprint/`](../blueprint/) 一一对应 |
 
 ## 与 blueprint 的对应
 

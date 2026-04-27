@@ -1,6 +1,6 @@
 # Implementation · Admin Model
 
-> 蓝图: [`../blueprint/admin-model.md`](../blueprint/admin-model.md)
+> 蓝图: [`../../blueprint/admin-model.md`](../../blueprint/admin-model.md)
 > 现状: 当前有 `/admin-api/v1/*` 几个 endpoint, 但没独立 SPA, 没明确隐私契约, 没分层透明
 > 阶段: ⚡ v0
 > 所属 Phase: Phase 4
