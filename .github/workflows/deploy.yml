@@ -63,7 +63,7 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
           script: |
-            cd /opt/dockers/collab-staging
+            cd /opt/dockers/borgee-staging
             docker compose pull
             docker compose up -d
             sleep 5
@@ -94,7 +94,7 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           command_timeout: 5m
           script: |
-            cd /opt/dockers/collab
+            cd /opt/dockers/borgee
             docker compose pull
             docker compose up -d
             sleep 5
