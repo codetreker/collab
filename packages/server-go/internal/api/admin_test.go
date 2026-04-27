@@ -248,6 +248,39 @@ func TestAdminStatsAndUserAgents(t *testing.T) {
 		t.Fatalf("missing stats fields: %v", data)
 	}
 
+	// CM-1.3: stats must include by_org aggregation (blueprint §2).
+	byOrgRaw, ok := data["by_org"].([]any)
+	if !ok {
+		t.Fatalf("by_org missing or wrong type: %v", data["by_org"])
+	}
+	if len(byOrgRaw) == 0 {
+		t.Fatalf("by_org should be non-empty after CM-1.2 auto-org: %v", data)
+	}
+	totalUsers := int64(0)
+	totalChannels := int64(0)
+	for _, row := range byOrgRaw {
+		m, ok := row.(map[string]any)
+		if !ok {
+			t.Fatalf("by_org row not an object: %T", row)
+		}
+		if _, has := m["org_id"]; !has {
+			t.Fatalf("by_org row missing org_id: %v", m)
+		}
+		uc, ucOK := m["user_count"].(float64)
+		cc, ccOK := m["channel_count"].(float64)
+		if !ucOK || !ccOK {
+			t.Fatalf("by_org row missing user_count/channel_count: %v", m)
+		}
+		totalUsers += int64(uc)
+		totalChannels += int64(cc)
+	}
+	if totalUsers != int64(data["user_count"].(float64)) {
+		t.Fatalf("by_org user_count sum %d != top-level user_count %v", totalUsers, data["user_count"])
+	}
+	if totalChannels != int64(data["channel_count"].(float64)) {
+		t.Fatalf("by_org channel_count sum %d != top-level channel_count %v", totalChannels, data["channel_count"])
+	}
+
 	resp, data = testutil.JSON(t, "POST", ts.URL+"/api/v1/agents", ownerToken, map[string]any{"display_name": "Admin View Bot"})
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create agent: %d %v", resp.StatusCode, data)

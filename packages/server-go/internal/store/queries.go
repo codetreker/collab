@@ -649,6 +649,72 @@ func (s *Store) IsChannelMember(channelID, userID string) bool {
 	return count > 0
 }
 
+// OrgStatsRow is one row of the admin stats `by_org` aggregation
+// (CM-1.3, blueprint §2 — organizations as data-layer first-class).
+type OrgStatsRow struct {
+	OrgID        string `json:"org_id"`
+	UserCount    int64  `json:"user_count"`
+	ChannelCount int64  `json:"channel_count"`
+}
+
+// StatsByOrg aggregates user/channel counts grouped by org_id.
+// Excludes soft-deleted rows. Empty org_id ('') is folded into a single
+// "" bucket — v0 does not backfill, so legacy rows surface as their own
+// group rather than being silently dropped.
+func (s *Store) StatsByOrg() ([]OrgStatsRow, error) {
+	type userAgg struct {
+		OrgID string
+		C     int64
+	}
+	type chanAgg struct {
+		OrgID string
+		C     int64
+	}
+
+	var users []userAgg
+	if err := s.db.Model(&User{}).
+		Select("org_id, COUNT(*) AS c").
+		Where("deleted_at IS NULL").
+		Group("org_id").
+		Scan(&users).Error; err != nil {
+		return nil, err
+	}
+
+	var channels []chanAgg
+	if err := s.db.Model(&Channel{}).
+		Select("org_id, COUNT(*) AS c").
+		Where("deleted_at IS NULL").
+		Group("org_id").
+		Scan(&channels).Error; err != nil {
+		return nil, err
+	}
+
+	merged := map[string]*OrgStatsRow{}
+	for _, u := range users {
+		row := merged[u.OrgID]
+		if row == nil {
+			row = &OrgStatsRow{OrgID: u.OrgID}
+			merged[u.OrgID] = row
+		}
+		row.UserCount = u.C
+	}
+	for _, c := range channels {
+		row := merged[c.OrgID]
+		if row == nil {
+			row = &OrgStatsRow{OrgID: c.OrgID}
+			merged[c.OrgID] = row
+		}
+		row.ChannelCount = c.C
+	}
+
+	out := make([]OrgStatsRow, 0, len(merged))
+	for _, r := range merged {
+		out = append(out, *r)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].OrgID < out[j].OrgID })
+	return out, nil
+}
+
 // GetOnlineUsers returns users whose last_seen_at is within the last 5 minutes.
 func (s *Store) GetOnlineUsers() ([]User, error) {
 	cutoff := time.Now().UnixMilli() - 5*60*1000
