@@ -35,6 +35,7 @@
 ### 1.3 Agent 间独立协作允许，但有边界
 
 - 飞马 @ 野马在同一 channel 协作合法，**owner 不必在场**——这是"同事"定位的必然推论。
+- **协作的最小可观测语义 (烈马 R2 锁定)**: 协作 = message 路径 + capability 调用 (留 audit log), **不含** secret 共享 / 凭证传递。任何超出此边界的"协作"按扩权处理。
 - **边界：协作可以，扩权不行。** Agent 不能主动发起需要 owner 授权的动作（如邀请第三方 agent 进新 channel、修改自己的权限范围、把资源转移给 owner 之外的人）。
 
 ### 1.4 主体验：团队感知 + DM 对话
@@ -139,27 +140,13 @@
 
 | 模型 | 代码现状 | 差距 |
 |------|----------|------|
-| Organization 一等公民 | 隐式：用 `users.id` + `users.owner_id` 表达 | **缺 `organizations` 表与 `users.org_id` 列**——本文档的首要遗留项 |
-| 人类全权 / agent 默认最小 | 通过 `user_permissions` 表实现 | ✅ 已经接近，注册回填默认权限即对齐 |
+| Organization 一等公民 | 隐式：用 `users.id` + `users.owner_id` 表达 | **缺 `organizations` 表与 `users.org_id` 列** |
+| 人类全权 / agent 默认最小 | 通过 `user_permissions` 表实现 | ✅ 已经接近 |
 | Agent 代表自己 | mention 路由、DM 发起均按 user 单位 | ✅ 当前已经是这个语义 |
 | Agent 创建资源归 owner | `created_by` 是 agent；要查 owner 必须 `JOIN owner_id` | 一旦 `org_id` 加上，`SELECT * WHERE org_id = ?` 直接拿到 org 内全部资源 |
-| Channel 分组纯视觉 | 全 org 共享 | 暂不动，**文档已明示语义** |
+| Channel 分组语义 | 全 org 共享 | ✅ 与目标语义一致 |
 
-## 8. 落地建议（org_id 迁移：已纳入下一步）
-
-**决策（飞马 + 野马 2026-04-27）**：选 A，**现在做**。
-
-- **技术理由**：迁移成本窗口现在最小（数据量小、表少、UI 完全无耦合）。等"多人 org"需求落地再补，`owner_id` 隐式语义已扩散进 N 处 query，回填代价翻倍。
-- **产品理由**：P4（多用户注册）即将上线，"我的 agent"列表、资源归属查询都需要 org 边界。如果 P4 数据先落，再补 org 维度会要打补丁。
-- **不做的事**：UI 不暴露 `org_id`、API payload 不返回，**用户完全感知不到**这一层。
-
-加 `org_id` 是一次**广覆盖但低风险**的迁移，分 5 步：
-
-1. 建 `organizations` 表 (`id`, `name`, `created_at`)。
-2. `users` 加 `org_id` 列，回填脚本：每个 `role!='agent'` 的 user 创建一个 org（默认 name = `<display_name>'s org`），`role='agent'` 的 user 继承 `owner_id` 对应 user 的 org。
-3. 在主要带 owner 语义的表（`messages`, `channels`, `workspace_files`, `remote_nodes`）上**加索引但不加 FK**，由 application 层维护一致性，避免 cascade 风暴。
-4. 不开放任何 `/orgs` 端点，不在 API payload 里返回 `org_id`，让 UI **完全感知不到**这个概念存在。
-5. 内部查询逐步切到 "with org_id 视图"——优先用在 admin stats、agent 列表、 future quota/billing 这种全局聚合上。
+落地路径见 [`../implementation/concept-model.md`](../implementation/concept-model.md)。本文档不重复实施细节。
 
 ## 9. 术语表（与代码字段映射）
 

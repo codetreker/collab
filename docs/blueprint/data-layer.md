@@ -148,7 +148,9 @@ cursor 协议同形（`kind + ulid`），客户端按订阅集合 merge。
 - `schema_migrations(version, applied_at, checksum)` 表
 - 编号 SQL 文件（`001_init.sql` / `002_add_artifacts.sql` …）
 - 启动时自动 apply，**失败 fail-fast**
-- **forward-only**——不写 down，v1 回滚靠备份
+- **forward-only**——不写 down
+
+> ⚠️ **回滚策略与阶段挂钩**：v0（无外部用户）阶段直接删库重建；上线第一个外部用户后切到"备份 + 不可逆 forward-only"模式。详见 [`../implementation/README.md`](../implementation/README.md) 的阶段策略。
 
 ### 3.3 Q10.4 — 存储：SQLite + 观察哨
 
