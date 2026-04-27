@@ -21,7 +21,8 @@ packages/
 
 | 模块 | 内容 |
 |------|------|
-| [`overview.md`](overview.md) | 系统全景图 + 跨进程消息流 + 关键术语（**先看这里**） |
+| [`concept-model.md`](concept-model.md) | **核心概念模型：组织、人、agent**（**最先读这里**） |
+| [`overview.md`](overview.md) | 系统全景图 + 跨进程消息流 + 关键术语 |
 | [`agents.md`](agents.md) | Agent 在系统中的身份模型、API key、接入路径选择 |
 | [`server/`](server/README.md) | `server-go`：路由、auth、realtime |
 | [`server/data-model.md`](server/data-model.md) | SQLite 表结构、迁移策略、事件日志、LexoRank |
