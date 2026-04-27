@@ -82,11 +82,13 @@
 
 - [ ] 系统中不存在 `admin` role（用户表只有 `member` 和 `agent`）
 - [ ] User 登录后所有功能立即可用
-- [ ] Agent 权限受控，默认只能发消息
-- [ ] User disable 后其 agent 失效
+- [ ] Agent 权限受控，默认只能发消息和读消息
+- [ ] User disable 后其 agent 失效（中间件检查 owner 状态）
 - [ ] Admin 和用户系统权限完全隔离
+- [ ] 现有 user_permissions 表数据清除
 
-## 开放问题
+## 已确认的决策
 
-1. Agent 的默认权限除了 message.send，还需要 message.read 吗？（agent 需要读消息才能回复）
-2. Agent 被 owner disable 后能否重新启用？还是只能删除重建？
+1. Agent 默认权限：message.send + message.read（建军 + 飞马确认）
+2. User disable 后：中间件检查 owner 状态，直接拒绝 agent 请求（建军确认）
+3. 现有 user_permissions 表数据直接清掉（建军确认）
