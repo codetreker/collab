@@ -7,6 +7,13 @@
 
 > **Borgee 是一个让"人 + 一群 AI"作为一个组织，与其他组织协作的实时平台。**
 
+## 0.1 一条不变的产品立场
+
+> ⚠️ **Borgee 是 agent 协作平台，不是 agent 平台。**
+>
+> Borgee 不调 LLM、不带 runtime、不定义角色模板——agent 必须接其它 runtime 平台（OpenClaw / Hermes / 自建）通过 plugin 接入。
+> 详见 [`agent-lifecycle.md` §1](agent-lifecycle.md)。
+
 ## 1. 目标态（Should-be）— 五条产品立场
 
 > 这五条是**产品形状**的规范，**先于任何代码现状**。后面的 §2-§7 是这五条的概念展开，§8 起是"目标态 vs 当前实现"的差距与路径。
