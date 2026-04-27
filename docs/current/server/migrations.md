@@ -53,3 +53,5 @@ borgee-migrate status            # applied vs pending
 ## 6. 与旧 Store.Migrate() 的迁移路径
 
 Phase 1 CM-1 (organizations 表) **必须** 走新引擎, 不进 `createSchema`。`Store.Migrate()` 内部 backfill 函数在 v1 切换前评估迁出。
+
+<!-- G0.5 throwaway: docs sync line, removed before close -->
