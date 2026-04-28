@@ -39,7 +39,8 @@
 - `ThemeContext.tsx` — 主题切换。
 
 ### `lib/`
-- `api.ts` — 全部 REST 调用集中在这里。`request<T>()` 用 `fetch` + `credentials: 'include'`（cookie auth）；dev 时塞 `X-Dev-User-Id` 头；非 2xx 抛 `ApiError`。
+- `api.ts` — 全部 REST 调用集中在这里。`request<T>()` 用 `fetch` + `credentials: 'include'`（cookie auth）；dev 时塞 `X-Dev-User-Id` 头；非 2xx 抛 `ApiError`。`Agent` interface 含 `state` / `reason` / `state_updated_at` (AL-1a Phase 2 三态: online/offline/error)。
+- `agent-state.ts` (AL-1a) — `describeAgentState(agent)` 把 server 下发的 `state` + `reason` 折成 `{label, tone, hint}`；`REASON_LABELS` 锁定 6 个 reason code 文案 (`plugin_unreachable` / `plugin_timeout` / `plugin_error` / `tool_call_failed` / `manual_disable` / `unknown`). 详见 `docs/current/server/agent-runtime-state.md` wire schema。
 - `markdown.ts`、`file-links.ts` — `marked + highlight.js + dompurify` 渲染。
 
 ### `hooks/`
@@ -120,5 +121,6 @@
 - `channel-sort.test.ts` — position 字符串 lex 排序 + `last_message_at` fallback。
 - `channel-groups-ui.test.ts` — 分组展示逻辑。
 - `agent-invitations.test.ts` — CM-4.2 client：`createAgentInvitation` / `listAgentInvitations(role)` / `fetchAgentInvitation` / `decideAgentInvitation` 的请求形状、`{invitation}` / `{invitations}` 解包、409 → `ApiError`、`stateToLabel` 4 状态中文映射。
+- `agent-state.test.ts` (AL-1a) — `describeAgentState` 三态文案锁 + 6 reason code 表覆盖, 防退化。
 
 没有组件级 React Testing Library 测试。
