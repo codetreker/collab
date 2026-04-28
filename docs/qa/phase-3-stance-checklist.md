@@ -24,7 +24,7 @@
 | # | 立场锚 | 一句话立场 | 反约束 (X 是, Y 不是) | v0 / v1 |
 |---|--------|----------|----------------------|---------|
 | ① | canvas-vision §1.3 + §1.4 + 14 立场 §5 | **artifact 归属 = channel** (权限继承 channel 成员), 不是归属 author | **是** workspace per channel, artifact 跟 channel 走 (channel 删 → artifact 软删随; channel member 离开 → 失访问); **不是** 归属 author (author 离开 channel 不带走 artifact); **不是** 跨 channel 共享 (v1 不做多 artifact 视图) | v0: artifact 表 `channel_id NOT NULL`, 无 `owner_id` 主权语义; v1 同 |
-| ② | canvas-vision §1.5 + §2 不做 + 14 立场 §2 | **多人编辑 = 一人编辑一锁 (last-writer-wins + 锁标位)**, 不上 CRDT | **是** v1 串行编辑, agent 写入触发新版本 (canvas-vision §1.4 自带版本); **不是** realtime CRDT (§2 显式不做); **不是** 无锁覆盖 (要有 conflict 提示 → 提示用户 reload) | v0: 单文档锁 (`workspace_files.locked_by_user_id` + 30s TTL); v1 同, 加 conflict UI hint |
+| ② | canvas-vision §1.5 + §2 不做 + 14 立场 §2 | **多人编辑 = 一人编辑一锁 (last-writer-wins + 锁标位)**, 不上 CRDT | **是** v1 串行编辑, agent 写入触发新版本 (canvas-vision §1.4 自带版本); **不是** realtime CRDT (§2 显式不做); **不是** 无锁覆盖 (要有 conflict 提示 → 提示用户 reload) | v0: 单文档锁 (`artifacts.lock_holder_user_id` + `lock_acquired_at` + 30s TTL); v1 同, 加 conflict UI hint |
 | ③ | canvas-vision §1.4 + §1.5 表 | **版本历史线性保留, agent 默认无权删历史**; 删除版本 = owner grant | **是** 每次 commit 一新版本行, 可回滚到前一版; agent 写内容 ✅ 默认, **删历史 ❌ 默认** (§1.5 表锁); **不是** 版本图状 (no fork v1); **不是** 无限保留 (v1 不限期, v2 加 GC 策略) | v0: 线性版本 + agent 默认无删权; v1 同, 加 owner grant UI |
 
 ---
@@ -46,8 +46,8 @@
 grep -rnE "INSERT INTO channel_members.*SELECT.*FROM users" packages/server-go/internal/store/ | grep -v _test.go
 # CHN-1 ③: agent join 不该发非 system 自发问候
 grep -rnE "agent.*joined.*hello|hi.*I am" packages/server-go/ | grep -v _test.go
-# CV-1 ①: artifact / workspace_files 不应有 owner_id 主权语义 (channel_id 是唯一归属)
-grep -rnE "workspace_files.*owner_id|artifacts.*owner_id" packages/server-go/internal/store/ | grep -v _test.go
+# CV-1 ①: artifacts 不应有 owner_id 主权语义 (channel_id 是唯一归属)
+grep -rnE "artifacts.*owner_id" packages/server-go/internal/ | grep -v _test.go
 # RT-1 ①: client 端不该用本地 timestamp 排序 events
 grep -rnE "sort.*events.*timestamp|events\.sort\(.*createdAt" packages/client/src/ | grep -v _test.
 ```
@@ -76,3 +76,4 @@ grep -rnE "sort.*events.*timestamp|events\.sort\(.*createdAt" packages/client/sr
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-28 | 野马 | v0, CHN-1 5 项 + CV-1 3 项 + RT-1 3 项立场 + 黑名单 grep + 不在范围 6 条 |
+| 2026-04-29 | 野马 | v0.1 patch — 二轮反查 (post-#334) 抓出 CV-1 ② drift: `workspace_files.locked_by_user_id` → `artifacts.lock_holder_user_id` (表名 + 列名 双 align), 加 `lock_acquired_at`; §4 黑名单 grep 同步去 `workspace_files`. 跟 #334 实施 + #337 acceptance + #338 cross-grep 反模式 三源对齐 |
