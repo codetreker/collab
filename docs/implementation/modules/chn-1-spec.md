@@ -10,13 +10,13 @@
 
 1. **Channel default creator-only**: 新建 channel 默认仅创建者可见; 邀请扩散走 invitation (#237 envelope) — 不允许 org 全员自动 join (蓝图 §1.1 + §2 不变量 #1)
 2. **Agent silent join**: agent 进 channel 不发 system message, `silent=true` 列锁; 人类成员加入仍发 system DM fanout (蓝图 §1.4 隐式 + concept-model.md §1.4 主体验)
-3. **Archived not deleted**: channel 退役走 `archived_at NOT NULL`, 历史 artifact / message 保留可回溯; DROP TABLE 路径禁 (蓝图 §2 不变量 #3)
+3. **Archived not deleted**: channel 退役走 `archived_at` 列 (`INTEGER NULL`, NULL=活 / 非NULL=归档时间戳), 历史 artifact / message 保留可回溯; DROP TABLE 路径禁 (蓝图 §2 不变量 #3)
 
 ## 1. 拆段实施 (CHN-1.1 / 1.2 / 1.3, 与 #265 一致)
 
 | 段 | 范围 | 闭锁 | owner |
 |---|---|---|---|
-| **CHN-1.1** schema migration v=11 | `channels` 表 rebuild + `archived_at` / `silent` / `org_id_at_join` 列 + UNIQUE(name, org_id) | #276 (LGTM) | 战马A |
+| **CHN-1.1** schema migration v=11 | `channels` 表 rebuild + `archived_at` / `silent` / `org_id_at_join` 列 + UNIQUE(org_id, name) | #276 (LGTM) | 战马A |
 | **CHN-1.2** API (create / archive / list) | `POST /channels` 默认 creator-only + `POST /channels/:id/archive` 软退役 + `GET /channels` 过滤 archived | 待 PR (战马A) | 战马A |
 | **CHN-1.3** client (创建 / 归档 UI) | 创建对话框 + archived 灰显 + agent silent 不打扰 | 待 PR (战马A) | 战马A |
 
@@ -29,10 +29,10 @@
 ## 3. 反查 grep 锚 (Phase 4 验收)
 
 ```
-git grep -n 'archived_at.*NOT NULL'  internal/db/migrations/  # ≥ 1 hit (CHN-1.1)
-git grep -n 'silent.*BOOL'            internal/db/migrations/  # ≥ 1 hit (CHN-1.1)
-git grep -n 'UNIQUE.*name.*org_id'    internal/db/migrations/  # ≥ 1 hit (CHN-1.1)
-git grep -n 'archived_at IS NULL'     internal/channels/       # list 过滤 (CHN-1.2)
+git grep -n 'archived_at.*INTEGER'    packages/server-go/internal/migrations/  # ≥ 1 hit (CHN-1.1)
+git grep -n 'silent.*INTEGER'         packages/server-go/internal/migrations/  # ≥ 1 hit (CHN-1.1, SQLite 无 BOOL)
+git grep -n 'UNIQUE.*org_id.*name'    packages/server-go/internal/migrations/  # ≥ 1 hit (CHN-1.1, 列序对齐 #276)
+git grep -n 'archived_at IS NULL'     packages/server-go/internal/channels/    # list 过滤 (CHN-1.2)
 ```
 
 任一 0 hit → CI fail, 视作蓝图立场被弱化。
@@ -55,3 +55,4 @@ git grep -n 'archived_at IS NULL'     internal/channels/       # list 过滤 (CH
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-28 | 飞马 | v0 — spec lock 配套 #265 拆段, 3 立场 + 4 grep 反查 + 4 反约束 |
+| 2026-04-28 | 飞马 | v1 — 烈马 review patch: archived_at 描述对齐 #276 (INTEGER NULL); grep 路径 packages/server-go/internal/; SQLite 无 BOOL → INTEGER; UNIQUE 列序 (org_id, name) |
