@@ -36,7 +36,9 @@
 
 | 项 | v1 立场细化 |
 |---|---|
-| 字段顺序 | `{cursor, type, channel_id, artifact_id, version, committer_id, committer_kind, updated_at}` byte-identical 跟 RT-1.1 (#290) `MessageCreated` envelope 同序; `type='artifact.updated'` |
+| 字段顺序 | `{type, cursor, artifact_id, version, channel_id, updated_at, kind}` 7 字段 byte-identical 跟 RT-1.1 #290 实施 (`internal/ws/cursor.go::ArtifactUpdatedFrame` + `cursor_test.go::TestArtifactUpdatedFrameFieldOrder` golden JSON) + cv-1-spec.md L13; `type='artifact_updated'` (下划线, `FrameTypeArtifactUpdated` const) |
+| committer pull (反约束) | envelope **不带** `committer_id` / `committer_kind` — committer 信息走 GET /api/v1/artifacts/:id 拉; envelope 仅信号, 内容/作者全 pull (跟 ❌ 不在 envelope 内塞 body 内容 同准则) |
+| kind 标签 | `kind` ∈ {`"commit"`, `"rollback"`} — client 据此区分新写 vs 回滚, 渲染版本侧栏 "v{N+1} (rollback from v{M})" 时用 |
 | cursor | 跟 RT-1.1 共用 server cursor 单调 (单一 events 表), 不另设 artifact-only cursor |
 | BPP-1 lint | #304 envelope CI lint 自动 enforce (`bpp/frame_schemas.go` reflect 比对 server-go 端 `WSEnvelope` 字段顺序) — 改字段顺序 = lint fail = PR 卡 |
 | 反约束 | ❌ client 不能用 `updated_at` 排序 (RT-1 ① 反约束: server cursor 唯一可信序); ❌ 不另造 artifact-only push 通道 (走统一 /ws hub + BPP-1 frame schema); ❌ 不在 envelope 内塞 body 内容 (artifact 内容走 GET /artifacts/:id 拉, push 仅信号) |
@@ -93,3 +95,4 @@ grep -rnE "PATCH.*/artifacts.*rollback|body\.rollback_to" packages/server-go/int
 | 2026-04-28 | 野马 | v1, ②③⑤⑦ 四项 v1 立场细化 (字段名 + 边界 + REST + 反向断言 + audit + envelope 字段顺序), 跟 #295 §5 三条件 PR # 引追溯 (#290/#292/#296/#301/#302/#303/#304/#305) |
 | 2026-04-28 | 野马 | v1.1 patch — 修 PR # 引: RT-1 三段全列 (#290/#292/#296), BPP-1 #292 → #304 (envelope CI lint 真落 commit 4724efa, G2.6 ⏸️→✅ DONE), AL-3 三轨 + 文案锁 (#301/#302/#303/#305 — #304 是 BPP-1 不是 AL-3) |
 | 2026-04-29 | 野马 | v1.2 patch — 二轮反查 (post-#334) 抓出 3 处 drift, 跟 #334 实施 + #337 acceptance + #338 cross-grep 反模式 三源对齐: ② `workspace_files.lock_holder_user_id` → `artifacts.lock_holder_user_id` (表名); ③ `version_no` → `version` + `committer_user_id` → `committer_id` + 加 UNIQUE 约束 + `rolled_back_from_version` 列入 schema; ⑤ envelope 字段名同步; ⑦ `to_version_no` → `to_version` |
+| 2026-04-29 | 烈马 | v1.3 patch — 三轮反查 (frame 顺序 align #290 实施): ⑤ envelope 8 字段 → 7 字段 (`{type, cursor, artifact_id, version, channel_id, updated_at, kind}`), `type` 字面 `artifact.updated` → `artifact_updated` (下划线, `FrameTypeArtifactUpdated` const), 砍 `committer_id` / `committer_kind` 列 (committer 信息 GET pull, 反约束 ⑤ envelope 仅信号), 加 `kind` ∈ {commit, rollback} 标签; 跟 `internal/ws/cursor.go` + `cursor_test.go::TestArtifactUpdatedFrameFieldOrder` golden JSON byte-identical; acceptance §2.5 同步 align (反向修原则跟 #337 一致) |
