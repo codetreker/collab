@@ -33,7 +33,7 @@ var All = []Migration{
 	adm01Admins,
 	adm02AdminSessions,
 	// v=6 reserved for ADM-0.3 (users.role enum 收 + admin backfill + session revoke)
-	// v=7 reserved for CM-onboarding (Welcome channel infra)
+	cmOnboardingWelcome,
 	ap0BisMessageRead,
 }
 

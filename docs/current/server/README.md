@@ -124,7 +124,7 @@ http.Server.Serve       # 0.0.0.0:4900
 | Method | Path | 用途 |
 |--------|------|------|
 | POST | `/api/v1/auth/login` | email + password，签 JWT 写 cookie |
-| POST | `/api/v1/auth/register` | 邀请码注册 |
+| POST | `/api/v1/auth/register` | 邀请码注册；副作用：自动建 1 个 org（CM-1.2）+ 1 个 `type=system` #welcome 频道（CM-onboarding，含一条 sender_id='system' 的欢迎消息 + quick_action 按钮 JSON）。频道是硬契约；系统消息插失败仅日志告警，注册仍成功。 |
 | POST | `/api/v1/auth/logout` | 清 cookie |
 | GET | `/api/v1/users/me` | 当前 user + permissions |
 | GET | `/api/v1/me/permissions` | 列出自己所有权限 |

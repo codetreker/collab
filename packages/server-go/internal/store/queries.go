@@ -797,7 +797,7 @@ func (s *Store) ListChannelsWithUnread(userID string) ([]ChannelWithCounts, erro
 			CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
 		FROM channels c
 		LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
-		WHERE c.deleted_at IS NULL AND c.type = 'channel'
+		WHERE c.deleted_at IS NULL AND c.type IN ('channel', 'system')
 			AND (c.visibility = 'public' OR cm.user_id IS NOT NULL)
 		ORDER BY c.position ASC, c.created_at ASC
 	`, userID, userID).Scan(&results).Error
@@ -817,7 +817,8 @@ func (s *Store) ListAllChannelsForAdmin(userID string) ([]ChannelWithCounts, err
 			CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
 		FROM channels c
 		LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
-		WHERE c.deleted_at IS NULL AND c.type = 'channel'
+		WHERE c.deleted_at IS NULL
+			AND (c.type = 'channel' OR (c.type = 'system' AND cm.user_id IS NOT NULL))
 		ORDER BY c.position ASC, c.created_at ASC
 	`, userID, userID).Scan(&results).Error
 	return results, err

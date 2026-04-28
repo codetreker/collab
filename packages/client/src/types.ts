@@ -4,7 +4,7 @@ export interface Channel {
   id: string;
   name: string;
   topic: string;
-  type?: 'channel' | 'dm';
+  type?: 'channel' | 'dm' | 'system';
   visibility?: 'public' | 'private';
   created_at: number;
   created_by: string;
@@ -48,6 +48,9 @@ export interface Message {
   deleted_at?: number | null;
   mentions?: string[];
   reactions?: { emoji: string; count: number; user_ids: string[] }[];
+  // CM-onboarding: server attaches a JSON-encoded {kind,label,action} payload
+  // to the welcome system message. Renderer parses lazily.
+  quick_action?: string | null;
   _pending?: boolean;
   _failed?: boolean;
   _clientMessageId?: string;
