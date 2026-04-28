@@ -11,6 +11,11 @@ type Channel struct {
 	DeletedAt  *int64  `gorm:"index" json:"deleted_at,omitempty"`
 	Position   string  `gorm:"not null;default:0|aaaaaa;size:50;index" json:"position"`
 	GroupID    *string `gorm:"size:36" json:"group_id"`
+	// OrgID is the channel's organization (CM-3.1). Stamped at create time
+	// from creator.OrgID. Column added by migration cm_1_1_organizations
+	// (NOT NULL DEFAULT ''); v=9 backfills legacy rows. Blueprint §1.1 forbids
+	// UI exposure → json:"-".
+	OrgID string `gorm:"column:org_id;not null;default:'';size:36;index" json:"-"`
 }
 
 type ChannelGroup struct {
@@ -65,6 +70,9 @@ type Message struct {
 	// to system messages (CM-onboarding migration v=7). Nil/empty for plain
 	// chat messages. The client decodes and renders a button when set.
 	QuickAction *string `gorm:"column:quick_action" json:"quick_action,omitempty"`
+	// OrgID is the message's organization (CM-3.1). Stamped at INSERT from
+	// sender.OrgID. Column added by migration cm_1_1_organizations.
+	OrgID string `gorm:"column:org_id;not null;default:'';size:36;index" json:"-"`
 }
 
 type ChannelMember struct {
@@ -129,6 +137,9 @@ type WorkspaceFile struct {
 	SourceMessageID *string `gorm:"size:36;index" json:"source_message_id,omitempty"`
 	CreatedAt       int64   `gorm:"not null" json:"created_at"`
 	UpdatedAt       int64   `gorm:"not null" json:"updated_at"`
+	// OrgID is the file's organization (CM-3.1). Stamped at INSERT from
+	// uploader.OrgID. Column added by migration cm_1_1_organizations.
+	OrgID string `gorm:"column:org_id;not null;default:'';size:36;index" json:"-"`
 }
 
 type RemoteNode struct {
@@ -138,6 +149,9 @@ type RemoteNode struct {
 	ConnectionToken string `gorm:"not null;uniqueIndex;size:255" json:"-"`
 	LastSeenAt      *int64 `gorm:"index" json:"last_seen_at,omitempty"`
 	CreatedAt       int64  `gorm:"not null" json:"created_at"`
+	// OrgID is the node's organization (CM-3.1). Stamped at INSERT from
+	// registrant.OrgID. Column added by migration cm_1_1_organizations.
+	OrgID string `gorm:"column:org_id;not null;default:'';size:36;index" json:"-"`
 }
 
 type RemoteBinding struct {

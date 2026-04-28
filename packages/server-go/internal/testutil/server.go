@@ -61,6 +61,12 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	if err := s.CreateUser(owner); err != nil {
 		t.Fatalf("create owner: %v", err)
 	}
+	// CM-3 fixture: owner has its own org; admin + member share owner.OrgID
+	// so existing tests stay single-org. Foreign-org tests in cross_org_test.go
+	// build a separate user via SeedForeignOrgUser.
+	if _, err := s.CreateOrgForUser(owner, "Owner Org"); err != nil {
+		t.Fatalf("create owner org: %v", err)
+	}
 	if err := s.GrantDefaultPermissions(owner.ID, "admin"); err != nil {
 		t.Fatalf("grant owner perms: %v", err)
 	}
@@ -82,6 +88,11 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	if err := s.CreateUser(admin); err != nil {
 		t.Fatalf("create admin: %v", err)
 	}
+	// CM-3: admin shares owner's org so existing single-tenant tests still see
+	// shared resources.
+	if err := s.UpdateUser(admin.ID, map[string]any{"org_id": owner.OrgID}); err != nil {
+		t.Fatalf("set admin org_id: %v", err)
+	}
 	if err := s.GrantDefaultPermissions(admin.ID, "admin"); err != nil {
 		t.Fatalf("grant admin perms: %v", err)
 	}
@@ -100,6 +111,9 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	if err := s.CreateUser(member); err != nil {
 		t.Fatalf("create member: %v", err)
 	}
+	if err := s.UpdateUser(member.ID, map[string]any{"org_id": owner.OrgID}); err != nil {
+		t.Fatalf("set member org_id: %v", err)
+	}
 	if err := s.GrantDefaultPermissions(member.ID, "member"); err != nil {
 		t.Fatalf("grant member perms: %v", err)
 	}
@@ -115,6 +129,7 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 		CreatedBy:  owner.ID,
 		Type:       "channel",
 		Position:   store.GenerateInitialRank(),
+		OrgID:      owner.OrgID, // CM-3.1
 	}
 	if err := s.CreateChannel(general); err != nil {
 		t.Fatalf("create general: %v", err)
@@ -519,4 +534,36 @@ func CreateAgent(t *testing.T, serverURL, token, displayName string) map[string]
 	}
 	agent, _ := data["agent"].(map[string]any)
 	return agent
+}
+
+// SeedForeignOrgUser creates a member user in a brand-new org (separate from
+// the test fixture's "Owner Org") and grants default member perms. Used by
+// CM-3 cross-org 403 reverse assertions. Returns the user with OrgID populated.
+func SeedForeignOrgUser(t *testing.T, s *store.Store, displayName, email string) *store.User {
+	t.Helper()
+	hash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("bcrypt: %v", err)
+	}
+	u := &store.User{
+		DisplayName:  displayName,
+		Role:         "member",
+		Email:        &email,
+		PasswordHash: string(hash),
+	}
+	if err := s.CreateUser(u); err != nil {
+		t.Fatalf("create foreign-org user: %v", err)
+	}
+	if _, err := s.CreateOrgForUser(u, displayName+" Org"); err != nil {
+		t.Fatalf("create foreign org: %v", err)
+	}
+	if err := s.GrantDefaultPermissions(u.ID, "member"); err != nil {
+		t.Fatalf("grant foreign-org perms: %v", err)
+	}
+	// Reload to get OrgID populated on the returned struct.
+	got, err := s.GetUserByID(u.ID)
+	if err != nil {
+		t.Fatalf("reload foreign-org user: %v", err)
+	}
+	return got
 }

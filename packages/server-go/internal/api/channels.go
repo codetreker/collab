@@ -163,6 +163,7 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 		CreatedBy:  user.ID,
 		Type:       "channel",
 		Position:   position,
+		OrgID:      user.OrgID, // CM-3.1
 	}
 	if err := h.Store.CreateChannel(ch); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to create channel")
@@ -211,6 +212,12 @@ func (h *ChannelHandler) handleGetChannel(w http.ResponseWriter, r *http.Request
 	}
 
 	channelID := r.PathValue("channelId")
+	// CM-3.2: cross-org 403 BEFORE membership check, otherwise private-channel
+	// rejection 404s first and the 403 contract leaks.
+	if orgID, err := h.Store.ChannelOrgID(channelID); err == nil && store.CrossOrg(user.OrgID, orgID) {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
 	if !h.Store.CanAccessChannel(channelID, user.ID) {
 		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return

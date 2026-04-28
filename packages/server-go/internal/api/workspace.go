@@ -140,6 +140,7 @@ func (h *WorkspaceHandler) handleUploadFile(w http.ResponseWriter, r *http.Reque
 		MimeType:  contentType,
 		SizeBytes: written,
 		Source:    "upload",
+		OrgID:     user.OrgID, // CM-3.1
 	}
 
 	result, err := h.Store.InsertWorkspaceFile(wf)
@@ -164,6 +165,12 @@ func (h *WorkspaceHandler) loadWorkspaceFileForRequest(r *http.Request, fileID, 
 
 	if f.ChannelID != channelID {
 		return nil, http.StatusNotFound, "File not found"
+	}
+
+	// CM-3.2: cross-org 403 BEFORE owner check, so foreign-org user gets 403
+	// not 404 (#200 §3 row 3).
+	if store.CrossOrg(user.OrgID, f.OrgID) {
+		return nil, http.StatusForbidden, "Forbidden"
 	}
 
 	if f.UserID != user.ID && user.Role != "admin" {
