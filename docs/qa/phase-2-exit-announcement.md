@@ -26,14 +26,14 @@
 |---|---|---|---|
 | **G2.1** 邀请审批 E2E | 🟡 server ✅ / e2e `.skip` | **#237 + #239** 战马B 解 `.skip` (rate-limit bypass) | `acceptance-templates/cm-onboarding.md` REG-CMO-006/007 |
 | **G2.2** 离线 fallback E2E | 🟡 partial | **#237 + #239** RT-0 client e2e + presence stub | `acceptance-templates/rt-0.md` REG-RT0-007 (60s fallback) |
-| **G2.4** 用户感知签字 ⭐ | 🟡 4/6 → 5/6 | 野马补签 #2 (AL-1b 后) + #3/#4 (e2e 后) + #6 (ADM-1 后) | `acceptance-templates/al-1b.md` + `acceptance-templates/adm-1.md` + `g2.4-demo-signoff.md` |
+| **G2.4** 用户感知签字 ⭐ | 🟡 5/6 (#275) | 野马补签 #2 (AL-1b 后) + #3/#4 (e2e 后) + #6 (ADM-1 后) | `acceptance-templates/al-1b.md` + `acceptance-templates/adm-1.md` + `g2.4-demo-signoff.md` |
 
 ## 4. 留账闸 — 2 项 (Phase 4 PR 编号锁, 规则 6)
 
 | 闸 | 留账 PR 路径 | 锚 acceptance-templates |
 |---|---|---|
-| **G2.5** presence 接口契约 | `internal/presence/contract.go` AL-3 同期 PR (飞马 + 战马) | `acceptance-templates/al-2a.md` (config SSOT, AL-3 前置) + AL-3 留账行 |
-| **G2.6** /ws ↔ BPP schema CI lint | `bpp/frame_schemas.go` CI lint (BPP-1 PR 内含) | `acceptance-templates/al-2a.md` (BPP frame 不在 AL-2a 反向断言) + BPP-1 PR |
+| **G2.5** presence 接口契约 | `internal/presence/contract.go` AL-3 同期 PR **#277** (战马A AL-3 占号) | `acceptance-templates/al-2a.md` (config SSOT, AL-3 前置) + AL-3 留账行 |
+| **G2.6** /ws ↔ BPP schema CI lint | `bpp/frame_schemas.go` CI lint **#274** (飞马 BPP-1 占号) | `acceptance-templates/al-2a.md` (BPP frame 不在 AL-2a 反向断言) + BPP-1 PR |
 
 > ⚠️ Phase 3 RT-1 ArtifactUpdated frame 必须套 #237 envelope 直到 BPP-1 CI lint 落 (飞马 #267 §5 强约束)。
 
@@ -70,3 +70,4 @@
 |---|---|---|
 | 2026-04-28 | 烈马 | v0 草稿 — 4 SIGNED + 3 PARTIAL + 2 DEFERRED |
 | 2026-04-28 | 烈马 | v1 — 顶部加飞马 #267 readiness review 引用; title 锁 "条件性全过"; SIGNED 升 5+1 (加 AL-1a #249); 留账行链 al-2a.md / adm-2.md / al-1b.md / adm-1.md |
+| 2026-04-28 | 烈马 | v2 — 锁 deferred PR #: G2.5→#277 (战马A AL-3 占号), G2.6→#274 (飞马 BPP-1 占号), G2.4 PARTIAL 升 5/6 引 #275 (野马 G2.4 #5) |
