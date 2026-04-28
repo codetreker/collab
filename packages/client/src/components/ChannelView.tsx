@@ -9,6 +9,7 @@ import ConnectionStatus from './ConnectionStatus';
 import ChannelMembersModal from './ChannelMembersModal';
 import WorkspacePanel from './WorkspacePanel';
 import RemotePanel from './RemotePanel';
+import ArtifactPanel from './ArtifactPanel';
 import { useVisualViewport } from '../hooks/useVisualViewport';
 import type { Message } from '../types';
 
@@ -22,7 +23,7 @@ export default function ChannelView({ channelId }: Props) {
   const [showMembers, setShowMembers] = useState(false);
   const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
   const [joining, setJoining] = useState(false);
-  const [activeTab, setActiveTab] = useState<'chat' | 'workspace' | 'remote'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'workspace' | 'remote' | 'canvas'>('chat');
   const keyboardHeight = useVisualViewport();
 
   const channel = state.channels.find(c => c.id === channelId);
@@ -158,6 +159,7 @@ export default function ChannelView({ channelId }: Props) {
       {!isDm && isMember && !isPublicPreview && (
         <div className="channel-view-tabs">
           <button className={`channel-view-tab${activeTab === 'chat' ? ' active' : ''}`} onClick={() => setActiveTab('chat')}>聊天</button>
+          <button className={`channel-view-tab${activeTab === 'canvas' ? ' active' : ''}`} onClick={() => setActiveTab('canvas')}>Canvas</button>
           <button className={`channel-view-tab${activeTab === 'workspace' ? ' active' : ''}`} onClick={() => setActiveTab('workspace')}>Workspace</button>
           <button className={`channel-view-tab${activeTab === 'remote' ? ' active' : ''}`} onClick={() => setActiveTab('remote')}>Remote</button>
         </div>
@@ -166,6 +168,8 @@ export default function ChannelView({ channelId }: Props) {
         <WorkspacePanel channelId={channelId} />
       ) : activeTab === 'remote' && !isDm && isMember && !isPublicPreview ? (
         <RemotePanel channelId={channelId} />
+      ) : activeTab === 'canvas' && !isDm && isMember && !isPublicPreview ? (
+        <ArtifactPanel channelId={channelId} />
       ) : (
         <>
           {isPublicPreview && (

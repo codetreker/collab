@@ -65,3 +65,32 @@ export const INVITATION_DECIDED_EVENT = 'borgee:invitation-decided';
 /** Strongly-typed CustomEvent payload helpers. */
 export type InvitationPendingEvent = CustomEvent<AgentInvitationPendingFrame>;
 export type InvitationDecidedEvent = CustomEvent<AgentInvitationDecidedFrame>;
+
+// ─── CV-1.2 ArtifactUpdated frame (RT-1.1 #290 envelope) ────
+//
+// Spec: docs/implementation/modules/cv-1-spec.md §1 + cv-1.md §2.5.
+// 锁: server 端 internal/ws/cursor.go::ArtifactUpdatedFrame — 7 字段顺序
+// byte-identical:
+//   {type, cursor, artifact_id, version, channel_id, updated_at, kind}
+// Push 仅信号 (立场 ⑤): 不带 body, 不带 committer; client 收到后必须
+// 拉 GET /api/v1/artifacts/:id 才能渲染. `kind` 取 'commit' / 'rollback'.
+
+/**
+ * `artifact_updated` — server → client push fired after a successful
+ * commit or rollback in CV-1.2. Reuses RT-1.1 cursor envelope so the
+ * existing reconnect-backfill path covers it for free (RT-1.2 #292).
+ */
+export interface ArtifactUpdatedFrame {
+  type: 'artifact_updated';
+  /** RT-1.1 monotonic server cursor; client must NOT sort by updated_at. */
+  cursor: number;
+  artifact_id: string;
+  version: number;
+  channel_id: string;
+  /** Unix ms — 仅展示, 不可作排序键 (反约束: server cursor 唯一可信序). */
+  updated_at: number;
+  kind: 'commit' | 'rollback';
+}
+
+export const ARTIFACT_UPDATED_EVENT = 'borgee:artifact-updated';
+export type ArtifactUpdatedEvent = CustomEvent<ArtifactUpdatedFrame>;
