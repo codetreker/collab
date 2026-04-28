@@ -60,7 +60,12 @@
 - [x] 飞马 (architecture / 闸 1+2): ✅ 拍板 — 引 PR #267 readiness review §4 (5+1 严格闸 SIGNED + 条件性 3 闸 #248 condition + 留账 2 闸挂 Phase 4 PR 编号: AL-3 / BPP-1 / ADM-1) + §5 Phase 3 entry 唯一冲突点 (RT-1 envelope 套 #237, 已 PR #269 spec 守门) (date: 2026-04-28)
 - [ ] 战马A (实施 / 闸 3): _________________ (date: ____)
 - [ ] 野马 (PM / 闸 4 G2.4): _________________ (date: ____)
-- [ ] 烈马 (QA / 闸 4 acceptance): _________________ (date: ____)
+- [x] **烈马** (QA / 闸 4 acceptance): **烈马 ✅** (date: 2026-04-28)
+  - acceptance 全可机器化: `docs/qa/acceptance-templates/` AL-2a (#264) + ADM-2 (#266) 各 7 验收, 加上历史模板 (al-1b / adm-1 / cm-onboarding / adm-0 / al-1a) 全套 — 每行 unit / E2E / CI grep / reverse-grep / 反射扫描 实施方式锁
+  - regression-registry 全 active 53 行 (#270 翻牌: REG-RT0-008 ⚪→🟢 + 新增 REG-RT0-009 rate-limit bypass 5-row matrix; RT-0 8→9, total 64→65)
+  - 留账闸 Phase 4 PR 编号锁占位齐全: G2.5 → `internal/presence/contract.go` AL-3 同期 PR (战马A) / G2.6 CI lint → BPP-1 PR (飞马) — 规则 6 红线满足
+  - PARTIAL 项 #248 condition signoff 形式齐: G2.1/G2.2 (#237+#239) / G2.4 4/6 (野马补签路径已锚 al-1b.md + adm-1.md + g2.4-demo-signoff.md)
+  - SIGNED 5+1 闸证据全部回链 PR + REG: G2.0 #223 / G2.3 #236 / G2.6 注释锁 #237 / G2.audit #244+#251 / AL-1a #249+#252
 
 > team-lead (建军) 在 4 联签齐后宣布 Phase 2 关闭, 同步触发 `announcements/phase-2-exit-summary.md` 业主公告发布。
 
@@ -72,3 +77,4 @@
 | 2026-04-28 | 烈马 | v1 — 顶部加飞马 #267 readiness review 引用; title 锁 "条件性全过"; SIGNED 升 5+1 (加 AL-1a #249); 留账行链 al-2a.md / adm-2.md / al-1b.md / adm-1.md |
 | 2026-04-28 | 烈马 | v2 — 锁 deferred PR #: G2.5→#277 (战马A AL-3 占号), G2.6→#274 (飞马 BPP-1 占号), G2.4 PARTIAL 升 5/6 引 #275 (野马 G2.4 #5) |
 | 2026-04-28 | 飞马 | §7 飞马联签 ✅ — 引 #267 readiness §4/§5 + #269 RT-1 envelope 守门 |
+| 2026-04-28 | 烈马 | v1.1 — §7 烈马 QA 联签 ✅ (acceptance 机器化 + #270 翻牌 + 留账 PR 编号锁) |
