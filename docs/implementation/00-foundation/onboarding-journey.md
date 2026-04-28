@@ -20,7 +20,7 @@
 
 **对应蓝图立场**:
 - §1.4 — 团队感知主体验 (打开 app 第一眼看到团队, 不是空白)
-- §11 — 沉默胜于假 loading (任何空状态必须解释原因)
+- README §核心 11 — 沉默胜于假 loading (任何空状态必须解释原因; 实时 frame 见 `realtime.md §1.1`)
 - §1.3 — agent 间独立协作 (体感断档兜底口播, 第 5 步)
 
 ---
@@ -41,7 +41,7 @@
 [6] agent 回应 + 产品口播 "未来 agent 会互相协作" (§1.3)
 ```
 
-每步 **必有** success / empty / error / skip 四态文案。**沉默不是选项** (§11)。
+每步 **必有** success / empty / error / skip 四态文案。**沉默不是选项** (README §核心 11)。
 
 ---
 
@@ -64,7 +64,7 @@
 |------|------------|------|
 | ✅ success | (无独立文案, 直接进步骤 2) | |
 | ⚠️ empty | N/A | 此步无 empty 态 (新注册必有 #welcome) |
-| ❌ error backfill 失败 / channel 创建失败 | "正在准备你的工作区, 稍候刷新…" + [重试] 按钮 | **§11 反约束硬条件**: 严禁沿用旧 "👈 选择频道开始聊天" (那是沉默) |
+| ❌ error backfill 失败 / channel 创建失败 | "正在准备你的工作区, 稍候刷新…" + [重试] 按钮 | **README §核心 11 反约束硬条件**: 严禁沿用旧 "👈 选择频道开始聊天" (那是沉默) |
 | ⏭️ skip | N/A | 不可 skip |
 
 **验收锚点**: G2.4 截屏 "Welcome 第一眼非空屏" + CM-onboarding E2E 数据契约。
@@ -85,7 +85,7 @@
 |------|------|
 | ✅ success (业主第一次进) | "**欢迎来到 Borgee 👋**<br>这里是你的工作区。Borgee 不是一个 AI 工具, 而是让你和 AI 同事一起协作的地方。<br>第一步: 创建你的第一个 agent 同事 →" + button [创建 agent] |
 | ⚠️ empty (理论上不出现) | N/A |
-| ❌ error (system message 写入失败) | channel 标题位显示 "⚠️ 欢迎消息加载失败, [重试]" — **不**默认渲染空 channel (§11) |
+| ❌ error (system message 写入失败) | channel 标题位显示 "⚠️ 欢迎消息加载失败, [重试]" — **不**默认渲染空 channel (README §核心 11) |
 | ⏭️ skip (业主再次进入, 已创建过 agent) | system message 仍在 (历史保留), CTA 替换为 "你的 agent 已就位 →" 灰态 link 跳左栏聚焦 |
 
 **点击 [创建 agent] 行为**: 跳 AgentManager (`setShowAgents(true)`), AgentManager 进 step 1。
@@ -115,7 +115,7 @@
 | ✅ success | toast "🎉 {name} 已加入你的团队" + 自动跳回 #welcome + system message "@{name} 上线了, 试试和它打招呼 →" |
 | ⚠️ empty | N/A (流程不存在 empty 态) |
 | ❌ error 名字重复 | inline error "这个名字已经有人用了, 换一个吧" |
-| ❌ error runtime 不可达 | inline error "runtime 暂时连不上, 你可以先创建, agent 会显示『故障 (runtime_unreachable)』, 修好后自动恢复" — **保留创建路径**, 不挡 (§11 解释原因) |
+| ❌ error runtime 不可达 | inline error "runtime 暂时连不上, 你可以先创建, agent 会显示『故障 (runtime_unreachable)』, 修好后自动恢复" — **保留创建路径**, 不挡 (README §核心 11 解释原因) |
 | ⏭️ skip (业主关闭弹窗) | 退回 #welcome, system message 不变, CTA 仍可点 |
 
 **验收锚点**: G2.4 截屏 "agent 创建成功 toast" (可选, 5 张内取舍)。
@@ -130,15 +130,15 @@
 - 左栏团队区出现 agent 一行: `🤖 {name}` + 状态点 + **subject 文案**
 - subject 文案是 §11 "沉默胜于假 loading" 的产品落点: agent 在 "做什么" 必须说出来
 
-**文案** (锁定, AL-2 实施时引用此处):
+**文案** (锁定, AL-1b 实施时引用此处):
 
 | agent 状态 | 主文案 | subject 文案 (一行内) | 备注 |
 |------|------|------|------|
 | online + 刚创建 (≤2min) | 在线 | "正在熟悉环境…" | 默认初次 subject |
 | online + idle | 在线 | (空) | 不强制有 subject (但**不是糊弄灰**, 是显式 online) |
-| online + thinking | 在线 | "在想 {subject}…" | §11 硬条件: 必带 subject, 无 subject 不渲染 thinking |
+| online + thinking | 在线 | "在想 {subject}…" | README §核心 11 硬条件: 必带 subject, 无 subject 不渲染 thinking |
 | busy (Phase 4 BPP) | 忙碌 | "在做 {task_label}…" | AL-1b 实施 |
-| error | 故障 | "{reason_code}" (e.g. "api_key_invalid") | §11 解释原因, 不糊弄 |
+| error | 故障 | "{reason_code}" (e.g. "api_key_invalid") | README §核心 11 解释原因, 不糊弄 |
 | offline | 已离线 | (空) | **不准用"灰点 + 不说原因"** (野马 R2 反约束) |
 
 | 状态 | 整体文案 |
@@ -187,8 +187,8 @@
 | #welcome 自动建 + auto-select | 不存在 | CM-onboarding (战马 0.5-1 天) |
 | system message + quick action button | system message 已支持, button 未支持 | CM-onboarding 加 message kind 扩展 1 字段 + client 渲染 + AgentManager 跳转钩 (~0.5 天) |
 | App.tsx 空状态降级文案 | 旧 "👈 选择频道" | CM-onboarding 改文案 + 加 retry hook (~0.2 天) |
-| Sidebar agent subject 文案 | 不存在 | AL-2 (Phase 2 后置, 文案锁此 doc 引用) |
-| presence "正在熟悉环境" 默认初次 subject | 不存在 | AL-2 (实施时挂此 doc §3 步骤 5 锁文案) |
+| Sidebar agent subject 文案 | 不存在 | AL-1b (Phase 4 BPP 同期, 文案锁此 doc 引用) |
+| presence "正在熟悉环境" 默认初次 subject | 不存在 | AL-1b (实施时挂此 doc §3 步骤 5 锁文案) |
 | §1.3 体感断档口播 | Phase 2 用 demo 口播, Phase 4 改 system message | 无 surface 工作, 演示时口播即可 |
 
 ---
@@ -197,10 +197,10 @@
 
 | Gate | 本 doc 引用点 |
 |------|--------------|
-| G2.4 用户感知签字 (野马) | 步骤 2 截屏 + 步骤 5 截屏 (5 张关键截屏之 2) |
+| G2.4 用户感知签字 (野马) | 步骤 2 截屏 + 步骤 5 截屏 (5 张关键截屏之 2 — **第 5 张同时覆盖步骤 2 (Welcome 第一眼非空屏) 和步骤 5 (左栏团队感知)**, execution-plan G2.4 锁 5 张数学一致) |
 | CM-onboarding Acceptance | 步骤 1 数据契约 + 步骤 2 E2E + 步骤 1 error 文案 |
-| AL-2 Acceptance | 步骤 5 subject 文案锁 |
-| §11 反约束 grep + 截屏 | 跨步骤 (1 / 2 / 5 错误态) |
+| AL-1b Acceptance | 步骤 5 subject 文案锁 |
+| README §核心 11 反约束 grep + 截屏 | 跨步骤 (1 / 2 / 5 错误态) |
 | §1.4 第一眼非空屏 | 步骤 1 + 5 |
 
 ---
