@@ -5,14 +5,15 @@ import (
 	"testing"
 )
 
-// TestAgentInvitation_ValidStates documents the schema enum surface and
-// guards against typos that would diverge from the migration's CHECK
-// constraint.
+// TestAgentInvitation_ValidStates positively asserts the four states named by
+// blueprint §4.2 (pending / approved / rejected / expired) are recognized,
+// and that obviously-wrong inputs (empty, wrong case, unrelated words) are
+// rejected.
 func TestAgentInvitation_ValidStates(t *testing.T) {
 	for _, s := range []AgentInvitationState{
 		AgentInvitationPending,
-		AgentInvitationAccepted,
-		AgentInvitationDeclined,
+		AgentInvitationApproved,
+		AgentInvitationRejected,
 		AgentInvitationExpired,
 	} {
 		if !s.IsValid() {
@@ -22,10 +23,9 @@ func TestAgentInvitation_ValidStates(t *testing.T) {
 
 	for _, s := range []AgentInvitationState{
 		"",
-		"approved",  // blueprint v0 wording — intentionally NOT chosen so we catch drift
-		"rejected",  // blueprint synonym — likewise rejected
-		"PENDING",   // case sensitive
+		"PENDING", // case sensitive
 		"completed",
+		"weird",
 	} {
 		if s.IsValid() {
 			t.Errorf("state %q must be invalid", s)
@@ -33,11 +33,29 @@ func TestAgentInvitation_ValidStates(t *testing.T) {
 	}
 }
 
+// TestAgentInvitation_TerminalStates positively asserts approved / rejected /
+// expired are the three legal terminal states (blueprint §4.2 wording).
+func TestAgentInvitation_TerminalStates(t *testing.T) {
+	terminals := []AgentInvitationState{
+		AgentInvitationApproved,
+		AgentInvitationRejected,
+		AgentInvitationExpired,
+	}
+	for _, s := range terminals {
+		if !s.IsTerminal() {
+			t.Errorf("%s must be a terminal state", s)
+		}
+	}
+	if AgentInvitationPending.IsTerminal() {
+		t.Error("pending must NOT be a terminal state")
+	}
+}
+
 func TestAgentInvitation_IsTerminal(t *testing.T) {
 	cases := map[AgentInvitationState]bool{
 		AgentInvitationPending:  false,
-		AgentInvitationAccepted: true,
-		AgentInvitationDeclined: true,
+		AgentInvitationApproved: true,
+		AgentInvitationRejected: true,
 		AgentInvitationExpired:  true,
 	}
 	for s, want := range cases {
@@ -53,13 +71,13 @@ func TestAgentInvitation_IsTerminal(t *testing.T) {
 func TestCanTransition_AllPairs(t *testing.T) {
 	all := []AgentInvitationState{
 		AgentInvitationPending,
-		AgentInvitationAccepted,
-		AgentInvitationDeclined,
+		AgentInvitationApproved,
+		AgentInvitationRejected,
 		AgentInvitationExpired,
 	}
 	allowed := map[[2]AgentInvitationState]bool{
-		{AgentInvitationPending, AgentInvitationAccepted}: true,
-		{AgentInvitationPending, AgentInvitationDeclined}: true,
+		{AgentInvitationPending, AgentInvitationApproved}: true,
+		{AgentInvitationPending, AgentInvitationRejected}: true,
 		{AgentInvitationPending, AgentInvitationExpired}:  true,
 	}
 	for _, from := range all {
@@ -74,10 +92,10 @@ func TestCanTransition_AllPairs(t *testing.T) {
 
 func TestCanTransition_RejectsUnknownStates(t *testing.T) {
 	cases := []struct{ from, to AgentInvitationState }{
-		{"", AgentInvitationAccepted},
+		{"", AgentInvitationApproved},
 		{AgentInvitationPending, ""},
-		{"approved", AgentInvitationAccepted},
-		{AgentInvitationPending, "approved"},
+		{"completed", AgentInvitationApproved},
+		{AgentInvitationPending, "completed"},
 		{"weird", "weirder"},
 	}
 	for _, c := range cases {
@@ -89,8 +107,8 @@ func TestCanTransition_RejectsUnknownStates(t *testing.T) {
 
 func TestTransition_Success_StampsDecidedAt(t *testing.T) {
 	for _, target := range []AgentInvitationState{
-		AgentInvitationAccepted,
-		AgentInvitationDeclined,
+		AgentInvitationApproved,
+		AgentInvitationRejected,
 		AgentInvitationExpired,
 	} {
 		inv := &AgentInvitation{
@@ -120,13 +138,13 @@ func TestTransition_Success_StampsDecidedAt(t *testing.T) {
 func TestTransition_RejectsAllIllegalEdges(t *testing.T) {
 	all := []AgentInvitationState{
 		AgentInvitationPending,
-		AgentInvitationAccepted,
-		AgentInvitationDeclined,
+		AgentInvitationApproved,
+		AgentInvitationRejected,
 		AgentInvitationExpired,
 	}
 	allowed := map[[2]AgentInvitationState]bool{
-		{AgentInvitationPending, AgentInvitationAccepted}: true,
-		{AgentInvitationPending, AgentInvitationDeclined}: true,
+		{AgentInvitationPending, AgentInvitationApproved}: true,
+		{AgentInvitationPending, AgentInvitationRejected}: true,
 		{AgentInvitationPending, AgentInvitationExpired}:  true,
 	}
 	for _, from := range all {
@@ -151,7 +169,7 @@ func TestTransition_RejectsAllIllegalEdges(t *testing.T) {
 
 func TestTransition_NilReceiver(t *testing.T) {
 	var inv *AgentInvitation
-	err := inv.Transition(AgentInvitationAccepted, 1)
+	err := inv.Transition(AgentInvitationApproved, 1)
 	if !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("nil receiver: err = %v, want ErrInvalidTransition", err)
 	}

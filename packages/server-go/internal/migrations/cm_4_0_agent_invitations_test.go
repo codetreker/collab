@@ -82,8 +82,8 @@ func TestCM40_CheckConstraintRejectsBadState(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	// Allowed states: pending / accepted / declined / expired. Insert each.
-	for _, s := range []string{"pending", "accepted", "declined", "expired"} {
+	// Allowed states: pending / approved / rejected / expired. Insert each.
+	for _, s := range []string{"pending", "approved", "rejected", "expired"} {
 		err := db.Exec(
 			"INSERT INTO agent_invitations (id, channel_id, agent_id, requested_by, state, created_at) VALUES (?, ?, ?, ?, ?, ?)",
 			"id-"+s, "ch-1", "ag-1", "u-1", s, int64(1),
@@ -96,10 +96,10 @@ func TestCM40_CheckConstraintRejectsBadState(t *testing.T) {
 	// Disallowed state: CHECK constraint must reject.
 	err := db.Exec(
 		"INSERT INTO agent_invitations (id, channel_id, agent_id, requested_by, state, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-		"id-bogus", "ch-1", "ag-1", "u-1", "approved", int64(1),
+		"id-bogus", "ch-1", "ag-1", "u-1", "completed", int64(1),
 	).Error
 	if err == nil {
-		t.Fatal("expected CHECK constraint to reject state='approved'")
+		t.Fatal("expected CHECK constraint to reject state='completed'")
 	}
 }
 

@@ -9,9 +9,9 @@ import "gorm.io/gorm"
 // Default flow B (异步审批):
 //   1. channel 成员触发邀请 → 写一行 agent_invitations(state='pending').
 //   2. 系统给 agent owner 推 system message + 同意/拒绝按钮.
-//   3. owner 同意 → state='accepted'; 拒绝 → 'declined'; 超时 → 'expired'.
+//   3. owner 同意 → state='approved'; 拒绝 → 'rejected'; 超时 → 'expired'.
 //
-// State machine: pending → {accepted, declined, expired}.
+// State machine: pending → {approved, rejected, expired}.
 // 三个终态都不再转移 (状态机 helper 在 store.AgentInvitation 落) — 见
 // internal/store/agent_invitation.go 状态机单测.
 //
@@ -36,7 +36,7 @@ var cm40AgentInvitations = Migration{
   agent_id     TEXT NOT NULL,
   requested_by TEXT NOT NULL,
   state        TEXT NOT NULL DEFAULT 'pending'
-                 CHECK (state IN ('pending','accepted','declined','expired')),
+                 CHECK (state IN ('pending','approved','rejected','expired')),
   created_at   INTEGER NOT NULL,
   decided_at   INTEGER,
   expires_at   INTEGER

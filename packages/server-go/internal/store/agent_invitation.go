@@ -14,10 +14,10 @@ import (
 
 // AgentInvitationState is the enum for agent_invitations.state.
 //
-// State machine (terminal states are accepted/declined/expired):
+// State machine (terminal states are approved/rejected/expired):
 //
-//	pending → accepted   (owner agreed)
-//	pending → declined   (owner rejected)
+//	pending → approved   (owner agreed)
+//	pending → rejected   (owner rejected)
 //	pending → expired    (created_at + ttl elapsed without decision)
 //
 // All non-pending → * transitions are illegal and rejected by Transition.
@@ -25,8 +25,8 @@ type AgentInvitationState string
 
 const (
 	AgentInvitationPending  AgentInvitationState = "pending"
-	AgentInvitationAccepted AgentInvitationState = "accepted"
-	AgentInvitationDeclined AgentInvitationState = "declined"
+	AgentInvitationApproved AgentInvitationState = "approved"
+	AgentInvitationRejected AgentInvitationState = "rejected"
 	AgentInvitationExpired  AgentInvitationState = "expired"
 )
 
@@ -34,8 +34,8 @@ const (
 // sync with cm_4_0_agent_invitations.go.
 var validStates = map[AgentInvitationState]struct{}{
 	AgentInvitationPending:  {},
-	AgentInvitationAccepted: {},
-	AgentInvitationDeclined: {},
+	AgentInvitationApproved: {},
+	AgentInvitationRejected: {},
 	AgentInvitationExpired:  {},
 }
 
@@ -47,8 +47,8 @@ func (s AgentInvitationState) IsValid() bool {
 
 // IsTerminal reports whether s is a terminal state (no outbound transitions).
 func (s AgentInvitationState) IsTerminal() bool {
-	return s == AgentInvitationAccepted ||
-		s == AgentInvitationDeclined ||
+	return s == AgentInvitationApproved ||
+		s == AgentInvitationRejected ||
 		s == AgentInvitationExpired
 }
 
@@ -81,13 +81,13 @@ var ErrInvalidTransition = errors.New("agent_invitation: invalid state transitio
 // machine is intentionally tiny — three transitions, all out of pending.
 var allowedTransitions = map[AgentInvitationState]map[AgentInvitationState]struct{}{
 	AgentInvitationPending: {
-		AgentInvitationAccepted: {},
-		AgentInvitationDeclined: {},
+		AgentInvitationApproved: {},
+		AgentInvitationRejected: {},
 		AgentInvitationExpired:  {},
 	},
 	// Terminal states have no outbound edges.
-	AgentInvitationAccepted: {},
-	AgentInvitationDeclined: {},
+	AgentInvitationApproved: {},
+	AgentInvitationRejected: {},
 	AgentInvitationExpired:  {},
 }
 
