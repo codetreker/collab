@@ -21,7 +21,7 @@
 | Phase 0 基建闭环 | ✅ DONE | G0.1+G0.2+G0.3+G0.audit 全过 (G0.4/G0.5 软 gate, 不卡退出) | 起步; 含 INFRA-1a/1b 拆分; **工期 2 周** (战马 R2). 实际 5 PR (#169-#173) 一日完成 |
 | Phase 1 身份闭环 | ✅ DONE | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 + CM-3 全 merged; G1 全签 #210, G1.4 closed by #208 + #210 |
 | Phase 2 协作闭环 ⭐ | ✅ DONE | 4 角色联签 (#271/#272/#273/#279) + 5+1 严格闸 SIGNED + 3 PARTIAL #248 condition + 2 DEFERRED 挂 Phase 4 PR # | closure #284 (建军 2026-04-28); 留账 G2.4 #275 / G2.5 #277 / G2.6 #274+#280; 锚 `docs/qa/phase-2-exit-announcement.md` |
-| Phase 3 第二维度产品 | 🔄 IN PROGRESS | RT-1 三段 ✅ (#290 server cursor + #292 client backfill + #296 BPP session.resume); CHN-1 三段 ✅ (#276 schema + #286 API + #288 client SPA); AL-3 三段 ✅ (#310 schema v=12 + #317 hub lifecycle + #324+#327 client dot); CV-1.1 schema ✅ (#334 cd7e12a + 22203ea follow-up, acceptance flip #340); CV-1.2 server API in-flight (战马A, frame 守 #290 byte-identical); BPP-1 envelope CI lint 留账 (#274/#280 真落待) | Phase 2 ✅ closed; 锚 acceptance-templates `chn-1.md` (#287+#289) / `rt-1.md` (#291) / `cv-1.md` (#340) / `al-3.md` |
+| Phase 3 第二维度产品 | 🔄 IN PROGRESS | RT-1 三段 ✅ (#290 server cursor + #292 client backfill + #296 BPP session.resume); CHN-1 三段 ✅ (#276 schema + #286 API + #288 client SPA); AL-3 三段 ✅ (#310 schema v=12 + #317 hub lifecycle + #324+#327 client dot); CV-1 三段四件全闭 ✅ (#334 schema v=13 + #342 server API + #346 client SPA + #348 e2e); BPP-1 envelope CI lint ✅ (#304 真落); 待启 CV-2 / CV-3 / CHN-2 / CHN-3 / CV-4 / CHN-4 | Phase 2 ✅ closed; 锚 acceptance-templates `chn-1.md` (#287+#289) / `rt-1.md` (#291) / `cv-1.md` (#340+#347) / `al-3.md` |
 | Phase 4+ 剩余模块 | TODO | 各模块自身完成判定 + G4.audit | 等 Phase 3 |
 
 ---
@@ -155,10 +155,10 @@
    - [x] PR CHN-1.1 schema + 自动建 workspace (PR #276 merged, v=11)
    - [x] PR CHN-1.2 channel API 返回 workspace_id (PR #286 merged)
    - [x] PR CHN-1.3 client SPA workspace 侧栏 (PR #288 merged)
-2. [ ] **CV-1** ⭐ artifact 表 + 版本机制 (🔄 IN PROGRESS)
+2. [x] **CV-1** ⭐ artifact 表 + 版本机制 ✅ DONE
    - [x] PR CV-1.1 schema (artifacts + artifact_versions, v=13) (PR #334 cd7e12a + 22203ea follow-up; acceptance flip #340)
-   - [ ] PR CV-1.2 server API + WS push (in-flight, 战马A; frame 守 #290 byte-identical, 锚 #341 acceptance §2.5 align)
-   - [ ] PR CV-1.3 workspace UI 列 artifacts
+   - [x] PR CV-1.2 server API + WS push (PR #342 merged b2ed5c0f, 11 CV12_* test PASS, frame 守 #290 byte-identical)
+   - [x] PR CV-1.3 workspace UI 列 artifacts (PR #346 client SPA 623c1bb 5 vitest PASS + PR #348 e2e 0ef0cb1 2 playwright PASS; acceptance flip #347 + REG-CV1-017 flip #350)
 3. [x] **RT-1** artifact 推送 (从 Phase 4 提前) ✅
    - [x] PR RT-1.1 BPP `ArtifactUpdated` frame + server cursor (PR #290 merged)
    - [x] PR RT-1.2 client backfill `?since=N` (PR #292 merged)
@@ -276,3 +276,4 @@ AP-3 ─┘
 | 2026-04-28 | 飞马 | D1–D9 flip (audit #212 派活): Phase 1 改 ✅ DONE (G1.4 closed by #208 + #210, CM-3 closed by #208); Phase 2 解封前置 5/6 改 [x] (INFRA-2 #195, ADM-0.1 #197, ADM-0.2 #201, AP-0-bis #206, CM-onboarding #203); ADM-0 总括改 🔄 (ADM-0.3 #63 in progress); RT-0 留 ⏳; 配套 doc 工件 (#205 ADM-0 立场反查 / #211 ADM-1 隐私承诺 / #199 G2.4 截屏 plan) 落 Phase 2 后置区 |
 | 2026-04-28 | 飞马 | Phase 概览 flip: Phase 2 → ✅ DONE (closure #284 4 联签 #271/#272/#273/#279 + 5+1 严格闸 SIGNED + 3 PARTIAL #248 + 2 DEFERRED 留账 #274/#275/#277/#280, 锚 phase-2-exit-announcement.md); Phase 3 → 🔄 IN PROGRESS (RT-1 三段 #290+#292+#296 + CHN-1 三段 #276+#286+#288 + CV-1 立场 #282+#295 实施 / BPP-1 envelope CI lint 留账) |
 | 2026-04-29 | 飞马 | Phase 3 详细段 stale flip (audit 抓出 ⚠️): CHN-1 ⚪→✅ (#276/#286/#288 三段全闭); RT-1 ⚪→✅ (#290/#292/#296 三段全闭, 拆出 RT-1.2 + RT-1.3); CV-1 ⚪→🔄 (CV-1.1 ✅ #334+#340, CV-1.2 in-flight 战马A 锚 #341 frame align); Phase 4+ AL-3 ⚪→✅ (#310/#317/#324/#327 三段全闭, 加 stub→真实施备注); AL-4 备注实施前置全 merged #313/#318/#319/#321/#322 待战马B; Phase 概览行同步更新 (CHN-1/RT-1/AL-3 ✅, CV-1.1 ✅, CV-1.2 in-flight) |
+| 2026-04-29 | 战马A | CV-1 三段四件全闭 flip (dev-side stale 抓出): Phase 概览行 "CV-1.2 in-flight" → "CV-1 三段四件全闭 (#334+#342+#346+#348)" + BPP-1 envelope CI lint 由"留账"改 "✅ #304 真落"; CV-1 milestone `[ ] 🔄` → `[x] DONE`; CV-1.2 `[x] PR #342 merged b2ed5c0f` (11 CV12_* test PASS); CV-1.3 `[x] PR #346 客户端 623c1bb 5 vitest + #348 e2e 0ef0cb1 2 playwright` (acceptance flip #347 + REG-CV1-017 flip #350); 锚 acceptance-templates `cv-1.md` (#340+#347); CV-1 ⭐ Phase 3 主线饱满 milestone (17 🟢 REG); 主线进度 3/9 → 3/9 (CHN-1/CV-1/RT-1 闭, 待启 CV-2/CV-3/CHN-2/CHN-3/CV-4/CHN-4) |
