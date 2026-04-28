@@ -188,13 +188,20 @@ export function useWebSocket() {
         break;
       }
       case 'channel_created': {
-        const channel = data.channel as Channel;
-        dispatch({ type: 'ADD_CHANNEL', channel });
+        const channel = data.channel as Channel | undefined;
+        if (channel && channel.id) {
+          dispatch({ type: 'ADD_CHANNEL', channel });
+        }
         break;
       }
       case 'channel_added': {
-        const channel = data.channel as Channel;
-        dispatch({ type: 'ADD_CHANNEL', channel });
+        // CHN-1.3 hardening: server may send {channel} (preferred) or
+        // {channel_id} (legacy fallback). Guard against undefined so the
+        // reducer's c.id deref never crashes AppProvider.
+        const channel = data.channel as Channel | undefined;
+        if (channel && channel.id) {
+          dispatch({ type: 'ADD_CHANNEL', channel });
+        }
         break;
       }
       case 'channel_removed': {

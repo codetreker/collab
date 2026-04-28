@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useCan } from '../hooks/usePermissions';
-import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel, deleteChannel } from '../lib/api';
+import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChannel, deleteChannel, archiveChannel } from '../lib/api';
 import type { ChannelMember } from '../lib/api';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { useToast } from './Toast';
@@ -19,6 +19,9 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
   const [switching, setSwitching] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // CHN-1.3 立场 ⑤: archive UI gate. Owner-only flip; server stamps
+  // archived_at and emits the system DM ("channel #{name} 已被 ... 关闭于 ...").
+  const [archiving, setArchiving] = useState(false);
 
   const channelName = channel?.name ?? '';
   const channelCreatedBy = channel?.created_by ?? '';
@@ -118,6 +121,22 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
     }
   };
 
+  // CHN-1.3 立场 ⑤: archive flip. Server-stamped timestamp + fanout system DM
+  // (channel-model.md §2 不变量 #3 — archive preserves history).
+  const isArchived = (channel?.archived_at ?? null) != null;
+  const handleArchive = async () => {
+    setArchiving(true);
+    try {
+      await archiveChannel(channelId, !isArchived);
+      await actions.loadChannels();
+      showToast(isArchived ? '频道已恢复' : '频道已归档');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '归档失败');
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -172,6 +191,9 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
                   <div className="user-avatar-small">{m.display_name[0]?.toUpperCase()}</div>
                   <span className="member-name">{m.display_name}</span>
                   {m.role === 'agent' && <span className="user-badge">Bot</span>}
+                  {m.role === 'agent' && m.silent && (
+                    <span className="user-badge user-badge-silent" title="silent: 不计入 unread / mention 计数">🔕 silent</span>
+                  )}
                   {m.user_id === channelCreatedBy && <span className="user-badge">创建者</span>}
                   {canManage && !isGeneral && m.user_id !== currentUser?.id && (
                     <button
@@ -219,15 +241,27 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
               </div>
             )}
 
-            {canDelete && (
+            {(canDelete || (canManageVisibility && !isGeneral && !isDm)) && (
               <div className="danger-section">
                 <div className="danger-section-label">危险区域</div>
-                <button
-                  className="btn btn-sm btn-danger"
-                  onClick={() => setConfirmingDelete(true)}
-                >
-                  删除频道
-                </button>
+                {canManageVisibility && !isGeneral && !isDm && (
+                  <button
+                    className="btn btn-sm"
+                    onClick={handleArchive}
+                    disabled={archiving}
+                    title={isArchived ? '恢复后频道将重新出现在列表' : '归档将保留历史记录但隐藏频道'}
+                  >
+                    {archiving ? '处理中...' : isArchived ? '恢复频道' : '归档频道'}
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    删除频道
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -355,9 +355,12 @@ func (s *Store) AddUserToPublicChannels(userID string) error {
 	if err := s.db.Where("visibility = ? AND deleted_at IS NULL", "public").Find(&channels).Error; err != nil {
 		return err
 	}
+	// Route through AddChannelMember so the agent-default silent stamp
+	// (concept-model §1.4) is applied uniformly. CHN-1.3 e2e regression:
+	// raw db.FirstOrCreate bypassed the silent fan-out and broke the
+	// "agent silent default = true" 立场 in PR #288.
 	for _, ch := range channels {
-		member := &ChannelMember{ChannelID: ch.ID, UserID: userID, JoinedAt: time.Now().UnixMilli()}
-		s.db.Where("channel_id = ? AND user_id = ?", ch.ID, userID).FirstOrCreate(member)
+		_ = s.AddChannelMember(&ChannelMember{ChannelID: ch.ID, UserID: userID})
 	}
 	return nil
 }

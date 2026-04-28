@@ -32,28 +32,35 @@ export default function SortableChannelItem({ channel, active, isOwner, onClick,
   const unread = channel.unread_count ?? 0;
   const isPrivate = channel.visibility === "private";
   const isMember = channel.is_member !== false;
+  // CHN-1.3 立场 ⑤: archived channels render with a dimmed style + 📦 marker
+  // so members see closures inline. Server-side they are filtered out of the
+  // public discovery list for non-members; current member rows still see them
+  // (history preservation, channel-model.md §2 不变量 #3).
+  const isArchived = channel.archived_at != null;
 
   return (
     <button
       ref={setNodeRef}
       style={style}
-      className={`channel-item ${active ? "channel-item-active" : ""} ${!isMember ? "channel-item-preview" : ""} ${isDragging ? "channel-item-dragging" : ""}`}
+      className={`channel-item ${active ? "channel-item-active" : ""} ${!isMember ? "channel-item-preview" : ""} ${isArchived ? "channel-item-archived" : ""} ${isDragging ? "channel-item-dragging" : ""}`}
       onClick={onClick}
+      data-archived={isArchived ? "true" : undefined}
     >
       {isOver && !isDragging && (
         <span className="drop-indicator" />
       )}
-      {isOwner && (
+      {isOwner && !isArchived && (
         <span className="drag-handle" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
           ≡
         </span>
       )}
-      <span className="channel-hash">{isPrivate ? "🔒" : "#"}</span>
+      <span className="channel-hash">{isArchived ? "📦" : isPrivate ? "🔒" : "#"}</span>
       <span className="channel-name">{channel.name}</span>
-      {!isMember && !isPrivate && (
+      {isArchived && <span className="archived-badge" title="已归档">已归档</span>}
+      {!isMember && !isPrivate && !isArchived && (
         <span className="preview-badge">预览</span>
       )}
-      {unread > 0 && isMember && (
+      {unread > 0 && isMember && !isArchived && (
         <span className="unread-badge">{unread > 99 ? "99+" : unread}</span>
       )}
     </button>
@@ -65,18 +72,21 @@ export function ChannelItemStatic({ channel, active, onClick }: Omit<Props, "isO
   const unread = channel.unread_count ?? 0;
   const isPrivate = channel.visibility === "private";
   const isMember = channel.is_member !== false;
+  const isArchived = channel.archived_at != null;
 
   return (
     <button
-      className={`channel-item ${active ? "channel-item-active" : ""} ${!isMember ? "channel-item-preview" : ""}`}
+      className={`channel-item ${active ? "channel-item-active" : ""} ${!isMember ? "channel-item-preview" : ""} ${isArchived ? "channel-item-archived" : ""}`}
       onClick={onClick}
+      data-archived={isArchived ? "true" : undefined}
     >
-      <span className="channel-hash">{isPrivate ? "🔒" : "#"}</span>
+      <span className="channel-hash">{isArchived ? "📦" : isPrivate ? "🔒" : "#"}</span>
       <span className="channel-name">{channel.name}</span>
-      {!isMember && !isPrivate && (
+      {isArchived && <span className="archived-badge" title="已归档">已归档</span>}
+      {!isMember && !isPrivate && !isArchived && (
         <span className="preview-badge">预览</span>
       )}
-      {unread > 0 && isMember && (
+      {unread > 0 && isMember && !isArchived && (
         <span className="unread-badge">{unread > 99 ? "99+" : unread}</span>
       )}
     </button>

@@ -570,7 +570,15 @@ func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request)
 	})
 	if h.Hub != nil {
 		h.Hub.BroadcastEventToChannel(channelID, "user_joined", map[string]any{"channel_id": channelID, "user_id": body.UserID})
-		h.Hub.BroadcastEventToUser(body.UserID, "channel_added", map[string]any{"channel_id": channelID})
+		// CHN-1.3 fix: send full channel object so the recipient's reducer
+		// can ADD_CHANNEL without an extra round-trip. Previously this only
+		// carried channel_id, which made `data.channel as Channel` resolve
+		// to undefined and crashed AppProvider via reducer line 117.
+		if added, _ := h.Store.GetChannelWithCounts(channelID, body.UserID); added != nil {
+			h.Hub.BroadcastEventToUser(body.UserID, "channel_added", map[string]any{"channel": added})
+		} else {
+			h.Hub.BroadcastEventToUser(body.UserID, "channel_added", map[string]any{"channel_id": channelID})
+		}
 	}
 }
 

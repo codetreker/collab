@@ -141,7 +141,7 @@ http.Server.Serve       # 0.0.0.0:4900
 | PUT | `/api/v1/channels/{id}/topic` | 单独改 topic |
 | POST | `/api/v1/channels/{id}/join` | 加入公开频道 |
 | POST | `/api/v1/channels/{id}/leave` | 离开 |
-| POST | `/api/v1/channels/{id}/members` | 加成员（需 `channel.manage_members`；**CHN-1.2 立场 ⑥**: agent 自动 `silent=true` 并发出 system message `{agent_name} joined`） |
+| POST | `/api/v1/channels/{id}/members` | 加成员（需 `channel.manage_members`；**CHN-1.2 立场 ⑥**: agent 自动 `silent=true` 并发出 system message `{agent_name} joined`。CHN-1.3 fix: agent 创建时的 `AddUserToPublicChannels` 自动入 channel 路径也走 `AddChannelMember`，确保 silent 标志在 fan-out 路径上同样落到 `channel_members.silent`） |
 | DELETE | `/api/v1/channels/{id}/members/{uid}` | 踢成员 |
 | GET | `/api/v1/channels/{id}/members` | 成员列表 |
 | PUT | `/api/v1/channels/{id}/read` | 更新 `last_read_at` |
@@ -231,7 +231,7 @@ http.Server.Serve       # 0.0.0.0:4900
 - 控制类：`pong`、`subscribed`、`unsubscribed`、`commands_registered`、`error`（subscribe / send_message 失败时）
 - 状态类：`presence`、`typing`、`commands_updated`
 - 消息类：`new_message`、`message_edited`、`message_deleted`、`reaction_update`
-- 频道/分组类：`channel_created`、`channel_added`、`channel_removed`、`channel_deleted`、`channel_updated`、`channels_reordered`、`group_created`、`group_updated`、`group_deleted`、`groups_reordered`（注意是复数前缀）
+- 频道/分组类：`channel_created`、`channel_added`、`channel_removed`、`channel_deleted`、`channel_updated`、`channels_reordered`、`group_created`、`group_updated`、`group_deleted`、`groups_reordered`（注意是复数前缀）。CHN-1.3 fix: `channel_added` 现在 carry 完整 `{channel}` 对象（与 `channel_created` 一致），不再仅 `{channel_id}` —— 否则前端 reducer 会因 `action.channel === undefined` 而 crash AppProvider。
 - 乐观发送回执：`message_ack`（成功）、`message_nack`（失败）。**没有** `message_sent`。
 
 Hub 维护 `onlineUsers map[userId]map[*Client]bool` 支持多端在线。Heartbeat goroutine 周期 ping，未响应的 client 被踢。
