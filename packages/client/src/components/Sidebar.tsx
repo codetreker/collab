@@ -322,6 +322,7 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
                 {pendingInvitations > 0 && (
                   <span
                     className="unread-badge"
+                    data-testid="invitation-bell-badge"
                     style={{ position: 'absolute', top: -2, right: -2 }}
                     aria-label={`${pendingInvitations} 待处理邀请`}
                   >
