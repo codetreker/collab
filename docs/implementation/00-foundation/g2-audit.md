@@ -92,6 +92,7 @@ diff) 留 Phase 4 BPP-1 启用时挂 — Phase 2 不阻塞.
 | AUD-G2-CM3 | CM-3 (#208) | `messages.org_id` 直查就位 (前置 channel→org 双跳 deprecated); cross-org 403 反向断言 + EXPLAIN 走 `idx_messages_org_created` (G1.4 audit row 5 已记). owner_id 列保留没删 — read 路径不读, write 时双写; ADM-0.3 落地后再评估 retire (G1.audit AUD-G1-CM3-b 续). | Phase 3 (TBD) | 📝 logged |
 | AUD-G2-G23 | G2.3 (#236) | B.1 节流不变量 v0 落: `internal/throttle/notification_throttle.go` (50 LOC) + `_test.go` 5 测 (T1-T5) clock.Fake 全过. `ThrottleWindow = 5*time.Minute` const 唯一字面量. caller-side 接入 (@ 检测 → Allow 调用 → 系统消息插入) 留 Phase 2 收尾 / Phase 3, `offline_mention_notifications` 表持久化 (data-layer.md row 75) 留 v1. | Phase 2 收尾 / Phase 3 | 📝 logged |
 | AUD-G2-CHECK | (跨) | SQLite `ALTER TABLE ADD CHECK` 不支持 — ADM-0.3 hard-flip 推迟 + 任何后续 enum 收紧都走 CREATE TABLE _new + INSERT SELECT + DROP + RENAME. v1 hard-flip backlog 单源在此 + ADM03-a 行. | Phase 3 (TBD) | 📝 logged |
+| AUD-G2-AL1A | AL-1a (#249) | runtime 三态 (online/offline/error) + 6 reason codes 走 in-memory `agent.Tracker` (online/offline 由 `hub.GetPlugin(id) != nil` 推导, 唯一持久 = error map). AL-3 落表前不持久 — server restart 后所有 error 态丢, owner 重连时 hub 状态自然恢复 (蓝图 §2.3 决议). 字段名 `state / reason / state_updated_at` 跟 client TS `Agent` 接口字面绑定 — REG-AL1A-005 锁. busy/idle 留 Phase 4 BPP frame 落地后再加 (蓝图 §2.3 不准 stub). | Phase 4 (AL-3 表 + AL-1b BPP) | 📝 logged |
 
 `📝 logged` = Phase 3 输入或长期跟踪, 不阻塞 Phase 2 退出; `✅ stable` 已闭合。
 
@@ -123,3 +124,4 @@ diff) 留 Phase 4 BPP-1 启用时挂 — Phase 2 不阻塞.
 |---|---|---|
 | 2026-04-28 | 烈马 | v0 草稿 — 闸概览 + audit row 8 行登记骨架; 待 ADM-0.3 + RT-0 server merge 后回填实数据 |
 | 2026-04-28 | 烈马 | v2 — §2 实测回填 (G2.0 ADM-0.3 + G2.1 #237 server push + G2.3 #236 throttle + G2.6 注释锁); §3 audit row 8 → 11 行 specific (拆 ADM01/ADM02 + RT0-c e2e .skip + G23 节流 + 补 CM-onboard #226 e2e); §1 闸表 4 项 ✅ + 1 项 🟡 + outstanding 2/6 (G2.1 e2e + G2.4 demo) |
+| 2026-04-28 | 烈马 | 加 AUD-G2-AL1A (AL-1a #249 stacked) — runtime 三态 in-memory tracker + busy/idle 留 Phase 4 BPP / AL-3 落表; §3 11 → 12 行 |
