@@ -7,6 +7,62 @@ description: 蓝图 ready 后, 把项目拆成 Phase + 退出 gate + 4 道防偏
 
 蓝图 ready 后, Architect 主, 把项目拆成 Phase 序列, 每 Phase 锚一个**价值闭环** (端到端用户能用), 不是按层拆。
 
+## Preflight check
+
+开始用这套重型基建之前, 先跑决策图判定是否合适 (跟 `blueprintflow-workflow` 心智模型 §"不适用场景" 三条机器化对应):
+
+```dot
+digraph phase_plan_preflight {
+    "考虑用 blueprintflow" [shape=doublecircle];
+    "PR 改动 ≤1 文件且无 docs/blueprint 引用?" [shape=diamond];
+    "团队 collaborator <3?" [shape=diamond];
+    "项目缺 docs/blueprint/ 目录?" [shape=diamond];
+    "跳过 4 件套, 直接 PR review" [shape=box];
+    "跳过 4 角色 dual review (单人迭代)" [shape=box];
+    "重定向到 blueprintflow:brainstorm 锁立场" [shape=box];
+    "走完整 phase-plan + 4 件套" [shape=doublecircle];
+    "出 preflight (不适用)" [shape=doublecircle];
+
+    "考虑用 blueprintflow" -> "PR 改动 ≤1 文件且无 docs/blueprint 引用?";
+    "PR 改动 ≤1 文件且无 docs/blueprint 引用?" -> "跳过 4 件套, 直接 PR review" [label="是"];
+    "PR 改动 ≤1 文件且无 docs/blueprint 引用?" -> "团队 collaborator <3?" [label="否"];
+    "跳过 4 件套, 直接 PR review" -> "出 preflight (不适用)";
+
+    "团队 collaborator <3?" -> "跳过 4 角色 dual review (单人迭代)" [label="是"];
+    "团队 collaborator <3?" -> "项目缺 docs/blueprint/ 目录?" [label="否"];
+    "跳过 4 角色 dual review (单人迭代)" -> "出 preflight (不适用)";
+
+    "项目缺 docs/blueprint/ 目录?" -> "重定向到 blueprintflow:brainstorm 锁立场" [label="是"];
+    "项目缺 docs/blueprint/ 目录?" -> "走完整 phase-plan + 4 件套" [label="否"];
+    "重定向到 blueprintflow:brainstorm 锁立场" -> "出 preflight (不适用)";
+}
+```
+
+### 3 决策点详解
+
+1. **单 PR 改动 ≤1 文件 + 无 `docs/blueprint/` 引用** → 跳过 4 件套, 直接 PR review
+   - 检查: `git diff --name-only main | wc -l` ≤ 1 且 `git diff main | grep -c 'docs/blueprint'` == 0
+   - 理由: 4 件套 (spec / stance / acceptance / content-lock) 是 milestone 级开销, 单文件 fix / typo / 注释改动用不上; 走 `blueprintflow:pr-review-flow` 单 review 路径足够
+   - 反约束: 单文件改动如果引蓝图 §X.Y (修立场 / 改概念定义) → 不能跳过, 必须走 4 件套 + 4 角色 review
+
+2. **团队 collaborator < 3** → 跳过 4 角色 dual review (单人迭代场景)
+   - 检查: 仓库实际 active contributor 数 (`gh api repos/:owner/:repo/contributors | jq length`) < 3
+   - 理由: 4 件套 + 双 review 路径假设 PM / Dev / QA / Architect 多人协作; 单人 / 双人项目走不起 4 角色, 自审即可
+   - 反约束: AI agent 团队 (Borgee 模式: 1 human + 6 X马 agent) **不算单人** — agent 履行多角色协作, 走完整流程
+
+3. **项目缺 `docs/blueprint/` 目录** → 重定向到 `blueprintflow:brainstorm` 锁立场再回来
+   - 检查: `test -d docs/blueprint/ && ls docs/blueprint/*.md | wc -l` ≥ 1
+   - 理由: phase-plan 假设 \"蓝图 ready\" (本 skill 第一句话字面), 没立场 / 没概念模型直接拆 Phase = 拆出空壳; 退一步走 brainstorm + blueprint-write 锁住立场再回来
+   - 反约束: `docs/blueprint/` 存在但只有 README 没具体模块文档 → 仍算未 ready, 走 brainstorm 补 (单 README 不构成产品形状 source of truth)
+
+### 反模式
+
+- ❌ 不跑 preflight 直接 phase-plan: 重型基建套到不需要的项目上, 拖慢 short-task 迭代
+- ❌ preflight 判 \"不适用\" 后又勉强跑一遍: 决策图给出 \"不适用\" 即 exit, 不要回头硬上
+- ❌ 三条决策点用 \"或\" 短路: 必须按图顺序走 (改动量 → 团队规模 → 蓝图 ready), 后置条件依赖前置确认
+
+
+
 ## Phase 拆分原则
 
 按**价值闭环**拆, 不按技术层:
