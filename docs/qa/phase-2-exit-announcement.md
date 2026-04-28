@@ -57,7 +57,7 @@
 
 > 全部 PARTIAL 项满足 #248 condition + 留账闸挂 Phase 4 PR 编号后, 4 角色逐一签:
 
-- [ ] 飞马 (architecture / 闸 1+2): _________________ (date: ____)
+- [x] 飞马 (architecture / 闸 1+2): ✅ 拍板 — 引 PR #267 readiness review §4 (5+1 严格闸 SIGNED + 条件性 3 闸 #248 condition + 留账 2 闸挂 Phase 4 PR 编号: AL-3 / BPP-1 / ADM-1) + §5 Phase 3 entry 唯一冲突点 (RT-1 envelope 套 #237, 已 PR #269 spec 守门) (date: 2026-04-28)
 - [ ] 战马A (实施 / 闸 3): _________________ (date: ____)
 - [ ] 野马 (PM / 闸 4 G2.4): _________________ (date: ____)
 - [ ] 烈马 (QA / 闸 4 acceptance): _________________ (date: ____)
@@ -71,3 +71,4 @@
 | 2026-04-28 | 烈马 | v0 草稿 — 4 SIGNED + 3 PARTIAL + 2 DEFERRED |
 | 2026-04-28 | 烈马 | v1 — 顶部加飞马 #267 readiness review 引用; title 锁 "条件性全过"; SIGNED 升 5+1 (加 AL-1a #249); 留账行链 al-2a.md / adm-2.md / al-1b.md / adm-1.md |
 | 2026-04-28 | 烈马 | v2 — 锁 deferred PR #: G2.5→#277 (战马A AL-3 占号), G2.6→#274 (飞马 BPP-1 占号), G2.4 PARTIAL 升 5/6 引 #275 (野马 G2.4 #5) |
+| 2026-04-28 | 飞马 | §7 飞马联签 ✅ — 引 #267 readiness §4/§5 + #269 RT-1 envelope 守门 |
