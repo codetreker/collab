@@ -7,6 +7,74 @@ description: 蓝图 ready 后, 把项目拆成 Phase + 退出 gate + 4 道防偏
 
 蓝图 ready 后, Architect 主, 把项目拆成 Phase 序列, 每 Phase 锚一个**价值闭环** (端到端用户能用), 不是按层拆。
 
+## Preflight check
+
+开始用这套重型基建之前, 先跑决策图判定是否合适. 6 不适用场景按两轴拆: **任务大小轴** (改动量 / 团队 / 概念锁定) + **修改类型轴** (typo / dep / lint / single-file refactor / tooling / hotfix), 互补不冲突, 4 决策点 diamond 串行:
+
+```dot
+digraph phase_plan_preflight {
+    "考虑用 blueprintflow" [shape=doublecircle];
+    "PR 改动 ≤1 文件且无 docs/blueprint 引用?" [shape=diamond];
+    "PR 类型 ∈ {typo/dep/lint/refactor/tooling/hotfix}?" [shape=diamond];
+    "团队 collaborator <3?" [shape=diamond];
+    "项目缺 docs/blueprint/ 目录?" [shape=diamond];
+    "跳过 4 件套, 直接 PR review" [shape=box];
+    "跳过 4 件套 (修改类型轴)" [shape=box];
+    "跳过 4 角色 dual review (单人迭代)" [shape=box];
+    "重定向到 blueprintflow:brainstorm 锁立场" [shape=box];
+    "走完整 phase-plan + 4 件套" [shape=doublecircle];
+    "出 preflight (不适用)" [shape=doublecircle];
+
+    "考虑用 blueprintflow" -> "PR 改动 ≤1 文件且无 docs/blueprint 引用?";
+    "PR 改动 ≤1 文件且无 docs/blueprint 引用?" -> "跳过 4 件套, 直接 PR review" [label="是"];
+    "PR 改动 ≤1 文件且无 docs/blueprint 引用?" -> "PR 类型 ∈ {typo/dep/lint/refactor/tooling/hotfix}?" [label="否"];
+    "跳过 4 件套, 直接 PR review" -> "出 preflight (不适用)";
+
+    "PR 类型 ∈ {typo/dep/lint/refactor/tooling/hotfix}?" -> "跳过 4 件套 (修改类型轴)" [label="是"];
+    "PR 类型 ∈ {typo/dep/lint/refactor/tooling/hotfix}?" -> "团队 collaborator <3?" [label="否"];
+    "跳过 4 件套 (修改类型轴)" -> "出 preflight (不适用)";
+
+    "团队 collaborator <3?" -> "跳过 4 角色 dual review (单人迭代)" [label="是"];
+    "团队 collaborator <3?" -> "项目缺 docs/blueprint/ 目录?" [label="否"];
+    "跳过 4 角色 dual review (单人迭代)" -> "出 preflight (不适用)";
+
+    "项目缺 docs/blueprint/ 目录?" -> "重定向到 blueprintflow:brainstorm 锁立场" [label="是"];
+    "项目缺 docs/blueprint/ 目录?" -> "走完整 phase-plan + 4 件套" [label="否"];
+    "重定向到 blueprintflow:brainstorm 锁立场" -> "出 preflight (不适用)";
+}
+```
+
+### 4 决策点详解
+
+1. **单 PR 改动 ≤1 文件 + 无 `docs/blueprint/` 引用** (任务大小轴) → 跳过 4 件套, 直接 PR review
+   - 检查: `git diff --name-only main | wc -l` ≤ 1 且 `git diff main | grep -c 'docs/blueprint'` == 0
+   - 理由: 4 件套 (spec / stance / acceptance / content-lock) 是 milestone 级开销, 单文件 fix / 注释改动用不上; 走 `blueprintflow:pr-review-flow` 单 review 路径足够
+   - 反约束: 单文件改动如果引蓝图 §X.Y (修立场 / 改概念定义) → 不能跳过, 必须走 4 件套 + 4 角色 review
+
+2. **PR 类型 ∈ {typo / dep bump / lint patch / single-file refactor / CI tooling / hotfix}** (修改类型轴) → 跳过 4 件套
+   - 检查 (任一命中即跳): typo (commit msg 含 `typo` / `fix typo`); dep bump (仅 `package.json` / `go.mod` / `Cargo.toml` + lockfile); lint patch (仅 `.eslintrc` / `.golangci.yml` / formatter 配置); single-file refactor (变量改名 / 抽函数, 不改 API / 立场); CI tooling (`.github/` / ruleset / cron 调整); hotfix (`hotfix/` 分支前缀 + production incident 关联)
+   - 理由: 这些类型 PR 形状机械化 (依赖管理 / 工具链 / 紧急修复), 走 spec → stance → acceptance → content-lock 4 件套是空转; hotfix 还要 skip brainstorm (紧急路径不能等立场锁)
+   - 反约束: ❌ dep bump 如果 major version (breaking) → 退回 4 件套 (跨版本 = 改概念契约); ❌ single-file refactor 如果跨蓝图 §X.Y 锚点 → 退回; ❌ hotfix 修完 7 天内必须补 retro PR 写明根因 (不能用 hotfix 永久绕过)
+
+3. **团队 collaborator < 3** (任务大小轴) → 跳过 4 角色 dual review (单人迭代场景)
+   - 检查: 仓库实际 active contributor 数 (`gh api repos/:owner/:repo/contributors | jq length`) < 3
+   - 理由: 4 件套 + 双 review 路径假设 PM / Dev / QA / Architect 多人协作; 单人 / 双人项目走不起 4 角色, 自审即可
+   - 反约束: AI agent 团队 (Borgee 模式: 1 human + 6 X马 agent) **不算单人** — agent 履行多角色协作, 走完整流程
+
+4. **项目缺 `docs/blueprint/` 目录** (任务大小轴) → 重定向到 `blueprintflow:brainstorm` 锁立场再回来
+   - 检查: `test -d docs/blueprint/ && ls docs/blueprint/*.md | wc -l` ≥ 1
+   - 理由: phase-plan 假设 \"蓝图 ready\" (本 skill 第一句话字面), 没立场 / 没概念模型直接拆 Phase = 拆出空壳; 退一步走 brainstorm + blueprint-write 锁住立场再回来
+   - 反约束: `docs/blueprint/` 存在但只有 README 没具体模块文档 → 仍算未 ready, 走 brainstorm 补 (单 README 不构成产品形状 source of truth)
+
+### 反模式
+
+- ❌ 不跑 preflight 直接 phase-plan: 重型基建套到不需要的项目上, 拖慢 short-task 迭代
+- ❌ preflight 判 \"不适用\" 后又勉强跑一遍: 决策图给出 \"不适用\" 即 exit, 不要回头硬上
+- ❌ 4 条决策点用 \"或\" 短路: 必须按图顺序走 (改动量 → 修改类型 → 团队规模 → 蓝图 ready), 后置条件依赖前置确认
+- ❌ 借 hotfix / dep bump 类型轴永久绕 4 件套: 修完 7 天内必须补 retro PR (跟决策点 2 反约束一致)
+
+
+
 ## Phase 拆分原则
 
 按**价值闭环**拆, 不按技术层:
