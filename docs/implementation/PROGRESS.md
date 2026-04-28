@@ -20,7 +20,7 @@
 |-------|------|---------|------|
 | Phase 0 基建闭环 | ✅ DONE | G0.1+G0.2+G0.3+G0.audit 全过 (G0.4/G0.5 软 gate, 不卡退出) | 起步; 含 INFRA-1a/1b 拆分; **工期 2 周** (战马 R2). 实际 5 PR (#169-#173) 一日完成 |
 | Phase 1 身份闭环 | ✅ DONE | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 + CM-3 全 merged; G1 全签 #210, G1.4 closed by #208 + #210 |
-| Phase 2 协作闭环 ⭐ | TODO | G2.1~G2.5 + G2.audit + 野马签字 | 等 Phase 1 |
+| Phase 2 协作闭环 ⭐ | 🔄 IN PROGRESS (closing) | 前置 6/6 ✅; CM-4 4-5/7 ✅ (4.0/4.1/4.2 + bug-029/030 修); 闸 2/7 严格 ✅ (G2.0 #223 / G2.3 #236) + G2.audit/G2.6 partial; 待 e2e 解 .skip + G2.4 ≥4/5 野马签 + 留账闸 Phase 4 PR 编号 → 建军+野马联签退出 | Phase 1 ✅; 锚 `docs/qa/phase-2-gate-status.md` v3 |
 | Phase 3 第二维度产品 | TODO | G3.1~G3.4 + G3.audit + 野马签字 (CV-1) | 等 Phase 2; 内部顺序锁死 |
 | Phase 4+ 剩余模块 | TODO | 各模块自身完成判定 + G4.audit | 等 Phase 3 |
 
@@ -88,10 +88,10 @@
 - [x] **INFRA-2** Playwright scaffold (E2E) — 战马 / 飞马 / 烈马 (PR #195 merged)
   - 必须前置到 RT-0 之前 (烈马 R3: latency ≤ 3s 硬条件 vitest 跑不了)
   - 工期 2-3 天 (战马 R1: vite orchestrate + cookie fixtures + chromium CI)
-- 🔄 **ADM-0** admin 拆表 (admins 独立表 + cookie 拆 + god-mode endpoint) — 战马 / 飞马 (主, 起草) / 烈马 / 野马
+- [x] **ADM-0** admin 拆表 (admins 独立表 + cookie 拆 + god-mode endpoint) — 战马 / 飞马 (主, 起草) / 烈马 / 野马
   - [x] **ADM-0.1** admins 独立表 + env bootstrap + 独立 cookie name (双轨并存) (PR #197 merged)
   - [x] **ADM-0.2** cookie 拆 + RequirePermission 去 admin 短路 + god-mode 白名单 (users.role='admin' 调 user-api 401) (PR #201 merged)
-  - [ ] **ADM-0.3** users.role enum 收 + backfill 旧 admin 行 → admins 表 + revoke session (users.role='admin' 行数 = 0) — 🔄 IN PROGRESS (task #63, v=10)
+  - [x] **ADM-0.3** users.role enum 收 + backfill 旧 admin 行 → admins 表 + revoke session (users.role='admin' 行数 = 0) (PR #223 merged, v=10)
   - 工期 server 4-6 天 + client 1 天
   - 烈马一票否决: cookie 串扰反向断言
   - 详见 [`modules/admin-model.md`](modules/admin-model.md)
@@ -105,7 +105,7 @@
   - **依赖野马 `00-foundation/onboarding-journey.md` (硬截止 2026-05-05)** — 飞马 R1 P1 ③: 防卡死风险
   - 野马 must-fix (实施时落地): Welcome system message 必带 quick action button "创建 agent" + backfill 失败的空状态降级文案 (§11 反约束) + 文案锁定位置在 onboarding-journey.md
   - 详见 [`modules/concept-model.md`](modules/concept-model.md) §10
-- [ ] **RT-0** /ws push 顶住 BPP (取代 60s polling) — 战马 / 飞马 / 烈马 / 野马 (⏳ pending, task #40, INFRA-2 已就绪可解锁)
+- [x] **RT-0** /ws push 顶住 BPP (取代 60s polling) — 战马 / 飞马 / 烈马 / 野马 (PR #218 client + #237 server merged)
   - 工期 1.5-2 天
   - 依赖 INFRA-2 (latency E2E 验)
   - 蓝图 realtime §2.3: schema 必须等同未来 BPP frame, CI lint 强制
@@ -137,7 +137,7 @@
 - [ ] G2.0 (新, R3) ADM-0 cookie 串扰反向断言 — 烈马 / 一票否决式
 - [ ] G2.1 邀请审批 E2E (Playwright + ws push) — 战马/烈马 / 证据: ___
 - [ ] G2.2 离线 fallback E2E — 战马/烈马 / 证据: ___
-- [ ] G2.3 节流不变量 (fake clock 单测) — 烈马 / 证据: ___
+- [x] G2.3 节流不变量 (fake clock 单测) — 烈马 / 证据: PR #229 internal/throttle + #236 T1-T5 全过
 - [ ] G2.4 用户感知签字 — **野马** / 关键截屏路径: `docs/evidence/cm-4/` (5 张 + stopwatch ≤ 3s) + blueprint-sha.txt
 - [ ] G2.5 presence 接口契约 (IsOnline + Sessions 锁死) — 飞马/战马 / 证据: 接口签名文件 ___
 - [ ] G2.6 (新, R3) /ws → BPP schema 等同性 (CI lint byte-identical) — 飞马 / 证据: lint 输出
@@ -199,6 +199,8 @@ AP-3 ─┘
 
 ### agent-lifecycle
 - [ ] **AL-1** 状态四态扩展
+  - [x] **AL-1a** online/offline + error 旁路 + 6 reason codes (PR #249, Phase 2 起步, 蓝图 §2.3 R3 锁)
+  - [ ] **AL-1b** busy/idle (Phase 4, 跟 BPP task_started/task_finished frame 同期)
 - [ ] **AL-2a** config 表 + update API (并行 CM-*)
 - [ ] **AL-2b** BPP ConfigUpdated frame (与 BPP-3 同 PR)
 - [ ] **AL-3** presence 完整版 (复用 CM-4 的 IsOnline + Sessions 接口)
