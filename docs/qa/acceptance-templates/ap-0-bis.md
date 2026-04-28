@@ -3,7 +3,7 @@
 > 蓝图: `docs/blueprint/auth-permissions.md` §3 (R3 已固化 message.read)
 > Implementation: `docs/implementation/modules/auth-permissions.md` AP-0-bis
 > R3 决议: 4 人 review 立场冲突 #1 (2026-04-28)
-> 依赖: 无 (可与 ADM-0 / INFRA-2 / CM-onboarding 并行); CM-3 backfill pattern 沿用此处 helper
+> 依赖: ADM-0.2 已 merge (cookie 拆 + RequirePermission 短路砍 落地后才能挂 message.read gate); 与 INFRA-2 / CM-onboarding 可并行; CM-3 backfill pattern 沿用此处 helper
 
 ## 验收清单
 

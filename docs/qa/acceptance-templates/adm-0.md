@@ -7,13 +7,13 @@
 
 ## 拆 PR 顺序 (串行, 不并发)
 
-- **ADM-0.1**: `users.role` enum 收成二态 + backfill 移行到 admins 表 + revoke session
-- **ADM-0.2**: 新增 `admins` 独立表 + `/admin-api/auth/login` env bootstrap + 独立 cookie name
-- **ADM-0.3**: cookie 拆分 + `RequirePermission` 去 admin 短路 + god-mode endpoint 元数据-only
+- **ADM-0.1**: 新增 `admins` 独立表 + `/admin-api/auth/login` env bootstrap + 独立 cookie name
+- **ADM-0.2**: cookie 拆分 + `RequirePermission` 去 admin 短路 + god-mode endpoint 元数据-only
+- **ADM-0.3**: `users.role` enum 收成二态 + backfill 移行到 admins 表 + revoke session
 
 ## 验收清单
 
-### 数据契约 (ADM-0.1 + ADM-0.2 落)
+### 数据契约 (ADM-0.1 + ADM-0.3 落)
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
@@ -34,7 +34,7 @@
 | 4.1.b user cookie 调 `/admin-api/v1/channels` → 401 | unit | 烈马 | _(待填)_ |
 | 4.1.c god-mode endpoint JSON 反射扫描无 `body`/`content`/`text` 字段名 | unit (fail-closed reflect scan) | 烈马 | _(待填)_ |
 | 4.1.d post-migration `users WHERE role='admin'` == 0 | unit | 战马 / 烈马 | _(待填)_ |
-| 4.1.e (烈马 #189 review 加补) 旧 admin 拿 ADM-0.1 之前的 user cookie → 401 (session revoke 反向断言) | E2E | 烈马 | _(待填, INFRA-2 后)_ |
+| 4.1.e (烈马 #189 review 加补) 旧 admin 拿 ADM-0.3 之前的 user cookie → 401 (session revoke 反向断言) | E2E | 烈马 | _(待填, INFRA-2 后)_ |
 
 ### 蓝图行为对照 (闸 2)
 
