@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCan } from '../hooks/usePermissions';
-import { fetchChannelMembers, logout } from '../lib/api';
+import { fetchChannelMembers, listAgentInvitations, logout } from '../lib/api';
 import ChannelList from './ChannelList';
 import CreateGroupModal from './CreateGroupModal';
 import type { DmChannel } from '../types';
@@ -13,11 +13,12 @@ interface Props {
   onChannelSelect?: () => void;
   onLogout?: () => void;
   onAgentsOpen?: () => void;
+  onInvitationsOpen?: () => void;
   onWorkspacesOpen?: () => void;
   onRemoteNodesOpen?: () => void;
 }
 
-export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOpen, onWorkspacesOpen, onRemoteNodesOpen }: Props) {
+export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOpen, onInvitationsOpen, onWorkspacesOpen, onRemoteNodesOpen }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const canCreateChannel = useCan('channel.create');
@@ -31,6 +32,29 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<number>(0);
+
+  // Poll pending agent-invitation count for the bell badge. Only owners
+  // (non-agent accounts) ever receive owner-side invitations, so we skip
+  // polling for agent sessions. CM-4.3 will replace this poll with a
+  // BPP push frame.
+  useEffect(() => {
+    if (!onInvitationsOpen) return;
+    if (state.currentUser?.role === 'agent') return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const list = await listAgentInvitations('owner');
+        if (cancelled) return;
+        setPendingInvitations(list.filter(inv => inv.state === 'pending').length);
+      } catch {
+        // Silent — bell hides badge on failure rather than spamming errors.
+      }
+    };
+    refresh();
+    const id = setInterval(refresh, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [onInvitationsOpen, state.currentUser?.role]);
 
   useEffect(() => {
     if (!state.currentChannelId) {
@@ -270,6 +294,25 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
                 onClick={onAgentsOpen}
               >
                 🤖
+              </button>
+            )}
+            {state.currentUser.role !== 'agent' && onInvitationsOpen && (
+              <button
+                className="icon-btn invitations-btn"
+                title="Agent 邀请"
+                onClick={onInvitationsOpen}
+                style={{ position: 'relative' }}
+              >
+                🔔
+                {pendingInvitations > 0 && (
+                  <span
+                    className="unread-badge"
+                    style={{ position: 'absolute', top: -2, right: -2 }}
+                    aria-label={`${pendingInvitations} 待处理邀请`}
+                  >
+                    {pendingInvitations > 99 ? '99+' : pendingInvitations}
+                  </span>
+                )}
               </button>
             )}
             {onWorkspacesOpen && (

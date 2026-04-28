@@ -439,6 +439,65 @@ export async function getAgentFile(agentId: string, path: string): Promise<Agent
   return request<AgentFileResponse>(`/api/v1/agents/${agentId}/files?path=${encodeURIComponent(path)}`);
 }
 
+// ─── Agent invitations (CM-4.2) ───────────────────────
+// Mirrors the hand-built sanitizer on the server (CM-4.1, see
+// docs/current/server/data-model.md §Agent invitations API). `decided_at`
+// and `expires_at` are omitted by the server when nil — declared optional
+// here so existing pending rows decode cleanly.
+export type AgentInvitationState = 'pending' | 'approved' | 'rejected' | 'expired';
+
+export interface AgentInvitation {
+  id: string;
+  channel_id: string;
+  agent_id: string;
+  requested_by: string;
+  state: AgentInvitationState;
+  created_at: number;
+  decided_at?: number;
+  expires_at?: number;
+}
+
+export type AgentInvitationListRole = 'owner' | 'requester';
+
+export async function createAgentInvitation(
+  channelId: string,
+  agentId: string,
+  expiresAt?: number,
+): Promise<AgentInvitation> {
+  const data = await request<{ invitation: AgentInvitation }>('/api/v1/agent_invitations', {
+    method: 'POST',
+    body: JSON.stringify({
+      channel_id: channelId,
+      agent_id: agentId,
+      ...(expiresAt !== undefined ? { expires_at: expiresAt } : {}),
+    }),
+  });
+  return data.invitation;
+}
+
+export async function listAgentInvitations(role: AgentInvitationListRole = 'owner'): Promise<AgentInvitation[]> {
+  const data = await request<{ invitations: AgentInvitation[] }>(
+    `/api/v1/agent_invitations?role=${role}`,
+  );
+  return data.invitations;
+}
+
+export async function fetchAgentInvitation(id: string): Promise<AgentInvitation> {
+  const data = await request<{ invitation: AgentInvitation }>(`/api/v1/agent_invitations/${id}`);
+  return data.invitation;
+}
+
+export async function decideAgentInvitation(
+  id: string,
+  state: 'approved' | 'rejected',
+): Promise<AgentInvitation> {
+  const data = await request<{ invitation: AgentInvitation }>(`/api/v1/agent_invitations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ state }),
+  });
+  return data.invitation;
+}
+
 // ─── Workspace ────────────────────────────────────────
 
 export async function listWorkspaceFiles(channelId: string, parentId?: string): Promise<WorkspaceFile[]> {

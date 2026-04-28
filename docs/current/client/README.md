@@ -28,7 +28,7 @@
 3. 每 30s `loadOnlineUsers()`。
 4. 没选频道时自动选第一个。
 5. 已加入的频道挨个 `useWebSocket().subscribe()`。
-6. 渲染 `<Sidebar/>` + 当前主面板（`AgentManager` / `WorkspaceManager` / `NodeManager` / `ChannelView` / 启动屏）。
+6. 渲染 `<Sidebar/>` + 当前主面板（`AgentManager` / `InvitationsInbox` / `WorkspaceManager` / `NodeManager` / `ChannelView` / 启动屏）。
 7. 768px 以下走移动端布局，hamburger + overlay。
 
 ## 3. 目录职责
@@ -58,7 +58,8 @@
 - `MessageList.tsx` — 合并 `messages + pendingMessages` 渲染；scroll 到顶触发 `loadOlderMessages`；新消息自动 scroll 到底。
 - `MessageItem.tsx` — 单条消息：avatar、displayName、时间、`marked + dompurify` markdown、edit/delete、`<ReactionBar/>`。
 - `MessageInput.tsx` — TipTap 编辑器（`StarterKit + Markdown + MentionExtension`），Enter 发送、Ctrl+Enter 换行、文件拖放、图片粘贴、emoji 选择器、mention 选择器、slash command 选择器。
-- `ReactionBar.tsx`、`SlashCommandPicker.tsx`、`AgentManager.tsx`、`WorkspaceManager.tsx`、`NodeManager.tsx`、`ConnectionStatus.tsx`、`Toast.tsx`、`TypingIndicator.tsx`。
+- `ReactionBar.tsx`、`SlashCommandPicker.tsx`、`AgentManager.tsx`、`InvitationsInbox.tsx`、`WorkspaceManager.tsx`、`NodeManager.tsx`、`ConnectionStatus.tsx`、`Toast.tsx`、`TypingIndicator.tsx`。
+  - `InvitationsInbox.tsx`（CM-4.2）— 业主侧 agent 邀请收件箱：`listAgentInvitations('owner')` 拉列表，pending 行带 同意/拒绝 quick action（PATCH `/api/v1/agent_invitations/{id}` `{state}`），同意成功后 `actions.loadChannels()` 然后 `onJumpToChannel(channel_id)` 切到目标频道；409 → "该邀请已被处理或状态已变更，请刷新"。`Sidebar` 右下 🔔 铃铛每 60s 轮询 owner-role 邀请数（agent 角色跳过），CM-4.3 会替换成 BPP push frame。
 
 ### `extensions/`
 - `mention.ts` — 包装 TipTap 的 mention 扩展，suggestion 用 `<MentionList/>` 渲染。`MessageInput` 发送前用 `extractMentionIds()` 把 mention node 的 `id` 收集出来传给 server。
@@ -118,5 +119,6 @@
 - `command-registry.test.ts` — resolve 优先级、ambiguous、search 前缀过滤、`setRemoteCommands` 替换语义。
 - `channel-sort.test.ts` — position 字符串 lex 排序 + `last_message_at` fallback。
 - `channel-groups-ui.test.ts` — 分组展示逻辑。
+- `agent-invitations.test.ts` — CM-4.2 client：`createAgentInvitation` / `listAgentInvitations(role)` / `fetchAgentInvitation` / `decideAgentInvitation` 的请求形状、`{invitation}` / `{invitations}` 解包、409 → `ApiError`、`stateToLabel` 4 状态中文映射。
 
 没有组件级 React Testing Library 测试。
