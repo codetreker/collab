@@ -61,14 +61,14 @@
 
 | Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
 |---|---|---|---|---|---|
-| REG-ADM0-001 | adm-0.md 4.1.a | `internal/api/.../*_test.go::Test_AdminCookie_UserAPI_401` × 3 endpoints (messages/channels/agents) | 烈马 | ADM-0.3 | ⚪ pending |
-| REG-ADM0-002 | adm-0.md 4.1.b | `internal/admin/*_test.go::Test_UserCookie_AdminAPI_401` × 3 endpoints (users/orgs/channels) | 烈马 | ADM-0.3 | ⚪ pending |
-| REG-ADM0-003 | adm-0.md 4.1.c | god-mode response struct fail-closed reflect scan, 无 body/content/text 字段 | 烈马 | ADM-0.3 | ⚪ pending |
-| REG-ADM0-004 | adm-0.md 4.1.d | `internal/migrations/*_test.go` post-migration `users WHERE role='admin'` count==0 | 战马 | ADM-0.1 | ⚪ pending |
-| REG-ADM0-005 | adm-0.md 4.1.e (#189 加补) | 旧 admin 拿 ADM-0.1 之前的 user cookie → 401 (session revoke 反向断言) | 烈马 | ADM-0.1 | ⚪ pending |
-| REG-ADM0-006 | adm-0.md schema | `admins` 表 schema fields (id/login/password_hash/created_at/created_by/last_login_at) | 飞马 | ADM-0.2 | ⚪ pending |
-| REG-ADM0-007 | adm-0.md schema | DB CHECK `users.role IN ('member','agent')` | 飞马 | ADM-0.1 | ⚪ pending |
-| REG-ADM0-008 | adm-0.md §1.2 | `grep -rE '/admin-api/.*/promote' internal/` count==0 (B env bootstrap, 无 promote) | 飞马 | ADM-0.2 | ⚪ pending |
+| REG-ADM0-001 | adm-0.md 4.1.a | `internal/api/.../*_test.go::Test_AdminCookie_UserAPI_401` × 3 endpoints (messages/channels/agents) | 烈马 | ADM-0.2 | ⚪ pending |
+| REG-ADM0-002 | adm-0.md 4.1.b | `internal/admin/*_test.go::Test_UserCookie_AdminAPI_401` × 3 endpoints (users/orgs/channels) | 烈马 | ADM-0.2 | ⚪ pending |
+| REG-ADM0-003 | adm-0.md 4.1.c | god-mode response struct fail-closed reflect scan, 无 body/content/text 字段 | 烈马 | ADM-0.2 | ⚪ pending |
+| REG-ADM0-004 | adm-0.md 4.1.d | `internal/migrations/*_test.go` post-migration `users WHERE role='admin'` count==0 | 战马 | ADM-0.3 | ⚪ pending |
+| REG-ADM0-005 | adm-0.md 4.1.e (#189 加补) | 旧 admin 拿 ADM-0.3 之前的 user cookie → 401 (session revoke 反向断言) | 烈马 | ADM-0.3 | ⚪ pending |
+| REG-ADM0-006 | adm-0.md schema | `admins` 表 schema fields (id/login/password_hash/created_at/created_by/last_login_at) | 飞马 | ADM-0.1 | ⚪ pending |
+| REG-ADM0-007 | adm-0.md schema | DB CHECK `users.role IN ('member','agent')` | 飞马 | ADM-0.3 | ⚪ pending |
+| REG-ADM0-008 | adm-0.md §1.2 | `grep -rE '/admin-api/.*/promote' internal/` count==0 (B env bootstrap, 无 promote) | 飞马 | ADM-0.1 | ⚪ pending |
 | REG-ADM0-009 | adm-0.md fixture | `testutil/server.go` 删 `role=admin` user fixture, 改 `SeedAdmin` | 飞马 | ADM-0.1 | ⚪ pending |
 | REG-ADM0-010 | adm-0.md regression | 已 merged admin SPA 测试 (≥ 8 个) 跟改 fixture 后 CI 全绿 | 烈马 | ADM-0.3 | ⚪ pending |
 
@@ -119,7 +119,7 @@
 | Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
 |---|---|---|---|---|---|
 | REG-INV-001 | CM-4.1 + Phase 1 | `grep -rE 'c.JSON.*\b(User\|AgentInvitation)\b' internal/api/` count==0 | 飞马 | (持续) | 🟢 active |
-| REG-INV-002 | ADM-0 4.1.c | god-mode response 反射扫描 fail-closed (含未来新增 endpoint 自动覆盖) | 烈马 | ADM-0.3 | ⚪ pending |
+| REG-INV-002 | ADM-0 4.1.c | god-mode response 反射扫描 fail-closed (含未来新增 endpoint 自动覆盖) | 烈马 | ADM-0.2 | ⚪ pending |
 
 ---
 
