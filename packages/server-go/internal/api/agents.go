@@ -119,10 +119,10 @@ func (h *AgentHandler) withState(m map[string]any, agentID string, disabled bool
 	return m
 }
 
-// agent_state_classify — convenience wrapper over agent.ClassifyProxyError
+// classifyAgentProxyError — convenience wrapper over agent.ClassifyProxyError
 // scoped to the api package. 单独命名是为了避免和 handler 里 `agent` 局部
 // 变量冲突 (handleGetAgentFiles 等).
-func agent_state_classify(status int, err error) string {
+func classifyAgentProxyError(status int, err error) string {
 	return agentpkg.ClassifyProxyError(status, err)
 }
 
@@ -428,7 +428,7 @@ func (h *AgentHandler) handleGetAgentFiles(w http.ResponseWriter, r *http.Reques
 	status, body, err := h.Hub.ProxyPluginRequest(id, "read_file", path, nil)
 	// AL-1a (#R3): runtime 故障旁路. 任意 plugin 调用失败 / 5xx 会让该
 	// agent 进入 error 态, owner 端 Sidebar 立即看到原因码 + 修复入口.
-	if reason := agent_state_classify(status, err); reason != "" && h.State != nil {
+	if reason := classifyAgentProxyError(status, err); reason != "" && h.State != nil {
 		if setter, ok := h.State.(AgentRuntimeSetter); ok {
 			setter.SetAgentError(id, reason)
 		}
