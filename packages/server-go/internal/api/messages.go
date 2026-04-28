@@ -288,6 +288,12 @@ func (h *MessageHandler) handleUpdateMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// CM-3.2: cross-org 403 (#200 §3 row 1).
+	if store.CrossOrg(user.OrgID, existing.OrgID) {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
 	if existing.SenderID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Can only edit your own messages")
 		return
@@ -336,6 +342,12 @@ func (h *MessageHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Requ
 	// Already deleted — idempotent
 	if existing.DeletedAt != nil {
 		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// CM-3.2: cross-org 403.
+	if store.CrossOrg(user.OrgID, existing.OrgID) {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 

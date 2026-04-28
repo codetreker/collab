@@ -489,10 +489,10 @@ func (s *Store) CreateMessageFull(channelID, senderID, content, contentType stri
 		}
 	}
 
-	// Get sender display name
+	// Get sender display name + org_id (CM-3.1: stamp message org_id from sender).
 	var sender User
 	senderName := "Unknown"
-	if err := s.db.Select("display_name").Where("id = ?", senderID).First(&sender).Error; err == nil {
+	if err := s.db.Select("display_name, org_id").Where("id = ?", senderID).First(&sender).Error; err == nil {
 		senderName = sender.DisplayName
 	}
 
@@ -512,6 +512,7 @@ func (s *Store) CreateMessageFull(channelID, senderID, content, contentType stri
 			ContentType: contentType,
 			ReplyToID:   replyToID,
 			CreatedAt:   now,
+			OrgID:       sender.OrgID, // CM-3.1
 		}
 		if err := tx.Create(msg).Error; err != nil {
 			return err

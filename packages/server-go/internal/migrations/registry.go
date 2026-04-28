@@ -35,6 +35,7 @@ var All = []Migration{
 	// v=6 reserved for ADM-0.3 (users.role enum 收 + admin backfill + session revoke)
 	cmOnboardingWelcome,
 	ap0BisMessageRead,
+	cm3OrgIDBackfill,
 }
 
 // Default returns an Engine wired to db with All registered.

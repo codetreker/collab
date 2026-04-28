@@ -206,6 +206,19 @@ func TestDefaultRegistryRunsClean(t *testing.T) {
 	)`).Error; err != nil {
 		t.Fatalf("create user_permissions: %v", err)
 	}
+	// CM-3 (v=9) backfills resource org_id from creator/sender/uploader columns.
+	// Add the foreign-key columns the UPDATE WHERE clauses reference so the
+	// registry test stays self-contained.
+	for _, alter := range []string{
+		`ALTER TABLE channels        ADD COLUMN created_by TEXT`,
+		`ALTER TABLE messages        ADD COLUMN sender_id  TEXT`,
+		`ALTER TABLE workspace_files ADD COLUMN user_id    TEXT`,
+		`ALTER TABLE remote_nodes    ADD COLUMN user_id    TEXT`,
+	} {
+		if err := db.Exec(alter).Error; err != nil {
+			t.Fatalf("alter for cm-3 backfill: %v", err)
+		}
+	}
 	if err := Default(db).Run(0); err != nil {
 		t.Fatalf("default run: %v", err)
 	}

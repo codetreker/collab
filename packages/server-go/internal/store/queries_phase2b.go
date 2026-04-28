@@ -227,6 +227,12 @@ func (s *Store) InsertWorkspaceFile(file *WorkspaceFile) (*WorkspaceFile, error)
 	if file.UpdatedAt == 0 {
 		file.UpdatedAt = now
 	}
+	// CM-3.1: stamp org_id from uploader if caller didn't provide it.
+	if file.OrgID == "" && file.UserID != "" {
+		var u User
+		s.db.Select("org_id").Where("id = ?", file.UserID).First(&u)
+		file.OrgID = u.OrgID
+	}
 	if err := s.db.Create(file).Error; err != nil {
 		return nil, err
 	}
@@ -267,6 +273,9 @@ func (s *Store) UpdateWorkspaceFileSize(id string, size int64) error {
 
 func (s *Store) MkdirWorkspace(userID, channelID string, parentID *string, name string) (*WorkspaceFile, error) {
 	now := time.Now().UnixMilli()
+	// CM-3.1: stamp org_id from creator.
+	var u User
+	s.db.Select("org_id").Where("id = ?", userID).First(&u)
 	f := &WorkspaceFile{
 		ID:          uuid.NewString(),
 		UserID:      userID,
@@ -276,6 +285,7 @@ func (s *Store) MkdirWorkspace(userID, channelID string, parentID *string, name 
 		IsDirectory: true,
 		CreatedAt:   now,
 		UpdatedAt:   now,
+		OrgID:       u.OrgID,
 	}
 	if err := s.db.Create(f).Error; err != nil {
 		return nil, err
@@ -334,12 +344,16 @@ func (s *Store) CreateRemoteNode(userID, machineName string) (*RemoteNode, error
 	if _, err := rand.Read(b); err != nil {
 		return nil, err
 	}
+	// CM-3.1: stamp org_id from registrant.
+	var u User
+	s.db.Select("org_id").Where("id = ?", userID).First(&u)
 	node := &RemoteNode{
 		ID:              uuid.NewString(),
 		UserID:          userID,
 		MachineName:     machineName,
 		ConnectionToken: hex.EncodeToString(b),
 		CreatedAt:       time.Now().UnixMilli(),
+		OrgID:           u.OrgID,
 	}
 	if err := s.db.Create(node).Error; err != nil {
 		return nil, err
