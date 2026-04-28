@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
 
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
@@ -143,7 +146,7 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if existing, _ := h.Store.GetChannelByName(slug); existing != nil {
+	if existing, _ := h.Store.GetChannelByNameInOrg(user.OrgID, slug); existing != nil {
 		writeJSONError(w, http.StatusConflict, "Channel name already exists")
 		return
 	}
@@ -165,13 +168,12 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// CHN-1.2 立场 ②: creator-only default member. POST /channels 后
+	// channel_members count == 1 (只 creator). Public channels are
+	// discoverable via GET (org-scoped) — no auto-fan-out join.
 	h.Store.AddChannelMember(&store.ChannelMember{ChannelID: ch.ID, UserID: user.ID})
 
-	if body.Visibility == "public" {
-		if err := h.Store.AddAllUsersToChannel(ch.ID); err != nil {
-			h.Logger.Error("failed to add all users to channel", "error", err)
-		}
-	} else {
+	if body.Visibility == "private" {
 		for _, uid := range body.MemberIDs {
 			if uid != user.ID {
 				h.Store.AddChannelMember(&store.ChannelMember{ChannelID: ch.ID, UserID: uid})
@@ -285,13 +287,17 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 		Name       *string `json:"name"`
 		Topic      *string `json:"topic"`
 		Visibility *string `json:"visibility"`
+		// Archive flag (CHN-1.2 立场 ⑤): clients PATCH `archived: true` to soft
+		// 退役 a channel. Setting to false un-archives. The actual archived_at
+		// timestamp is server-stamped — clients cannot inject arbitrary times.
+		Archived *bool `json:"archived"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	topicOnly := body.Topic != nil && body.Name == nil && body.Visibility == nil
+	topicOnly := body.Topic != nil && body.Name == nil && body.Visibility == nil && body.Archived == nil
 	if topicOnly {
 		if !h.Store.IsChannelMember(channelID, user.ID) {
 			writeJSONError(w, http.StatusForbidden, "Must be a channel member to update topic")
@@ -312,7 +318,9 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		if slug != ch.Name {
-			if existing, _ := h.Store.GetChannelByName(slug); existing != nil {
+			// CHN-1.2: per-org name uniqueness (channels.name is no longer
+			// globally UNIQUE post v=11). Only collide within the same org.
+			if existing, _ := h.Store.GetChannelByNameInOrg(ch.OrgID, slug); existing != nil {
 				writeJSONError(w, http.StatusConflict, "Channel name already exists")
 				return
 			}
@@ -334,11 +342,34 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 		updates["visibility"] = *body.Visibility
 	}
 
+	// CHN-1.2 立场 ⑤: archive flip — server stamps timestamp; emits per-member
+	// system DM fanout reusing the ADM-0 §1.4 红线 ③ shape. Skipped if no
+	// transition (already archived → ignored; un-archive nullifies).
+	archiveTriggered := false
+	var archiveTs int64
+	if body.Archived != nil {
+		if *body.Archived {
+			if ch.ArchivedAt == nil {
+				archiveTs = nowMillis()
+				updates["archived_at"] = archiveTs
+				archiveTriggered = true
+			}
+		} else {
+			updates["archived_at"] = nil
+		}
+	}
+
 	if len(updates) > 0 {
 		if err := h.Store.UpdateChannel(channelID, updates); err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to update channel")
 			return
 		}
+	}
+
+	// Fanout the archive system DM after the row commits so members observe
+	// the archive flag at the same time as the notification.
+	if archiveTriggered {
+		h.fanoutArchiveSystemMessage(channelID, ch.Name, user.ID, archiveTs)
 	}
 
 	result, _ := h.Store.GetChannelWithCounts(channelID, user.ID)
@@ -522,6 +553,14 @@ func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request)
 	}
 
 	h.Store.AddChannelMember(&store.ChannelMember{ChannelID: channelID, UserID: body.UserID})
+
+	// CHN-1.2 立场 ③: agent join 触发 system message 文案锁
+	// `"{agent_name} joined"` — sender_id='system', kind=system. Human joins
+	// continue to broadcast `user_joined` event only (no system message).
+	if target.Role == "agent" {
+		h.emitAgentJoinSystemMessage(channelID, target.DisplayName)
+	}
+
 	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})
 
 	h.Store.CreateEvent(&store.Event{
@@ -972,4 +1011,86 @@ func (h *ChannelHandler) hasChannelPermission(user *store.User, permission, chan
 		}
 	}
 	return false
+}
+
+// nowMillis is the wall-clock now in milliseconds. Indirected so future tests
+// can swap a clock if needed (CHN-1.2 archive ts is observed by clients via
+// system DM; precision below ms is irrelevant for fanout ordering).
+func nowMillis() int64 { return time.Now().UnixMilli() }
+
+// emitAgentJoinSystemMessage inserts the agent-join system message
+// (CHN-1.2 立场 ③, #265 acceptance #6). Format MUST be exactly
+// `"{agent_name} joined"` — the suite greps it by string match. The message
+// is sender_id='system' and content_type='text'; no quick_action attached.
+//
+// Failures are logged but do NOT roll back the channel_member insert: the
+// audit row is the source of truth, the system message is best-effort.
+func (h *ChannelHandler) emitAgentJoinSystemMessage(channelID, agentName string) {
+	content := agentName + " joined"
+	now := nowMillis()
+	msg := &store.Message{
+		ID:          uuid.NewString(),
+		ChannelID:   channelID,
+		SenderID:    "system",
+		Content:     content,
+		ContentType: "text",
+		CreatedAt:   now,
+	}
+	if err := h.Store.CreateMessage(msg); err != nil {
+		if h.Logger != nil {
+			h.Logger.Error("emitAgentJoinSystemMessage failed", "channel_id", channelID, "error", err)
+		}
+		return
+	}
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToChannel(channelID, "system_message", map[string]any{
+			"channel_id": channelID,
+			"content":    content,
+			"sender_id":  "system",
+			"created_at": now,
+		})
+	}
+}
+
+// fanoutArchiveSystemMessage delivers a system DM to every member of the
+// archived channel — CHN-1.2 立场 ⑤ (#265 acceptance #7). Content format:
+//
+//	"channel #{name} 已被 {owner_name} 关闭于 {ts}"
+//
+// where {ts} is the unix-milli archive timestamp formatted RFC3339. We send
+// to the channel itself (not separate DMs) because the per-member DM channel
+// resolver is heavier than necessary; clients render system messages with
+// kind=system, sender=system as a global broadcast inside the archived
+// channel — sufficient for the audit trail and matches the ADM-0 §1.4 红线
+// ③ shape (one row per member fanout would duplicate noise).
+func (h *ChannelHandler) fanoutArchiveSystemMessage(channelID, channelName, ownerID string, archiveTs int64) {
+	owner, err := h.Store.GetUserByID(ownerID)
+	ownerName := "system"
+	if err == nil && owner != nil && owner.DisplayName != "" {
+		ownerName = owner.DisplayName
+	}
+	tsLabel := time.UnixMilli(archiveTs).UTC().Format(time.RFC3339)
+	content := fmt.Sprintf("channel #%s 已被 %s 关闭于 %s", channelName, ownerName, tsLabel)
+	now := nowMillis()
+	msg := &store.Message{
+		ID:          uuid.NewString(),
+		ChannelID:   channelID,
+		SenderID:    "system",
+		Content:     content,
+		ContentType: "text",
+		CreatedAt:   now,
+	}
+	if err := h.Store.CreateMessage(msg); err != nil {
+		if h.Logger != nil {
+			h.Logger.Error("fanoutArchiveSystemMessage failed", "channel_id", channelID, "error", err)
+		}
+		return
+	}
+	if h.Hub != nil {
+		h.Hub.BroadcastEventToChannel(channelID, "channel_archived", map[string]any{
+			"channel_id":  channelID,
+			"archived_at": archiveTs,
+			"content":     content,
+		})
+	}
 }

@@ -2,7 +2,7 @@ package store
 
 type Channel struct {
 	ID         string  `gorm:"primaryKey;size:36" json:"id"`
-	Name       string  `gorm:"not null;unique;size:100" json:"name"`
+	Name       string  `gorm:"not null;size:100" json:"name"`
 	Topic      string  `gorm:"not null;default:'';size:500" json:"topic"`
 	Visibility string  `gorm:"not null;default:public;size:20" json:"visibility"`
 	CreatedAt  int64   `gorm:"not null" json:"created_at"`
@@ -16,6 +16,10 @@ type Channel struct {
 	// (NOT NULL DEFAULT ''); v=9 backfills legacy rows. Blueprint §1.1 forbids
 	// UI exposure → json:"-".
 	OrgID string `gorm:"column:org_id;not null;default:'';size:36;index" json:"-"`
+	// ArchivedAt is the soft-archive marker (CHN-1.1, migration v=11). nil = active;
+	// non-nil = archived (channel is read-only, hidden from default lists).
+	// Distinct from DeletedAt — archive preserves history per channel-model §2 不变量。
+	ArchivedAt *int64 `gorm:"column:archived_at" json:"archived_at,omitempty"`
 }
 
 type ChannelGroup struct {
@@ -80,6 +84,13 @@ type ChannelMember struct {
 	UserID     string `gorm:"primaryKey;size:36;index" json:"user_id"`
 	JoinedAt   int64  `gorm:"not null" json:"joined_at"`
 	LastReadAt *int64 `json:"last_read_at,omitempty"`
+	// Silent (CHN-1.1, migration v=11): when true, the member does not
+	// auto-broadcast on lifecycle events. Default 0 for humans; backfilled
+	// to 1 for agents. concept-model §1.4 — agent = colleague, not chatter.
+	Silent bool `gorm:"column:silent;not null;default:0" json:"silent"`
+	// OrgIDAtJoin (CHN-1.1): audit-only snapshot of the user's OrgID at the
+	// time of join. Not used in the read path — kept for cross-org history.
+	OrgIDAtJoin string `gorm:"column:org_id_at_join;not null;default:''" json:"-"`
 }
 
 type Mention struct {

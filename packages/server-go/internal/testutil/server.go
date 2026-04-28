@@ -513,6 +513,18 @@ func SeedLegacyAgent(t *testing.T, s *store.Store, displayName string) *store.Us
 	if err := s.CreateUser(u); err != nil {
 		t.Fatalf("create legacy agent: %v", err)
 	}
+	// CHN-1.2: ListChannelsWithUnread scopes public discovery by `c.org_id =
+	// u.org_id`, so the legacy agent must share the fixture owner's org to see
+	// `general` (replaces the dropped AddAllUsersToChannel auto-join).
+	if owner, err := s.GetUserByEmail("owner@test.com"); err == nil && owner != nil {
+		_ = s.UpdateUser(u.ID, map[string]any{"org_id": owner.OrgID})
+		u.OrgID = owner.OrgID
+		// Also auto-join `general` so the agent is a channel member (legacy
+		// behavior before AddAllUsersToChannel was removed).
+		if gen, err := s.GetChannelByNameInOrg(owner.OrgID, "general"); err == nil && gen != nil {
+			_ = s.AddChannelMember(&store.ChannelMember{ChannelID: gen.ID, UserID: u.ID})
+		}
+	}
 	// Pre-AP-0-bis: legacy agents only had message.send. Do NOT grant read —
 	// that's exactly what migration v=8 backfills.
 	if err := s.GrantPermission(&store.UserPermission{
