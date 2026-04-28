@@ -71,16 +71,14 @@ func TestCanSeeBranches(t *testing.T) {
 	h := &AgentInvitationHandler{}
 	inv := &store.AgentInvitation{ID: "i", AgentID: "a", RequestedBy: "u-req"}
 
-	admin := &store.User{ID: "u-admin", Role: "admin"}
-	if !h.canSee(admin, inv) {
-		t.Error("admin must canSee")
-	}
 	requester := &store.User{ID: "u-req", Role: "member"}
 	if !h.canSee(requester, inv) {
 		t.Error("requester must canSee")
 	}
-	// Owner-of-agent branch reaches Store.GetAgent — without a Store this
-	// returns false (err on lookup). That covers the err-return line.
+	// ADM-0.3: role='admin' shortcut removed — only requester or agent
+	// owner can see invitations on the user-rail. A bystander with no
+	// relationship to the invitation reaches Store.GetAgent (nil Store
+	// here panics, recovered below).
 	bystander := &store.User{ID: "u-other", Role: "member"}
 	defer func() { _ = recover() }() // tolerate nil Store deref
 	if h.canSee(bystander, inv) {

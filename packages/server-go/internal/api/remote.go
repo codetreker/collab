@@ -237,7 +237,7 @@ func (h *RemoteHandler) handleNodeStatus(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, http.StatusNotFound, "Node not found")
 		return
 	}
-	if node.UserID != user.ID && user.Role != "admin" {
+	if node.UserID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
@@ -259,7 +259,7 @@ func (h *RemoteHandler) handleNodeLs(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "Node not found")
 		return
 	}
-	if node.UserID != user.ID && user.Role != "admin" {
+	if node.UserID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
@@ -296,7 +296,7 @@ func (h *RemoteHandler) handleNodeRead(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "Node not found")
 		return
 	}
-	if node.UserID != user.ID && user.Role != "admin" {
+	if node.UserID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}

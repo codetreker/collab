@@ -641,11 +641,10 @@ func (s *Store) CanAccessChannel(channelID, userID string) bool {
 	if count > 0 {
 		return true
 	}
-	// Admin override
-	var user User
-	if err := s.db.Select("role").Where("id = ?", userID).First(&user).Error; err == nil {
-		return user.Role == "admin"
-	}
+	// ADM-0.3: no role short-circuit. Admin-rail channel access goes
+	// through admin.RequireAdmin (admin_sessions cookie) and bypasses
+	// this gate entirely. Members must be explicit channel members on
+	// private channels.
 	return false
 }
 

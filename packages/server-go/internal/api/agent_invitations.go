@@ -292,12 +292,9 @@ func (h *AgentInvitationHandler) handleList(w http.ResponseWriter, r *http.Reque
 	var err error
 	switch role {
 	case "owner":
+		// ADM-0.3: user-rail lists owned agents only.
 		var agents []store.User
-		if user.Role == "admin" {
-			agents, err = h.Store.ListAllAgents()
-		} else {
-			agents, err = h.Store.ListAgentsByOwner(user.ID)
-		}
+		agents, err = h.Store.ListAgentsByOwner(user.ID)
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to list agents")
 			return
@@ -352,7 +349,7 @@ func (h *AgentInvitationHandler) handlePatch(w http.ResponseWriter, r *http.Requ
 		writeJSONError(w, http.StatusNotFound, "Agent not found")
 		return
 	}
-	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+	if agent.OwnerID == nil || *agent.OwnerID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Only the agent owner may decide")
 		return
 	}
@@ -430,11 +427,9 @@ func (h *AgentInvitationHandler) handlePatch(w http.ResponseWriter, r *http.Requ
 }
 
 // canSee reports whether `user` may read `inv`. Requester or agent owner
-// (or admin) only — channel members at large do not see invitations.
+// only on the user-rail (ADM-0.3 removed the role='admin' shortcut; admin
+// observation lives on /admin-api/v1/agent-invitations).
 func (h *AgentInvitationHandler) canSee(user *store.User, inv *store.AgentInvitation) bool {
-	if user.Role == "admin" {
-		return true
-	}
 	if inv.RequestedBy == user.ID {
 		return true
 	}

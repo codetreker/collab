@@ -50,11 +50,19 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 		CORSOrigin:    "*",
 	}
 
+	// ADM-0.3 (v=10): users.role enum collapsed to {'member', 'agent'}; admin
+	// authority lives exclusively on the /admin-api/* rail behind admin sessions
+	// (see admin-model.md §1.2). Owner + admin fixtures here are user-rail
+	// `member` accounts with the AP-0 default `(*, *)` wildcard — they retain
+	// every user-API capability without re-introducing the role short-circuit.
+	// The ADM-0.2 explicit `(*, *)` splice is now redundant (the member default
+	// grant covers it) and the ADM-0.3 migration sweeps any leftover wildcard
+	// rows belonging to deleted role='admin' users.
 	ownerHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
 	ownerEmail := "owner@test.com"
 	owner := &store.User{
 		DisplayName:  "Owner",
-		Role:         "admin",
+		Role:         "member",
 		Email:        &ownerEmail,
 		PasswordHash: string(ownerHash),
 	}
@@ -67,21 +75,18 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	if _, err := s.CreateOrgForUser(owner, "Owner Org"); err != nil {
 		t.Fatalf("create owner org: %v", err)
 	}
-	if err := s.GrantDefaultPermissions(owner.ID, "admin"); err != nil {
+	if err := s.GrantDefaultPermissions(owner.ID, "member"); err != nil {
 		t.Fatalf("grant owner perms: %v", err)
-	}
-	// ADM-0.2: legacy users.role=='admin' shortcut in RequirePermission
-	// is removed. Test fixtures with role 'admin' need an explicit (*, *)
-	// row to retain the user-API capabilities they had via the shortcut.
-	if err := s.GrantPermission(&store.UserPermission{UserID: owner.ID, Permission: "*", Scope: "*", GrantedAt: time.Now().UnixMilli()}); err != nil {
-		t.Fatalf("grant owner *: %v", err)
 	}
 
 	adminHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
 	adminEmail := "admin@test.com"
 	admin := &store.User{
+		// Display name retained for back-compat with existing tests that
+		// resolve users by name (`testutil.GetUserIDByName(... "Admin")`).
+		// ADM-0.3: this is a user-rail member fixture, NOT a god-mode admin.
 		DisplayName:  "Admin",
-		Role:         "admin",
+		Role:         "member",
 		Email:        &adminEmail,
 		PasswordHash: string(adminHash),
 	}
@@ -93,11 +98,8 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	if err := s.UpdateUser(admin.ID, map[string]any{"org_id": owner.OrgID}); err != nil {
 		t.Fatalf("set admin org_id: %v", err)
 	}
-	if err := s.GrantDefaultPermissions(admin.ID, "admin"); err != nil {
+	if err := s.GrantDefaultPermissions(admin.ID, "member"); err != nil {
 		t.Fatalf("grant admin perms: %v", err)
-	}
-	if err := s.GrantPermission(&store.UserPermission{UserID: admin.ID, Permission: "*", Scope: "*", GrantedAt: time.Now().UnixMilli()}); err != nil {
-		t.Fatalf("grant admin *: %v", err)
 	}
 
 	memberHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)

@@ -57,8 +57,12 @@ func TestP0MessageCRUD(t *testing.T) {
 	resp, data = testutil.JSON(t, http.MethodPut, ts.URL+"/api/v1/messages/"+rootID, memberToken, map[string]string{"content": "not allowed"})
 	requireStatus(t, resp, http.StatusForbidden, data)
 
+	// ADM-0.3: user-rail message delete is sender-only. The admin@test.com
+	// fixture is now role='member' on the user-rail and cannot cross-delete.
 	memberMsg := testutil.PostMessage(t, ts.URL, memberToken, channelID, "member owned")
 	resp, data = testutil.JSON(t, http.MethodDelete, ts.URL+"/api/v1/messages/"+stringField(t, memberMsg, "id"), adminToken, nil)
+	requireStatus(t, resp, http.StatusForbidden, data)
+	resp, data = testutil.JSON(t, http.MethodDelete, ts.URL+"/api/v1/messages/"+stringField(t, memberMsg, "id"), memberToken, nil)
 	requireStatus(t, resp, http.StatusNoContent, data)
 
 	resp, data = testutil.JSON(t, http.MethodDelete, ts.URL+"/api/v1/messages/"+replyID, adminToken, nil)

@@ -44,16 +44,20 @@ func TestAdminListUsers(t *testing.T) {
 			}
 		}
 
+		// ADM-0.3 (v=10): users.role enum collapsed to {'member','agent'};
+		// admin authority lives on the /admin-api/* rail (separate admins
+		// table). Verify the testutil "Admin" user-rail fixture is listed
+		// (now role='member').
 		foundAdmin := false
 		for _, user := range users {
 			row := user.(map[string]any)
-			if row["role"] == "admin" {
+			if row["display_name"] == "Admin" {
 				foundAdmin = true
 				break
 			}
 		}
 		if !foundAdmin {
-			t.Fatal("expected admin user in admin user list")
+			t.Fatal("expected Admin display_name in admin user list")
 		}
 	})
 

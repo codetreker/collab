@@ -152,13 +152,9 @@ func (h *AgentHandler) handleListAgents(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var agents []store.User
-	var err error
-	if user.Role == "admin" {
-		agents, err = h.Store.ListAllAgents()
-	} else {
-		agents, err = h.Store.ListAgentsByOwner(user.ID)
-	}
+	// ADM-0.3: user-rail lists own agents only. Cross-owner enumeration is
+	// admin-rail (/admin-api/v1/users/:id/agents).
+	agents, err := h.Store.ListAgentsByOwner(user.ID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to list agents")
 		return
@@ -185,7 +181,7 @@ func (h *AgentHandler) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+	if agent.OwnerID == nil || *agent.OwnerID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
@@ -207,7 +203,7 @@ func (h *AgentHandler) handleDeleteAgent(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+	if agent.OwnerID == nil || *agent.OwnerID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
@@ -234,7 +230,7 @@ func (h *AgentHandler) handleRotateAPIKey(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+	if agent.OwnerID == nil || *agent.OwnerID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
@@ -267,7 +263,7 @@ func (h *AgentHandler) handleGetPermissions(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+	if agent.OwnerID == nil || *agent.OwnerID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
@@ -310,7 +306,7 @@ func (h *AgentHandler) handleSetPermissions(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+	if agent.OwnerID == nil || *agent.OwnerID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
@@ -371,7 +367,7 @@ func (h *AgentHandler) handleGetAgentFiles(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+	if agent.OwnerID == nil || *agent.OwnerID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}

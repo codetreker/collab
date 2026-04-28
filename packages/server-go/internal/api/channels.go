@@ -83,14 +83,9 @@ func (h *ChannelHandler) handleListChannels(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var channels []store.ChannelWithCounts
-	var err error
-
-	if user.Role == "admin" {
-		channels, err = h.Store.ListAllChannelsForAdmin(user.ID)
-	} else {
-		channels, err = h.Store.ListChannelsWithUnread(user.ID)
-	}
+	// ADM-0.3: user-rail lists membership-scoped channels only.
+	// Cross-user enumeration is admin-rail (/admin-api/v1/channels).
+	channels, err := h.Store.ListChannelsWithUnread(user.ID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to list channels")
 		return
@@ -298,7 +293,7 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 
 	topicOnly := body.Topic != nil && body.Name == nil && body.Visibility == nil
 	if topicOnly {
-		if !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
+		if !h.Store.IsChannelMember(channelID, user.ID) {
 			writeJSONError(w, http.StatusForbidden, "Must be a channel member to update topic")
 			return
 		}
@@ -367,7 +362,7 @@ func (h *ChannelHandler) handleSetTopic(w http.ResponseWriter, r *http.Request) 
 	}
 
 	channelID := r.PathValue("channelId")
-	if !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
+	if !h.Store.IsChannelMember(channelID, user.ID) {
 		writeJSONError(w, http.StatusForbidden, "Must be a channel member")
 		return
 	}
@@ -516,13 +511,13 @@ func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if target.Role == "agent" && user.Role != "admin" && (user.OwnerID == nil || *user.OwnerID != target.ID) {
-		if user.Role != "admin" {
-			isOwner := target.OwnerID != nil && *target.OwnerID == user.ID
-			if !isOwner {
-				writeJSONError(w, http.StatusForbidden, "Only owner or admin can add agents")
-				return
-			}
+	// ADM-0.3: user-rail can only add agents the user owns. Cross-owner agent
+	// channel-add is admin-rail (or not supported on user-rail at all).
+	if target.Role == "agent" {
+		isOwner := target.OwnerID != nil && *target.OwnerID == user.ID
+		if !isOwner {
+			writeJSONError(w, http.StatusForbidden, "Only the agent's owner can add it to a channel")
+			return
 		}
 	}
 
@@ -684,21 +679,20 @@ func (h *ChannelHandler) handleReorderChannel(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if user.Role != "admin" {
-		ch, _ := h.Store.GetChannelByID("")
-		_ = ch
-		perms, _ := h.Store.ListUserPermissions(user.ID)
-		isOwner := false
-		for _, p := range perms {
-			if p.Permission == "channel.manage_visibility" && p.Scope == "*" {
-				isOwner = true
-				break
-			}
+	// ADM-0.3: user-rail reorder gated by `channel.manage_visibility` (*, *).
+	// Owner-default member fixtures hold this via the (*, *) wildcard granted
+	// at registration. Admin-rail reorder is /admin-api/v1/channels.
+	perms, _ := h.Store.ListUserPermissions(user.ID)
+	isOwner := false
+	for _, p := range perms {
+		if (p.Permission == "channel.manage_visibility" || p.Permission == "*") && p.Scope == "*" {
+			isOwner = true
+			break
 		}
-		if !isOwner && user.Role != "admin" {
-			writeJSONError(w, http.StatusForbidden, "Forbidden")
-			return
-		}
+	}
+	if !isOwner {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
 	}
 
 	var body struct {
@@ -817,7 +811,7 @@ func (h *ChannelHandler) handleUpdateGroup(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if group.CreatedBy != user.ID && user.Role != "admin" {
+	if group.CreatedBy != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Only the group creator can rename it")
 		return
 	}
@@ -871,7 +865,7 @@ func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if group.CreatedBy != user.ID && user.Role != "admin" {
+	if group.CreatedBy != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Only the group creator can delete it")
 		return
 	}
@@ -928,7 +922,7 @@ func (h *ChannelHandler) handleReorderGroup(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if group.CreatedBy != user.ID && user.Role != "admin" {
+	if group.CreatedBy != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Only the group creator can reorder")
 		return
 	}
@@ -960,9 +954,8 @@ func (h *ChannelHandler) handleReorderGroup(w http.ResponseWriter, r *http.Reque
 // ─── Helpers ──────────────────────────────────────────
 
 func (h *ChannelHandler) hasChannelPermission(user *store.User, permission, channelID string) bool {
-	if user.Role == "admin" {
-		return true
-	}
+	// ADM-0.3: no role short-circuit. (*, *) wildcard below covers humans;
+	// admin-rail uses /admin-api/v1/channels.
 	perms, err := h.Store.ListUserPermissions(user.ID)
 	if err != nil {
 		return false

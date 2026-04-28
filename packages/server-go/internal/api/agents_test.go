@@ -556,11 +556,14 @@ func TestMessageAdvanced(t *testing.T) {
 	})
 
 	t.Run("AdminCanDeleteOtherMessage", func(t *testing.T) {
+		// ADM-0.3: no user-rail admin override. Even an "admin"-named test
+		// fixture (now role='member') can only delete its own messages on
+		// /api/v1/messages/*; cross-user delete must use /admin-api/v1.
 		msg := testutil.PostMessage(t, ts.URL, memberToken, generalID, "member-msg-for-admin-del")
 		msgID := msg["id"].(string)
 		resp, _ := testutil.JSON(t, "DELETE", ts.URL+"/api/v1/messages/"+msgID, adminToken, nil)
-		if resp.StatusCode != http.StatusNoContent {
-			t.Fatalf("expected 204, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403 (sender-only delete on user-rail), got %d", resp.StatusCode)
 		}
 	})
 

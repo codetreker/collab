@@ -60,11 +60,12 @@ func AuthMiddleware(s *store.Store, cfg *config.Config) func(http.Handler) http.
 						return
 					}
 				}
-				// Fallback to first admin
+				// ADM-0.3: fallback to first member (users.role enum collapsed
+				// to {'member','agent'}; admin authority is admin-rail only).
 				users, err := s.ListUsers()
 				if err == nil {
 					for i := range users {
-						if users[i].Role == "admin" {
+						if users[i].Role == "member" {
 							next.ServeHTTP(w, setUserContext(r, &users[i]))
 							return
 						}

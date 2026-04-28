@@ -194,18 +194,18 @@ func (h *AuthHandler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var permissions []string
-	if user.Role == "admin" {
-		permissions = []string{"*"}
-	} else {
-		perms, err := h.Store.ListUserPermissions(user.ID)
-		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Internal server error")
-			return
-		}
-		for _, p := range perms {
-			permissions = append(permissions, fmt.Sprintf("%s:%s", p.Permission, p.Scope))
-		}
+	// ADM-0.3: no role short-circuit. Permissions come from rows only;
+	// member humans default to (*, *) at registration (AP-0). Initialise
+	// to an empty slice so the JSON field never serialises as null even
+	// when a row-less account (e.g. legacy fixture) has no grants.
+	permissions := []string{}
+	perms, err := h.Store.ListUserPermissions(user.ID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	for _, p := range perms {
+		permissions = append(permissions, fmt.Sprintf("%s:%s", p.Permission, p.Scope))
 	}
 
 	u := sanitizeUser(user)
