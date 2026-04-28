@@ -4,7 +4,7 @@
 > Spec: `docs/implementation/modules/cv-1-spec.md` (飞马 #306, 3 立场 + 3 拆段 + 7 grep 反查 + 6 反约束)
 > 立场反查: `docs/qa/cv-1-stance-checklist.md` v0 (野马 #282, 7 项立场 + 5 黑名单 grep + v0/v1 切换三条件) + `docs/qa/cv-1-stance-v1-supplement.md` v1 (野马 #307, ②③⑤⑦ 字段/边界/反断细化)
 > v1 解封三条件 (#295 §5): RT-1 三段 ✅ (#290+#292+#296) + AL-3 三轨 ✅ (#301+#302+#303+#305) + BPP-1 envelope CI lint ✅ (#304, G2.6 ⏸️→✅ DONE commit `4724efa`) — 全满足
-> 拆 PR: **CV-1.1** schema (`artifacts` + `artifact_versions` 表 + migration v=13) — TBD / **CV-1.2** server API (POST 创 + PATCH 编辑 30s TTL 锁 + POST rollback + WS push) — TBD / **CV-1.3** client SPA canvas UI — TBD
+> 拆 PR: **CV-1.1** schema (`artifacts` + `artifact_versions` 表 + migration v=13) — ✅ #334 (cd7e12a) merged / **CV-1.2** server API (POST 创 + PATCH 编辑 30s TTL 锁 + POST rollback + WS push) — TBD / **CV-1.3** client SPA canvas UI — TBD
 > Owner: 战马A 实施 / 烈马 验收
 
 ## 验收清单
@@ -13,8 +13,8 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 1.1 `artifacts` 表: `channel_id NOT NULL FK channels(id)` + `type CHECK='markdown'` 唯一枚举 (立场 ①+④) + `current_version NOT NULL` + `lock_holder_user_id` (nullable) + `lock_acquired_at` (timestamp, v1 supplement ②) + `archived_at` (nullable, channel archived 随删) + 无 `owner_id` 主权列 (反约束 立场 ①); migration v=12 → v=13 双向 | migration drift test | 战马A / 烈马 | `internal/migrations/cv_1_1_artifacts_test.go::TestCV11_CreatesArtifactsTable` + `TestCV11_RejectsNonMarkdownType` (反向 INSERT type='code' → reject) + 反向 `owner_id` / `cursor` 列名 reflect count==0 (独立 `TestCV11_NoOwnerIdColumn` **或** 合并到 `CreatesArtifactsTable` 内双 negative assert 等价) (TBD) |
-| 1.2 `artifact_versions` 表: `id PK AUTOINCREMENT` 单调 (立场 ③ 线性, 无 fork) + `artifact_id FK` + `version` 跟 PK 同向 + `committer_kind CHECK in ('agent','human')` (立场 ⑥) + `committer_id` (user_id 或 agent_id, 跟 `committer_kind` 'id'/'kind' 对仗 — 不用 `committer_user_id` 因 agent commit 时是 agent_id 误导) + `body` + `rolled_back_from_version` (nullable, v1 supplement ⑦) + `created_at`; UNIQUE(artifact_id, version) | migration test | 战马A / 烈马 | `cv_1_1_artifacts_test.go::TestCV11_VersionsTablePKMonotonic` + `TestCV11_RejectsDuplicateArtifactVersion` + `TestCV11_RejectsCommitterKindOutsideEnum` (TBD) |
+| 1.1 `artifacts` 表: `channel_id NOT NULL FK channels(id)` + `type CHECK='markdown'` 唯一枚举 (立场 ①+④) + `current_version NOT NULL` + `lock_holder_user_id` (nullable) + `lock_acquired_at` (timestamp, v1 supplement ②) + `archived_at` (nullable, channel archived 随删) + 无 `owner_id` 主权列 (反约束 立场 ①); migration v=12 → v=13 双向 | migration drift test | 战马A / 烈马 | ✅ #334 (cd7e12a): `internal/migrations/cv_1_1_artifacts_test.go::TestCV11_CreatesArtifactsTable` (合并双 negative assert — 列表反向不含 `owner_id` / `cursor`) + `TestCV11_RejectsNonMarkdownType` (反向 INSERT type='code' → reject) + `TestCV11_HasIndexes` + `TestCV11_Idempotent` |
+| 1.2 `artifact_versions` 表: `id PK AUTOINCREMENT` 单调 (立场 ③ 线性, 无 fork) + `artifact_id FK` + `version` 跟 PK 同向 + `committer_kind CHECK in ('agent','human')` (立场 ⑥) + `committer_id` (user_id 或 agent_id, 跟 `committer_kind` 'id'/'kind' 对仗 — 不用 `committer_user_id` 因 agent commit 时是 agent_id 误导) + `body` + `rolled_back_from_version` (nullable, v1 supplement ⑦) + `created_at`; UNIQUE(artifact_id, version) | migration test | 战马A / 烈马 | ✅ #334 (cd7e12a): `cv_1_1_artifacts_test.go::TestCV11_CreatesArtifactVersionsTable` + `TestCV11_VersionsTablePKMonotonic` (interleave A1/B1/A2/B2 验 PK 单调跨 artifact) + `TestCV11_RejectsDuplicateArtifactVersion` (UNIQUE(artifact_id, version)) + `TestCV11_RejectsInvalidCommitterKind` (CHECK enum) |
 
 ### §2 server API + WS push (CV-1.2)
 
