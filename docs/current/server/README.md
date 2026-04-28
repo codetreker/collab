@@ -198,12 +198,18 @@ http.Server.Serve       # 0.0.0.0:4900
 - `HEAD /api/v1/stream` — 探活，plugin auto-transport 用来探测 SSE 可用性。
 - `GET /ws`、`/ws/plugin`、`/ws/remote` — WebSocket，详见 §6。
 
-### Admin (`/admin-api/v1/`，全部走 AdminAuthMiddleware)
-- `auth/login`、`auth/logout`、`auth/me`
-- `users` CRUD + `users/{id}/agents`、`users/{id}/api-key`、`users/{id}/permissions`
+### Admin (`/admin-api/v1/`，全部走 `admin.RequireAdmin` 中间件 / `borgee_admin_session` cookie)
+- `auth/login`、`auth/logout`、`auth/me`（同时挂在 `/admin-api/auth/*` 与 `/admin-api/v1/auth/*` 两条 path，admin SPA 0-改）
+- `users` 列表 / CRUD + `users/{id}/agents`、`users/{id}/api-key`、`users/{id}/permissions`
 - `invites` CRUD
 - `channels` 列表、`channels/{id}/force` 硬删
-- `stats` 大盘
+- `stats` 大盘（含 `by_org[]`，CM-1.3）
+- 字段白名单守门：response 只回元数据，禁止 `body|content|text|artifact` 等业务正文（`internal/admin/handlers_field_whitelist_test.go`）
+
+> ADM-0.2 砍掉的旧 `/api/v1/admin/*` god-mode 路径已移除（`auth_isolation_test.go` 反向断言 → 404）。
+
+### Health
+- `GET /health` — 无鉴权，返回 `{"status":"ok"}`，给负载均衡 / k8s liveness probe 用。`server.go::handleHealth`。
 
 ## 6. Realtime
 
