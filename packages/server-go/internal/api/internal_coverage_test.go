@@ -319,6 +319,11 @@ func TestInternalChannelHandlers(t *testing.T) {
 	t.Run("UpdateChannelEdgeCases", func(t *testing.T) {
 		ch := createCh(t, ts.URL, adminToken, "upd-int", "public")
 		chID := ch["id"].(string)
+		// CHN-1.2 立场 ②: creator-only default member. Member must explicitly
+		// join before topic-only PUT (which gates on IsChannelMember).
+		if r, _ := jsonReq(t, "POST", ts.URL+"/api/v1/channels/"+chID+"/join", memberToken, nil); r.StatusCode != http.StatusOK {
+			t.Fatalf("setup: member join: %d", r.StatusCode)
+		}
 
 		resp, _ := jsonReq(t, "PUT", ts.URL+"/api/v1/channels/"+chID, adminToken, map[string]any{"visibility": "invalid"})
 		if resp.StatusCode != http.StatusBadRequest {

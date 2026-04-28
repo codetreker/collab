@@ -22,6 +22,7 @@ type ChannelWithCounts struct {
 	CreatedBy     string  `json:"created_by"`
 	Type          string  `json:"type"`
 	DeletedAt     *int64  `json:"deleted_at,omitempty"`
+	ArchivedAt    *int64  `json:"archived_at,omitempty"`
 	Position      string  `json:"position"`
 	GroupID       *string `json:"group_id"`
 	MemberCount   int     `json:"member_count"`
@@ -36,6 +37,7 @@ type ChannelMemberInfo struct {
 	Role        string `json:"role"`
 	AvatarURL   string `json:"avatar_url"`
 	JoinedAt    int64  `json:"joined_at"`
+	Silent      bool   `json:"silent"`
 }
 
 type PreviewMessage struct {
@@ -292,6 +294,19 @@ func (s *Store) ListChannelMembers(channelID string) ([]ChannelMember, error) {
 func (s *Store) AddChannelMember(member *ChannelMember) error {
 	if member.JoinedAt == 0 {
 		member.JoinedAt = time.Now().UnixMilli()
+	}
+	// CHN-1.1: stamp org_id_at_join from the user's current org when not
+	// explicitly supplied. Audit field; no read path consumes it.
+	if member.OrgIDAtJoin == "" && member.UserID != "" {
+		var u User
+		if err := s.db.Select("org_id, role").Where("id = ?", member.UserID).First(&u).Error; err == nil {
+			member.OrgIDAtJoin = u.OrgID
+			// CHN-1.1: agent默认 silent (concept-model §1.4 — 同事不主动说话)。
+			// Existing rows preserved; only stamps on first-create.
+			if u.Role == "agent" && !member.Silent {
+				member.Silent = true
+			}
+		}
 	}
 	return s.db.
 		Where("channel_id = ? AND user_id = ?", member.ChannelID, member.UserID).
@@ -784,6 +799,14 @@ func (s *Store) ListChannelsPublic() ([]ChannelWithCounts, error) {
 	return results, err
 }
 
+// ListChannelsWithUnread returns the channels visible to userID:
+//   - all channels where the user is a member (any visibility, any org), AND
+//   - same-org public channels (so non-members can discover them).
+//
+// CHN-1.2 锁: cross-org public channels are NOT visible (蓝图 §2 — 跨 org
+// 必须显式邀请). Archived channels (archived_at IS NOT NULL) are filtered
+// out unless the user is still a member, so a creator who archives a
+// channel can still see it but org peers stop seeing it.
 func (s *Store) ListChannelsWithUnread(userID string) ([]ChannelWithCounts, error) {
 	var results []ChannelWithCounts
 	err := s.db.Raw(`
@@ -797,10 +820,14 @@ func (s *Store) ListChannelsWithUnread(userID string) ([]ChannelWithCounts, erro
 			CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
 		FROM channels c
 		LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+		LEFT JOIN users u ON u.id = ?
 		WHERE c.deleted_at IS NULL AND c.type IN ('channel', 'system')
-			AND (c.visibility = 'public' OR cm.user_id IS NOT NULL)
+			AND (
+				cm.user_id IS NOT NULL
+				OR (c.visibility = 'public' AND c.org_id = u.org_id AND c.archived_at IS NULL)
+			)
 		ORDER BY c.position ASC, c.created_at ASC
-	`, userID, userID).Scan(&results).Error
+	`, userID, userID, userID).Scan(&results).Error
 	return results, err
 }
 
@@ -851,7 +878,7 @@ func (s *Store) GetChannelWithCounts(channelID, userID string) (*ChannelWithCoun
 func (s *Store) GetChannelDetail(channelID string) ([]ChannelMemberInfo, error) {
 	var members []ChannelMemberInfo
 	err := s.db.Raw(`
-		SELECT cm.user_id, u.display_name, u.role, u.avatar_url, cm.joined_at
+		SELECT cm.user_id, u.display_name, u.role, u.avatar_url, cm.joined_at, cm.silent
 		FROM channel_members cm
 		JOIN users u ON u.id = cm.user_id
 		WHERE cm.channel_id = ?
@@ -867,6 +894,35 @@ func (s *Store) GetChannelByName(name string) (*Channel, error) {
 		return nil, err
 	}
 	return &ch, nil
+}
+
+// GetChannelByNameInOrg looks up a channel by (org_id, name) — the per-org
+// uniqueness scope locked by CHN-1.1 (migration v=11). Cross-org same-name
+// channels are independent rows and do NOT collide. Excludes soft-deleted.
+func (s *Store) GetChannelByNameInOrg(orgID, name string) (*Channel, error) {
+	var ch Channel
+	err := s.db.Where("org_id = ? AND name = ? AND deleted_at IS NULL", orgID, name).First(&ch).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ch, nil
+}
+
+// ArchiveChannel sets archived_at = now (CHN-1.2 soft退役). Idempotent — if
+// already archived, returns the existing timestamp without overwrite.
+func (s *Store) ArchiveChannel(channelID string) (int64, error) {
+	var ch Channel
+	if err := s.db.Where("id = ? AND deleted_at IS NULL", channelID).First(&ch).Error; err != nil {
+		return 0, err
+	}
+	if ch.ArchivedAt != nil {
+		return *ch.ArchivedAt, nil
+	}
+	now := time.Now().UnixMilli()
+	if err := s.db.Model(&Channel{}).Where("id = ?", channelID).Update("archived_at", now).Error; err != nil {
+		return 0, err
+	}
+	return now, nil
 }
 
 func (s *Store) GetChannelIncludingDeleted(id string) (*Channel, error) {

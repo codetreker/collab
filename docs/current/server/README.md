@@ -133,15 +133,15 @@ http.Server.Serve       # 0.0.0.0:4900
 ### Channels
 | Method | Path | 用途 |
 |--------|------|------|
-| GET | `/api/v1/channels` | 列出（含未读数） |
-| POST | `/api/v1/channels` | 创建（需 `channel.create`） |
+| GET | `/api/v1/channels` | 列出（含未读数；CHN-1.2 起 public 发现限定 `c.org_id = u.org_id`，且过滤 archived） |
+| POST | `/api/v1/channels` | 创建（需 `channel.create`；**CHN-1.2 立场 ②**: 默认仅 creator 是成员，count==1） |
 | GET | `/api/v1/channels/{id}` | 详情 |
 | GET | `/api/v1/channels/{id}/preview` | 公开 metadata（公开频道无需认证） |
-| PUT | `/api/v1/channels/{id}` | 改名/topic/visibility |
+| PUT | `/api/v1/channels/{id}` | 改名/topic/visibility/archive（**CHN-1.2 立场 ⑤**: `archived: true` 由 server 戳 `archived_at` 并 fanout system DM `channel #{name} 已被 {owner_name} 关闭于 {ts}`） |
 | PUT | `/api/v1/channels/{id}/topic` | 单独改 topic |
 | POST | `/api/v1/channels/{id}/join` | 加入公开频道 |
 | POST | `/api/v1/channels/{id}/leave` | 离开 |
-| POST | `/api/v1/channels/{id}/members` | 加成员（需 `channel.manage_members`） |
+| POST | `/api/v1/channels/{id}/members` | 加成员（需 `channel.manage_members`；**CHN-1.2 立场 ⑥**: agent 自动 `silent=true` 并发出 system message `{agent_name} joined`） |
 | DELETE | `/api/v1/channels/{id}/members/{uid}` | 踢成员 |
 | GET | `/api/v1/channels/{id}/members` | 成员列表 |
 | PUT | `/api/v1/channels/{id}/read` | 更新 `last_read_at` |

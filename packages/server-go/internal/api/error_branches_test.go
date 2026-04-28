@@ -562,6 +562,12 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 	privateCh := createCh(t, ts.URL, adminToken, "branches-private", "private")
 	privateID := privateCh["id"].(string)
 
+	// CHN-1.2 立场 ②: creator-only default member. Member must explicitly join
+	// the public channel before mark-read / update-topic / leave checks below.
+	if resp, body := jsonReq(t, "POST", ts.URL+"/api/v1/channels/"+publicID+"/join", memberToken, nil); resp.StatusCode != http.StatusOK {
+		t.Fatalf("setup: member join public: %d %v", resp.StatusCode, body)
+	}
+
 	msg := postMsg(t, ts.URL, adminToken, publicID, "branch message")
 	msgID := msg["id"].(string)
 
