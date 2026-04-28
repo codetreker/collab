@@ -14,7 +14,7 @@
 
 | 项 | v1 立场细化 (字面锁) |
 |---|---|
-| 字段 | `workspace_files.lock_holder_user_id` (nullable) + `lock_acquired_at` (timestamp); commit / release / TTL 三路写 |
+| 字段 | `artifacts.lock_holder_user_id` (nullable) + `lock_acquired_at` (timestamp); commit / release / TTL 三路写 |
 | 边界 | T+0 acquire → T+29s 持有有效 (commit 必须在窗口内) → T+30s 起任意人 acquire 视为新锁 (last-writer-wins, 旧 holder 后写收 409 conflict + reload hint) |
 | fallback | 锁过期 = 字段非空但 `now - lock_acquired_at > 30s`, 谁先抢 (UPDATE WHERE lock_acquired_at < now-30s) 谁拿; 不靠后台 GC (lazy expire) |
 | 反约束 | ❌ 不上 CRDT (canvas §2 显式不做); ❌ 不上多锁 / range lock (单文档粒度); ❌ 不显示 lock-holder 头像走 AL-3 presence (留 v2, 跟 ⑥ 委员会决议范围一致) |
@@ -26,8 +26,8 @@
 
 | 项 | v1 立场细化 |
 |---|---|
-| 表 | `artifact_versions(id PK AUTOINCREMENT, artifact_id, version_no, committer_user_id, committer_kind, body, created_at)`; `version_no` 跟 PK 同向单调, 无 fork 列 |
-| agent role check | `DELETE FROM artifact_versions WHERE committer_user_id = ?` 路径加 `RequirePermission('artifact.delete_history')` 闸; agent 默认无该 perm (跟 concept-model §2 默认最小化) |
+| 表 | `artifact_versions(id PK AUTOINCREMENT, artifact_id, version, committer_id, committer_kind, body, created_at, rolled_back_from_version)`; `version` 跟 PK 同向单调, 无 fork 列; UNIQUE(artifact_id, version) 锁线性 |
+| agent role check | `DELETE FROM artifact_versions WHERE committer_id = ?` 路径加 `RequirePermission('artifact.delete_history')` 闸; agent 默认无该 perm (跟 concept-model §2 默认最小化) |
 | audit | 任何 delete (即使 owner grant) 落 `audit_log` 行 (跟 ADM-2 #266 acceptance 同 schema, action='artifact.version.delete') |
 | 反约束 | ❌ 不允许 agent runtime 自己 grant delete-history (owner UI 主动 grant 才行); ❌ 不允许版本图状 (no fork v1); ❌ 无限保留无 GC (留 v2 — 跟 #282 ③ 一致) |
 | 跟 v0 区别 | v0 锁 "agent 默认无删" 立场; 本表锁**表结构 + RequirePermission 闸 + audit_log schema 同源**; owner grant UI 在本表内仍**未实施** (留下波 — 跟 ADM-2 #266 配套) |
@@ -36,7 +36,7 @@
 
 | 项 | v1 立场细化 |
 |---|---|
-| 字段顺序 | `{cursor, type, channel_id, artifact_id, version_no, committer_user_id, committer_kind, updated_at}` byte-identical 跟 RT-1.1 (#290) `MessageCreated` envelope 同序; `type='artifact.updated'` |
+| 字段顺序 | `{cursor, type, channel_id, artifact_id, version, committer_id, committer_kind, updated_at}` byte-identical 跟 RT-1.1 (#290) `MessageCreated` envelope 同序; `type='artifact.updated'` |
 | cursor | 跟 RT-1.1 共用 server cursor 单调 (单一 events 表), 不另设 artifact-only cursor |
 | BPP-1 lint | #304 envelope CI lint 自动 enforce (`bpp/frame_schemas.go` reflect 比对 server-go 端 `WSEnvelope` 字段顺序) — 改字段顺序 = lint fail = PR 卡 |
 | 反约束 | ❌ client 不能用 `updated_at` 排序 (RT-1 ① 反约束: server cursor 唯一可信序); ❌ 不另造 artifact-only push 通道 (走统一 /ws hub + BPP-1 frame schema); ❌ 不在 envelope 内塞 body 内容 (artifact 内容走 GET /artifacts/:id 拉, push 仅信号) |
@@ -46,7 +46,7 @@
 
 | 项 | v1 立场细化 |
 |---|---|
-| API | `POST /artifacts/:id/rollback {to_version_no: N}` (单独 action endpoint, 非 PATCH body 字段 — 防 client 误触); 服务端等价于 `INSERT artifact_versions ... body = (SELECT body FROM artifact_versions WHERE version_no=N)` 产新版本, 旧版本不删 |
+| API | `POST /artifacts/:id/rollback {to_version: N}` (单独 action endpoint, 非 PATCH body 字段 — 防 client 误触); 服务端等价于 `INSERT artifact_versions ... body = (SELECT body FROM artifact_versions WHERE version=N)` 产新版本, 旧版本不删 |
 | 元数据 | 新 row 加列 `rolled_back_from_version` (nullable int), 跟 #282 ⑦ v1 预留一致; UI 渲染 "v{N+1} (rollback from v{M})" |
 | 反向断言 | admin cookie 调 → 401 (跟 #303 ⑦ admin god-mode 不主导 runtime 行为, rollback 是写动作, admin 不入); channel member 非 owner 调 → 403 (跟 channel-model §1.4 owner-only 同模式); 锁持有 = 别人时 → 409 (跟 ② 锁路径一致, rollback 也要拿锁) |
 | 触发 push | rollback 成功 → 走 ⑤ 同 envelope 推 ArtifactUpdated frame; system message 不发 (rollback 是 owner 行为, 不污染 fanout) |
@@ -92,3 +92,4 @@ grep -rnE "PATCH.*/artifacts.*rollback|body\.rollback_to" packages/server-go/int
 |------|------|------|
 | 2026-04-28 | 野马 | v1, ②③⑤⑦ 四项 v1 立场细化 (字段名 + 边界 + REST + 反向断言 + audit + envelope 字段顺序), 跟 #295 §5 三条件 PR # 引追溯 (#290/#292/#296/#301/#302/#303/#304/#305) |
 | 2026-04-28 | 野马 | v1.1 patch — 修 PR # 引: RT-1 三段全列 (#290/#292/#296), BPP-1 #292 → #304 (envelope CI lint 真落 commit 4724efa, G2.6 ⏸️→✅ DONE), AL-3 三轨 + 文案锁 (#301/#302/#303/#305 — #304 是 BPP-1 不是 AL-3) |
+| 2026-04-29 | 野马 | v1.2 patch — 二轮反查 (post-#334) 抓出 3 处 drift, 跟 #334 实施 + #337 acceptance + #338 cross-grep 反模式 三源对齐: ② `workspace_files.lock_holder_user_id` → `artifacts.lock_holder_user_id` (表名); ③ `version_no` → `version` + `committer_user_id` → `committer_id` + 加 UNIQUE 约束 + `rolled_back_from_version` 列入 schema; ⑤ envelope 字段名同步; ⑦ `to_version_no` → `to_version` |
