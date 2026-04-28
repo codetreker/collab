@@ -14,6 +14,7 @@
 |-------|------------|---------|--------|
 | `AgentInvitationPendingFrame` | `agent_invitation_pending` | invitation_id, requester_user_id, agent_id, channel_id, created_at, expires_at | `POST /api/v1/agent_invitations` 写库后, 推 owner 单端 |
 | `AgentInvitationDecidedFrame` | `agent_invitation_decided` | invitation_id, state, decided_at | `PATCH /api/v1/agent_invitations/{id}` 双推 (requester + owner) |
+| `ArtifactUpdatedFrame` (RT-1.1 #269) | `artifact_updated` | type, cursor, artifact_id, version, channel_id, updated_at, kind | CV-1 commit handler 写 artifact 行后, 推 channel 全员; 同 `(artifact_id, version)` 重发 → 同 cursor (idempotent), hub **不**双推 |
 
 `expires_at = 0` 是 sentinel (client TS `required: number`); `TestAgentInvitationPendingFrame_ZeroExpiresIsSentinel` 锁 wire parity.
 
@@ -23,6 +24,14 @@
 |--------|------|
 | `Hub.PushAgentInvitationPending(ownerUserID string, frame *AgentInvitationPendingFrame)` | 单推 owner |
 | `Hub.PushAgentInvitationDecided(userIDs []string, frame *AgentInvitationDecidedFrame)` | 多推, POST 路径双推方向断言 `got.UserID != frame.RequesterUserID` |
+| `Hub.PushArtifactUpdated(artifactID string, version int64, channelID string, updatedAt int64, kind string) (cursor int64, sent bool)` | RT-1.1 — 分配单调 cursor (重启不回退, 由 `events.cursor` MAX 种子) + `(artifact_id, version)` dedup; `sent=false` 表示重发, hub 已抑制广播 |
+
+### 3.1 Cursor 单调契约 (RT-1.1)
+
+- **单调**: 同 origin server 内 cursor 严格递增, atomic int64 + CAS 保 100 并发无重复 (race detector 单测 `TestCursorMonotonicUnderConcurrency`).
+- **不回退**: `NewCursorAllocator(s)` 从 `Store.GetLatestCursor()` (即 `MAX(events.cursor)`) 种子 in-memory head, 重启后第一个 cursor > 重启前最大值 (`TestCursorNoRollbackAfterRestart`).
+- **Idempotent**: 同 `(artifact_id, version)` 重 emit 必然返回同 cursor 且 `fresh=false` (`TestCursorIdempotentSameArtifactVersion` + `TestHubPushArtifactUpdatedDedup`); client RT-1.2 已渲染集 dedup fail-closed.
+- **反向 grep 锚** (RT-1 spec §3, 0 命中): `artifact_updated.*timestamp|sort.*ArtifactUpdated.*time` in `internal/ws/` (非 _test.go). client **不可**按 `updated_at` 排序, 必须按 `cursor`.
 
 ## 4. 不在范围
 

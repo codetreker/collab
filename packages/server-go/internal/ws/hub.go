@@ -35,6 +35,12 @@ type Hub struct {
 	eventWaiters   map[chan struct{}]struct{}
 	eventWaitersMu sync.Mutex
 
+	// cursors fronts the RT-1.1 (#269) artifact_updated push frame: it
+	// hands out monotonic cursors seeded from the durable events table
+	// (so a restart never rolls the sequence back) and dedups re-emits
+	// of the same (artifact_id, version) tuple to the same cursor.
+	cursors *CursorAllocator
+
 	mu sync.RWMutex
 }
 
@@ -49,6 +55,7 @@ func NewHub(s *store.Store, logger *slog.Logger, cfg *config.Config) *Hub {
 		plugins:      make(map[string]*PluginConn),
 		remotes:      make(map[string]*RemoteConn),
 		eventWaiters: make(map[chan struct{}]struct{}),
+		cursors:      NewCursorAllocator(s),
 	}
 }
 
@@ -218,6 +225,55 @@ func (h *Hub) PushAgentInvitationDecided(userID string, frame *AgentInvitationDe
 	}
 	h.BroadcastToUser(userID, frame)
 	h.SignalNewEvents()
+}
+
+// PushArtifactUpdated is the RT-1.1 entry point for the
+// `artifact_updated` push frame. Callers (CV-1 commit handlers) supply
+// the (artifact_id, version, channel_id, updated_at, kind) tuple; this
+// method:
+//
+//  1. allocates a monotonic cursor (or returns the existing one for a
+//     re-emit of the same artifact+version, fail-closed dedup);
+//  2. on a fresh allocation, broadcasts the frame to every member of
+//     the channel + signals long-poll waiters so /events catches up;
+//  3. on a duplicate allocation, suppresses the broadcast — the
+//     original frame is already in flight / persisted under the same
+//     cursor and resending would break client dedup (RT-1.2).
+//
+// The returned cursor is the value that landed in the frame (whether
+// fresh or deduped) so the caller can persist it alongside the
+// artifact row for backfill.
+func (h *Hub) PushArtifactUpdated(artifactID string, version int64, channelID string, updatedAt int64, kind string) (cursor int64, sent bool) {
+	if h.cursors == nil {
+		return 0, false
+	}
+	cur, fresh := h.cursors.AllocateForArtifact(artifactID, version)
+	if !fresh {
+		return cur, false
+	}
+	frame := ArtifactUpdatedFrame{
+		Type:       FrameTypeArtifactUpdated,
+		Cursor:     cur,
+		ArtifactID: artifactID,
+		Version:    version,
+		ChannelID:  channelID,
+		UpdatedAt:  updatedAt,
+		Kind:       kind,
+	}
+	if channelID == "" {
+		h.BroadcastToAll(frame)
+	} else {
+		h.BroadcastToChannel(channelID, frame, nil)
+	}
+	h.SignalNewEvents()
+	return cur, true
+}
+
+// CursorAllocator exposes the monotonic cursor allocator for the
+// /events backfill long-poll path so it can report the server's
+// current high-water mark to reconnecting clients (RT-1.2).
+func (h *Hub) CursorAllocator() *CursorAllocator {
+	return h.cursors
 }
 
 func (h *Hub) CommandStore() *CommandStore {
