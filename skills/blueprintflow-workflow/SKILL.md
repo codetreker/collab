@@ -135,6 +135,38 @@ description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。
 7. (Phase 收尾) blueprintflow:phase-exit-gate
 ```
 
+## 激活协议 (必启 cron)
+
+**workflow 激活的同时, Teamlead 必启动 fast + slow 两个 cron**:
+
+```
+CronCreate({
+  cron: "7,22,37,52 * * * *",  // 15min, 错峰 :07/:22/:37/:52 避免整点流量
+  prompt: "[自动巡检 · 15 min] Phase 进展 + idle 派活检查 (按 blueprintflow:teamlead-fast-cron-checkin 走)",
+  durable: false  // session-only, workflow 关停 cron 同步消失
+})
+
+CronCreate({
+  cron: "17 */2 * * *",  // 每 2h :17, 跟 fast cron :07/:22/:37/:52 错开
+  prompt: "[偏差 audit · 2 小时] 蓝图 / docs/current / 翻牌延迟检查 (按 blueprintflow:teamlead-slow-cron-checkin 走)",
+  durable: false
+})
+```
+
+**为什么必启**:
+- agent 不打卡, **没 cron 推就 idle**, 长项目主动检查频次降到 0
+- 大需求长工作时间下, 非主动派活 = 隐形拖延 (用户问"为什么停下了"= 这条触发)
+- fast cron 看 PR 队列 + idle 派活, slow cron 看蓝图/PROGRESS/翻牌延迟, 双轨覆盖
+
+**关停**:
+- workflow session 结束 → durable: false 自动消失
+- 如需暂停巡检 (e.g. brainstorm 期间不派活) → `CronDelete` 显式删, 别让它无脑派
+
+**反模式**:
+- ❌ 只启 fast cron 不启 slow → 长期偏差累计无 audit
+- ❌ 启 cron 但 prompt 不引 `blueprintflow:teamlead-{fast,slow}-cron-checkin` → cron 行为不可控
+- ❌ durable: true 没用户拍板 → 跨 session 残留, 别项目误派
+
 ## 跨项目使用
 
 虽叫 `blueprintflow:`, 但这套 workflow 通用:
