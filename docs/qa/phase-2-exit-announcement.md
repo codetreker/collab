@@ -85,3 +85,15 @@
 | 2026-04-28 | 烈马 | v1.1 — §7 烈马 QA 联签 ✅ (acceptance 机器化 + #270 翻牌 + 留账 PR 编号锁) |
 | 2026-04-28 | 野马 | v1.2 — PM 联签落 (§7 野马签字位), 引 #263 / #211 / #228 / CM-3 锚点, 立场无漂移 |
 | 2026-04-28 | 战马A | v1.3 — §7 战马A (实施 / 闸 3) 联签位填上 (date 2026-04-28); G2.5 留账行 PR # = #277 锁定 |
+| 2026-04-28 | 建军 | v2.0 — §9 closure 宣布 (Phase 2 正式关闭) |
+
+## §9. 关闭宣布 (建军, 2026-04-28)
+
+Phase 2 (协作闭环 ⭐) 4 角色联签齐 + 5+1 严格闸 SIGNED + 3 PARTIAL #248 condition signoff + 2 DEFERRED 挂 Phase 4 PR #277 (AL-3) / #274+#280 (BPP-1) — **条件性全过, 正式关闭**。
+
+- 联签: 飞马 #271 / 烈马 #272 / 野马 #273 / 战马A #279
+- 留账: G2.4 5/6 #275 (待 #6 ADM-1 demo 跑落补到 6/6) / G2.5 AL-3 stub #277 / G2.6 BPP-1 envelope #274+#280
+- Phase 3 entry 解封: CHN-1 (#265 拆段 + #283 spec + #276 schema), CV-1 (#282 立场), RT-1 (#269 spec) 三主线 ready
+- Phase 3 唯一冲突点 (飞马 #267 §5): RT-1 ArtifactUpdated frame 必须套 #237 envelope 直到 BPP-1 CI lint 真落 (走飞马 review 闸位人工 lint)
+
+下一步: Phase 3 启动 (CHN-1.2 战马A in-flight)。
