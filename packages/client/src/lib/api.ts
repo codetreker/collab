@@ -221,6 +221,37 @@ export async function fetchMessages(
   );
 }
 
+// RT-1.2 (#290 follow): backfill the events the WS missed during a
+// disconnect window. Server contract (server-go internal/api/poll.go
+// handleEventsBackfill): returns ONLY events with `cursor > since`,
+// scoped to the user's channel membership, in cursor-ASC order. The
+// reverse约束 (RT-1 spec §1.2) is "do NOT default to full history" —
+// callers MUST pass an explicit `since` (= last_seen_cursor); the
+// server treats `since=0` as "give me everything you have for this
+// user from cursor 1" but the client's own gating (only call after a
+// dropped WS reconnect, only with a stored cursor) keeps the load
+// bounded. `limit` defaults server-side to 200, max 500.
+export interface BackfillEvent {
+  cursor: number;
+  kind: string;
+  channel_id: string;
+  payload: unknown;
+  created_at: number;
+}
+
+export async function fetchEventsBackfill(
+  since: number,
+  opts?: { limit?: number },
+): Promise<{ cursor: number; events: BackfillEvent[] }> {
+  const params = new URLSearchParams();
+  params.set('since', String(since));
+  if (opts?.limit) params.set('limit', String(opts.limit));
+  return request<{ cursor: number; events: BackfillEvent[] }>(
+    `/api/v1/events?${params.toString()}`,
+  );
+}
+
+
 export async function sendMessage(
   channelId: string,
   content: string,

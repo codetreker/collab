@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
-import { getDevUserId, fetchMessages } from '../lib/api';
+import { getDevUserId, fetchMessages, fetchEventsBackfill } from '../lib/api';
+import { loadLastSeenCursor, persistLastSeenCursor } from '../lib/lastSeenCursor';
 import type { ConnectionState, Message, Channel, ChannelGroup, PendingMessage } from '../types';
 import {
   dispatchInvitationPending,
@@ -92,8 +93,41 @@ export function useWebSocket() {
         ws.send(JSON.stringify({ type: 'subscribe', channel_id: channelId }));
       }
 
-      // Fetch missed messages on reconnect
+      // RT-1.2 (#290 follow): on reconnect, ask the server for the
+      // events the WS missed during the disconnect window via the
+      // `?since=last_seen_cursor` backfill endpoint. Do this BEFORE
+      // the per-channel fetchMessages fan-out so the cursor-based
+      // dedup gate is primed (we won't double-render frames the WS
+      // delivers right after backfill — handleMessage tracks the
+      // running high-water mark and persistLastSeenCursor is
+      // monotonic).
+      //
+      // 反约束 (RT-1 spec §1.2): we do NOT default to full history.
+      // If `loadLastSeenCursor()` returns 0 (cold start), skip the
+      // backfill — full reconciliation is the per-channel
+      // fetchMessages path below. This is the line that distinguishes
+      // RT-1.2 from RT-1.3 agent `session.resume` (the latter is
+      // explicitly allowed to ask for `replay_mode=full`; humans
+      // never default to it).
       if (wasReconnect) {
+        const since = loadLastSeenCursor();
+        if (since > 0) {
+          fetchEventsBackfill(since)
+            .then(({ cursor, events }) => {
+              for (const ev of events) {
+                handleMessageRef.current({
+                  type: ev.kind,
+                  ...((ev.payload ?? {}) as Record<string, unknown>),
+                });
+              }
+              if (cursor > since) persistLastSeenCursor(cursor);
+            })
+            .catch((err: unknown) => console.warn('[ws] backfill failed:', err));
+        }
+
+        // Per-channel message reconcile is independent of the event
+        // stream backfill (messages may not all flow through `events`
+        // depending on kind filters), so keep both.
         for (const channelId of subscribedChannels.current) {
           const lastTs = lastMessageTimestamp.current.get(channelId);
           if (lastTs) {
@@ -122,6 +156,16 @@ export function useWebSocket() {
       if (!mountedRef.current) return;
       try {
         const data = JSON.parse(event.data);
+        // RT-1.2 cursor tracking: any frame that carries a numeric
+        // `cursor` (RT-1.1 ArtifactUpdatedFrame is the first; backfill
+        // events forwarded through handleMessageRef also carry one)
+        // bumps the persisted high-water mark. persistLastSeenCursor
+        // is monotonic so out-of-order arrivals are a no-op. We do
+        // this BEFORE the handler dispatch so reconnect-mid-handler
+        // is still correct.
+        if (typeof data?.cursor === 'number') {
+          persistLastSeenCursor(data.cursor);
+        }
         handleMessageRef.current(data);
       } catch {
         // Invalid JSON

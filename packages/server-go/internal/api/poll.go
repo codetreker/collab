@@ -37,6 +37,12 @@ func (h *PollHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handle
 	mux.HandleFunc("POST /api/v1/poll", h.handlePoll)
 	mux.Handle("HEAD /api/v1/stream", authMw(http.HandlerFunc(h.handleStreamHead)))
 	mux.HandleFunc("GET /api/v1/stream", h.handleStreamGet)
+	// RT-1.2 (#290 RT-1.1 follow): synchronous backfill endpoint that
+	// the client calls on WS reconnect with `?since=<last_seen_cursor>`
+	// to pull any events the WS missed during the disconnect window.
+	// Channel filter mirrors the user's membership; the server NEVER
+	// returns events <= since (反约束: 不 default 拉全 history).
+	mux.HandleFunc("GET /api/v1/events", h.handleEventsBackfill)
 }
 
 func (h *PollHandler) authenticatePoll(r *http.Request, body *struct {
@@ -276,6 +282,88 @@ func (h *PollHandler) handleStreamGet(w http.ResponseWriter, r *http.Request) {
 			h.Store.UpdateLastSeen(user.ID)
 		}
 	}
+}
+
+// handleEventsBackfill — RT-1.2 (#290 follow) synchronous backfill.
+// Contract:
+//   - Auth: same as poll (Bearer / API key / borgee_token cookie).
+//   - Query: `since` (int64, required, > 0); `limit` (int, default 200,
+//     max 500). The server returns events with `cursor > since`,
+//     filtered to the user's channel membership, in cursor-ASC order.
+//   - Reverse约束 (RT-1 spec §1.2): server NEVER returns events with
+//     `cursor <= since` — the client's already-rendered set dedup
+//     (last_seen_cursor) stays fail-closed.
+//   - Latency: synchronous, no long-poll wait. The client is the one
+//     reconnecting; if there's no gap the response is `{cursor:since,
+//     events:[]}` and the client moves on.
+//
+// Response shape mirrors POST /api/v1/poll for client reuse — same
+// `{cursor, events: [{cursor, kind, channel_id, payload, created_at}]}`
+// envelope so the WS handler dispatch can be reused on each event.
+func (h *PollHandler) handleEventsBackfill(w http.ResponseWriter, r *http.Request) {
+	user := h.authenticateSSE(r)
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	q := r.URL.Query()
+	sinceStr := q.Get("since")
+	if sinceStr == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing 'since' query param")
+		return
+	}
+	since, err := strconv.ParseInt(sinceStr, 10, 64)
+	if err != nil || since < 0 {
+		writeJSONError(w, http.StatusBadRequest, "invalid 'since' (must be non-negative int64)")
+		return
+	}
+
+	limit := 200
+	if l := q.Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 {
+			limit = v
+			if limit > 500 {
+				limit = 500
+			}
+		}
+	}
+
+	userChannels := h.Store.GetUserChannelIDs(user.ID)
+	events, err := h.Store.GetEventsSinceWithChanges(since, limit, userChannels, channelChangeKinds)
+	if err != nil {
+		h.Logger.Error("backfill query failed", "error", err, "user_id", user.ID, "since", since)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	latestCursor := since
+	if len(events) > 0 {
+		latestCursor = events[len(events)-1].Cursor
+	}
+
+	type eventOut struct {
+		Cursor    int64           `json:"cursor"`
+		Kind      string          `json:"kind"`
+		ChannelID string          `json:"channel_id"`
+		Payload   json.RawMessage `json:"payload"`
+		CreatedAt int64           `json:"created_at"`
+	}
+	out := make([]eventOut, len(events))
+	for i, e := range events {
+		out[i] = eventOut{
+			Cursor:    e.Cursor,
+			Kind:      e.Kind,
+			ChannelID: e.ChannelID,
+			Payload:   json.RawMessage(e.Payload),
+			CreatedAt: e.CreatedAt,
+		}
+	}
+
+	writeJSONResponse(w, http.StatusOK, map[string]any{
+		"cursor": latestCursor,
+		"events": out,
+	})
 }
 
 func (h *PollHandler) sendBackfill(w http.ResponseWriter, flusher http.Flusher, since int64, channelIDs []string, userID string) {
