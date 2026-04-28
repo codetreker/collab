@@ -55,11 +55,19 @@
 
 理由: ① G3.1 / G3.audit 严格 ✅ ② G3.3 ⭐ CV-1 impl/acceptance 全闭, **野马 demo 3 截屏未补** (用户感知签字硬约束) ③ G3.2 锚点对话依赖 CV-2, CV-2 未启动 ④ G3.4 CHN-4 协作场骨架依赖 CHN-2/3 + CV-2, 全部未启动 ⑤ Phase 3 章程 9 milestone 仅 4 闭, 5 待启动 → "条件性全过" 都不够格.
 
-**两条路径**:
-1. **严守章程** (推荐): 先启 CV-2 (锚点) + CHN-2/3 (DM/分组) → CV-3/4 → CHN-4, 全闭后再公告退出. 估 4-6 周延续.
-2. **章程裁减**: 跟建军/野马商定 Phase 3 v0 收窄到 "Canvas Vision 主线 (CV-1)" 单 milestone, 把 CV-2/3/4 + CHN-2/3/4 整体平移 Phase 4. **必须有书面裁减决议** (非飞马单方拍).
+**用户拍板 (2026-04-29): 严守章程** — Phase 3 章程满 9 milestone 才公告退出, 不裁减.
 
-⚠️ **Pre-flip 必检 (任一路径)**:
+**下一波启 6 milestone (Phase 3 续作)**:
+1. **CV-2** 锚点对话 (野马 ⭐, CV-1 后顺位; G3.2 强依赖) — spec brief 起草中
+2. **CHN-2** DM 概念独立 (CHN-1 后续, DM-2 战马B 上游解耦) — spec brief 起草中
+3. **CV-3** D-lite 画布渲染 (CV-2 后)
+4. **CHN-3** 个人分组 reorder + pin (并行 CV-3)
+5. **CV-4** artifact iterate 完整流 (CV-2 后, 依赖 CV-1+RT-1+CV-2+CM-4 已闭 3/4)
+6. **CHN-4** 协作场骨架 demo (G3.4 强依赖, 依赖 CHN-1~3 + CV-1~2 全闭)
+
+估 4-6 周延续; 退出公告等 6 milestone 全闭 + 野马 G3.3 demo 3 截屏齐再发.
+
+⚠️ **Pre-flip 必检 (退出公告时)**:
 1. **#347 CV-1 acceptance flip** admin merge (a0dffa7 fix 验过, baseline 干净)
 2. **野马 G3.3 demo 3 截屏** (artifact 列表 / 添加新版本 / v1↔v2 切换) 入 `docs/qa/signoffs/`
 3. **e2e flip follow-up** (REG-CV1-017 ⏸️ → 🟢 active, 烈马接) — 不阻塞但建议同 PR 闭
@@ -82,3 +90,4 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-29 | 飞马 | v0 — Phase 3 readiness review (5 节, ⚠️ NOT READY 章程未达 — G3.2/3.3/3.4 + 5 milestone 未启动; 双路径建议) |
+| 2026-04-29 | 飞马 | v1 — §5 用户拍板严守章程, 删裁减选项, 写定下一波启 6 milestone (CV-2 + CHN-2 + CV-3 + CHN-3 + CV-4 + CHN-4); CV-2 + CHN-2 spec brief 同步起草 |
