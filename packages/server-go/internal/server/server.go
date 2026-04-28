@@ -16,6 +16,7 @@ import (
 	"borgee-server/internal/api"
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
+	"borgee-server/internal/presence"
 	"borgee-server/internal/store"
 	"borgee-server/internal/ws"
 )
@@ -32,6 +33,15 @@ type Server struct {
 
 func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	hub := ws.NewHub(s, logger, cfg)
+
+	// AL-3.2: wire the presence write end so /ws lifecycle hooks can
+	// fan in TrackOnline / TrackOffline. NewSessionsTracker only errors
+	// on a nil DB handle, which is a boot-time programming error.
+	if pw, err := presence.NewSessionsTracker(s.DB()); err == nil {
+		hub.SetPresenceWriter(pw)
+	} else {
+		logger.Error("presence tracker init failed (continuing without presence_sessions writes)", "err", err)
+	}
 
 	srv := &Server{
 		cfg:          cfg,

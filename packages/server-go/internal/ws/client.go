@@ -26,8 +26,18 @@ type Client struct {
 	conn   *websocket.Conn
 	userID string
 	user   *store.User
-	send   chan []byte
-	done   chan struct{}
+	// sessionID is the per-connection UUID that AL-3.2 keys the
+	// presence_sessions row by. UNIQUE-constrained server-side; the
+	// hub's TrackOnline / TrackOffline write end consumes it as the
+	// row identity for last-wins offline accounting.
+	sessionID string
+	// agentID is non-nil iff the connecting user has role="agent" —
+	// the partial index `idx_presence_sessions_agent_id` (#310) covers
+	// this column so DM-2.2 fallback's IsOnline(agent.id) OR-query
+	// path resolves. nil for human sessions.
+	agentID *string
+	send    chan []byte
+	done    chan struct{}
 
 	subscribedMu sync.RWMutex
 	subscribed   map[string]bool
@@ -37,11 +47,23 @@ type Client struct {
 }
 
 func newClient(hub *Hub, conn *websocket.Conn, user *store.User) *Client {
+	// Agent sessions write `users.id` into both user_id (owner key) and
+	// agent_id (partial-index key) so DM-2.2 mention fallback's OR
+	// query (`WHERE user_id = ? OR agent_id = ?`) hits the right row
+	// regardless of which key the caller passes. concept-model §1.1:
+	// agents are users with role="agent".
+	var agentID *string
+	if user != nil && user.Role == "agent" {
+		id := user.ID
+		agentID = &id
+	}
 	return &Client{
 		hub:        hub,
 		conn:       conn,
 		userID:     user.ID,
 		user:       user,
+		sessionID:  uuid.NewString(),
+		agentID:    agentID,
 		send:       make(chan []byte, sendBufSize),
 		done:       make(chan struct{}),
 		subscribed: make(map[string]bool),

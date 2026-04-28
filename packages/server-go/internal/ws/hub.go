@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"borgee-server/internal/config"
+	"borgee-server/internal/presence"
 	"borgee-server/internal/store"
 )
 
@@ -41,6 +42,14 @@ type Hub struct {
 	// of the same (artifact_id, version) tuple to the same cursor.
 	cursors *CursorAllocator
 
+	// presenceWriter (AL-3.2) is the write end of the PresenceTracker
+	// contract (#277 read-locked + AL-3.2 write split). Register /
+	// Unregister fan in TrackOnline / TrackOffline so the
+	// presence_sessions table is the single source of truth for "user
+	// X is reachable right now". May be nil in unit tests that don't
+	// need DB-backed presence; the lifecycle hook no-ops cleanly.
+	presenceWriter presence.PresenceWriter
+
 	mu sync.RWMutex
 }
 
@@ -63,30 +72,63 @@ func (h *Hub) SetHandler(handler http.Handler) {
 	h.handler = handler
 }
 
-func (h *Hub) Register(c *Client) {
+// SetPresenceWriter wires the AL-3.2 write end after construction (the
+// store/DB handle is built later in the boot order than NewHub). Safe
+// to call once at boot; if never called, the lifecycle hook no-ops and
+// presence_sessions stays empty (single-binary unit tests path).
+func (h *Hub) SetPresenceWriter(w presence.PresenceWriter) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	h.presenceWriter = w
+}
+
+func (h *Hub) Register(c *Client) {
+	h.mu.Lock()
 	h.clients[c] = true
 	if h.onlineUsers[c.userID] == nil {
 		h.onlineUsers[c.userID] = make(map[*Client]bool)
 	}
 	wasOffline := len(h.onlineUsers[c.userID]) == 0
 	h.onlineUsers[c.userID][c] = true
+	pw := h.presenceWriter
+	h.mu.Unlock()
 
 	if wasOffline {
 		h.logger.Info("user online", "user_id", c.userID)
+	}
+	// AL-3.2: write the presence_sessions row so DM-2.2 fallback +
+	// sidebar 渲染 see this session. Failure is logged but does NOT
+	// abort the connection — in-memory hub state is still authoritative
+	// for live broadcast; presence_sessions is the read-side cache for
+	// other subsystems and a transient DB hiccup must not deny service.
+	if pw != nil {
+		if err := pw.TrackOnline(c.userID, c.sessionID, c.agentID); err != nil {
+			h.logger.Warn("presence TrackOnline failed", "user_id", c.userID, "session_id", c.sessionID, "err", err)
+		}
 	}
 }
 
 func (h *Hub) Unregister(c *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	delete(h.clients, c)
 	if clients, ok := h.onlineUsers[c.userID]; ok {
 		delete(clients, c)
 		if len(clients) == 0 {
 			delete(h.onlineUsers, c.userID)
 			h.logger.Info("user offline", "user_id", c.userID)
+		}
+	}
+	pw := h.presenceWriter
+	h.mu.Unlock()
+
+	// AL-3.2: drop the presence_sessions row. multi-session last-wins
+	// is enforced at the row level — only the close of the last live
+	// session removes the final row, which IsOnline reads as offline.
+	// Unknown sessionID is a soft no-op so panic-driven defer cleanups
+	// don't blow up if Register hadn't run yet.
+	if pw != nil && c.sessionID != "" {
+		if err := pw.TrackOffline(c.sessionID); err != nil {
+			h.logger.Warn("presence TrackOffline failed", "session_id", c.sessionID, "err", err)
 		}
 	}
 }
