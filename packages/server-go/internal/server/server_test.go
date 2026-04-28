@@ -530,6 +530,19 @@ func TestHubPluginAdapterProxySuccess(t *testing.T) {
 	}
 	defer conn.Close()
 
+	// Wait for HandlePlugin to register the PluginConn on the hub. The WS
+	// handshake completes before RegisterPlugin runs server-side, so without
+	// this poll ProxyPluginRequest may observe nil and return "agent not
+	// connected" instantly — the test would then block forever on ReadJSON
+	// and trip the 10-minute package timeout (CI flake).
+	deadline := time.Now().Add(2 * time.Second)
+	for srv.Hub().GetPlugin(agent.ID) == nil {
+		if time.Now().After(deadline) {
+			t.Fatal("plugin registration timed out")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
 	type proxyResult struct {
 		status int
 		body   []byte
@@ -542,6 +555,11 @@ func TestHubPluginAdapterProxySuccess(t *testing.T) {
 		done <- proxyResult{status: status, body: body, err: err}
 	}()
 
+	// Bound the read so a missing/lost upstream request fails fast instead of
+	// hanging until the package-level timeout.
+	if err := conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatalf("set read deadline: %v", err)
+	}
 	var req map[string]any
 	if err := conn.ReadJSON(&req); err != nil {
 		t.Fatalf("read proxy request: %v", err)
