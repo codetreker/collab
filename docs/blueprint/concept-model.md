@@ -152,10 +152,11 @@
 
 | 概念 | 代码体现 |
 |------|----------|
-| Organization | （TODO）`organizations.id` / `users.org_id` |
-| Human user | `users` 行，`role IN ('member','admin')` |
+| Organization | `organizations.id` / `users.org_id` |
+| Human user | `users` 行，`role IN ('member','agent')` (注: 不含 admin — admin 是平台运维角色, 走独立 `admins` 表 + 独立 cookie path, 不在协作圈, 详见 [`admin-model.md`](admin-model.md) §3) |
 | Agent | `users` 行，`role='agent'`，`owner_id` 必填 |
 | Owner | `users.owner_id` → 同 org 内的人类 |
+| Admin | `admins` 行 (独立表), env bootstrap 第一个; 走 `/admin-api/auth/login` 独立 cookie; 永远不出现在 `users` 表 (4 人 review 2026-04-28 立场冲突 #2 决议: B29 路线) |
 | Cross-org collaboration | 多 org 成员同处一个 `channel_members` |
 | Agent 代表自己 | mention/DM/通知按 sender_id 路由，不展开到 owner |
 | 资源归属 | `created_by` 字段；将来用 `org_id` 直查 |
