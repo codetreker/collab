@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"borgee-server/internal/admin"
+	"borgee-server/internal/agent"
 	"borgee-server/internal/api"
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
@@ -20,24 +21,26 @@ import (
 )
 
 type Server struct {
-	cfg       *config.Config
-	logger    *slog.Logger
-	store     *store.Store
-	mux       *http.ServeMux
-	hub       *ws.Hub
-	startTime time.Time
+	cfg          *config.Config
+	logger       *slog.Logger
+	store        *store.Store
+	mux          *http.ServeMux
+	hub          *ws.Hub
+	agentTracker *agent.Tracker
+	startTime    time.Time
 }
 
 func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	hub := ws.NewHub(s, logger, cfg)
 
 	srv := &Server{
-		cfg:       cfg,
-		logger:    logger,
-		store:     s,
-		mux:       http.NewServeMux(),
-		hub:       hub,
-		startTime: time.Now(),
+		cfg:          cfg,
+		logger:       logger,
+		store:        s,
+		mux:          http.NewServeMux(),
+		hub:          hub,
+		agentTracker: agent.NewTracker(),
+		startTime:    time.Now(),
 	}
 	srv.SetupRoutes()
 
@@ -117,7 +120,8 @@ func (s *Server) SetupRoutes() {
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
 
 	// Agents
-	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}}
+	agentStateAdapter := &agentRuntimeAdapter{hub: s.hub, tracker: s.agentTracker}
+	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}, State: agentStateAdapter}
 	agentHandler.RegisterRoutes(s.mux, authMw)
 
 	// Agent invitations (CM-4.1 + RT-0 #40 push wiring)
@@ -298,4 +302,21 @@ func (a *hubPluginAdapter) ProxyPluginRequest(agentID string, method string, pat
 		return 0, nil, err
 	}
 	return resp.Status, resp.Body, nil
+}
+
+// agentRuntimeAdapter — AL-1a (#R3) wiring. Folds hub plugin presence
+// (online vs offline) with the in-memory error tracker. ResolveAgentState
+// is the single read path; SetAgentError is the runtime fault sidedoor
+// the api package calls when ProxyPluginRequest reports a classified error.
+type agentRuntimeAdapter struct {
+	hub     *ws.Hub
+	tracker *agent.Tracker
+}
+
+func (a *agentRuntimeAdapter) ResolveAgentState(agentID string) agent.Snapshot {
+	return a.tracker.Resolve(agentID, a.hub.GetPlugin(agentID) != nil)
+}
+
+func (a *agentRuntimeAdapter) SetAgentError(agentID, reason string) {
+	a.tracker.SetError(agentID, reason)
 }

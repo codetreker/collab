@@ -12,6 +12,7 @@ import {
   type Agent,
   type PermissionDetail,
 } from '../lib/api';
+import { describeAgentState } from '../lib/agent-state';
 
 const KNOWN_PERMISSIONS = [
   'message.send',
@@ -185,6 +186,8 @@ function AgentCard({
       <div className="admin-card-row">
         <div className="admin-card-info">
           <strong>{agent.display_name}</strong>
+          {/* AL-1a (#R3): runtime 三态 + 故障原因. 文案锁见 lib/agent-state.ts (野马 #190 §11). */}
+          <AgentStateBadge agent={agent} />
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             ID: {agent.id.slice(0, 12)}... | Created: {new Date(agent.created_at).toLocaleDateString()}
           </div>
@@ -257,6 +260,26 @@ function AgentCard({
         </div>
       )}
     </div>
+  );
+}
+
+// AL-1a (#R3 Phase 2) — Agent state inline badge.
+// 故障态点 reason label 直接给 owner 故障原因 (蓝图 §2.3 "可解释").
+// data-state 让 Playwright (REG-AL1A-*) 锁住 selector.
+function AgentStateBadge({ agent }: { agent: Agent }) {
+  const label = describeAgentState(agent.state, agent.reason);
+  const color = label.tone === 'ok' ? 'var(--success, #1a7f37)'
+    : label.tone === 'error' ? 'var(--danger, #cf222e)'
+    : 'var(--text-secondary)';
+  return (
+    <span
+      data-testid="agent-state-badge"
+      data-state={agent.state ?? 'offline'}
+      data-reason={agent.reason ?? ''}
+      style={{ marginLeft: 8, fontSize: 12, color, fontWeight: 500 }}
+    >
+      {label.text}
+    </span>
   );
 }
 

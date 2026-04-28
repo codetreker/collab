@@ -366,6 +366,18 @@ export async function removeReaction(messageId: string, emoji: string): Promise<
 
 // ─── Agents ────────────────────────────────────────────
 
+// AL-1a (#R3 Phase 2) — runtime 三态 + 故障原因码.
+// 文案锁见 packages/client/src/lib/agent-state.ts (野马 #190 §11).
+// state 字段 server 总是 emit (online/offline/error); reason 仅 error 态有.
+export type AgentRuntimeState = 'online' | 'offline' | 'error';
+export type AgentRuntimeReason =
+  | 'api_key_invalid'
+  | 'quota_exceeded'
+  | 'network_unreachable'
+  | 'runtime_crashed'
+  | 'runtime_timeout'
+  | 'unknown';
+
 export interface Agent {
   id: string;
   display_name: string;
@@ -375,6 +387,9 @@ export interface Agent {
   created_at: number;
   api_key?: string;
   disabled?: number;
+  state?: AgentRuntimeState;
+  reason?: AgentRuntimeReason;
+  state_updated_at?: number;
 }
 
 export async function fetchAgents(): Promise<Agent[]> {
