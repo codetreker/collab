@@ -93,10 +93,15 @@ test.describe('CHN-1.3 client channel list UI', () => {
     // Public is the default — assert before submitting.
     await expect(page.locator('input[value="public"]')).toBeChecked();
 
-    await page.getByRole('button', { name: '创建', exact: true }).click();
+    // Submit via form-scoped selector. The sidebar `+` icon uses
+    // title="创建" which would otherwise collide with the form submit's
+    // accessible name when using getByRole.
+    await page.locator('form.channel-create-form button[type="submit"]').click();
 
-    // The new channel becomes current; #-prefixed name shows in the channel list.
-    await expect(page.locator('.channel-name', { hasText: channelName })).toBeVisible();
+    // The new channel becomes current; the channel name shows in the sidebar list.
+    await expect(
+      page.locator('.channel-list .channel-name', { hasText: channelName }).first(),
+    ).toBeVisible({ timeout: 10_000 });
 
     // Verify creator-only via API: owner is the only member.
     const ownerCtx = await apiRequest.newContext({
