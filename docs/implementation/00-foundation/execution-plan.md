@@ -94,32 +94,50 @@ Phase 4+  剩余模块          ← realtime / auth / admin / data-layer / clien
 
 ---
 
-## Phase 2 — 协作闭环 ⭐
+## Phase 2 — 协作闭环 ⭐ (2026-04-28 R3 重排)
+
+> **R3 解封顺序 (#188 蓝图固化后)**: 6 条立场冲突 (B29 vs blueprint) 已固化, Phase 2 解封要先做 5 件并行/部分串行的"前置": ADM-0 (admin 拆表) + AP-0-bis (message.read) + INFRA-2 (Playwright) + CM-onboarding (Welcome channel) + RT-0 (/ws push 顶住 BPP). 然后 CM-4.3b/4.4 → 闸 4 签字。Phase 2 工期净增 +8-10 天 (战马 R3 实测), 但避免 CM-3 之后每个 endpoint 写 admin 特殊分支。
 
 > **这是 Borgee 的产品标志性 Phase**——前面 Phase 用户都无感, Phase 2 一次把"agent 同事感"演示出来。
 
-**目标**: blueprint §1.2 + §5.1 + §5.2 — agent 是同事不是工具, 跨 org 邀请 + 离线 fallback 跑通。
+**目标**: blueprint §1.2 + §1.4 + §5.1 + §5.2 + R3 加补 #1/#2/#4/#6 立场。
 
 **对应蓝图立场**:
 - §1.2 — agent 是同事
+- §1.4 — 团队感知主体验 (含 R3 §10 Welcome channel 业主第一分钟非空屏)
 - §5.1 — agent 离线 fallback 给 owner
 - §5.2 — 跨 org agent 邀请审批
+- 核心 §11 — 沉默胜于假 loading (online/offline 文案不糊弄)
 
-**包含 milestone**:
-- CM-4: agent 同事感首秀 (邀请审批 + 离线 fallback + 节流 + minimal in-process presence)
+**包含 milestone (R3 解封顺序)**:
+- 解封前置 (并行 / 部分串行):
+  - **INFRA-2** Playwright scaffold (前置 RT-0)
+  - **ADM-0** admin 拆表 (3 段 PR, 阻塞 CM-3)
+  - **AP-0-bis** message.read 默认 grant + backfill
+  - **CM-onboarding** Welcome channel + system message
+  - **RT-0** /ws push 顶住 BPP (依赖 INFRA-2)
+- CM-4 完成:
+  - CM-4.0 / 4.1 / 4.2 ✅ DONE (#183/#185/#186 merged) — CM-4.2 60s polling RT-0 上线后自动升级为 ws push
+  - CM-4.3b 离线检测 + system message (依赖 RT-0)
+  - CM-4.4 节流 + E2E
+  - 闸 4 独立流程: 野马签字 + 5 张关键截屏 (含 stopwatch ≤ 3s)
+- Phase 2 后置:
+  - **ADM-1** SPA + 元数据/内容硬隔离 + 用户隐私承诺页 (依赖 ADM-0, 含 §4.1 文案锁)
 
-**Phase 2 退出 gate** (必须全过):
+**Phase 2 退出 gate** (必须全过, R3 加 G2.0/G2.6):
 
 | Gate | 证据 | Owner |
 |------|------|-------|
-| G2.1 邀请审批 E2E | A 邀请 B 的 agent → B 在 inbox 看到 quick action → 接受后 agent 自动加 channel | 战马 / 烈马 |
+| **G2.0 (R3)** ADM-0 cookie 串扰反向断言 | admin cookie 调任意 /api/v1/* (user-api) → 401; user cookie 调任意 /admin-api/v1/* (god-mode) → 401; god-mode endpoint response 经反射扫描无 body/content/text 字段; users WHERE role='admin' 行数=0 (烈马一票否决) | 烈马 |
+| G2.1 邀请审批 E2E (Playwright + ws push) | A 邀请 B 的 agent → B inbox ws push 抵达 → 接受后 agent 自动加 channel | 战马 / 烈马 |
 | G2.2 离线 fallback E2E | A @ B-bot (B-bot 离线) → B 5 秒内收到 system message | 战马 / 烈马 |
 | G2.3 节流不变量 (B.1) | 5 分钟内多次 @ → 系统只发 1 条 system message (单测可断言) | 烈马 (单测) |
-| G2.4 用户感知签字 (B.2) | 野马跑 demo 主观签字"看起来像同事不像 bot", 留 3-5 张关键截屏; **截屏清单必含**: 邀请通知 / 接受后成员列表 / 离线通知 / 节流第 6 次无通知 / **左栏团队感知** (打开 app 第一眼看到 "我 + N agent" 列表; 列表中 agent 项必显 subject 文案"在做什么", 验证立场 §1.4 + §11 联动 — 野马 R2 加条); demo 中 **口播一次"agent↔agent 协作 Phase 4 支持"** (§1.3 体感断档兜底) | **野马** (闸 4) |
-| G2.5 presence 接口契约 | 接口 `IsOnline + Sessions` 锁死路径 `internal/presence/contract.go` (烈马 snapshot test); **触发点 = BPP frame 建连**, Phase 2 用 stub 桥接 (无 BPP), BPP-1 上线后切真 frame, 不算返工 (飞马 R2 锁定) | 飞马 (契约设计) / 战马 (实现) |
-| **G2.audit** | v0 代码债 audit 表本 Phase 新增行已登记 (agent_invitations / presence map / 节流策略) | 飞马 |
+| G2.4 用户感知签字 (B.2) | 野马跑 demo 主观签字"看起来像同事不像 bot", 留 3-5 张关键截屏 + **stopwatch ≤ 3s 证据 (R3 野马硬条件)**; **截屏清单必含**: 邀请通知 / 接受后成员列表 / 离线通知 / 节流第 6 次无通知 / **左栏团队感知 (subject 文案 + Welcome channel 第一眼非空屏 R3)**; demo 中 **口播一次"agent↔agent 协作 Phase 4 支持"** | **野马** (闸 4) |
+| G2.5 presence 接口契约 | 接口 `IsOnline + Sessions` 锁死路径 `internal/presence/contract.go`; 触发点 = BPP frame 建连 (Phase 2 用 stub 桥接) | 飞马 / 战马 |
+| **G2.6 (R3)** /ws → BPP schema 等同性 | CI lint 检查 `bpp/frame_schemas.go` 与 `ws/event_schemas.go` byte-identical 或 type alias, 任何分歧 fail | 飞马 |
+| **G2.audit** | v0 代码债 audit 行已登记 (agent_invitations / presence map / 节流策略 / **admin 拆表迁移 R3** / **/ws push schema lock R3** / **AP-0-bis backfill R3**) | 飞马 |
 
-**预估**: 2-3 周 (v0)
+**预估**: 2026-04-28 R3 重排后 5-7 周 (原 2-3 周 + R3 +8-10 天)
 
 > **Phase 2 退出 = Borgee v0 第一次"产品可见"。** 这是一个分水岭: 此前是基建, 此后任何 milestone 都至少能挂到一个用户感知点。
 

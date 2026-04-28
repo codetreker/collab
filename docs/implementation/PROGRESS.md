@@ -76,27 +76,63 @@
 
 ---
 
-## Phase 2 — 协作闭环 ⭐
+## Phase 2 — 协作闭环 ⭐ (2026-04-28 R3 立场冲突后重排)
 
-**Milestones**
+> **R3 重排 (#188 merged)**: 6 条立场冲突落地后, Phase 2 解封顺序改为: ADM-0 (admin 拆表) + AP-0-bis (message.read 回归) + INFRA-2 (Playwright 提前) + RT-0 (/ws push 顶住 BPP) + CM-onboarding (Welcome channel) → 然后 CM-4.3b/4.4 → 闸 4 签字。
+> **Phase 2 工期净增 +8-10 天** (战马 R3 实测), 但避免 CM-3 之后每个 endpoint 都要写 admin 特殊分支。
 
-- [ ] **CM-4** agent 同事感首秀 — 野马 (主) / 战马 / 飞马 / 烈马
-  - [ ] PR CM-4.0 schema + 状态机单测
-  - [ ] PR CM-4.1 邀请创建/同意/拒绝 API
-  - [ ] PR CM-4.2 邀请通知 UI + join channel
-  - [ ] PR CM-4.3a presence map (IsOnline + Sessions 接口契约 `internal/presence/contract.go`) + 单端单测 (多端去重留 AL-3)
-  - [ ] PR CM-4.3b 离线检测 + system message
-  - [ ] PR CM-4.4 5 分钟节流 + E2E (PR merge 不挂签字)
-  - [ ] **闸 4 独立流程** (PR merge 后) 野马 demo 签字 + 5 张关键截屏 (含 subject 文案 + agent↔agent 口播)
+**Milestones (按 R3 解封顺序)**
+
+### Phase 2 解封前置 (R3 新增)
+
+- [ ] **INFRA-2** Playwright scaffold (E2E) — 战马 / 飞马 / 烈马
+  - 必须前置到 RT-0 之前 (烈马 R3: latency ≤ 3s 硬条件 vitest 跑不了)
+  - 工期 1-2 天
+- [ ] **ADM-0** admin 拆表 (admins 独立表 + cookie 拆 + god-mode endpoint) — 战马 / 飞马 (主, 起草) / 烈马 / 野马
+  - 拆 3 段 PR (ADM-0.1 schema + auth path / ADM-0.2 SPA cookie 隔离 + god-mode / ADM-0.3 删 users.role='admin')
+  - 工期 server 4-6 天 + client 1 天
+  - 烈马一票否决: cookie 串扰反向断言
+  - 详见 [`modules/admin-model.md`](modules/admin-model.md)
+- [ ] **AP-0-bis** message.read 默认 grant + backfill 迁移 — 战马 / 飞马 / 烈马
+  - 工期 1 天
+  - 必带 `testutil.SeedLegacyAgent` helper (烈马 R3, CM-3 也用)
+  - 详见 [`modules/auth-permissions.md`](modules/auth-permissions.md)
+- [ ] **CM-onboarding** Welcome channel + auto-join + system message — 战马 / 飞马 / 野马 (立场) / 烈马
+  - 工期 0.5-1 天
+  - 依赖野马 1 周内出 `00-foundation/onboarding-journey.md`
+  - 详见 [`modules/concept-model.md`](modules/concept-model.md) §10
+- [ ] **RT-0** /ws push 顶住 BPP (取代 60s polling) — 战马 / 飞马 / 烈马 / 野马
+  - 工期 1.5-2 天
+  - 依赖 INFRA-2 (latency E2E 验)
+  - 蓝图 realtime §2.3: schema 必须等同未来 BPP frame, CI lint 强制
+  - 野马硬条件: latency ≤ 3s (Playwright stopwatch 截屏)
+  - 详见 [`modules/realtime.md`](modules/realtime.md)
+
+### CM-4 完成 (前置就位后)
+
+- [x] **CM-4.0** agent_invitations schema + 状态机单测 (#183 merged)
+- [x] **CM-4.1** API handler POST/GET/PATCH (#185 merged)
+- [x] **CM-4.2** client UI inbox + quick action (#186 merged) — **60s polling, RT-0 后切 ws push 自动升级**
+- [ ] **CM-4.3b** 离线检测 + system message — 依赖 RT-0 (复用 ws hub 推送)
+- [ ] **CM-4.4** 5 分钟节流 + E2E — 战马 / 烈马
+- [ ] **闸 4 独立流程**: 野马 demo 签字 + 5 张关键截屏 (含 subject 文案 + agent↔agent 口播 + **stopwatch ≤ 3s**) + blueprint-sha.txt
+
+### Phase 2 后置 (CM-4 闸 4 通过后)
+
+- [ ] **ADM-1** SPA + 元数据/内容硬隔离 + 用户隐私承诺页 — 飞马 / 战马 / 野马 / 烈马
+  - 用户承诺页 3 条文案锁死 (admin-model §4.1)
+  - 详见 [`modules/admin-model.md`](modules/admin-model.md)
 
 **Gates**
 
-- [ ] G2.1 邀请审批 E2E — 战马/烈马 / 证据: ___
+- [ ] G2.0 (新, R3) ADM-0 cookie 串扰反向断言 — 烈马 / 一票否决式
+- [ ] G2.1 邀请审批 E2E (Playwright + ws push) — 战马/烈马 / 证据: ___
 - [ ] G2.2 离线 fallback E2E — 战马/烈马 / 证据: ___
 - [ ] G2.3 节流不变量 (fake clock 单测) — 烈马 / 证据: ___
-- [ ] G2.4 用户感知签字 — **野马** / 关键截屏路径: `docs/evidence/cm-4/` (5 张: 邀请通知 / 接受后成员 / 离线通知 / 节流第 6 次无通知 / **左栏团队感知**) + blueprint-sha.txt
+- [ ] G2.4 用户感知签字 — **野马** / 关键截屏路径: `docs/evidence/cm-4/` (5 张 + stopwatch ≤ 3s) + blueprint-sha.txt
 - [ ] G2.5 presence 接口契约 (IsOnline + Sessions 锁死) — 飞马/战马 / 证据: 接口签名文件 ___
-- [ ] **G2.audit** v0 代码债 audit 行已登记 (agent_invitations / presence map / 节流策略) — 飞马
+- [ ] G2.6 (新, R3) /ws → BPP schema 等同性 (CI lint byte-identical) — 飞马 / 证据: lint 输出
+- [ ] **G2.audit** v0 代码债 audit 行已登记 (agent_invitations / presence map / 节流策略 / **admin 拆表迁移** / **/ws push schema lock**) — 飞马
 
 **野马签字**: ___ (日期: ___) | 1 周 dogfood 反馈期截止: ___
 

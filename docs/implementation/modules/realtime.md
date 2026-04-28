@@ -12,6 +12,34 @@
 
 ## 2. Milestones
 
+### RT-0: /ws push 顶住 BPP (Phase 2 R3 新增, 2026-04-28)
+
+> **2026-04-28 4 人 review #4 决议** (飞马硬约束 + 野马硬条件): 蓝图 realtime §2.3 已固化 `agent_invitation_pending` push frame schema, 必须等同未来 BPP frame。Phase 2 用现有 `/ws` hub 顶住, BPP 仍 Phase 4 接管。
+> **野马硬条件 G2.4**: 邀请发出 → owner 端通知 latency ≤ 3s (Playwright stopwatch 截屏作 acceptance 证据)。60s polling 不签字。
+
+- **目标**: blueprint realtime §2.3 — Phase 2 用 /ws hub 实时推 invitation 通知, 取代 60s polling; schema 等同未来 BPP frame, v1 切换 client 0 改。
+- **Owner**: 飞马 (主, schema 设计) / 战马 (实现) / 野马 (latency 签字) / 烈马 (Playwright + lint)
+- **范围**:
+  - **Hub 加 `SendToUser(userID, frame)` API** (~50 行, 战马 R3 估)
+  - WS event `agent_invitation_pending` (字段: invitation_id / requester_user_id / agent_id / channel_id / created_at / expires_at)
+  - WS event `agent_invitation_decided` (字段: invitation_id / state / decided_at)
+  - server 端 `POST /api/v1/agent_invitations` 发出后立即 `hub.SendToUser(invitee_owner_id, frame)`
+  - server 端 `PATCH /api/v1/agent_invitations/{id}` decided 后广播 `agent_invitation_decided` (跨 client 同步)
+  - **client 端**: 接 ws frame 直接更新 InvitationsInbox state (取代 60s polling)
+  - **CI lint** 强制 `bpp/frame_schemas.go` 与 `ws/event_schemas.go` byte-identical 或 type alias (蓝图 realtime §2.3, 飞马 R3)
+- **不在范围**:
+  - polling fallback 不删 (烈马 R3 留作降级)
+  - artifact 推送 (RT-1 Phase 3)
+  - 离线回放 (RT-2)
+  - 完整 BPP frame (Phase 4 BPP-1 接管)
+- **依赖**: **INFRA-2 (Playwright scaffold, 必须前置)**, CM-4.1 (#185 邀请 API) ✅
+- **预估**: ⚡ v0 1.5-2 天 + INFRA-2 1-2 天 = 共 2-4 天
+- **Acceptance** (G2.1 + G2.4 提前预演):
+  - 数据契约: ws event schema (字段名 / 顺序 / 类型) 锁定文件存在
+  - 行为不变量 4.1: CI lint 检查 bpp/ ↔ ws/ byte-identical, 任何分歧 fail
+  - E2E (Playwright, INFRA-2 前置后): 邀请发出 → owner 端 ws frame 抵达 → InvitationsInbox 自动出现, **stopwatch ≤ 3s**
+  - 用户感知签字 4.2: 野马跑 demo, 截屏含 stopwatch 证据 (这条进 G2.4)
+
 ### RT-1: artifact 推送 (Phase 3, CV-4 demo 必需)
 
 - **目标**: blueprint §1.2 — artifact 推送 agent 自决, 非 server 强推。

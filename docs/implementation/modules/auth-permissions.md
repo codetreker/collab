@@ -23,7 +23,28 @@
   - 删除注册时不写权限的旧逻辑
 - **依赖**: 无 (跟 CM-1 同 PR 或紧跟)
 - **预估**: ⚡ v0 1-2 天
+- **状态**: ✅ DONE (PR #177 merged)
 - **Acceptance**: 数据契约 (新注册 human → 权限表 `*` 一行; 新 agent → `message.send` 一行)
+
+### AP-0-bis: 默认权限补 message.read + backfill 迁移 (R3 新增, 2026-04-28)
+
+> **2026-04-28 4 人 review #1 决议**: blueprint auth-permissions §3 加 `message.read` capability; agent 默认改成 `[message.send, message.read]` (owner 可在 agent 配置关掉)。AP-0 (#177) 已 merged 必须补回归 PR。
+
+- **目标**: blueprint §3 (R3 已固化) — agent 默认 `[message.send, message.read]`, 现网旧 agent backfill。
+- **Owner**: 战马 / 飞马 / 烈马
+- **范围**:
+  - `store.GrantDefaultPermissions(agent)` 改成 grant `[message.send, message.read]`
+  - migration v=N: 现网所有 `role=agent` 的 user_permissions 加一行 `(agent_id, 'message.read', '*')` (idempotent)
+  - **新增 `testutil.SeedLegacyAgent(t, db)` helper** (烈马 R3 要求, CM-3 也用): 插一个旧 schema 的 agent (无 message.read) 用于 backfill 测试
+  - `GET /channels/:id/messages` 加 `RequirePermission("message.read")` middleware
+- **不在范围**: agent 配置 UI 关闭 message.read (留给 AP-2 bundle UI)
+- **依赖**: 无 (可跟 ADM-0 / INFRA-2 / CM-onboarding 并行)
+- **预估**: ⚡ v0 1 天
+- **Acceptance**:
+  - 数据契约 4.3: 新注册 agent → user_permissions 多 2 行 (`message.send`, `message.read`)
+  - 行为不变量 4.1: backfill migration up → 旧 agent 加 message.read; down → 回滚干净 (单测覆盖, 用 SeedLegacyAgent helper)
+  - 行为不变量 4.1: 无 message.read 的 agent → GET messages 返 403 (单测)
+  - 闸 5: 单测 ≥ 80% (含分支文件)
 
 ### AP-1: ABAC scope 层级 (org / channel / artifact)
 
@@ -69,6 +90,7 @@
 | Milestone | §X.Y | 立场一句话 |
 |-----------|------|-----------|
 | AP-0 | auth-permissions §3 (+ concept §3) | 人全权, agent 最小 |
+| AP-0-bis | auth-permissions §3 (R3 2026-04-28 加 message.read) | agent 默认能读所在 channel, owner 可关; 现网 agent backfill |
 | AP-1 | auth-permissions §1.2 | 三层 scope |
 | AP-2 | auth-permissions §1.3 | bundle 按 capability 不按角色 |
 | AP-3 | auth-permissions §1.4 | 跨 org owner-only 扩权 |
