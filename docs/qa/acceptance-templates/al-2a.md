@@ -35,6 +35,7 @@
 |---|---|---|---|
 | §1.5 BPP frame `agent_config_update` **不在** AL-2a 范围: `grep -rE 'agent_config_update' internal/ws/ internal/bpp/` count==0 (反向, 推到 AL-2b) | CI grep | 飞马 | _(待填)_ |
 | §1.4 SSOT 立场: `users` 表 agent 行不再持有 `prompt`/`model` 列 (若存量字段 → backfill 入 agent_configs.blob + drop 列; v0 forward-only) | unit + migration test | 战马A / 烈马 | _(待填)_ |
+| §1.5 BPP envelope CI lint **真落** ✅ (G2.6 闸 — `bpp/frame_schemas.go` whitelist + 方向锁 + 字段顺序锁 + godoc 锚 + AST 反向覆盖, 反向断言: `grep -rEn 'replay_mode.*=.*"full".*default\|defaultReplayMode\|ResumeModeFull.*default' packages/server-go/internal/bpp/ --exclude='*_test.go'` count==0 + schema_equivalence dispatcher prefix byte-identical 于 RT-0 #237 / RT-1.1 #290 / RT-1.3 #296) | reflection + AST + grep | 飞马 / 烈马 | #304 (commit 4724efa) — `bpp/frame_schemas_test.go` 6 reflection subtest + `bpp/schema_equivalence_test.go` 2 dispatcher subtest, REG-BPP1-001..008 全 🟢 |
 
 ### 退出条件
 
