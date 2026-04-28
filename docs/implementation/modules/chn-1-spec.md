@@ -1,0 +1,57 @@
+# CHN-1 spec brief — 蓝图锁配套战马A #265 拆段
+
+> 飞马 · 2026-04-28 · ≤80 行 spec lock (实施视角 #265 拆 PR 由战马A 落)
+> **蓝图锚**: [`channel-model.md`](../../blueprint/channel-model.md) §1.1 (Channel = 协作场) + §1.4 (作者分组 + 个人微调) + §2 (关键不变量); [`concept-model.md`](../../blueprint/concept-model.md) §1.4 (主体验 — 团队感知 + DM 对话)
+> **关联**: 战马A #265 (CHN-1 拆段实施) + #276 (CHN-1.1 schema migration v=11)
+
+> ⚠️ 锚说明: 业主原派活引 channel-model.md §1.6, 现行蓝图章节只到 §1.4 + §2 不变量, 此处按字面立场对齐 §1.4 (作者分组) + §2 (不变量), 不重新编号蓝图。
+
+## 0. 关键约束 (3 条立场, 蓝图字面)
+
+1. **Channel default creator-only**: 新建 channel 默认仅创建者可见; 邀请扩散走 invitation (#237 envelope) — 不允许 org 全员自动 join (蓝图 §1.1 + §2 不变量 #1)
+2. **Agent silent join**: agent 进 channel 不发 system message, `silent=true` 列锁; 人类成员加入仍发 system DM fanout (蓝图 §1.4 隐式 + concept-model.md §1.4 主体验)
+3. **Archived not deleted**: channel 退役走 `archived_at NOT NULL`, 历史 artifact / message 保留可回溯; DROP TABLE 路径禁 (蓝图 §2 不变量 #3)
+
+## 1. 拆段实施 (CHN-1.1 / 1.2 / 1.3, 与 #265 一致)
+
+| 段 | 范围 | 闭锁 | owner |
+|---|---|---|---|
+| **CHN-1.1** schema migration v=11 | `channels` 表 rebuild + `archived_at` / `silent` / `org_id_at_join` 列 + UNIQUE(name, org_id) | #276 (LGTM) | 战马A |
+| **CHN-1.2** API (create / archive / list) | `POST /channels` 默认 creator-only + `POST /channels/:id/archive` 软退役 + `GET /channels` 过滤 archived | 待 PR (战马A) | 战马A |
+| **CHN-1.3** client (创建 / 归档 UI) | 创建对话框 + archived 灰显 + agent silent 不打扰 | 待 PR (战马A) | 战马A |
+
+## 2. 与 Phase 2 留账无冲突
+
+- **G2.5 presence contract** (留账 #277): channel 成员表 `channel_members` 与 presence 表独立, 不冲突
+- **G2.6 BPP envelope lint** (留账 #274): channel CRUD 走 REST, 不进 `/ws` envelope, 不触 BPP frame schema
+- **AL-3 (Phase 4)**: presence 按 channel 分桶留 AL-3 占号 PR, CHN-1 不前置 AL-3
+
+## 3. 反查 grep 锚 (Phase 4 验收)
+
+```
+git grep -n 'archived_at.*NOT NULL'  internal/db/migrations/  # ≥ 1 hit (CHN-1.1)
+git grep -n 'silent.*BOOL'            internal/db/migrations/  # ≥ 1 hit (CHN-1.1)
+git grep -n 'UNIQUE.*name.*org_id'    internal/db/migrations/  # ≥ 1 hit (CHN-1.1)
+git grep -n 'archived_at IS NULL'     internal/channels/       # list 过滤 (CHN-1.2)
+```
+
+任一 0 hit → CI fail, 视作蓝图立场被弱化。
+
+## 4. 不在本轮范围 (反约束)
+
+- ❌ 多 org 共享 channel (跨 org 关联, 留 Phase 5+)
+- ❌ Channel template / preset (留 Phase 4+ 业主反馈后)
+- ❌ Channel hierarchy (父子 channel / sub-channel, 不在 v1 蓝图)
+- ❌ Per-channel notification policy (走 AL-1b busy/idle 全局, 不下沉)
+
+## 5. Test plan (实施 PR 各自带, 此 spec 不带)
+
+- CHN-1.1: migration v=10 → v=11 双向 + UNIQUE 反向 (重名 reject)
+- CHN-1.2: creator-only 反向断言 (非创建者 list count=0) + archive 后 list filter
+- CHN-1.3: e2e 创建 + archive 灰显截屏 (野马 G2.4 子签可选)
+
+## 6. 更新日志
+
+| 日期 | 作者 | 变化 |
+|---|---|---|
+| 2026-04-28 | 飞马 | v0 — spec lock 配套 #265 拆段, 3 立场 + 4 grep 反查 + 4 反约束 |
