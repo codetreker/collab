@@ -1,11 +1,37 @@
 ---
-name: borgee-workflow
+name: blueprintflow-workflow
 description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。何时用 + 角色 + 阶段 + skill 索引。从 Borgee 项目跑通的通用工作流, 不限单一项目。
 ---
 
 # Borgee Workflow
 
 从 Borgee 项目跑通的多 agent 协作工作流, 适合**做产品**: 从模糊概念到可发布软件, 6 角色 + Teamlead 协议推进。
+
+## 心智模型: 城市工程
+
+这套 skill 是为**大需求 / 长工作时间项目**设计的 — 跟大型城市工程的协作模式同构:
+
+| 城市工程 | blueprintflow 角色 |
+|---|---|
+| 总工程师 | 飞马 (架构) — 出蓝图 + spec brief |
+| 甲方 | 野马 (产品) — 拍立场 + 反约束 |
+| 施工队 | 战马 (开发) — 按 spec 落地, 不改图 |
+| 质检 | 烈马 (QA) — acceptance 验收 |
+| 设计 / 安全 | 斑马 / 矮马 (装修 / 消防) |
+| 总包 | Teamlead — 协调, 不下场砌墙 |
+
+工程方法对应:
+- **蓝图先 freeze 再开工** — 不能边建边改图, 改图走 PR + 4 角色 review (= 工程变更单)
+- **按价值闭环分期** (Phase 0 地基 / Phase 1 主体 / Phase 2 装修) — 不按工种分期
+- **阶段性验收签字** (Phase 退出 4 联签 = 阶段验收报告 + 留账闸)
+- **质量门留痕** (规则 6 / migration v 号串行 = 工程档案)
+- **甲方代表全程在场** (野马立场反查 = 不让施工偏离需求)
+
+### 不适用场景
+
+- Hackathon / 一次性脚本 / 单 PR fix — 蓝图 + brainstorm + Phase exit gate 是重型基建, 短任务用不上
+- 单人快速迭代 — 4 件套 + 双 review 路径假设有多人协作
+- 探索阶段没立场 — 先用 `blueprintflow:brainstorm` 锁立场再走这套
 
 ## 何时用
 
@@ -23,15 +49,15 @@ description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。
 ## 4 层结构
 
 ```
-┌─ 概念层 (蓝图) ───────── borgee:brainstorm + borgee:blueprint-write
+┌─ 概念层 (蓝图) ───────── blueprintflow:brainstorm + blueprintflow:blueprint-write
 │      ↓
-├─ 计划层 (Phase 拆) ──── borgee:phase-plan
+├─ 计划层 (Phase 拆) ──── blueprintflow:phase-plan
 │      ↓
-├─ milestone 层 (实施) ── borgee:milestone-fourpiece + borgee:pr-review-flow
+├─ milestone 层 (实施) ── blueprintflow:milestone-fourpiece + blueprintflow:pr-review-flow
 │      ↓
-└─ 协调层 (持续推进) ──── borgee:teamlead-fast-cron-checkin (15min idle)
-                          borgee:teamlead-slow-cron-checkin (2-4h audit)
-                          borgee:phase-exit-gate (Phase 收尾)
+└─ 协调层 (持续推进) ──── blueprintflow:teamlead-fast-cron-checkin (15min idle)
+                          blueprintflow:teamlead-slow-cron-checkin (2-4h audit)
+                          blueprintflow:phase-exit-gate (Phase 收尾)
 ```
 
 ## 6 角色 + Teamlead
@@ -46,39 +72,39 @@ description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。
 | **斑马** | 设计 (Designer) | UI/UX/视觉, milestone 涉及 client UI 时 spawn (跟野马文案锁互锁) |
 | **矮马** | 安全 (Security) | auth/privacy/admin god-mode/cross-org 路径 review, 涉敏感写动作时 spawn |
 
-完整角色 prompt 模板见 `borgee:team-roles`。
+完整角色 prompt 模板见 `blueprintflow:team-roles`。
 
 ## 阶段 + Skill 索引
 
 ### 阶段 1: 概念锁定
 **目标**: 模糊 idea → 可写蓝图的核心立场 + 概念模型 + 反约束
 
-1. **borgee:brainstorm** — Teamlead 主持多轮讨论 (PM + Architect 主), 锁立场 / 概念 / 反约束
-2. **borgee:blueprint-write** — Architect + PM 落 `docs/blueprint/*.md`
+1. **blueprintflow:brainstorm** — Teamlead 主持多轮讨论 (PM + Architect 主), 锁立场 / 概念 / 反约束
+2. **blueprintflow:blueprint-write** — Architect + PM 落 `docs/blueprint/*.md`
 
 产出: `docs/blueprint/` ready, 概念 freeze, 后续 PR 必引 §X.Y
 
 ### 阶段 2: 实施计划
 **目标**: 蓝图 → Phase 拆 + 退出 gate + 4 道防偏离闸门
 
-3. **borgee:phase-plan** — Architect 主, 落 `docs/implementation/PROGRESS.md` + execution-plan + Phase 退出 gate
+3. **blueprintflow:phase-plan** — Architect 主, 落 `docs/implementation/PROGRESS.md` + execution-plan + Phase 退出 gate
 
 产出: PROGRESS.md ready, Phase 1/2/3+ 拆段清晰
 
 ### 阶段 3: milestone 实施 (主战场)
 **目标**: 每 milestone 落 4 件套 → 拆段实施 ≤3 PR → 全 merged 闭环
 
-4. **borgee:milestone-fourpiece** — 4 件套并行 (spec / stance / acceptance / content-lock)
-5. **borgee:pr-review-flow** — PR open 后双 review + admin merge + follow-up 翻牌
+4. **blueprintflow:milestone-fourpiece** — 4 件套并行 (spec / stance / acceptance / content-lock)
+5. **blueprintflow:pr-review-flow** — PR open 后双 review + admin merge + follow-up 翻牌
 
 产出: milestone 全 merged + acceptance template ⚪→🟢 翻牌 + REG-* 寄存
 
 ### 阶段 4: 持续推进 + Phase 退出
 **目标**: idle 派活 + 偏差纠正 + Phase 退出 gate
 
-6. **borgee:teamlead-fast-cron-checkin** — 15 min cron, idle 角色派活
-7. **borgee:teamlead-slow-cron-checkin** — 2-4h cron, 偏差 audit
-8. **borgee:phase-exit-gate** — Phase 收尾联签 + closure announcement
+6. **blueprintflow:teamlead-fast-cron-checkin** — 15 min cron, idle 角色派活
+7. **blueprintflow:teamlead-slow-cron-checkin** — 2-4h cron, 偏差 audit
+8. **blueprintflow:phase-exit-gate** — Phase 收尾联签 + closure announcement
 
 ## 关键协议
 
@@ -100,18 +126,18 @@ description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。
 ## 起步
 
 ```
-1. borgee:team-roles      — spawn 6 角色 (按需)
-2. borgee:brainstorm      — 锁概念 + 立场
-3. borgee:blueprint-write — 落蓝图
-4. borgee:phase-plan      — 拆 Phase
-5. (循环) borgee:milestone-fourpiece + borgee:pr-review-flow + borgee:teamlead-fast-cron-checkin
-6. (定期) borgee:teamlead-slow-cron-checkin
-7. (Phase 收尾) borgee:phase-exit-gate
+1. blueprintflow:team-roles      — spawn 6 角色 (按需)
+2. blueprintflow:brainstorm      — 锁概念 + 立场
+3. blueprintflow:blueprint-write — 落蓝图
+4. blueprintflow:phase-plan      — 拆 Phase
+5. (循环) blueprintflow:milestone-fourpiece + blueprintflow:pr-review-flow + blueprintflow:teamlead-fast-cron-checkin
+6. (定期) blueprintflow:teamlead-slow-cron-checkin
+7. (Phase 收尾) blueprintflow:phase-exit-gate
 ```
 
 ## 跨项目使用
 
-虽叫 `borgee:`, 但这套 workflow 通用:
+虽叫 `blueprintflow:`, 但这套 workflow 通用:
 - 角色名 (X马) 可保留作 ergonomic 提醒, 也可改成 architect/pm/dev/qa/designer/security
 - 路径 / 文档结构 (`docs/blueprint/`, `docs/implementation/`, `docs/qa/`) 是约定俗成, 项目可调
 - worktree / migration / lint 协议是核心, 不动

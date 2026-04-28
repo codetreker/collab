@@ -1,11 +1,11 @@
 ---
-name: borgee-teamlead-slow-cron-checkin
+name: blueprintflow-teamlead-slow-cron-checkin
 description: Teamlead 慢节奏巡检 (2-4h) — 偏差 audit + 文档/代码一致性 + 翻牌延迟纠正。fast-cron 推派活, slow-cron 推漂移修复。
 ---
 
 # Teamlead 慢节奏巡检 (slow cron)
 
-`borgee:teamlead-fast-cron-checkin` 推 idle 派活, slow-cron 推漂移纠正。两个不重叠。
+`blueprintflow:teamlead-fast-cron-checkin` 推 idle 派活, slow-cron 推漂移纠正。两个不重叠。
 
 ## 4 类 audit (按优先级)
 
@@ -51,9 +51,9 @@ description: Teamlead 慢节奏巡检 (2-4h) — 偏差 audit + 文档/代码一
 cron prompt 改成:
 ```
 [偏差 audit · 2 小时]
-follow skill borgee-teamlead-slow-cron-checkin
+follow skill blueprintflow-teamlead-slow-cron-checkin
 ```
 
 ## 配套
 
-- 快节奏 idle 派活走 `borgee:teamlead-fast-cron-checkin`, 不重叠
+- 快节奏 idle 派活走 `blueprintflow:teamlead-fast-cron-checkin`, 不重叠

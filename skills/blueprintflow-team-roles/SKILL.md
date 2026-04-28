@@ -1,5 +1,5 @@
 ---
-name: borgee-team-roles
+name: blueprintflow-team-roles
 description: Borgee workflow 6 角色 + Teamlead prompt 模板。起团时按需 spawn agents, 每角色含职责 / 工作目录协议 / 默认派活列表 / PR template 必备字段。
 ---
 
@@ -227,7 +227,7 @@ git checkout -b <branch>
 
 - 顶部 4 行裸 metadata + `## Acceptance` + `## Test plan` H2 段
 - author=lead-agent 不能 self-approve, 用 `gh pr comment <num> --body "LGTM"` 等同
-- 双 review 路径见 `borgee:pr-review-flow`
+- 双 review 路径见 `blueprintflow:pr-review-flow`
 
 ### 立场漂移 5 层防御 (硬约束)
 

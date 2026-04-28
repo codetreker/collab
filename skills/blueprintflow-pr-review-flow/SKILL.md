@@ -1,5 +1,5 @@
 ---
-name: borgee-pr-review-flow
+name: blueprintflow-pr-review-flow
 description: PR open 后 review + admin merge 流程 — 双 review 路径 / LGTM 模板 / lint patch / admin merge agent / ruleset 兜底。
 ---
 
@@ -126,6 +126,6 @@ gh api -X PUT /repos/<owner>/<repo>/rulesets/<id> -f enforcement=active ...
 
 PR open 后:
 ```
-follow skill borgee-pr-review-flow
+follow skill blueprintflow-pr-review-flow
 派 review for PR #<N>
 ```
