@@ -41,6 +41,7 @@ var All = []Migration{
 	adm03UsersRoleCollapse,
 	chn11ChannelsOrgScoped,
 	al31PresenceSessions,
+	cv11Artifacts,
 }
 
 // Default returns an Engine wired to db with All registered.
