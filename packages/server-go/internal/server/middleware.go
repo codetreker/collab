@@ -197,8 +197,32 @@ func (rl *rateLimiter) allow(ip string, isAuth bool) bool {
 	return true
 }
 
-func rateLimitMiddleware(rl *rateLimiter, next http.Handler) http.Handler {
+// rateLimitMiddleware enforces token-bucket throttling per (IP, isAuth) bucket.
+//
+// E2E bypass (双 gate, env-gated, prod-safe):
+//
+//	The Playwright e2e suite runs all 5 specs serially from 127.0.0.1 and
+//	shares a single global API bucket (100/min). Frontend boot per spec
+//	(GET /api/v1/users/me, /channels, /me/permissions, /agent_invitations,
+//	/ws reconnect, ...) drains the bucket before the suite finishes,
+//	manifesting as 429 on `POST /admin-api/auth/login` partway through.
+//
+//	When the request carries `X-E2E-Test: 1` AND the server is running
+//	with `NODE_ENV=development`, we skip rate limiting. Both gates are
+//	required — header alone is forgeable from outside, NODE_ENV alone
+//	would weaken dev hygiene. In production (NODE_ENV != "development")
+//	the header is ignored entirely; the limiter is unmodified.
+//
+//	playwright.config.ts already injects `X-E2E-Test: 1` into every
+//	request (extraHTTPHeaders, see :65) and sets NODE_ENV=development on
+//	the e2e server (:88), so no spec changes are needed.
+func rateLimitMiddleware(rl *rateLimiter, isDevelopment bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isDevelopment && r.Header.Get("X-E2E-Test") == "1" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		ip := clientIP(r)
 		isAuth := strings.HasPrefix(r.URL.Path, "/api/v1/auth/register")
 

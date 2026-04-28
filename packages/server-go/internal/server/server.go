@@ -206,7 +206,7 @@ func (s *Server) Handler() http.Handler {
 	rl := newRateLimiter()
 
 	var handler http.Handler = s.mux
-	handler = rateLimitMiddleware(rl, handler)
+	handler = rateLimitMiddleware(rl, s.cfg.IsDevelopment(), handler)
 	handler = securityHeadersMiddleware(handler)
 	handler = corsMiddleware(s.cfg.IsDevelopment(), s.cfg.CORSOrigin, handler)
 	handler = loggerMiddleware(s.logger, handler)
