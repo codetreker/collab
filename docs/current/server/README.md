@@ -196,6 +196,7 @@ http.Server.Serve       # 0.0.0.0:4900
 - `POST /api/v1/poll` — 长轮询，详见 §6。
 - `GET /api/v1/stream` — SSE。
 - `HEAD /api/v1/stream` — 探活，plugin auto-transport 用来探测 SSE 可用性。
+- `GET /api/v1/events?since=<cursor>&limit=<N>` — **RT-1.2 (#290 follow)** 同步 backfill：客户端 WS 重连后用 `last_seen_cursor` 跟 server 对账, 拉断线期间漏掉的 event。`since` 必填、非负 int64；`limit` 默认 200、上限 500；server 只返回 `cursor > since` 的事件 (按 cursor ASC), 已 user-channel filter。**反约束**: server 不返回 `cursor <= since` 的事件 (`TestEventsBackfillSinceCursor/returns_events_strictly_after_since` 锁); cold start 客户端不调本接口 (`since=0` 不 default 拉全 history, 与 RT-1.3 BPP `session.resume{full}` 区别)。
 - `GET /ws`、`/ws/plugin`、`/ws/remote` — WebSocket，详见 §6。
 
 ### Admin (`/admin-api/v1/`，全部走 `admin.RequireAdmin` 中间件 / `borgee_admin_session` cookie)

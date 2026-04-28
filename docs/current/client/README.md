@@ -48,6 +48,7 @@
   - 重连退避 `[1s, 2s, 4s, 8s, 16s, 30s]`。
   - 每 25s `ping`。
   - 重连后重新 `subscribe` 所有频道，并对每个频道用最后已知时间戳调 `fetchMessages({after: lastTs})` 拉漏掉的消息。
+  - **RT-1.2 (#290 follow)** — 重连时还会调 `fetchEventsBackfill(last_seen_cursor)` (`GET /api/v1/events?since=N`) 拉断线期间的 event 缺洞，按 server 单调 cursor 排序透传给 `handleMessage`。`onmessage` 入口先把 frame 上的 `cursor`（RT-1.1 `ArtifactUpdatedFrame` 起始）持久化到 `lib/lastSeenCursor.ts` (sessionStorage `borgee.rt1.last_seen_cursor`)，再 dispatch handler；持久化函数 `persistLastSeenCursor` 单调（小值 / NaN / 负数 / Infinity 全 no-op），page reload 后 `loadLastSeenCursor` 恢复。**反约束**: cold start (`since=0`) 不触发 backfill — 不拉全 history（与 RT-1.3 agent `session.resume{full}` 区别）；事件**不**按 `updated_at` / `created_at` 排序，cursor 即顺序。
   - 把所有服务端 push 类型 dispatch 到 `AppContext`。
 - `useSlashCommands.ts` — 跟踪 editor 文本，前缀 `/` + 无空格时激活；委托 `commandRegistry.search(prefix)` 出选项；管理键盘导航。
 - `useCommandTracking.ts` — 监听自定义事件 `commands_updated` 重新拉远端命令。
