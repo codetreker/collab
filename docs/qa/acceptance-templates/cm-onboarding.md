@@ -23,7 +23,7 @@
 | 步骤 2 success: DOM 含 "**欢迎来到 Borgee 👋**" + 按钮 "创建 agent" 可点 | E2E (DOM 字面文案) | 烈马 | _(待填)_ |
 | 步骤 3-4 success: AgentManager 3 步内, 创建成功 toast "🎉 {name} 已加入你的团队" | E2E | 烈马 | _(待填)_ |
 | 步骤 4 success system message: "@{name} 上线了, 试试和它打招呼 →" | E2E + unit | 战马 / 烈马 | _(待填)_ |
-| 步骤 5 success: 左栏 agent 行 + subject "正在熟悉环境…" (≤2min 默认) | E2E | 烈马 | _(待填, AL-2 同期)_ |
+| 步骤 5 success: 左栏 agent 行 + subject "正在熟悉环境…" (≤2min 默认) | E2E | 烈马 | _(待填, AL-1b 同期)_ |
 
 ### 行为不变量 — error 路径 (§11 反约束)
 
