@@ -9,9 +9,9 @@
 
 ## 0. 关键约束 (3 条立场, 蓝图字面 + DM-2 边界对齐)
 
-1. **DM = 私密 1v1, 永不加人** (蓝图 §1.2 字面锁): `channels.type='dm'` + 成员数恒 == 2 (server 校验, 加 3 人 → reject 400 \"DM 不可加人, 升 channel\"); **反约束**: 不开 \"群 DM\" 路径 (3+ 人想私聊 → 走新建 channel `type='private'`); **不**继承 channel 的 \"加人\" / \"topic\" / \"workspace\" UX
+1. **DM = 私密 1v1, 永不加人** (蓝图 §1.2 字面锁): `channels.type='dm'` + 成员数恒 == 2 (server 校验, 加 3 人 → reject 400 \"私信仅限两人, 想加人请新建频道\" #354 立场 ⑤ 同源); **反约束**: 不开 \"群 DM\" 路径 (3+ 人想私聊 → 走新建 channel `type='private'`); **不**继承 channel 的 \"加人\" / \"topic\" / \"workspace\" UX
 2. **DM 显式禁 workspace 入口** (蓝图 §1.2 ❌ + §3.2 字面差距): DM 详情页**不渲染** Workspace tab (CV-1.3 #346 客户端 SPA 行为分支); server 侧 `GET /channels/:id/artifacts` DM channel → 403 \"DM 无 workspace, 跟 channel 拆\" (兜底, 防 UI bug 漏检); **反约束**: 不允许 DM 有 artifact (跟 CV-1 立场 ① artifact 归属 channel 拆死, DM 不算 channel 协作场)
-3. **DM UI 视觉显著差异** (蓝图 §1.2 \"不让用户混淆\" 字面锁): DM 列表跟 channel 分组**两栏分离** (DM 在侧栏底部独立 \"Direct Messages\" 区, 头像圆形 + 用户名; channel 头像方形 + `#name`); 反约束: 不混合 \"recent\" 时序排 (避免一眼分不清); CHN-3 个人分组 reorder/pin **只**对 channel 生效, DM 不参与分组
+3. **DM UI 视觉显著差异** (蓝图 §1.2 \"不让用户混淆\" 字面锁): DM 列表跟 channel 分组**两栏分离** (DM 在侧栏底部独立 \"私信\" 区 byte-identical 跟 `Sidebar.tsx:396` + #354 立场 ① 同源, 头像圆形 + 用户名; channel 头像方形 + `#name`); 反约束: 不混合 \"recent\" 时序排 (避免一眼分不清); 不准 \"DM\" / \"Direct Messages\" / \"对话\" / \"Chats\" 同义词 (#354 立场 ① 字面禁); CHN-3 个人分组 reorder/pin **只**对 channel 生效, DM 不参与分组
 
 ## 1. 拆段实施 (CHN-2.1 / 2.2 / 2.3, ≤ 3 PR)
 
@@ -24,7 +24,7 @@
 ## 2. 与 CHN-1 / DM-2 / CV-1 / ADM-0 留账冲突点
 
 - **CHN-1 channel API 复用**: 不拆 `channels` 表, 走 `type='dm'` 分支语义; CHN-1 #286 endpoint 主体保留, 仅加 DM 守门 (立场 ①.成员数 + 立场 ②.workspace 403)
-- **DM-2 战马B v=14 协调** (非冲突): DM-2 v=14 加 `mentions.privacy_kind` 私密字段, CHN-2 同 v=14 不另起; 战马B 一次 migration bump, CHN-2 schema 改集中 (不需独立列, 软约束在 server 层)
+- **DM-2 战马B v=14 协调 + v 号 sequencing** (非冲突): DM-2.1 (战马B mention privacy) / CV-2.1 (anchor 新表) / CHN-2.1 (无 schema, 仅 server 软约束) 三方撞 v=14. **真 sequencing 谁先 merge 谁拿 v=14**, 后顺延. CHN-2 无 schema 改 (软约束跑 server check), 不抢号 — 按 \"先到先拿\" 不卡 DM-2 / CV-2; 若战马B DM-2.1 起手 30min 阈值未回报转活给战马A, 则 CV-2.1 拿 v=14, DM-2.1 顺延 v=15
 - **CV-1 artifact 拆死**: CHN-2.1 GET /artifacts DM 403 是 CV-1 立场 ① \"artifact 归属 channel\" 的反向兜底; **反约束**: 任何让 DM 拥有 artifact 的 PR 都视作章程违反
 - **ADM-0 god-mode 不读 DM body 红线** (§ADM-0.3 不变): admin 列表能看 DM 元数据 (双方 + 时间), 不返回 message body; CHN-2 不动 admin endpoint
 - **CHN-3 个人分组排除 DM**: CHN-2.2 立场 ③ 字面锁 — DM 不参与个人分组 reorder/pin (CHN-3 spec 起时承袭)
@@ -64,3 +64,4 @@ git grep -nE "['\"](升级为频道|Convert to channel|Upgrade DM|转为频道|p
 |---|---|---|
 | 2026-04-29 | 飞马 | v0 — spec lock Phase 3 章程严守续作第一波并行 (跟 CV-2 同步起); 3 立场 + 3 拆段 + 5 grep 反查 (含 2 反约束) + 6 反约束 + CHN-1/DM-2/CV-1/ADM-0 留账边界字面对齐; CHN-3 排除 DM 字面锁前置 |
 | 2026-04-29 | 飞马 | v1 — 跟 #354 野马文案锁 v0 对齐: CHN-2.3 \"DM 升 channel promote-to-channel\" 改 \"加人引导新建 channel\" (蓝图 §1.2/§2 字面 \"新建\" 非 \"升级\", #354 立场 ⑤ 同源 placeholder \"私信仅限两人, 想加人请新建频道\"); 加 6 行 grep 反查 \"升级/转换\" 同义词 0 hit; 反约束加 \"DM→channel 升级路径不开\" |
+| 2026-04-29 | 飞马 | v2 — 野马 #357 review drift 修 2 处: 立场 ③ \"Direct Messages\" → \"私信\" byte-identical 跟 `Sidebar.tsx:396` + #354 立场 ① 同源 (反 \"DM/Direct Messages/对话/Chats\" 同义词); §2 加 v=14 三方 sequencing 锁 (DM-2.1 / CV-2.1 / CHN-2.1 真先到先拿, CHN-2.1 软约束不抢号; 战马B 30min 阈值过 → 转战马A, CV-2.1 拿 v=14 DM-2.1 顺延 v=15); 立场 ① 400 文案改 \"私信仅限两人, 想加人请新建频道\" 同 #354 同源 |
