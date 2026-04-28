@@ -36,6 +36,8 @@
 | **G2.6** /ws ↔ BPP schema CI lint | `bpp/frame_schemas.go` CI lint **#274** (飞马 BPP-1 占号) | `acceptance-templates/al-2a.md` (BPP frame 不在 AL-2a 反向断言) + BPP-1 PR |
 
 > ⚠️ Phase 3 RT-1 ArtifactUpdated frame 必须套 #237 envelope 直到 BPP-1 CI lint 落 (飞马 #267 §5 强约束)。
+>
+> 📌 **Phase 3 进展更新 (2026-04-28)**: **RT-1 三段全闭** ✅ — RT-1.1 server cursor (#290) + RT-1.2 client backfill (#292) + RT-1.3 agent BPP session.resume (#296) 都 merged。RT-1 提前完成 → Phase 4 留账压力降 (G2.5 仍需 AL-3 实施落地, G2.6 仍需 BPP-1 envelope CI lint 实施 PR; **不变**: 这两条都不靠 RT-1 闭环达成)。RT-1.3 session.resume frame 已落 byte-identical 锁 (`session_resume_test.go::TestSessionResumeFrameFieldOrder`), 跟 RT-1.1 ArtifactUpdated envelope 同模式 — 给 BPP-1 envelope CI lint 落地时多一份参考样本。
 
 ## 5. Phase 4 acceptance template 索引 (本周新增 + 链)
 
@@ -86,6 +88,7 @@
 | 2026-04-28 | 野马 | v1.2 — PM 联签落 (§7 野马签字位), 引 #263 / #211 / #228 / CM-3 锚点, 立场无漂移 |
 | 2026-04-28 | 战马A | v1.3 — §7 战马A (实施 / 闸 3) 联签位填上 (date 2026-04-28); G2.5 留账行 PR # = #277 锁定 |
 | 2026-04-28 | 建军 | v2.0 — §9 closure 宣布 (Phase 2 正式关闭) |
+| 2026-04-28 | 烈马 | v2.1 — §4 加 RT-1 三段全闭备注 (#290+#292+#296), Phase 4 留账压力降; G2.5/G2.6 不靠 RT-1 闭环达成 (明确区分 — RT-1 是 realtime 主线, AL-3 是 presence 接口契约, BPP-1 是 envelope CI lint, 三者互不替代) |
 
 ## §9. 关闭宣布 (建军, 2026-04-28)
 
