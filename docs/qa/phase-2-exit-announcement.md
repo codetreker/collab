@@ -32,7 +32,7 @@
 
 | 闸 | 留账 PR 路径 | 锚 acceptance-templates |
 |---|---|---|
-| **G2.5** presence 接口契约 | `internal/presence/contract.go` AL-3 同期 PR **#277** (战马A AL-3 占号) | `acceptance-templates/al-2a.md` (config SSOT, AL-3 前置) + AL-3 留账行 |
+| **G2.5** presence 接口契约 | `internal/presence/contract.go` AL-3 同期 PR **#277** (战马A AL-3 占号) — 路径锁 + 符号锁 (`PresenceTracker.IsOnline` + `Sessions`) | `acceptance-templates/al-2a.md` (config SSOT, AL-3 前置) + AL-3 留账行 |
 | **G2.6** /ws ↔ BPP schema CI lint | `bpp/frame_schemas.go` CI lint **#274** (飞马 BPP-1 占号) | `acceptance-templates/al-2a.md` (BPP frame 不在 AL-2a 反向断言) + BPP-1 PR |
 
 > ⚠️ Phase 3 RT-1 ArtifactUpdated frame 必须套 #237 envelope 直到 BPP-1 CI lint 落 (飞马 #267 §5 强约束)。
@@ -58,7 +58,7 @@
 > 全部 PARTIAL 项满足 #248 condition + 留账闸挂 Phase 4 PR 编号后, 4 角色逐一签:
 
 - [x] 飞马 (architecture / 闸 1+2): ✅ 拍板 — 引 PR #267 readiness review §4 (5+1 严格闸 SIGNED + 条件性 3 闸 #248 condition + 留账 2 闸挂 Phase 4 PR 编号: AL-3 / BPP-1 / ADM-1) + §5 Phase 3 entry 唯一冲突点 (RT-1 envelope 套 #237, 已 PR #269 spec 守门) (date: 2026-04-28)
-- [ ] 战马A (实施 / 闸 3): _________________ (date: ____)
+- [x] 战马A (实施 / 闸 3): **战马A** (date: 2026-04-28) — 实施侧 acceptance 全挂闸: ADM-0.1/0.2/0.3 + CM-onboarding + AP-0-bis + CM-3 + RT-0 client+server + AL-1a 三态 + INFRA-2 全 merged。留账: G2.5 = AL-3 占号 **PR #277** (`internal/presence/contract.go` 路径+符号锁); CHN-1.1 schema in-flight **#276** (Phase 3 first wave, 不阻 Phase 2 闭)。
 - [x] **野马** (PM / 闸 4 G2.4): **野马 ✅** (date: 2026-04-28) — 立场 OK + 反约束守住, 锚:
   - PR #263 Phase 3 立场反查 (CHN-1 / CV-1 / RT-1) — Phase 3 入口立场齐全, 跟 Phase 2 退出无漂移
   - PR #211 ADM-0 立场反查表 — admin 隐藏 / impersonation 红色横幅 / 受影响者 system message / god-mode 不返回内容 4 项闸 4 红线无漂移
@@ -84,3 +84,4 @@
 | 2026-04-28 | 飞马 | §7 飞马联签 ✅ — 引 #267 readiness §4/§5 + #269 RT-1 envelope 守门 |
 | 2026-04-28 | 烈马 | v1.1 — §7 烈马 QA 联签 ✅ (acceptance 机器化 + #270 翻牌 + 留账 PR 编号锁) |
 | 2026-04-28 | 野马 | v1.2 — PM 联签落 (§7 野马签字位), 引 #263 / #211 / #228 / CM-3 锚点, 立场无漂移 |
+| 2026-04-28 | 战马A | v1.3 — §7 战马A (实施 / 闸 3) 联签位填上 (date 2026-04-28); G2.5 留账行 PR # = #277 锁定 |
