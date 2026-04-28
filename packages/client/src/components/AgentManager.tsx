@@ -13,6 +13,8 @@ import {
   type PermissionDetail,
 } from '../lib/api';
 import { describeAgentState } from '../lib/agent-state';
+import PresenceDot from './PresenceDot';
+import { usePresence } from '../hooks/usePresence';
 
 const KNOWN_PERMISSIONS = [
   'message.send',
@@ -266,18 +268,27 @@ function AgentCard({
 // AL-1a (#R3 Phase 2) — Agent state inline badge.
 // 故障态点 reason label 直接给 owner 故障原因 (蓝图 §2.3 "可解释").
 // data-state 让 Playwright (REG-AL1A-*) 锁住 selector.
+//
+// AL-3.3 (#R3 Phase 2): 接 usePresence cache — WS `presence.changed` frame
+// 推来的实时态比 fetchAgents() 快照新, 优先用 cache. cache miss (没收到
+// frame 或刚连上) 走 agent.state 兜底; 都没有再 describeAgentState 兜回
+// "已离线" (野马 §11 不准灰糊弄).
 function AgentStateBadge({ agent }: { agent: Agent }) {
-  const label = describeAgentState(agent.state, agent.reason);
+  const live = usePresence(agent.id);
+  const state = live?.state ?? agent.state;
+  const reason = live?.reason ?? agent.reason;
+  const label = describeAgentState(state, reason);
   const color = label.tone === 'ok' ? 'var(--success, #1a7f37)'
     : label.tone === 'error' ? 'var(--danger, #cf222e)'
     : 'var(--text-secondary)';
   return (
     <span
       data-testid="agent-state-badge"
-      data-state={agent.state ?? 'offline'}
-      data-reason={agent.reason ?? ''}
-      style={{ marginLeft: 8, fontSize: 12, color, fontWeight: 500 }}
+      data-state={state ?? 'offline'}
+      data-reason={reason ?? ''}
+      style={{ marginLeft: 8, fontSize: 12, color, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}
     >
+      <PresenceDot state={state} reason={reason} compact />
       {label.text}
     </span>
   );

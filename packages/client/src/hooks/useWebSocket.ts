@@ -12,6 +12,8 @@ import type {
   AgentInvitationPendingFrame,
   AgentInvitationDecidedFrame,
 } from '../types/ws-frames';
+import { markPresence } from './usePresence';
+import type { AgentRuntimeReason, AgentRuntimeState } from '../lib/api';
 
 const PING_INTERVAL = 25_000;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
@@ -228,6 +230,19 @@ export function useWebSocket() {
           dispatch({ type: 'USER_ONLINE', userId });
         } else {
           dispatch({ type: 'USER_OFFLINE', userId });
+        }
+        break;
+      }
+      // AL-3.3 (#R3 Phase 2) — agent runtime presence frame.
+      // 字段白名单 (al-3.md §2.5): {agent_id, status, reason?} — 不接收 IP /
+      // last_heartbeat_at / connection_count, server 端已剥离. 5s 节流由
+      // server 端做出口侧 + 客户端 markPresence 入口侧双护栏.
+      case 'presence.changed': {
+        const agentID = data.agent_id as string | undefined;
+        const status = data.status as AgentRuntimeState | undefined;
+        const reason = data.reason as AgentRuntimeReason | undefined;
+        if (agentID && (status === 'online' || status === 'offline' || status === 'error')) {
+          markPresence(agentID, status, reason);
         }
         break;
       }

@@ -7,6 +7,8 @@ import ChannelList from './ChannelList';
 import CreateGroupModal from './CreateGroupModal';
 import type { DmChannel } from '../types';
 import type { ChannelMember } from '../lib/api';
+import PresenceDot from './PresenceDot';
+import { usePresence } from '../hooks/usePresence';
 
 interface Props {
   onClose?: () => void;
@@ -305,6 +307,7 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
             {state.currentUser.role !== 'agent' && onAgentsOpen && (
               <button
                 className="icon-btn"
+                data-testid="sidebar-nav-agents"
                 title="Agents"
                 onClick={onAgentsOpen}
               >
@@ -358,22 +361,34 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
 
 function DmItem({ dm, active, online, onClick }: { dm: DmChannel; active: boolean; online: boolean; onClick: () => void }) {
   const peerName = dm.peer?.display_name ?? dm.name ?? 'DM';
+  const isAgent = dm.peer?.role === 'agent';
 
   return (
     <button
       className={`channel-item ${active ? 'channel-item-active' : ''}`}
       onClick={onClick}
+      data-role={dm.peer?.role ?? 'user'}
     >
       <span className="user-avatar-small dm-avatar">
         {peerName[0]?.toUpperCase()}
-        {online && <span className="online-dot avatar-status" />}
+        {!isAgent && online && <span className="online-dot avatar-status" />}
       </span>
       <span className="channel-name">{peerName}</span>
+      {/* AL-3.3 (#R3 Phase 2): 仅 agent peer 渲染 PresenceDot (反约束 §3.2:
+          人 role 行无 [data-presence] 槽位). 文案锁: "在线" / "已离线" /
+          "故障 (REASON)". DOM 字面锁 data-presence 让 e2e 字面 selector. */}
+      {isAgent && dm.peer?.id && <DmPresence agentID={dm.peer.id} />}
       {dm.unread_count > 0 && (
         <span className="unread-badge">{dm.unread_count > 99 ? '99+' : dm.unread_count}</span>
       )}
     </button>
   );
+}
+
+// AL-3.3 — 拆出独立组件让 hooks 在循环列表里安全调用 (Rules of Hooks).
+function DmPresence({ agentID }: { agentID: string }) {
+  const live = usePresence(agentID);
+  return <PresenceDot state={live?.state} reason={live?.reason} compact />;
 }
 
 function MergedDmList({ dms, currentChannelId, onlineUserIds, users, currentUserId, onSelectDm, onOpenDm }: {

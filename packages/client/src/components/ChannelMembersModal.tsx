@@ -5,6 +5,15 @@ import { fetchChannelMembers, addChannelMember, removeChannelMember, updateChann
 import type { ChannelMember } from '../lib/api';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { useToast } from './Toast';
+import PresenceDot from './PresenceDot';
+import { usePresence } from '../hooks/usePresence';
+
+// AL-3.3 (#R3 Phase 2) — agent member presence row.
+// 反约束 §3.2: 仅 role==='agent' 行带 dot, 人 (member/admin) 行无 [data-presence].
+function MemberPresence({ agentID }: { agentID: string }) {
+  const live = usePresence(agentID);
+  return <PresenceDot state={live?.state} reason={live?.reason} />;
+}
 
 export default function ChannelMembersModal({ channelId, onClose }: { channelId: string; onClose: () => void }) {
   const { state, actions, dispatch } = useAppContext();
@@ -187,10 +196,11 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
 
             <div className="member-list">
               {members.map(m => (
-                <div key={m.user_id} className="member-row">
+                <div key={m.user_id} className="member-row" data-role={m.role === 'agent' ? 'agent' : 'user'}>
                   <div className="user-avatar-small">{m.display_name[0]?.toUpperCase()}</div>
                   <span className="member-name">{m.display_name}</span>
                   {m.role === 'agent' && <span className="user-badge">Bot</span>}
+                  {m.role === 'agent' && <MemberPresence agentID={m.user_id} />}
                   {m.role === 'agent' && m.silent && (
                     <span className="user-badge user-badge-silent" title="silent: 不计入 unread / mention 计数">🔕 silent</span>
                   )}
