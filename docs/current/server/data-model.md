@@ -21,6 +21,7 @@
 | `remote_nodes` | `id`, `user_id`, `machine_name`, `connection_token` UNIQUE, `last_seen_at` | `remote-agent` 注册 |
 | `remote_bindings` | `id`, `node_id`, `channel_id`, `path`, `label`，UNIQUE(`node_id`,`channel_id`,`path`) | channel ↔ 远端目录绑定 |
 | `organizations` | `id`, `name`, `created_at` | Phase 1 / CM-1.1 (`schema_migrations` v2)。1 person = 1 org, UI 永不暴露; 数据层 first-class。见 `migrations.md §7.1`。 |
+| `agent_invitations` | `id` PK, `channel_id`, `agent_id`, `requested_by`, `state` (`pending` / `accepted` / `declined` / `expired`，CHECK 约束), `created_at`, `decided_at?`, `expires_at?` | Phase 2 / CM-4.0 (`schema_migrations` v3)。跨 org 邀请 agent 进 channel 的状态机表 (blueprint §4.2 流程 B)。CM-4.0 仅落表 + 状态机 helper, **没有 HTTP / BPP / UI**, 留给 CM-4.1。|
 | `schema_migrations` | `version` PK, `applied_at`, `name` | Phase 0 / INFRA-1a。版本化迁移引擎状态表。 |
 
 **`org_id` 列**: CM-1.1 给 `users / channels / messages / workspace_files / remote_nodes` 各加一列 `org_id TEXT NOT NULL DEFAULT ''` + 同名 `idx_*_org_id` 索引。v0 默认空串占位 (audit 表登记), CM-1.2 起注册流程开始写真值, CM-3 切到基于 `org_id` 直查。
@@ -28,6 +29,8 @@
 **自动建 org (CM-1.2)**: `POST /api/v1/auth/register` 与管理员 `POST /api/v1/admin/users` 在创建 user 之后立即在同一事务中创建一行 `organizations(id=uuid, name="<DisplayName>'s org")` 并把 `users.org_id` 更新为新 org 的 id。失败则注册整体 5xx, 不留孤儿用户。Agent 创建 (`POST /api/v1/agents`) 继承所有人的 `org_id` (blueprint §1.1: agents 是 org 内资源, 不独立成 org)。schema 已允许空串, 但 app-layer 契约：注册路径产出的 user 永远 `org_id != ''`; v1 后续在 column constraint 上收紧。API 序列化 (`sanitizeUser` / `sanitizeUserAdmin`) 永不暴露 `org_id` (UI 不可见, blueprint §1.1)。
 
 **Admin stats by org (CM-1.3)**: `GET /admin-api/v1/stats` 与 `GET /api/v1/admin/stats` 在原 `user_count / channel_count / online_count` 之外新增 `by_org: [{org_id, user_count, channel_count}, ...]` 字段。聚合见 `store.StatsByOrg()`: 对 `users` / `channels` 各跑一次 `GROUP BY org_id` (均过滤 `deleted_at IS NULL`) 后按 `org_id` 合并 + 字典序排序。空串 (`""`) 不丢弃, 显式作为一个 bucket 出现, 让 v0 历史孤儿数据可见 (audit 已登记)。验证不变量: `Σ by_org[*].user_count == user_count`, `Σ by_org[*].channel_count == channel_count`。Blueprint §2 "数据层一等公民"行为对照点。
+
+**Agent invitations 状态机 (CM-4.0)**: 蓝图 §4.2 默认流程 B 的数据落地, **本步只到 schema + 状态机 helper, 不到 HTTP/UI**。表 `agent_invitations` 的 `state` 列用 TEXT enum + CHECK 约束 (`pending / accepted / declined / expired`)。状态机由 `store.AgentInvitation.Transition(to, nowMillis)` 实现, 仅允许 `pending → {accepted, declined, expired}` 三条边, 终态无出边; 任何非法转移返回 `errors.Is(err, ErrInvalidTransition) == true` 且不会改写 `inv.State` / `inv.DecidedAt`。`DecidedAt` 在每次成功转移时由调用方注入的 `nowMillis` 戳上 (Phase 1 testutil/clock 注入约定)。索引: `(agent_id, state)` 给 owner inbox 列待办、`(channel_id, state)` 给 channel 反查活跃邀请、`(requested_by)` 给 audit。CM-4.1 起在 handler 层使用; CM-4.0 仅有单测覆盖每条非法边 (acceptance 行为不变量 4.1)。v0 audit: enum 直接落 string, v1 切回时再考虑拆 lookup 表。
 
 ## 2. 迁移策略
 
