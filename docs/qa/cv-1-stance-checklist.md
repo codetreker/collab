@@ -1,9 +1,23 @@
 # CV-1 立场反查表 (Phase 3 第二波 — canvas / artifact)
 
-> **状态**: v0 (野马, 2026-04-28)
+> **状态**: v0 (野马, 2026-04-28) · v1-transition 解封 (烈马, 2026-04-28)
 > **目的**: Phase 3 第二波 milestone 立场锚点 — 战马 CV-1.x PR 直接吃此表为 acceptance; 飞马 / 野马 review 拿此表反查漂移。同 #263 模板但更深 (展开 7 项立场)。
 > **关联**: `canvas-vision.md` §0/§1.1-§1.6/§2; `channel-model.md` §1.1/§1.3 双支柱; `realtime.md` §2.1 (BPP `artifact.commit/progress`) + §2.3 (envelope 等同); `blueprint/README.md` 14 立场 §5 (artifact 集合) + §11 (沉默胜于假 loading)。
 > **依赖**: CHN-1 merged (channel 形状稳) + #237 envelope + #269 RT-1 spec + #280 BPP-1 envelope lint。
+
+---
+
+## 0. v1 transition 解封 ✅ (2026-04-28)
+
+CV-1 三前置依赖**全部满足** → 战马A **CV-1.1 schema 解封信号**, 可以开始实施。
+
+| 前置 | 闭合 PR | 验收锚 |
+|---|---|---|
+| **RT-1 三段全闭** ✅ | #290 (RT-1.1 server cursor) + #292 (RT-1.2 client backfill) + #296 (RT-1.3 agent BPP session.resume) | `acceptance-templates/rt-1.md` REG-RT1-001..010 全 🟢; ArtifactUpdated frame byte-identical 锁 (`cursor_test.go::TestArtifactUpdatedFrameFieldOrder`) — CV-1 `artifact.commit/progress` frame 直接套用 |
+| **AL-3 接口契约** ✅ | #301 (飞马 spec) + #302 (烈马 acceptance) + #303 (野马 stance) | `acceptance-templates/al-3.md` 13 验收 + 4 反查锚; presence 三态 + `PresenceTracker.IsOnline` 接口锁定 — CV-1 channel 成员在线性查询不回退 |
+| **BPP-1 envelope CI lint 真落** ✅ | **#304** merged 2026-04-28 13:35:02Z (commit `4724efa`) — G2.6 留账闸 ⏸️ → ✅ DONE | `acceptance-templates/al-2a.md` §蓝图行为对照 + REG-BPP1-001..008 全 🟢; CV-1 artifact frame 自动套 envelope CI lint 闸位 (whitelist + 方向锁 + 字段顺序 + RT-0/RT-1.3 dispatcher byte-identical) |
+
+> **解封结论**: CV-1.1 (artifacts schema + commit/progress frame) 的所有跨模块契约都已锁死, 战马A 可直接落 schema PR; CV-1.2 (BPP frame) 走已落地的 envelope CI lint 闸位 (#304), 不再需要飞马人工 lint。RT-1 ArtifactUpdated frame 已是参考样本 (字段顺序 `type/cursor/artifact_id/version/channel_id/updated_at/kind`)。
 
 ---
 
