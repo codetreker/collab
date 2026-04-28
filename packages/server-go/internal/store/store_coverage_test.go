@@ -866,8 +866,19 @@ func TestDefaultPermissionsAgent(t *testing.T) {
 	u := createUser(t, s, "agentperm", "agent")
 	s.GrantDefaultPermissions(u.ID, "agent")
 	perms, _ := s.ListUserPermissions(u.ID)
-	if len(perms) != 1 {
-		t.Fatalf("expected 1 perm for agent, got %d", len(perms))
+	// AP-0-bis (R3 决议 #1, 2026-04-28): agent default capability set is
+	// locked at [message.send, message.read].
+	if len(perms) != 2 {
+		t.Fatalf("expected 2 perms for agent (send + read), got %d", len(perms))
+	}
+	got := map[string]bool{}
+	for _, p := range perms {
+		got[p.Permission] = true
+	}
+	for _, want := range []string{"message.send", "message.read"} {
+		if !got[want] {
+			t.Fatalf("agent default missing %q (got %v)", want, got)
+		}
 	}
 }
 

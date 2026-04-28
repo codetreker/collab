@@ -348,16 +348,21 @@ func (s *Store) AddUserToPublicChannels(userID string) error {
 }
 
 // GrantDefaultPermissions writes the role's default permission grants. Per
-// AP-0 (Phase 1) the rules are:
+// AP-0 (Phase 1) + AP-0-bis (Phase 2 R3 决议) the rules are:
 //
 //   - role "member": one row (`*`, `*`) — humans default to full capability,
 //     UI bundles will narrow this in AP-2 (no role names).
-//   - role "agent":  one row (`message.send`, `*`) — agents are minimal by
-//     default; owners grant capabilities explicitly per blueprint §3.
-//   - any other role (incl. "admin"): nothing. Admin is implicit `*` checked
-//     in middleware; explicit grants would shadow that contract.
+//   - role "agent":  two rows (`message.send`, `*`) + (`message.read`, `*`) —
+//     agents need read to ingest channel context; send is the side-effect axis.
+//     R3 决议 #1 (2026-04-28): default capability set is locked at
+//     [message.send, message.read]. Owners grant additional capabilities
+//     explicitly per blueprint §3.
+//   - any other role (incl. "admin"): nothing. Admin authority lives on the
+//     /admin-api/* rail behind admin.RequireAdmin (ADM-0.2). users.role='admin'
+//     no longer shortcuts the user-rail (ADM-0.2 §4); explicit grants would
+//     just shadow nothing.
 //
-// Blueprint: docs/implementation/modules/auth-permissions.md §AP-0; concept §3.
+// Blueprint: docs/implementation/modules/auth-permissions.md §AP-0-bis; §3.
 func (s *Store) GrantDefaultPermissions(userID string, role string) error {
 	var perms []string
 	switch role {
@@ -365,8 +370,9 @@ func (s *Store) GrantDefaultPermissions(userID string, role string) error {
 		// AP-0: human full-capability default, single (*, *) row.
 		perms = []string{"*"}
 	case "agent":
-		// AP-0: agent minimum default, message.send only.
-		perms = []string{"message.send"}
+		// AP-0-bis: agent minimum default = [message.send, message.read].
+		// Order is informational; rows are enforced individually downstream.
+		perms = []string{"message.send", "message.read"}
 	default:
 		return nil
 	}

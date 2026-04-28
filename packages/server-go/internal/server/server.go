@@ -77,7 +77,12 @@ func (s *Server) SetupRoutes() {
 	sendPerm := auth.RequirePermission(s.store, "message.send", func(r *http.Request) string {
 		return "channel:" + r.PathValue("channelId")
 	})
-	msgHandler.RegisterRoutes(s.mux, authMw, sendPerm)
+	// AP-0-bis: agent default capability set 锁 [message.send, message.read].
+	// Legacy agents are backfilled by migration v=8 (ap_0_bis_message_read).
+	readPerm := auth.RequirePermission(s.store, "message.read", func(r *http.Request) string {
+		return "channel:" + r.PathValue("channelId")
+	})
+	msgHandler.RegisterRoutes(s.mux, authMw, sendPerm, readPerm)
 
 	// Users
 	userHandler := &api.UserHandler{

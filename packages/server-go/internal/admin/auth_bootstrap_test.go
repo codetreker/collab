@@ -23,17 +23,36 @@ func hashAt(t *testing.T, plain string, cost int) string {
 }
 
 // openMigratedDB returns a fresh in-memory DB with the migrations engine
-// applied through v=4 (admins). The engine's earlier migrations (CM-1.1 etc.)
-// ALTER `users` / `channels` / `messages` / `workspace_files` / `remote_nodes`,
-// so we seed those Phase-0 tables first — same pattern the migrations
-// package's own tests use (see seedLegacyTables in cm_1_1_organizations_test.go).
+// applied through the full registry. The engine's earlier migrations (CM-1.1,
+// AP-0-bis, ...) ALTER `users` / `channels` / `messages` / `workspace_files` /
+// `remote_nodes`, and AP-0-bis (v=8) reads users.role / users.deleted_at and
+// inserts into user_permissions, so we seed those Phase-0 tables and
+// columns first — same pattern the migrations package's own tests use
+// (see seedLegacyTables in cm_1_1_organizations_test.go).
 func openMigratedDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db := tdb.Open(t)
-	for _, name := range []string{"users", "channels", "messages", "workspace_files", "remote_nodes"} {
+	for _, name := range []string{"channels", "messages", "workspace_files", "remote_nodes"} {
 		if err := db.Exec("CREATE TABLE " + name + " (id TEXT PRIMARY KEY)").Error; err != nil {
 			t.Fatalf("seed %s: %v", name, err)
 		}
+	}
+	// users needs role + deleted_at for AP-0-bis backfill predicate.
+	if err := db.Exec(`CREATE TABLE users (
+  id         TEXT PRIMARY KEY,
+  role       TEXT,
+  deleted_at INTEGER
+)`).Error; err != nil {
+		t.Fatalf("seed users: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE user_permissions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     TEXT NOT NULL,
+  permission  TEXT NOT NULL,
+  scope       TEXT NOT NULL,
+  granted_at  INTEGER NOT NULL
+)`).Error; err != nil {
+		t.Fatalf("seed user_permissions: %v", err)
 	}
 	if err := migrations.Default(db).Run(0); err != nil {
 		t.Fatalf("migrations: %v", err)

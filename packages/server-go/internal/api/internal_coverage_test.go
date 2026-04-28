@@ -50,7 +50,8 @@ func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.
 
 	msgH := &MessageHandler{Store: s, Logger: logger}
 	sendPerm := func(next http.Handler) http.Handler { return next }
-	msgH.RegisterRoutes(mux, authMw, sendPerm)
+	readPerm := func(next http.Handler) http.Handler { return next }
+	msgH.RegisterRoutes(mux, authMw, sendPerm, readPerm)
 
 	adminH := &AdminHandler{Store: s, Logger: logger}
 	adminH.RegisterRoutes(mux, authMw)

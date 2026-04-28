@@ -475,6 +475,40 @@ func (c *SSEClient) ReadEvent(t *testing.T) SSEEvent {
 	return SSEEvent{}
 }
 
+// SeedLegacyAgent inserts a role='agent' user that simulates a pre-AP-0-bis
+// agent (only message.send granted, NO message.read). Used by tests for
+// migration v=8 (ap_0_bis_message_read) idempotent backfill verification, and
+// the reverse 403 assertion on GET /channels/:id/messages when the row is
+// absent.
+func SeedLegacyAgent(t *testing.T, s *store.Store, displayName string) *store.User {
+	t.Helper()
+	hash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("bcrypt: %v", err)
+	}
+	email := strings.ToLower(strings.ReplaceAll(displayName, " ", "-")) + "@legacy-agent.test"
+	u := &store.User{
+		DisplayName:  displayName,
+		Role:         "agent",
+		Email:        &email,
+		PasswordHash: string(hash),
+	}
+	if err := s.CreateUser(u); err != nil {
+		t.Fatalf("create legacy agent: %v", err)
+	}
+	// Pre-AP-0-bis: legacy agents only had message.send. Do NOT grant read —
+	// that's exactly what migration v=8 backfills.
+	if err := s.GrantPermission(&store.UserPermission{
+		UserID:     u.ID,
+		Permission: "message.send",
+		Scope:      "*",
+		GrantedAt:  time.Now().UnixMilli(),
+	}); err != nil {
+		t.Fatalf("grant legacy agent send: %v", err)
+	}
+	return u
+}
+
 func CreateAgent(t *testing.T, serverURL, token, displayName string) map[string]any {
 	t.Helper()
 	resp, data := JSON(t, http.MethodPost, serverURL+"/api/v1/agents", token, map[string]any{

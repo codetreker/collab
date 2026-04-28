@@ -187,6 +187,25 @@ func TestDefaultRegistryRunsClean(t *testing.T) {
 			t.Fatalf("create %s: %v", name, err)
 		}
 	}
+	// AP-0-bis (v=8) reads users.role/deleted_at and inserts into user_permissions.
+	// Add the columns the migration touches so the registry test stays self-
+	// contained without pulling in store.createSchema.
+	if err := db.Exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'`).Error; err != nil {
+		t.Fatalf("add users.role: %v", err)
+	}
+	if err := db.Exec(`ALTER TABLE users ADD COLUMN deleted_at INTEGER`).Error; err != nil {
+		t.Fatalf("add users.deleted_at: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE user_permissions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id TEXT NOT NULL,
+		permission TEXT NOT NULL,
+		scope TEXT NOT NULL DEFAULT '*',
+		granted_by TEXT,
+		granted_at INTEGER NOT NULL
+	)`).Error; err != nil {
+		t.Fatalf("create user_permissions: %v", err)
+	}
 	if err := Default(db).Run(0); err != nil {
 		t.Fatalf("default run: %v", err)
 	}
