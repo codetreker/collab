@@ -1,7 +1,7 @@
 # CV-1 v1 立场补丁 (#295 v1 transition unlocked)
 
 > **状态**: v1 (野马, 2026-04-28)
-> **触发**: #295 §5 三条件全满足 → RT-1 (#290/#296) + AL-3 (#301/#302/#303/#304/#305) + BPP-1 envelope CI lint (#292) 全 merged。
+> **触发**: #295 §5 三条件全满足 → RT-1 (#290 RT-1.1 server cursor / #292 RT-1.2 client backfill / #296 RT-1.3 BPP session.resume) + AL-3 (#301/#302/#303/#305) + BPP-1 envelope CI lint (#304, G2.6 ⏸️→✅ DONE, commit 4724efa) 全 merged。
 > **目的**: CV-1.x 实施 PR 直接吃此表为 v1 acceptance; 跟 #282 v0 表组合, v0 锁形态 + 本表锁字段/边界/反向断言细节。
 > **关联**: `canvas-vision.md` §1.4 / §1.5; `realtime.md` §2.1 / §2.3; `admin-model.md` §1.4 红线; #282 v0 ②③⑤⑦ 四项锁延伸。
 > **配套**: 飞马 CV-1 spec brief (架构) + 烈马 CV-1 acceptance template — 一起 review 一起 merge → CV-1 实施基线。
@@ -38,9 +38,9 @@
 |---|---|
 | 字段顺序 | `{cursor, type, channel_id, artifact_id, version_no, committer_user_id, committer_kind, updated_at}` byte-identical 跟 RT-1.1 (#290) `MessageCreated` envelope 同序; `type='artifact.updated'` |
 | cursor | 跟 RT-1.1 共用 server cursor 单调 (单一 events 表), 不另设 artifact-only cursor |
-| BPP-1 lint | #292 envelope CI lint 自动 enforce (`bpp/frame_schemas.go` reflect 比对 server-go 端 `WSEnvelope` 字段顺序) — 改字段顺序 = lint fail = PR 卡 |
+| BPP-1 lint | #304 envelope CI lint 自动 enforce (`bpp/frame_schemas.go` reflect 比对 server-go 端 `WSEnvelope` 字段顺序) — 改字段顺序 = lint fail = PR 卡 |
 | 反约束 | ❌ client 不能用 `updated_at` 排序 (RT-1 ① 反约束: server cursor 唯一可信序); ❌ 不另造 artifact-only push 通道 (走统一 /ws hub + BPP-1 frame schema); ❌ 不在 envelope 内塞 body 内容 (artifact 内容走 GET /artifacts/:id 拉, push 仅信号) |
-| 跟 v0 区别 | v0 #282 ⑤ 仅锁 "envelope 套 #237 + 飞马人工 lint 闸位"; 本表锁**字段名 + 顺序 byte-identical + BPP-1 #292 自动 lint 接管** |
+| 跟 v0 区别 | v0 #282 ⑤ 仅锁 "envelope 套 #237 + 飞马人工 lint 闸位"; 本表锁**字段名 + 顺序 byte-identical + BPP-1 #304 自动 lint 接管** |
 
 ### ⑦ rollback owner-only (REST action + 反向断言 + 触发 push)
 
@@ -73,8 +73,8 @@ grep -rnE "PATCH.*/artifacts.*rollback|body\.rollback_to" packages/server-go/int
 
 - CV-1.1 schema: ② `lock_holder_user_id` + `lock_acquired_at` 列 + ③ `artifact_versions` PK + `committer_kind` + `rolled_back_from_version` 列 (CV-1.1 PR # 待战马 spawn)
 - CV-1.2 handler: ② 30s TTL lazy expire + 409 conflict; ⑦ POST rollback action + 三反向断言 (401/403/409); ③ RequirePermission 闸 + audit_log
-- CV-1.3 sync: ⑤ ArtifactUpdated 字段顺序 byte-identical (#290 共序) + BPP-1 #292 lint 自动 enforce + GET /artifacts/:id 拉 body (push 仅信号)
-- v1 解封追溯: 三条件 PR # 引: RT-1 #290 + #296 / AL-3 #301 + #302 + #303 + #304 + #305 / BPP-1 #292 (跟 #295 §5 一致)
+- CV-1.3 sync: ⑤ ArtifactUpdated 字段顺序 byte-identical (#290 共序) + BPP-1 #304 lint 自动 enforce + GET /artifacts/:id 拉 body (push 仅信号)
+- v1 解封追溯: 三条件 PR # 引: RT-1 #290 + #292 + #296 / AL-3 #301 + #302 + #303 + #305 / BPP-1 #304 (跟 #295 §5 一致)
 
 ---
 
@@ -91,3 +91,4 @@ grep -rnE "PATCH.*/artifacts.*rollback|body\.rollback_to" packages/server-go/int
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-28 | 野马 | v1, ②③⑤⑦ 四项 v1 立场细化 (字段名 + 边界 + REST + 反向断言 + audit + envelope 字段顺序), 跟 #295 §5 三条件 PR # 引追溯 (#290/#292/#296/#301/#302/#303/#304/#305) |
+| 2026-04-28 | 野马 | v1.1 patch — 修 PR # 引: RT-1 三段全列 (#290/#292/#296), BPP-1 #292 → #304 (envelope CI lint 真落 commit 4724efa, G2.6 ⏸️→✅ DONE), AL-3 三轨 + 文案锁 (#301/#302/#303/#305 — #304 是 BPP-1 不是 AL-3) |
