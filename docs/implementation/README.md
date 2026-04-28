@@ -77,8 +77,8 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 
 | 改动 | v0 做法 | v1 切回要补的事 | 关联 Phase / Milestone | 状态 |
 |------|---------|----------------|-----------------------|------|
-| organizations 表 | 删库重建 | forward-only 迁移脚本 + backfill | Phase 1 / CM-1 | TODO |
-| users.org_id NOT NULL | 直接加列 | 现网数据 backfill 脚本 + 迁移期 nullable | Phase 1 / CM-1 | TODO |
+| organizations 表 | v0 删库重建 (无现网数据); CM-1.1 走 forward-only `schema_migrations` v=2 直接 CREATE TABLE | v1 切回不需"删库" — 已经在 forward-only 引擎内, 维持 v=2 即可; 真要重命名/拆分时新写 v=N 迁移 + backfill, 不允许再删库 | Phase 1 / CM-1.1 | DONE |
+| users.org_id NOT NULL DEFAULT '' | CM-1.1 ALTER TABLE 加列默认空串占位; CM-1.2 在应用层 `CreateOrgForUser` 兜底 `org_id != ''` | (a) 收紧列约束: 加 `CHECK (org_id != '')` migration; (b) backfill 现网空串行 (扫 users WHERE org_id='' → 为每个用户建 personal org → UPDATE); (c) 收紧后 register 路径失败要回滚 user (见 CM-1.2 行 (b)) | Phase 1 / CM-1.1 + CM-1.2 | DONE |
 | events 表 | 直接换 schema | 旧 events 留 view 兼容 | (待 events 模块时填) | — |
 | BPP 协议 | 直接换 | plugin 灰度发版 + protocol_version 协商 | (待 BPP 模块时填) | — |
 | ULID | 全表 ULID, 删 INT | 永久混用 + `type ID string` 抽象 (野马原始版本立场) | (待 ID 模块时填) | — |
