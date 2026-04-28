@@ -58,8 +58,24 @@ grep -rnE "rollback.*RequirePermission.*[^o]wner" packages/server-go/internal/se
 
 ---
 
-## 5. 更新日志
+## 5. v0 → v1 切换条件 (立场补丁前置)
+
+> v1 立场补丁 PR **不可早开** — 三条件齐全才解封, 跟 RT-1 + BPP-1 + CV-1.1 实施 PR # 锁。
+
+| 项 | v0 当前 (本表锁) | v1 切换触发 (三条件 AND) | v1 立场补丁内容预留 |
+|----|----------------|-------------------------|------|
+| 锁 ② | last-writer-wins + 30s TTL, conflict 409 | RT-1.1+1.2+1.3 全 merged (#269 spec 实施落地) | 加 lock-holder 头像 + 在线状态 (走 AL-3 presence) |
+| 删历史 ③ | agent 默认无删权, owner grant 走 ad-hoc | CV-1.1 schema PR merged (`artifact_versions` 表稳) | owner grant UI + version GC 策略草案 |
+| envelope ⑤ | /ws hub + 飞马人工 lint 闸位 | BPP-1 envelope CI lint 真落 (#280 merged, 不是占号) | 升级 frame schema 注释锁 → CI 自动 lint |
+| rollback ⑦ | owner-only, 触发新 commit, 无 metadata | 同 ② 三条件 | 加 `rolled_back_from_version` 元数据列 |
+
+**反约束**: v1 补丁 PR title 必须引 RT-1.3 + BPP-1 (#280) + CV-1.1 三 PR # (规则 6 留账闸编号锁同模式); 任一未落, v1 PR 不开 (避免立场漂移到未实施的下一阶段)。
+
+---
+
+## 6. 更新日志
 
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-28 | 野马 | v0, 7 项立场 (①-⑦ 比 #263 立场 ①②③ 展开) + 5 行黑名单 grep + 6 条不在范围 + 验收挂钩 |
+| 2026-04-28 | 野马 | v0.1, 加 §5 v0/v1 切换条件 (锁 ②③⑤⑦ 四项 v1 补丁前置 — RT-1.3 + BPP-1 #280 + CV-1.1 三 PR # AND 触发) |
