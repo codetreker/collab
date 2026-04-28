@@ -177,8 +177,10 @@ func TestChannelMemberOperations(t *testing.T) {
 
 	users, _ := s.ListUsers()
 	var memberID string
+	// ADM-0.3: testutil seeds owner + admin + member as role='member' user-rail
+	// fixtures. Pick the member fixture by display name so DM-self-paths skip.
 	for _, u := range users {
-		if u.Role == "member" {
+		if u.Role == "member" && u.DisplayName == "Member" {
 			memberID = u.ID
 			break
 		}

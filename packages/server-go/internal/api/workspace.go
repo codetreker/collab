@@ -44,7 +44,7 @@ func (h *WorkspaceHandler) handleListFiles(w http.ResponseWriter, r *http.Reques
 	}
 
 	channelID := r.PathValue("channelId")
-	if !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
+	if !h.Store.IsChannelMember(channelID, user.ID) {
 		writeJSONError(w, http.StatusForbidden, "Not a member of this channel")
 		return
 	}
@@ -73,7 +73,7 @@ func (h *WorkspaceHandler) handleUploadFile(w http.ResponseWriter, r *http.Reque
 	}
 
 	channelID := r.PathValue("channelId")
-	if !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
+	if !h.Store.IsChannelMember(channelID, user.ID) {
 		writeJSONError(w, http.StatusForbidden, "Not a member of this channel")
 		return
 	}
@@ -173,7 +173,7 @@ func (h *WorkspaceHandler) loadWorkspaceFileForRequest(r *http.Request, fileID, 
 		return nil, http.StatusForbidden, "Forbidden"
 	}
 
-	if f.UserID != user.ID && user.Role != "admin" {
+	if f.UserID != user.ID {
 		return nil, http.StatusForbidden, "Forbidden"
 	}
 
@@ -299,7 +299,7 @@ func (h *WorkspaceHandler) handleMkdir(w http.ResponseWriter, r *http.Request) {
 	}
 
 	channelID := r.PathValue("channelId")
-	if !h.Store.IsChannelMember(channelID, user.ID) && user.Role != "admin" {
+	if !h.Store.IsChannelMember(channelID, user.ID) {
 		writeJSONError(w, http.StatusForbidden, "Not a member of this channel")
 		return
 	}

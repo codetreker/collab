@@ -196,7 +196,8 @@ func TestAuthMiddleware_DevBypass(t *testing.T) {
 
 func TestAuthMiddleware_DevBypassFallback(t *testing.T) {
 	s := testStore(t)
-	user := &store.User{ID: "fb-admin", DisplayName: "FB Admin", Role: "admin"}
+	// ADM-0.3: dev fallback picks the first member (users.role enum collapsed).
+	user := &store.User{ID: "fb-member", DisplayName: "FB Member", Role: "member"}
 	s.CreateUser(user)
 
 	cfg := &config.Config{JWTSecret: "test-secret", NodeEnv: "development", DevAuthBypass: true}

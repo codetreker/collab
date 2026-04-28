@@ -359,16 +359,10 @@ func (h *AdminHandler) handleGetPermissions(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if user.Role == "admin" {
-		writeJSONResponse(w, http.StatusOK, map[string]any{
-			"user_id":     user.ID,
-			"role":        user.Role,
-			"permissions": []string{"*"},
-			"details":     []any{},
-			"note":        "Admin role has all permissions implicitly",
-		})
-		return
-	}
+	// ADM-0.3: users.role enum collapsed to {'member', 'agent'}; the legacy
+	// `role == "admin"` shortcut here is unreachable post-migration v=10.
+	// Permission listing now goes through the explicit row scan below for
+	// every user, matching the user-rail invariant.
 
 	perms, err := h.Store.ListUserPermissions(id)
 	if err != nil {

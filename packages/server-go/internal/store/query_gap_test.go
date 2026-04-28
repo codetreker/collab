@@ -92,12 +92,18 @@ func TestQueryGapMessageCreationMentionNamesAndMasking(t *testing.T) {
 
 func TestQueryGapAccessInviteAndLookupEdges(t *testing.T) {
 	s := migratedStore(t)
-	admin := createUser(t, s, "qgap_admin", "admin")
+	// ADM-0.3: users.role enum collapsed to {'member','agent'}; the legacy
+	// admin override on CanAccessChannel is gone. Use member fixtures and
+	// add an explicit channel-membership row to access private channels.
+	owner := createUser(t, s, "qgap_owner", "member")
 	member := createUser(t, s, "qgap_member", "member")
-	privateCh := createChannel(t, s, "qgap-private", "private", admin.ID)
-	publicCh := createChannel(t, s, "qgap-public", "public", admin.ID)
+	privateCh := createChannel(t, s, "qgap-private", "private", owner.ID)
+	publicCh := createChannel(t, s, "qgap-public", "public", owner.ID)
+	if err := s.AddChannelMember(&ChannelMember{ChannelID: privateCh.ID, UserID: owner.ID}); err != nil {
+		t.Fatalf("add owner to private: %v", err)
+	}
 
-	if s.CanAccessChannel("missing-channel", admin.ID) {
+	if s.CanAccessChannel("missing-channel", owner.ID) {
 		t.Fatal("missing channel should not be accessible")
 	}
 	if !s.CanAccessChannel(publicCh.ID, member.ID) {
@@ -106,8 +112,8 @@ func TestQueryGapAccessInviteAndLookupEdges(t *testing.T) {
 	if s.CanAccessChannel(privateCh.ID, member.ID) {
 		t.Fatal("private channel should reject non-members")
 	}
-	if !s.CanAccessChannel(privateCh.ID, admin.ID) {
-		t.Fatal("admin should access private channel")
+	if !s.CanAccessChannel(privateCh.ID, owner.ID) {
+		t.Fatal("explicit channel member should access private channel")
 	}
 
 	if _, err := s.GetUserByEmail("missing@test.invalid"); err == nil {
@@ -124,7 +130,7 @@ func TestQueryGapAccessInviteAndLookupEdges(t *testing.T) {
 	}
 
 	expired := time.Now().UnixMilli() - 1000
-	code, err := s.CreateInviteCode(admin.ID, &expired, "expired")
+	code, err := s.CreateInviteCode(owner.ID, &expired, "expired")
 	if err != nil {
 		t.Fatal(err)
 	}

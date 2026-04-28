@@ -351,8 +351,9 @@ func (h *MessageHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	isAdmin := user.Role == "admin"
-	if existing.SenderID != user.ID && !isAdmin {
+	// ADM-0.3: no role short-circuit. Sender-only delete on the user-rail;
+	// admin-rail message delete uses /admin-api/v1/messages.
+	if existing.SenderID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Permission denied")
 		return
 	}
