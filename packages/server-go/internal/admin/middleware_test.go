@@ -31,29 +31,21 @@ func readSource(t *testing.T, name string) string {
 	return string(b)
 }
 
-// TestMiddleware_1F_DualRailCoexistence covers review checklist invariant 1.F:
-// "双轨并存验证: users.role='admin' 旧账号调 /admin-api/v1/* 仍 200 (本阶段
-// 不砍, 留 ADM-0.2)."
+// TestMiddleware_1F_DualRailCoexistence covers review checklist invariant 1.F
+// as adapted by ADM-0.2: the admin-rail accepts only its own opaque session
+// token via `borgee_admin_session`. Crossing in via a `borgee_token` user
+// cookie (or feeding the raw admin id, which ADM-0.1 used to accept) returns
+// (nil, nil).
 //
-// The legacy admin path lives in internal/api (AdminAuthHandler / api.AdminHandler)
-// and is not changed by ADM-0.1. To prove dual-rail coexistence at the
-// internal/admin layer we assert the **negative**: AdminFromRequest only
-// accepts the new `borgee_admin_session` cookie and never crosses into the
-// legacy `borgee_token` user-session cookie name. That is what allows ADM-0.2
-// to flip the legacy path off without disturbing the new one.
-//
-// In other words: the new admin auth path is additive — it does not alter
-// the routes the api package serves under /admin-api/v1, so existing
-// users.role='admin' clients continue to work unchanged.
+// In other words: the new admin auth path is fully isolated. ADM-0.2 §1
+// 反向断言 2.A & 2.B are the live form of this invariant.
 func TestMiddleware_1F_DualRailCoexistence(t *testing.T) {
 	db := openMigratedDB(t)
 	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10)); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 
-	// 1. AdminFromRequest with NO cookie → (nil, nil). This must not error
-	//    out, since legacy callers using only `borgee_token` should pass
-	//    through the new layer untouched.
+	// 1. AdminFromRequest with NO cookie → (nil, nil).
 	r := httptest.NewRequest(http.MethodGet, "/admin-api/v1/orgs", nil)
 	got, err := admin.AdminFromRequest(db, r)
 	if err != nil {
@@ -63,9 +55,7 @@ func TestMiddleware_1F_DualRailCoexistence(t *testing.T) {
 		t.Fatalf("AdminFromRequest no cookie: got = %v, want nil", got)
 	}
 
-	// 2. AdminFromRequest with ONLY a legacy `borgee_token` cookie → still
-	//    (nil, nil). The new layer ignores the legacy cookie name; the
-	//    legacy /admin-api/v1 handlers in internal/api continue to handle it.
+	// 2. AdminFromRequest with ONLY a legacy `borgee_token` cookie → (nil, nil).
 	r2 := httptest.NewRequest(http.MethodGet, "/admin-api/v1/orgs", nil)
 	r2.AddCookie(&http.Cookie{Name: "borgee_token", Value: "legacy-jwt"})
 	got2, err := admin.AdminFromRequest(db, r2)
@@ -76,17 +66,32 @@ func TestMiddleware_1F_DualRailCoexistence(t *testing.T) {
 		t.Fatal("AdminFromRequest must not resolve legacy borgee_token cookie")
 	}
 
-	// 3. AdminFromRequest WITH the new `borgee_admin_session` cookie → resolves.
-	//    Insert a row so the lookup hits.
+	// 3. ADM-0.2 反向断言: feeding the raw admin id as the session cookie
+	//    value must NOT resolve. Only an opaque token from CreateSession works.
 	id := newAdminID(t, db, "dual-rail-tester")
 	r3 := httptest.NewRequest(http.MethodGet, "/admin-api/v1/orgs", nil)
 	r3.AddCookie(&http.Cookie{Name: admin.CookieName, Value: id})
 	got3, err := admin.AdminFromRequest(db, r3)
 	if err != nil {
-		t.Fatalf("AdminFromRequest new cookie: err = %v", err)
+		t.Fatalf("AdminFromRequest raw id: err = %v", err)
 	}
-	if got3 == nil || got3.Login != "dual-rail-tester" {
-		t.Fatalf("AdminFromRequest new cookie: got = %+v, want login=dual-rail-tester", got3)
+	if got3 != nil {
+		t.Fatalf("AdminFromRequest raw admin id MUST NOT resolve, got %+v", got3)
+	}
+
+	// 4. With a real CreateSession token → resolves to the admin.
+	tok, err := admin.CreateSession(db, id, time.Now())
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	r4 := httptest.NewRequest(http.MethodGet, "/admin-api/v1/orgs", nil)
+	r4.AddCookie(&http.Cookie{Name: admin.CookieName, Value: tok})
+	got4, err := admin.AdminFromRequest(db, r4)
+	if err != nil {
+		t.Fatalf("AdminFromRequest session token: err = %v", err)
+	}
+	if got4 == nil || got4.Login != "dual-rail-tester" {
+		t.Fatalf("AdminFromRequest session token: got = %+v, want login=dual-rail-tester", got4)
 	}
 }
 

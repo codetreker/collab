@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 
 	"golang.org/x/crypto/bcrypt"
@@ -23,23 +22,10 @@ func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handl
 	h.registerRoutes(mux, "/admin-api/v1", wrap)
 }
 
-func (h *AdminHandler) RegisterAppRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
-	wrap := func(f http.HandlerFunc) http.Handler {
-		return authMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user := auth.UserFromContext(r.Context())
-			if user == nil {
-				writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-				return
-			}
-			if user.Role != "admin" {
-				writeJSONError(w, http.StatusForbidden, "Forbidden")
-				return
-			}
-			f(w, r)
-		}))
-	}
-	h.registerRoutes(mux, "/api/v1/admin", wrap)
-}
+// ADM-0.2: RegisterAppRoutes (legacy /api/v1/admin/* user-rail god-mode mount)
+// is intentionally removed. Admin endpoints are exclusively /admin-api/v1/*
+// behind admin.RequireAdmin (admin_sessions cookie). See review checklist
+// §ADM-0.2 §1 反向断言 2.B.
 
 func (h *AdminHandler) registerRoutes(mux *http.ServeMux, prefix string, wrap func(http.HandlerFunc) http.Handler) {
 	mux.Handle("GET "+prefix+"/stats", wrap(h.handleStats))
