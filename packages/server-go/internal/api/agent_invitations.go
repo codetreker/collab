@@ -55,7 +55,18 @@ func (h *AgentInvitationHandler) RegisterRoutes(mux *http.ServeMux, authMw func(
 
 // sanitizeAgentInvitation hand-builds the response payload — never marshal
 // *store.AgentInvitation directly (admin sanitizer pattern, 飞马 review flag #1).
-func sanitizeAgentInvitation(inv *store.AgentInvitation) map[string]any {
+//
+// Bug-029 P0 (CM-4 闸 4 野马 not-signed): UI used to render raw UUID for
+// agent_id / channel_id / requested_by; blueprint concept-model §1.1 + §1.2
+// hardline says owners see names. We now resolve and ship `agent_name`,
+// `channel_name`, `requester_name` alongside the IDs so the client can render
+// names with the IDs kept only as a `title` hover for a11y / debugging.
+//
+// Lookups are best-effort: if a referenced row is gone (deleted user / channel),
+// we ship the field as the empty string and let the client fall back to the
+// ID. Errors during lookup are logged-and-swallowed to avoid bringing down
+// the list endpoint over a single missing FK.
+func sanitizeAgentInvitation(s *store.Store, inv *store.AgentInvitation) map[string]any {
 	m := map[string]any{
 		"id":           inv.ID,
 		"channel_id":   inv.ChannelID,
@@ -69,6 +80,33 @@ func sanitizeAgentInvitation(inv *store.AgentInvitation) map[string]any {
 	}
 	if inv.ExpiresAt != nil {
 		m["expires_at"] = *inv.ExpiresAt
+	}
+
+	// Resolve display names. Best-effort; on lookup failure we leave the
+	// field as "" — the client must accept the empty case and fall back
+	// to the raw ID. Tests assert both branches.
+	if s != nil {
+		if u, err := s.GetUserByID(inv.AgentID); err == nil && u != nil {
+			m["agent_name"] = u.DisplayName
+		} else {
+			m["agent_name"] = ""
+		}
+		if c, err := s.GetChannelByID(inv.ChannelID); err == nil && c != nil {
+			m["channel_name"] = c.Name
+		} else {
+			m["channel_name"] = ""
+		}
+		if u, err := s.GetUserByID(inv.RequestedBy); err == nil && u != nil {
+			m["requester_name"] = u.DisplayName
+		} else {
+			m["requester_name"] = ""
+		}
+	} else {
+		// Defensive — should never hit in the wired-up handler, but keep the
+		// fields present so the client schema is stable.
+		m["agent_name"] = ""
+		m["channel_name"] = ""
+		m["requester_name"] = ""
 	}
 	return m
 }
@@ -147,7 +185,7 @@ func (h *AgentInvitationHandler) handleCreate(w http.ResponseWriter, r *http.Req
 	}
 
 	writeJSONResponse(w, http.StatusCreated, map[string]any{
-		"invitation": sanitizeAgentInvitation(inv),
+		"invitation": sanitizeAgentInvitation(h.Store, inv),
 	})
 }
 
@@ -174,7 +212,7 @@ func (h *AgentInvitationHandler) handleGet(w http.ResponseWriter, r *http.Reques
 	}
 
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"invitation": sanitizeAgentInvitation(inv),
+		"invitation": sanitizeAgentInvitation(h.Store, inv),
 	})
 }
 
@@ -227,7 +265,7 @@ func (h *AgentInvitationHandler) handleList(w http.ResponseWriter, r *http.Reque
 
 	out := make([]map[string]any, len(invs))
 	for i := range invs {
-		out[i] = sanitizeAgentInvitation(&invs[i])
+		out[i] = sanitizeAgentInvitation(h.Store, &invs[i])
 	}
 	writeJSONResponse(w, http.StatusOK, map[string]any{"invitations": out})
 }
@@ -314,7 +352,7 @@ func (h *AgentInvitationHandler) handlePatch(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"invitation": sanitizeAgentInvitation(inv),
+		"invitation": sanitizeAgentInvitation(h.Store, inv),
 	})
 }
 

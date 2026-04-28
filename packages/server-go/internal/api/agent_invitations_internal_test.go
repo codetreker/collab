@@ -38,18 +38,30 @@ func TestSanitizerOmitsNilOptionals(t *testing.T) {
 		State:       store.AgentInvitationPending,
 		CreatedAt:   1,
 	}
-	m := sanitizeAgentInvitation(inv)
+	m := sanitizeAgentInvitation(nil, inv)
 	if _, ok := m["decided_at"]; ok {
 		t.Errorf("decided_at must be omitted when nil")
 	}
 	if _, ok := m["expires_at"]; ok {
 		t.Errorf("expires_at must be omitted when nil")
 	}
+	// Bug-029 P0: name fields must be present even when store lookup is
+	// not available (defensive empty-string fallback) so the client schema
+	// is stable and reviewers see no raw-UUID UI regression.
+	for _, k := range []string{"agent_name", "channel_name", "requester_name"} {
+		v, ok := m[k]
+		if !ok {
+			t.Errorf("%s must be present in sanitized payload", k)
+		}
+		if v != "" {
+			t.Errorf("%s with nil store: got %v, want empty string", k, v)
+		}
+	}
 
 	d, e := int64(2), int64(3)
 	inv.DecidedAt = &d
 	inv.ExpiresAt = &e
-	m = sanitizeAgentInvitation(inv)
+	m = sanitizeAgentInvitation(nil, inv)
 	if m["decided_at"] != d || m["expires_at"] != e {
 		t.Errorf("optional fields lost: %v", m)
 	}
