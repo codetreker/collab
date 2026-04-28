@@ -1,0 +1,122 @@
+// playwright.config.ts — INFRA-2 scaffold for Phase 2.
+//
+// Two-server orchestration:
+//   1. server-go (`go run ./cmd/collab`) on PORT=4901, sqlite db in tmp dir
+//   2. vite dev server (`pnpm --filter @borgee/client dev`) on 5174
+//      with a proxy override pointing /api /ws /uploads to :4901
+//
+// Why a separate port (4901, not 4900): local dev usually has the real
+// collab on 4900; we want CI + local `pnpm test` to be safe to run without
+// stopping the dev server.
+//
+// Why `webServer` array (not single): Playwright spins both up in
+// parallel, waits for both health checks, then runs tests. On teardown
+// both are killed.
+//
+// Auth strategy (this PR is scaffold only — no real auth fixture yet):
+//   - Smoke test exercises `/health` (server-go) and `/` (client) only.
+//   - CM-onboarding (#42) and RT-0 (#40) will add auth fixtures when they
+//     need them. Pattern documented in fixtures/auth.ts (placeholder).
+//
+// Stopwatch helper for latency assertions (野马 G2.4 ≤ 3s) lives in
+// fixtures/stopwatch.ts. RT-0 will use it; INFRA-2 just ships the helper.
+import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, '..', '..');
+
+const SERVER_PORT = Number(process.env.E2E_SERVER_PORT ?? 4901);
+const CLIENT_PORT = Number(process.env.E2E_CLIENT_PORT ?? 5174);
+const SERVER_URL = `http://127.0.0.1:${SERVER_PORT}`;
+const CLIENT_URL = `http://127.0.0.1:${CLIENT_PORT}`;
+
+// One temp data dir per run keeps the sqlite db from leaking between
+// suites; CI also wipes the runner's workspace, but local runs benefit.
+// Server-go opens the sqlite file directly (no auto-mkdir), so we have
+// to materialize the dir before webServer boots.
+const dataDir = path.join(__dirname, '.playwright-data');
+fs.mkdirSync(path.join(dataDir, 'uploads'), { recursive: true });
+fs.mkdirSync(path.join(dataDir, 'workspaces'), { recursive: true });
+
+export default defineConfig({
+  testDir: './tests',
+  // CI path needs determinism: serialize, retry once on flake, full traces.
+  // Local path: parallel workers, no retry, trace only on failure.
+  fullyParallel: !process.env.CI,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never' }]]
+    : [['list'], ['html', { open: 'never' }]],
+
+  use: {
+    baseURL: CLIENT_URL,
+    trace: process.env.CI ? 'retain-on-failure' : 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    // Attach SERVER_URL into test context so fixtures can hit the
+    // server directly (e.g. seed users via REST) instead of clicking
+    // through the UI for every preconditon.
+    extraHTTPHeaders: {
+      'X-E2E-Test': '1',
+    },
+  },
+
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+
+  // Order matters: server first (vite proxies to it). Playwright's
+  // built-in `webServer` health check waits on each URL before starting
+  // tests, so the server has to be reachable before the client tries
+  // to proxy.
+  webServer: [
+    {
+      // server-go binary: rebuild on each run is cheap (incremental go
+      // build is sub-second). Avoids stale binaries on schema changes.
+      command: `go run ./cmd/collab`,
+      cwd: path.join(repoRoot, 'packages/server-go'),
+      url: `${SERVER_URL}/health`,
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+      env: {
+        PORT: String(SERVER_PORT),
+        HOST: '127.0.0.1',
+        NODE_ENV: 'development',
+        DEV_AUTH_BYPASS: 'false',
+        DATABASE_PATH: path.join(dataDir, 'collab-e2e.db'),
+        UPLOAD_DIR: path.join(dataDir, 'uploads'),
+        WORKSPACE_DIR: path.join(dataDir, 'workspaces'),
+        CLIENT_DIST: path.join(repoRoot, 'packages/client/dist'),
+        JWT_SECRET: 'e2e-test-secret-not-for-prod',
+        ADMIN_USER: 'e2e-admin',
+        ADMIN_PASSWORD: 'e2e-admin-password-12345',
+      },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+    {
+      // vite dev server with overridden proxy target. We can't edit
+      // vite.config.ts at runtime, so we rely on the env var read by
+      // vite.config.ts (added in this PR). Falls back to 4900 in normal
+      // dev so existing devs aren't broken.
+      command: `pnpm --filter @borgee/client dev --host 127.0.0.1 --port ${CLIENT_PORT} --strictPort`,
+      cwd: repoRoot,
+      url: CLIENT_URL,
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+      env: {
+        VITE_E2E_API_TARGET: SERVER_URL,
+      },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  ],
+});

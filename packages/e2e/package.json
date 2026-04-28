@@ -1,0 +1,19 @@
+{
+  "name": "@borgee/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Borgee E2E tests (Playwright). INFRA-2 scaffold for Phase 2 — RT-0 latency stopwatch + G2.1/G2.2 邀请审批 + 离线 fallback + CM-onboarding Welcome channel land here.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "install-browsers": "playwright install --with-deps chromium",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
