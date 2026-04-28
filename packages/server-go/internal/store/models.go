@@ -61,6 +61,10 @@ type Message struct {
 	CreatedAt   int64   `gorm:"not null;index:idx_messages_channel_time,priority:2,sort:desc" json:"created_at"`
 	EditedAt    *int64  `json:"edited_at"`
 	DeletedAt   *int64  `gorm:"index" json:"deleted_at"`
+	// QuickAction is a JSON-encoded `{kind, label, action}` payload attached
+	// to system messages (CM-onboarding migration v=7). Nil/empty for plain
+	// chat messages. The client decodes and renders a button when set.
+	QuickAction *string `gorm:"column:quick_action" json:"quick_action,omitempty"`
 }
 
 type ChannelMember struct {

@@ -106,13 +106,28 @@ function AppInner() {
     };
   }, [authenticated, actions, dispatch]);
 
-  // Auto-select first channel if none selected
+  // Auto-select welcome (type='system') first, otherwise first channel —
+  // CM-onboarding §1.4: first eye must not land on a blank screen.
   useEffect(() => {
-    const firstChannel = state.channels[0];
-    if (state.initialized && !state.currentChannelId && firstChannel) {
-      actions.selectChannel(firstChannel.id);
-    }
+    if (!state.initialized || state.currentChannelId) return;
+    const welcome = state.channels.find(c => c.type === 'system');
+    const target = welcome ?? state.channels[0];
+    if (target) actions.selectChannel(target.id);
   }, [state.initialized, state.currentChannelId, state.channels, actions]);
+
+  // CM-onboarding: welcome system message carries a quick_action button.
+  // MessageItem dispatches a window event so this component can flip the
+  // AgentManager without a prop chain.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ action?: string }>).detail;
+      if (detail?.action === 'open_agent_manager') {
+        setShowAgents(true);
+      }
+    };
+    window.addEventListener('borgee:quick-action', handler);
+    return () => window.removeEventListener('borgee:quick-action', handler);
+  }, []);
 
   // Auto-subscribe to all joined channels via WebSocket
   useEffect(() => {
@@ -207,7 +222,17 @@ function AppInner() {
           <ChannelView channelId={state.currentChannelId} />
         ) : (
           <div className="no-channel">
-            <p>👈 选择一个频道开始聊天</p>
+            {/* CM-onboarding §3 step 1 reduced state — onboarding-journey.md
+                locks this copy. Channels load failed or registration's
+                welcome-channel insert errored: don't go silent. */}
+            <p>正在准备你的工作区, 稍候刷新…</p>
+            <button
+              type="button"
+              className="no-channel-retry"
+              onClick={() => actions.loadChannels()}
+            >
+              重试
+            </button>
           </div>
         )}
       </div>

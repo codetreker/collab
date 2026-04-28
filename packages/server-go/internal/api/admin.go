@@ -182,6 +182,14 @@ func (h *AdminHandler) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 	h.Store.GrantDefaultPermissions(user.ID, user.Role)
 	h.Store.AddUserToPublicChannels(user.ID)
 
+	// CM-onboarding (#42): admin-created humans get the same #welcome
+	// landing experience as register-flow users (onboarding-journey.md §3).
+	if _, _, err := h.Store.CreateWelcomeChannelForUser(user.ID, body.DisplayName); err != nil {
+		// Non-fatal: the user + org are already committed. Logging is the
+		// signal so admins can chase down a misbehaving install.
+		_ = err
+	}
+
 	writeJSONResponse(w, http.StatusCreated, map[string]any{"user": sanitizeUserAdmin(user)})
 }
 
