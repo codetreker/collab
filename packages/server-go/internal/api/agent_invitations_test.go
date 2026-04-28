@@ -294,13 +294,16 @@ func TestAgentInvitations_SanitizerKeys(t *testing.T) {
 	inv, _ := body["invitation"].(map[string]any)
 
 	want := map[string]bool{
-		"id":           true,
-		"channel_id":   true,
-		"agent_id":     true,
-		"requested_by": true,
-		"state":        true,
-		"created_at":   true,
-		"expires_at":   true,
+		"id":             true,
+		"channel_id":     true,
+		"agent_id":       true,
+		"requested_by":   true,
+		"state":          true,
+		"created_at":     true,
+		"expires_at":     true,
+		"agent_name":     true, // Bug-029 P0: human label, not raw UUID
+		"channel_name":   true,
+		"requester_name": true,
 		// decided_at omitted on pending — verified below
 	}
 	for k := range inv {
@@ -313,6 +316,24 @@ func TestAgentInvitations_SanitizerKeys(t *testing.T) {
 	}
 	if int64(inv["expires_at"].(float64)) != expiresAt {
 		t.Errorf("expires_at round-trip: got %v", inv["expires_at"])
+	}
+
+	// Bug-029 reverse assertion: name fields are populated from the live
+	// store JOIN (not raw UUIDs), and the channel_name matches what the
+	// requester created above.
+	for _, k := range []string{"agent_name", "channel_name", "requester_name"} {
+		v, ok := inv[k].(string)
+		if !ok {
+			t.Errorf("%s missing or non-string in payload: %v", k, inv[k])
+			continue
+		}
+		// raw-UUID guard: an unresolved name must never look like the ID.
+		if v == inv["agent_id"] || v == inv["channel_id"] || v == inv["requested_by"] {
+			t.Errorf("%s leaks raw UUID: %q", k, v)
+		}
+	}
+	if got := inv["channel_name"]; got != "priv-sanitizer" {
+		t.Errorf("channel_name = %v, want priv-sanitizer", got)
 	}
 }
 

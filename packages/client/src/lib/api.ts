@@ -455,6 +455,11 @@ export interface AgentInvitation {
   created_at: number;
   decided_at?: number;
   expires_at?: number;
+  // Bug-029 P0: server JOIN-resolved labels. Empty string when the lookup
+  // misses (agent/channel/user removed). Client falls back to raw ID.
+  agent_name?: string;
+  channel_name?: string;
+  requester_name?: string;
 }
 
 export type AgentInvitationListRole = 'owner' | 'requester';

@@ -173,15 +173,30 @@ function InvitationCard({ invitation, busy, onApprove, onReject }: CardProps) {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
         <div>
-          <strong>邀请 agent</strong> <code>{invitation.agent_id}</code>{' '}
-          加入 channel <code>{invitation.channel_id}</code>
+          {/* Bug-029 P0: prefer human-readable name from server JOIN; raw
+              UUID survives only as title hover for a11y/debug. Empty
+              string from sanitizer fallback → degrade to ID. */}
+          <strong>邀请 agent</strong>{' '}
+          <span title={invitation.agent_id}>
+            {invitation.agent_name || invitation.agent_id}
+          </span>{' '}
+          加入 channel{' '}
+          <span title={invitation.channel_id}>
+            {invitation.channel_name
+              ? `#${invitation.channel_name}`
+              : invitation.channel_id}
+          </span>
         </div>
         <span className={`invitation-state invitation-state-${invitation.state}`}>
           {stateLabel}
         </span>
       </div>
       <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-        发起人 <code>{invitation.requested_by}</code> · 创建于{' '}
+        发起人{' '}
+        <span title={invitation.requested_by}>
+          {invitation.requester_name || invitation.requested_by}
+        </span>{' '}
+        · 创建于{' '}
         {formatTs(invitation.created_at)}
         {invitation.decided_at !== undefined && (
           <> · 处理于 {formatTs(invitation.decided_at)}</>
