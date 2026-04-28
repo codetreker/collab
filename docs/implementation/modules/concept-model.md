@@ -95,9 +95,9 @@
   - 旧 user backfill: migration 加现网"无 channel" 的 user 自动建 #welcome
 - **不在范围**:
   - 完整 onboarding journey UI (看野马 `00-foundation/onboarding-journey.md` 1 周内出, 反推后续 surface)
-  - agent 创建引导 / agent 上线 subject 文案 (留给 AL-2)
+  - agent 创建引导 / agent 上线 subject 文案 (留给 AL-1b)
 - **依赖**: CM-1.2 (注册自动建 org) ✅
-- **预估**: ⚡ v0 0.5-1 天
+- **预估**: ⚡ v0 1-1.5 天 (含 system message kind 扩展 quick action button +0.5 天 + App.tsx 空状态降级 +0.2 天 — 详见 `00-foundation/onboarding-journey.md §5`)
 - **Acceptance**:
   - 数据契约: 新 user 注册后 `channels` 表多 1 行 (kind=system, name=welcome), `channel_members` 多 1 行, `messages` 多 1 行 system
   - E2E (Playwright): 注册 → 进 app → 第一眼看到 #welcome 已 selected + 见 system 欢迎消息
