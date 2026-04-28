@@ -1,0 +1,38 @@
+# Phase 2 立场 ↔ 实施 对照矩阵
+
+> **状态**: v0 (飞马, 2026-04-28)
+> **目的**: Phase 2 R3 锁的 8 条蓝图立场, 1:1 锁到落地 PR + 代码点 + 验证证据。
+> **用法**: Phase 3 R4 review 当 anchor — 任何"立场漂移"提议必须在此矩阵反查; 想动立场 → 先动这表。
+> **不重复**: 决议进度看板见 `r3-decisions.md`; 本表只锁 "立场原文 ↔ 代码 ground truth"。
+
+---
+
+## 1. 8 条立场 ↔ 实施矩阵
+
+| # | 蓝图立场 (来源 §) | 立场一句 | 实施 PR | 落地代码点 | 验证证据 |
+|---|------|----------|--------|----------|---------|
+| **S1** | concept §1.1 + §6 | 组织永久隐藏 (UI 永不暴露 org), 1 person = 1 org, 数据层一等公民 | CM-1.1 (#... v=2) + CM-1.2 (注册 auto-org) | `internal/migrations/0002_cm_1_1.go` (`organizations` 表) + `internal/auth/register.go` (auto INSERT) + `client/` 全 UI 0 处 `org_id` 字段 | grep client/src `org_id` = 0 出现; `organizations` 表 + `users.org_id` non-null |
+| **S2** | concept §1.2 + §1.3 | Agent = 同事不是工具, owner_id 1:N 独占归属, 跨 org 协作走邀请态机 | CM-4.0 (#... v=3) + CM-4.1 + RT-0 (#237) | `internal/migrations/0003_cm_4_0.go` (`agent_invitations`) + `internal/api/agent_invitations.go` (POST/PATCH/GET 状态机) + `internal/ws/hub.go::PushAgentInvitationPending` | 状态机单测 `pending → approved/rejected/expired`; #237 typed Push + 双推 (POST→owner, PATCH→requester+owner) |
+| **S3** | admin §1.1 + §1.2 | Admin 独立 SPA + env bootstrap 独立身份, 不在 `users.role` 内 | ADM-0.1 (#197 v=4) + ADM-0.2 (#201 v=5) + ADM-0.3 (#223 v=10) | `internal/migrations/0004_adm_0_1.go` (`admins` 4 字段) + `0005_adm_0_2.go` (`admin_sessions`) + `0010_adm_0_3.go` (4-step backfill) + `internal/admin/` 包 | `users.role='admin' count=0` G2.0 不变量; `auth_isolation_test.go` 反向断言 god-mode 404 |
+| **S4** | admin §1.3 | 硬隔离: admin 看元数据, **不看消息内容**; 走 `/admin-api/*` 独立路由 | ADM-0.2 (#201) | `internal/admin/middleware.go::RequireAdmin` + `handlers_field_whitelist_test.go` (反射扫 body/content/text/artifact 字段) | 字段白名单单测 red-on-leak; `internal/admin/` 禁 import `internal/auth/` (grep enforce + 单测) |
+| **S5** | auth §3 + §1.3 | Agent 默认 capability = `[message.send, message.read]`, owner 可去 read | AP-0 (#... v=8 前 1 行) + AP-0-bis (#206 v=8) | `internal/migrations/0008_ap_0_bis.go` (backfill 现网历史 agent 补 `message.read`) + `internal/auth/defaults.go` (新 agent 注册写两行) | DB query: `count(*) where role='agent' and permission='message.read' = count(agents)` |
+| **S6** | realtime §2.3 | BPP Phase 4 完整化, Phase 2 用 `/ws` hub 顶 push, frame schema **byte-identical** = 未来 BPP frame | INFRA-2 (#195) + RT-0 (#237) | `internal/ws/event_schemas.go` ↔ `client/src/types/ws-frames.ts` ↔ `internal/bpp/frame_schemas.go` + CI lint | G2.6 byte-identical CI lint 跑过; `TestAgentInvitationPendingFrame_ZeroExpiresIsSentinel` 锁 `expires_at=0` sentinel ↔ client `required: number` |
+| **S7** | concept §10 | 新用户第一分钟旅程: 注册硬产出 `#welcome` channel + system message + auto-select | CM-onboarding (#203 v=7) | `internal/migrations/0007_cm_onboarding.go` (`channels.type='system'` + welcome row + `quick_action` JSON) + `internal/auth/register.go` (拉新 user 进 #welcome) | `channels.type='system'` per-user; `messages.sender_id='system'`; client `auto_select_channel_id` |
+| **S8** | concept §11 + admin §4.1 | 用户隐私承诺页 3 条文案锁 (一字不漏 / 顺序不变), Phase 2 仅准备反查表; 实施推迟 ADM-1 | (反查表 PR #211) + ADM-1 (post-#223, pending) | `docs/qa/adm-1-privacy-promise-checklist.md` (3 条文案锁 + 截屏 acceptance) | Phase 2 只 doc 锁; 实施跟 Phase 4 同期, 不阻 Phase 2 退出 (跟 R3-7 一致) |
+
+---
+
+## 2. 立场漂移红线
+
+- 任何 PR 想改 S1-S8 之一 → **必须先动本表 + r3-decisions.md**, 不准代码偷跑改立场。
+- S3/S4/S6 是 G2.0/G2.6 不变量, regression suite §3.A-§3.G + CI lint 三层守护, 改立场必同步改 acceptance template + regression registry。
+- S5 backfill (v=8) 是单向闸 — owner 后续可去 `message.read`, 不可整批回收 (会破 R3-1 决议)。
+
+---
+
+## 3. 锚点
+
+- R3 决议看板: `docs/blueprint/r3-decisions.md` (8 条决议 status)
+- Phase 2 闸进度: `docs/qa/phase-2-gate-status.md` (G2.0-G2.audit)
+- 蓝图 audit-rotation: `docs/blueprint/blueprint-audit-rotation.md` (#219, drift 防漂)
+- 反查表: `docs/qa/adm-0-stance-checklist.md` + `adm-1-privacy-promise-checklist.md` + `cm-3-org-id-checklist.md`
