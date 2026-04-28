@@ -78,10 +78,11 @@ http.Server.Serve       # 0.0.0.0:4900
 **权限**（PRD F1 + AP-0 Phase 1 立场）：
 
 - `user_permissions(user_id, permission, scope)`，UNIQUE。
-- **AP-0 默认权限**（Phase 1 起）：
+- **AP-0 默认权限**（Phase 1 起）+ **AP-0-bis**（Phase 2 R3 决议 #1, 2026-04-28）：
   - 注册新 human (`role=member`) → 一行 `(*, *)`，全权。
-  - 创建 agent (`role=agent`) → 一行 `(message.send, *)`，最小权。
-  - admin (`role=admin`) → 不写默认行，admin 角色在中间件隐式过 `*`。
+  - 创建 agent (`role=agent`) → **两行** `(message.send, *)` + `(message.read, *)`（AP-0-bis 锁定; agent 摄取频道 context 需 read，发送是另一面）。
+  - admin (`role=admin`) → 不写默认行，admin 权威只活在 `/admin-api/*` 一轨。
+- **AP-0-bis backfill**（migration v=8 `ap_0_bis_message_read`）：现网既有 `role='agent' AND deleted_at IS NULL` 的用户在升级时 idempotent 地补一行 `(message.read, *)`；`WHERE NOT EXISTS` 守门，重跑无副作用。
 - 频道创建者迁移时回填 `channel.delete / channel.manage_members / channel.manage_visibility`，scope=`channel:<id>`。
 - 中间件 `auth.RequirePermission(perm)`：**ADM-0.2 起**统一查 `user_permissions`，`(*, *)` / `(perm, *)` / `(perm, scope)` 任一命中即放行；`users.role == "admin"` **不再**短路（admin 权威只活在 `/admin-api/*` 一轨）。
 - v0 stance: AP-0 是过渡形态。Phase 4 AP-1 (三层 scope) + AP-2 (UI bundle) 会把 human 默认从 `(*, *)` 收窄到按 capability bundle 授权; bundle 名按能力 (Messaging / Workspace), **不** 按角色 (PM / Dev)。
@@ -153,8 +154,8 @@ http.Server.Serve       # 0.0.0.0:4900
 ### Messages
 | Method | Path | 用途 |
 |--------|------|------|
-| GET | `/api/v1/channels/{id}/messages` | 历史，cursor 分页（before/after） |
-| GET | `/api/v1/channels/{id}/messages/search` | 全文搜 |
+| GET | `/api/v1/channels/{id}/messages` | 历史，cursor 分页（before/after）；**AP-0-bis 起**需 `message.read`（channelScope） |
+| GET | `/api/v1/channels/{id}/messages/search` | 全文搜；**AP-0-bis 起**需 `message.read`（channelScope） |
 | POST | `/api/v1/channels/{id}/messages` | 发送（需 `message.send`） |
 | PUT | `/api/v1/messages/{id}` | 编辑 |
 | DELETE | `/api/v1/messages/{id}` | soft delete |

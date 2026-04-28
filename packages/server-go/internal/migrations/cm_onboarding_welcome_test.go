@@ -50,11 +50,10 @@ func TestCMOnboardingWelcome_SeedsSystemUserAndBackfills(t *testing.T) {
 	// them just enough to exercise the backfill branch.
 	for _, ddl := range []string{
 		`ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'`,
+		// users.role + users.deleted_at are now seeded by seedLegacyTables (AP-0-bis v=8 prerequisite).
 		`ALTER TABLE users ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE users ADD COLUMN require_mention INTEGER NOT NULL DEFAULT 1`,
-		`ALTER TABLE users ADD COLUMN deleted_at INTEGER`,
 		`ALTER TABLE channels ADD COLUMN name TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE channels ADD COLUMN topic TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE channels ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'`,

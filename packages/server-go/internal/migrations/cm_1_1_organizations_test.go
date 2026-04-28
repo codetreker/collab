@@ -10,12 +10,34 @@ import (
 // The real schema is built by store.createSchema; the migration only cares
 // that these table names exist with at least one column so ALTER TABLE ADD
 // COLUMN works against sqlite.
+//
+// AP-0-bis (v=8) reads users.role / users.deleted_at and writes to
+// user_permissions, so those columns + that table are seeded too — otherwise
+// the registry-wide tests (TestDefaultRegistryRunsClean, ADM-0.1, etc.) that
+// run All migrations end-to-end would crash on the AP-0-bis SQL.
 func seedLegacyTables(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	for _, name := range []string{"users", "channels", "messages", "workspace_files", "remote_nodes"} {
+	for _, name := range []string{"channels", "messages", "workspace_files", "remote_nodes"} {
 		if err := db.Exec("CREATE TABLE " + name + " (id TEXT PRIMARY KEY)").Error; err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
+	}
+	// users needs role + deleted_at for AP-0-bis backfill predicate.
+	if err := db.Exec(`CREATE TABLE users (
+  id         TEXT PRIMARY KEY,
+  role       TEXT,
+  deleted_at INTEGER
+)`).Error; err != nil {
+		t.Fatalf("create users: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE user_permissions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     TEXT NOT NULL,
+  permission  TEXT NOT NULL,
+  scope       TEXT NOT NULL,
+  granted_at  INTEGER NOT NULL
+)`).Error; err != nil {
+		t.Fatalf("create user_permissions: %v", err)
 	}
 }
 

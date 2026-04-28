@@ -25,10 +25,14 @@ type EventBroadcaster interface {
 	SignalNewEvents()
 }
 
-func (h *MessageHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler, sendPerm func(http.Handler) http.Handler) {
+func (h *MessageHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler, sendPerm func(http.Handler) http.Handler, readPerm func(http.Handler) http.Handler) {
 	// Channel-scoped routes (need auth)
-	mux.Handle("GET /api/v1/channels/{channelId}/messages", authMw(http.HandlerFunc(h.handleListMessages)))
-	mux.Handle("GET /api/v1/channels/{channelId}/messages/search", authMw(http.HandlerFunc(h.handleSearchMessages)))
+	// AP-0-bis: GET /channels/:id/messages now requires `message.read`
+	// capability. New agents get this in default grants; legacy agents get
+	// backfilled by migration v=8 (ap_0_bis_message_read.go). Reverse
+	// assertion: agent without message.read row → 403 (see messages_perm_test.go).
+	mux.Handle("GET /api/v1/channels/{channelId}/messages", authMw(readPerm(http.HandlerFunc(h.handleListMessages))))
+	mux.Handle("GET /api/v1/channels/{channelId}/messages/search", authMw(readPerm(http.HandlerFunc(h.handleSearchMessages))))
 	mux.Handle("POST /api/v1/channels/{channelId}/messages", authMw(sendPerm(http.HandlerFunc(h.handleCreateMessage))))
 
 	// Message-scoped routes (need auth)

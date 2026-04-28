@@ -281,13 +281,19 @@ func (s *Store) execMigrationSQL(label, sql string) error {
 }
 
 func (s *Store) backfillDefaultPermissions() error {
-	// AP-0 (Phase 1): humans default to a single (*, *) row; agents to one
-	// (message.send, *). Older v0 dev DBs may carry the legacy
+	// AP-0 (Phase 1) + AP-0-bis (Phase 2 R3 决议 #1, 2026-04-28): humans default
+	// to a single (*, *) row; agents to (message.send, *) + (message.read, *).
+	// Older v0 dev DBs may carry the legacy
 	// (channel.create / message.send / agent.manage) triple — we leave those
 	// rows alone (UNIQUE-guarded FirstOrCreate is additive only) so the boot
 	// path stays "delete db and rebuild" friendly without surprise reductions.
+	//
+	// Production-side legacy backfill happens via the versioned migration
+	// engine (migrations/ap_0_bis_message_read.go v=8); this loop is the
+	// legacy `Store.Migrate()` boot path mirror — kept consistent so a brand-
+	// new v0 dev rebuild matches what production has after migration v=8.
 	memberPerms := []string{"*"}
-	agentPerms := []string{"message.send"}
+	agentPerms := []string{"message.send", "message.read"}
 
 	var members []User
 	s.db.Where("role = ? AND deleted_at IS NULL", "member").Find(&members)
