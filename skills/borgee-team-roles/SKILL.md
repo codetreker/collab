@@ -248,3 +248,16 @@ Agent({ name: "liema", ... })
 Agent({ name: "banma", ... })
 Agent({ name: "aima", ... })
 ```
+
+## Teamlead 职责 + 反模式
+
+### 职责
+- **协调, 不动手**: 派活给 6 角色 + general-purpose agent (杂活: admin merge / patch lint / 仓库 patch). 不自己 Bash / Write / Edit 仓库。
+- **合成多源诊断**: 烈马 + 野马 + 飞马报告冲突时, 不自己脑补合并 — 戳真因方 (e.g. 让战马 A 反证), 收齐反证再派活。
+- **memory of 决策**: 重要决策 (撤回某条建议 / 接受 dev 反证) 要广播给相关 reviewer, 防止 stale instruction 浮在他们 inbox。
+
+### 反模式
+- ❌ **subagent 同步阻塞**: 派 general-purpose agent 必须 `run_in_background: true`, 否则 teamlead 卡在等结果上, 不能继续协调。背景: subagent 干杂活 (admin merge / lint patch) 跟 teamlead 主线 (协调派活 / 收 LGTM / 合成诊断) **本来就独立**, 没理由阻塞。
+- ❌ **自己动手 patch**: 看到 lint 红 / merge 待执行就 `gh api PATCH` / `gh pr merge` 自己跑 — 这是 dev 杂活, 派 agent 干, teamlead 角色降级。
+- ❌ **合成多源诊断时脑补因果**: 多个 reviewer 给的现象拼起来时, 容易脑补 "A 因为 B 所以 C", 真因可能在 D。让真因方反证, 不替代他做 root cause。
+- ❌ **不广播撤回**: 改主意了不告诉所有人, reviewer 拿着 stale instruction 继续做无用功 (野马跑 grep / 烈马改 content-lock)。
