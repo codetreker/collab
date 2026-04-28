@@ -17,6 +17,7 @@ import {
   ApiError,
   type AgentInvitation,
 } from '../lib/api';
+import { useInvitationFrames } from '../hooks/useWsHubFrames';
 
 interface Props {
   onBack: () => void;
@@ -54,6 +55,16 @@ export default function InvitationsInbox({ onBack, onJumpToChannel }: Props) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // RT-0 (#40): drop-in push listener — when the server pushes an
+  // `agent_invitation_pending` or `_decided` frame the inbox re-fetches
+  // immediately. Server is authoritative; the frame is just the
+  // wake-up. 野马 G2.4 hardline (≤ 3s) is satisfied because the path
+  // is /ws push → CustomEvent → load() (no 60s polling).
+  useInvitationFrames({
+    onPending: load,
+    onDecided: load,
+  });
 
   const handleDecision = useCallback(
     async (inv: AgentInvitation, decision: 'approved' | 'rejected') => {

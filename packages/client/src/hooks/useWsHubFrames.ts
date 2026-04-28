@@ -1,0 +1,86 @@
+// useWsHubFrames.ts — RT-0 (#40) listener side.
+//
+// Bridges the two new /ws frames (agent_invitation_pending /
+// agent_invitation_decided) into window-level CustomEvents that
+// InvitationsInbox + Sidebar bell can subscribe to without coupling
+// to the WebSocket hook.
+//
+// Why CustomEvent and not a context store: the existing precedent in
+// useWebSocket is `case 'commands_updated': window.dispatchEvent(...)`.
+// InvitationsInbox + Sidebar both already manage their own local
+// state via REST fetch — the simplest "drop the poll, react to push"
+// surgery is "fire an event, they re-fetch". Avoids touching the
+// AppContext reducer for a Phase 2 transitional path that BPP will
+// replace anyway.
+//
+// Phase 2 → Phase 4 contract: when BPP takes over (#40 Phase 4),
+// the server-side change is `hub.Broadcast → bpp.SendFrame`; the
+// client-side handler here stays 0-改 because the schema is locked
+// byte-identical (see frame_schemas.go CI lint).
+//
+// Wiring: useWebSocket.ts's handleMessage switch adds two cases that
+// call into this module's dispatchers (kept exported for the WS hook
+// to import directly — no React state needed).
+
+import { useEffect } from 'react';
+import {
+  INVITATION_PENDING_EVENT,
+  INVITATION_DECIDED_EVENT,
+  type AgentInvitationPendingFrame,
+  type AgentInvitationDecidedFrame,
+} from '../types/ws-frames';
+
+/**
+ * Fire `borgee:invitation-pending`. Called by the /ws message handler
+ * (see useWebSocket.ts) when a `agent_invitation_pending` frame lands.
+ */
+export function dispatchInvitationPending(frame: AgentInvitationPendingFrame): void {
+  window.dispatchEvent(
+    new CustomEvent(INVITATION_PENDING_EVENT, { detail: frame }),
+  );
+}
+
+/**
+ * Fire `borgee:invitation-decided`. Called by the /ws message handler
+ * when a `agent_invitation_decided` frame lands (used for cross-tab
+ * sync — owner approves on phone, web refreshes).
+ */
+export function dispatchInvitationDecided(frame: AgentInvitationDecidedFrame): void {
+  window.dispatchEvent(
+    new CustomEvent(INVITATION_DECIDED_EVENT, { detail: frame }),
+  );
+}
+
+/**
+ * Hook that registers callbacks for invitation push events. Returns
+ * void; cleans up listeners on unmount. The callbacks receive the
+ * full frame so consumers can decide whether to re-fetch (cheap +
+ * authoritative) or splice locally (cheaper but risks drift).
+ *
+ * Bell badge / inbox both opt for re-fetch in v1 — server is source
+ * of truth, push is just the "wake up" signal.
+ */
+export function useInvitationFrames(handlers: {
+  onPending?: (frame: AgentInvitationPendingFrame) => void;
+  onDecided?: (frame: AgentInvitationDecidedFrame) => void;
+}): void {
+  const { onPending, onDecided } = handlers;
+
+  useEffect(() => {
+    if (!onPending) return;
+    const listener = (e: Event) => {
+      onPending((e as CustomEvent<AgentInvitationPendingFrame>).detail);
+    };
+    window.addEventListener(INVITATION_PENDING_EVENT, listener);
+    return () => window.removeEventListener(INVITATION_PENDING_EVENT, listener);
+  }, [onPending]);
+
+  useEffect(() => {
+    if (!onDecided) return;
+    const listener = (e: Event) => {
+      onDecided((e as CustomEvent<AgentInvitationDecidedFrame>).detail);
+    };
+    window.addEventListener(INVITATION_DECIDED_EVENT, listener);
+    return () => window.removeEventListener(INVITATION_DECIDED_EVENT, listener);
+  }, [onDecided]);
+}

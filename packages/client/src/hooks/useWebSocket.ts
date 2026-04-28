@@ -3,6 +3,14 @@ import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
 import { getDevUserId, fetchMessages } from '../lib/api';
 import type { ConnectionState, Message, Channel, ChannelGroup, PendingMessage } from '../types';
+import {
+  dispatchInvitationPending,
+  dispatchInvitationDecided,
+} from './useWsHubFrames';
+import type {
+  AgentInvitationPendingFrame,
+  AgentInvitationDecidedFrame,
+} from '../types/ws-frames';
 
 const PING_INTERVAL = 25_000;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
@@ -358,6 +366,19 @@ export function useWebSocket() {
       }
       case 'commands_updated': {
         window.dispatchEvent(new CustomEvent('commands_updated'));
+        break;
+      }
+      case 'agent_invitation_pending': {
+        // RT-0 (#40): owner-side push — replaces the 60s bell-badge
+        // poll. Bridge to a window CustomEvent so InvitationsInbox /
+        // Sidebar can subscribe without coupling to this hook.
+        // Schema lock: docs/blueprint/realtime.md §2.3 (BPP-byte-identical).
+        dispatchInvitationPending(data as unknown as AgentInvitationPendingFrame);
+        break;
+      }
+      case 'agent_invitation_decided': {
+        // RT-0 (#40): cross-client sync of approve/reject/expire.
+        dispatchInvitationDecided(data as unknown as AgentInvitationDecidedFrame);
         break;
       }
       case 'error':
