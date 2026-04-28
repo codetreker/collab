@@ -21,10 +21,10 @@ ln -s $(pwd)/borgee/skills/blueprintflow-workflow ~/.claude/skills/blueprintflow
 | Skill | 触发 | 用途 | 波 |
 |---|---|---|---|
 | [blueprintflow-workflow](blueprintflow-workflow/SKILL.md) | 起步 | workflow 总览 + 何时用 + 角色 + 阶段索引 | 第一波 (#323) |
-| [blueprintflow-team-roles](blueprintflow-team-roles/SKILL.md) | 起团 | 6 X马 角色 prompt 模板 (架构师/PM/Dev/QA/设计/安全) | 第一波 (#323) |
+| [blueprintflow-team-roles](blueprintflow-team-roles/SKILL.md) | 起团 | 6 X马 角色 prompt 模板 (架构师/PM/Dev/QA/设计/安全) | 第一波 (#323) + addendum (#326) |
 | [blueprintflow-milestone-fourpiece](blueprintflow-milestone-fourpiece/SKILL.md) | milestone 启动 | 4 件套并行 (spec / stance / acceptance / content-lock) | 第一波 (#323) |
 | [blueprintflow-pr-review-flow](blueprintflow-pr-review-flow/SKILL.md) | PR open | 双 review + admin merge + ruleset 兜底 | 第一波 (#323) |
-| [blueprintflow-teamlead-fast-cron-checkin](blueprintflow-teamlead-fast-cron-checkin/SKILL.md) | 15min cron | idle 派活, 不只 audit | 第一波 (#323) + addendum (#326) |
+| [blueprintflow-teamlead-fast-cron-checkin](blueprintflow-teamlead-fast-cron-checkin/SKILL.md) | 15min cron | idle 派活, 不只 audit | 第一波 (#323) |
 | [blueprintflow-teamlead-slow-cron-checkin](blueprintflow-teamlead-slow-cron-checkin/SKILL.md) | 2-4h cron | 偏差 audit + 文档/代码一致性 + 翻牌延迟 | 第一波 (#323) |
 | [blueprintflow-phase-plan](blueprintflow-phase-plan/SKILL.md) | Phase 启动 | Phase 拆 + 退出 gate + 4 道防偏离闸门 | 第二波 (#325) |
 | [blueprintflow-phase-exit-gate](blueprintflow-phase-exit-gate/SKILL.md) | Phase 收尾 | Phase 收尾联签 + closure announcement | 第二波 (#325) |
