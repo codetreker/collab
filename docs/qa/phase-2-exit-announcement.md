@@ -33,7 +33,7 @@
 | 闸 | 留账 PR 路径 | 锚 acceptance-templates |
 |---|---|---|
 | **G2.5** presence 接口契约 | `internal/presence/contract.go` AL-3 同期 PR **#277** (战马A AL-3 占号) — 路径锁 + 符号锁 (`PresenceTracker.IsOnline` + `Sessions`) | `acceptance-templates/al-2a.md` (config SSOT, AL-3 前置) + AL-3 留账行 |
-| **G2.6** /ws ↔ BPP schema CI lint | `bpp/frame_schemas.go` CI lint **#274** (飞马 BPP-1 占号) | `acceptance-templates/al-2a.md` (BPP frame 不在 AL-2a 反向断言) + BPP-1 PR |
+| **G2.6** /ws ↔ BPP schema CI lint | ✅ **DONE** — **#304** merged 2026-04-28 13:35:02Z (commit `4724efa`); `bpp/frame_schemas.go` whitelist + `bpp/frame_schemas_test.go` 6 reflection subtest + `bpp/schema_equivalence_test.go` 2 dispatcher subtest + CI workflow lint job | `acceptance-templates/al-2a.md` §蓝图行为对照 BPP-1 envelope CI lint 真落行 + REG-BPP1-001..008 全 🟢 |
 
 > ⚠️ Phase 3 RT-1 ArtifactUpdated frame 必须套 #237 envelope 直到 BPP-1 CI lint 落 (飞马 #267 §5 强约束)。
 >
@@ -89,6 +89,7 @@
 | 2026-04-28 | 战马A | v1.3 — §7 战马A (实施 / 闸 3) 联签位填上 (date 2026-04-28); G2.5 留账行 PR # = #277 锁定 |
 | 2026-04-28 | 建军 | v2.0 — §9 closure 宣布 (Phase 2 正式关闭) |
 | 2026-04-28 | 烈马 | v2.1 — §4 加 RT-1 三段全闭备注 (#290+#292+#296), Phase 4 留账压力降; G2.5/G2.6 不靠 RT-1 闭环达成 (明确区分 — RT-1 是 realtime 主线, AL-3 是 presence 接口契约, BPP-1 是 envelope CI lint, 三者互不替代) |
+| 2026-04-28 | 烈马 | v2.2 — §4 G2.6 留账行 ⏸️ → ✅ **DONE** (引 #304 merged commit `4724efa`); BPP-1 envelope CI lint 真落 → CV-1 v1 transition 三条件 (RT-1 ✅ + AL-3 ✅ + BPP-1 lint ✅) 全部满足 |
 
 ## §9. 关闭宣布 (建军, 2026-04-28)
 
