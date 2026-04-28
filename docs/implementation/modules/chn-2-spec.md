@@ -19,7 +19,7 @@
 |---|---|---|---|
 | **CHN-2.1** server 边界 + 成员数锁 | `POST /dms` 端点 (body: `{peer_user_id}`, 创/查找现存 type='dm' 双向 channel idempotent) — 跟 `POST /channels` 拆离 (channel 创要 name/topic, DM 自动 \"@username\"); `POST /channels/:id/members` DM channel reject 400 (立场 ①, 反加人); `GET /channels/:id/artifacts` DM 403 (立场 ②); 复用 CHN-1 #286 channel API 主体, 不另起 message/reaction 表; DM-2 战马B v=14 mention 字段同 migration 协调 (一次 schema bump, 不拆双 v) | 待 PR (战马B) | 战马B |
 | **CHN-2.2** client 列表分栏 + 入口禁用 | 侧栏 `<DMList>` 组件独立 (`<ChannelList>` 拆 sibling, 不嵌套); DM 详情页跳过 `<WorkspaceTab>` 渲染分支 (CV-1.3 #346 ArtifactPanel 增 `if channel.type==='dm' return null` 守门); DM 头像样式 `border-radius: 50%` + `<UserStatusDot>` (AL-3 #324 复用); 反约束: 不在 DM 容器拼 \"加人\" / \"topic\" / \"workspace\" 按钮 | 待 PR (战马B) | 战马B |
-| **CHN-2.3** \"DM 升 channel\" 升级路径 | `POST /dms/:id/promote-to-channel` 端点 (owner-only = DM 双方任一, body: `{name, topic}`) — 不破坏老 message/reaction 数据 (单改 `channels.type` 'dm' → 'private' + 加 name/topic NOT NULL fill); UI: DM 详情页 \"... → 升级为 Channel\" 入口 (跟 \"加人\" 替代路径, 立场 ① 强引导); 反约束: 不反向降级 (channel → DM 不开, 数据归不齐) | 待 PR (战马B) | 战马B |
+| **CHN-2.3** \"加人\" 引导 → 新建 channel (非 DM 转换) | DM 内输入 `@<3rd_user>` 触发 mention 候选 — 候选列表为空 + placeholder `\"私信仅限两人, 想加人请新建频道\"` byte-identical (#354 立场 ⑤ 同源); UI 给 \"新建频道并拉入双方\" 引导按钮跳 `POST /channels` 创流 (跟 CHN-1 #286 既有创 channel 端点同源, 不开新 endpoint, 不动 DM channel 数据); **反约束**: 不开 \"DM 升级 / Convert to channel / Upgrade DM / 转为频道\" 路径 — 蓝图 §1.2 line 27 + §2 line 62 字面 \"想加人就**新建** channel 把双方拉进去\", 是新建不是升级 (#354 立场 ⑤ 字面锁) | 待 PR (战马B) | 战马B |
 
 ## 2. 与 CHN-1 / DM-2 / CV-1 / ADM-0 留账冲突点
 
@@ -34,9 +34,10 @@
 ```
 git grep -nE "channels\.type.*=.*'dm'.*members.*[<>=].*2|len\(.*members.*\).*[<>=].*2" packages/server-go/internal/server/   # ≥ 1 hit (立场 ① 成员数锁)
 git grep -nE "type.*===\\s*'dm'.*WorkspaceTab|channel\.type.*'dm'.*return null" packages/client/   # ≥ 1 hit (立场 ② 客户端入口禁用)
-git grep -nE 'POST /dms|/dms/:id/promote'                packages/server-go/internal/server/         # ≥ 1 hit (CHN-2.1 + 2.3 端点)
+git grep -nE 'POST /dms|/dms/:id/promote'                packages/server-go/internal/server/         # ≥ 1 hit (CHN-2.1 端点; CHN-2.3 不开 promote, 走 CHN-1 既有 POST /channels)
 git grep -nE 'WorkspaceTab.*dm|dm.*artifacts.*200'        packages/client/ packages/server-go/         # 0 hit (反约束 立场 ② DM 无 artifact)
 git grep -nE 'POST /channels.*dm.*members.*add|dm.*addMember' packages/server-go/internal/server/      # 0 hit (反约束 立场 ① DM 不加人)
+git grep -nE "['\"](升级为频道|Convert to channel|Upgrade DM|转为频道|promote-to-channel)['\"]"  packages/  # 0 hit (反约束 #354 立场 ⑤ 蓝图 §1.2/§2 字面 \"新建\" 非 \"升级\")
 ```
 
 任一 0 hit (除反约束行) → CI fail.
@@ -46,7 +47,8 @@ git grep -nE 'POST /channels.*dm.*members.*add|dm.*addMember' packages/server-go
 - ❌ 群 DM (3+ 人私聊, 立场 ①, 想群聊 → 升 channel)
 - ❌ DM workspace / artifact (立场 ② 蓝图 §1.2 字面禁)
 - ❌ DM topic / 加人按钮 (立场 ① 蓝图 §1.2 ❌)
-- ❌ channel → DM 反向降级 (CHN-2.3 单向)
+- ❌ channel → DM 反向降级 (CHN-2.3 不开降级)
+- ❌ DM → channel 单向 \"升级 / 转换\" 路径 (#354 立场 ⑤ + 蓝图 §1.2/§2 字面 \"新建\" 非 \"升级\"; 想加人 → 新建 channel 拉双方)
 - ❌ DM 端到端加密 (留 v3+, ADM-0 god-mode 元数据可见前提)
 - ❌ DM 跟 channel 混排 \"recent\" 时序栏 (立场 ③ 字面禁)
 
@@ -54,10 +56,11 @@ git grep -nE 'POST /channels.*dm.*members.*add|dm.*addMember' packages/server-go
 
 - CHN-2.1: `POST /dms` idempotent (双向重创回同一 id) + 成员数锁 reject 加 3 人 (400 文案锁 \"DM 不可加人, 升 channel\") + DM `GET /artifacts` 403 (立场 ②) + DM-2 v=14 同 migration 不冲突 (战马B 协同)
 - CHN-2.2: client e2e DM 详情页**不渲染** Workspace tab (DOM count==0) + 侧栏 DMList / ChannelList 拆 sibling (DOM 路径反断) + DM 头像 `border-radius: 50%` 截屏锁
-- CHN-2.3: 升级路径 message/reaction 数据保全 (升级前后 message_count 等量) + type 单改 'dm' → 'private' + 反向降级 reject 405
+- CHN-2.3: DM 内 `@<3rd_user>` mention 候选空 + placeholder 字面 byte-identical (#354 立场 ⑤ 同源) + \"新建频道\" 引导跳 `POST /channels` (CHN-1 既有端点) + 反向 grep \"升级为频道\" 同义词 0 hit
 
 ## 6. 更新日志
 
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-29 | 飞马 | v0 — spec lock Phase 3 章程严守续作第一波并行 (跟 CV-2 同步起); 3 立场 + 3 拆段 + 5 grep 反查 (含 2 反约束) + 6 反约束 + CHN-1/DM-2/CV-1/ADM-0 留账边界字面对齐; CHN-3 排除 DM 字面锁前置 |
+| 2026-04-29 | 飞马 | v1 — 跟 #354 野马文案锁 v0 对齐: CHN-2.3 \"DM 升 channel promote-to-channel\" 改 \"加人引导新建 channel\" (蓝图 §1.2/§2 字面 \"新建\" 非 \"升级\", #354 立场 ⑤ 同源 placeholder \"私信仅限两人, 想加人请新建频道\"); 加 6 行 grep 反查 \"升级/转换\" 同义词 0 hit; 反约束加 \"DM→channel 升级路径不开\" |
