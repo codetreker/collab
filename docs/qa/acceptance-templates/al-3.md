@@ -4,7 +4,7 @@
 > Contract 占号: `packages/server-go/internal/presence/contract.go` (#277, G2.5 留账锚) — `PresenceTracker.IsOnline` + `Sessions` 接口签名锁死 (read 端不动, AL-3 仅扩 write)
 > Implementation: `docs/implementation/modules/al-3-spec.md` (飞马 #301, 3 立场 + 6 grep 锚 + 5 反约束)
 > 立场反查: `docs/qa/al-3-stance-checklist.md` (野马 #303, 7 项立场 — agent-only / 三态 / 单一真源 / 跨 org / 5s+60s / 隐藏多端 / admin 白名单)
-> 拆 PR: **AL-3.1** schema (`presence_sessions` 表 + migration v=12) — TBD / **AL-3.2** server hub lifecycle hook + PresenceTracker 写端 — TBD / **AL-3.3** client UI presence dot — TBD
+> 拆 PR: **AL-3.1** schema (`presence_sessions` 表 + migration v=12) — ✅ **#310 (685dc15)** merged 2026-04-28 / **AL-3.2** server hub lifecycle hook + PresenceTracker 写端 — TBD / **AL-3.3** client UI presence dot — TBD
 > Owner: 战马A 实施 / 烈马 验收
 
 ## 验收清单
@@ -13,8 +13,8 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 1.1 `presence_sessions` 表: `user_id NOT NULL` + `session_id UNIQUE NOT NULL` + `connected_at NOT NULL` + `last_heartbeat_at NOT NULL`; INDEX `idx_presence_sessions_user_id` (O(1) IsOnline lookup 必需); migration v=11 → v=12 双向 | migration drift test | 战马A / 烈马 | `internal/migrations/al_3_1_presence_sessions_test.go::TestAL31_CreatesPresenceSessionsTable` + `TestAL31_RejectsDuplicateSessionID` (TBD) |
-| 1.2 contract.go read 端接口签名 byte-identical 于 #277 (`IsOnline(userID) bool` + `Sessions(userID) []string`); AL-3 仅扩 write 端 (`TrackOnline` / `TrackOffline`), 不改 read | unit (interface assertion) | 飞马 / 烈马 | `internal/presence/contract_drift_test.go::TestPresenceTrackerInterfaceLocked` — 编译期 `var _ PresenceTracker = (*sessionsImpl)(nil)` (TBD) |
+| 1.1 `presence_sessions` 表: `user_id NOT NULL` + `session_id UNIQUE NOT NULL` + `connected_at NOT NULL` + `last_heartbeat_at NOT NULL`; INDEX `idx_presence_sessions_user_id` (O(1) IsOnline lookup 必需); migration v=11 → v=12 双向 | migration drift test | 战马A / 烈马 | ✅ #310 — `internal/migrations/al_3_1_presence_sessions_test.go` 5 test PASS: `TestAL31_CreatesPresenceSessionsTable` (PK / NOT NULL 全列 / agent_id nullable) + `TestAL31_RejectsDuplicateSessionID` (UNIQUE) + `TestAL31_AllowsMultiSessionPerUser` (web+mobile+plugin) + `TestAL31_HasUserIDIndex` (full + partial agent_id WHERE NOT NULL) + `TestAL31_Idempotent` (rerun no-op); `registry.go` v=12 串行号 |
+| 1.2 contract.go read 端接口签名 byte-identical 于 #277 (`IsOnline(userID) bool` + `Sessions(userID) []string`); AL-3 仅扩 write 端 (`TrackOnline` / `TrackOffline`), 不改 read | unit (interface assertion) | 飞马 / 烈马 | ✅ #310 — `internal/presence/tracker.go:111` 编译期锁 `var _ PresenceTracker = (*SessionsTracker)(nil)`; `IsOnline` OR-matching user_id ∨ agent_id (DM-2 mention 路径); 跨 org 默认 false (无 org 列, 走 channel membership 上层 gate) |
 
 ### §2 server hub WS lifecycle hook (AL-3.2)
 
