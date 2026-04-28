@@ -141,7 +141,7 @@ http.Server.Serve       # 0.0.0.0:4900
 | PUT | `/api/v1/channels/{id}/topic` | 单独改 topic |
 | POST | `/api/v1/channels/{id}/join` | 加入公开频道 |
 | POST | `/api/v1/channels/{id}/leave` | 离开 |
-| POST | `/api/v1/channels/{id}/members` | 加成员（需 `channel.manage_members`；**CHN-1.2 立场 ⑥**: agent 自动 `silent=true` 并发出 system message `{agent_name} joined`） |
+| POST | `/api/v1/channels/{id}/members` | 加成员（需 `channel.manage_members`；**CHN-1.2 立场 ⑥**: agent 自动 `silent=true` 并发出 system message `{agent_name} joined`。CHN-1.3 fix: agent 创建时的 `AddUserToPublicChannels` 自动入 channel 路径也走 `AddChannelMember`，确保 silent 标志在 fan-out 路径上同样落到 `channel_members.silent`） |
 | DELETE | `/api/v1/channels/{id}/members/{uid}` | 踢成员 |
 | GET | `/api/v1/channels/{id}/members` | 成员列表 |
 | PUT | `/api/v1/channels/{id}/read` | 更新 `last_read_at` |
