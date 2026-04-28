@@ -82,6 +82,9 @@ func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.
 	owner := &store.User{DisplayName: "Owner", Role: "admin", Email: &ownerEmail, PasswordHash: ownerHash}
 	s.CreateUser(owner)
 	s.GrantDefaultPermissions(owner.ID, "admin")
+	// ADM-0.2: legacy role=='admin' shortcut removed. Owner-as-admin needs
+	// explicit (*, *) to keep blanket capability on the user-rail.
+	s.GrantPermission(&store.UserPermission{UserID: owner.ID, Permission: "*", Scope: "*"})
 	for _, permission := range []string{"channel.delete", "channel.manage_members", "channel.manage_visibility", "message.delete"} {
 		s.GrantPermission(&store.UserPermission{UserID: owner.ID, Permission: permission, Scope: "*"})
 	}

@@ -32,6 +32,12 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 		t.Fatalf("store.Migrate: %v", err)
 	}
 
+	// ADM-0.1/0.2: server.New calls admin.Bootstrap which is fail-loud on
+	// missing BORGEE_ADMIN_* env. Provide test-only literals; bcrypt cost=10
+	// hash of "password123" (test-only, never reaches prod).
+	t.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
+	t.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
+
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",
 		NodeEnv:       "development",
@@ -58,6 +64,12 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	if err := s.GrantDefaultPermissions(owner.ID, "admin"); err != nil {
 		t.Fatalf("grant owner perms: %v", err)
 	}
+	// ADM-0.2: legacy users.role=='admin' shortcut in RequirePermission
+	// is removed. Test fixtures with role 'admin' need an explicit (*, *)
+	// row to retain the user-API capabilities they had via the shortcut.
+	if err := s.GrantPermission(&store.UserPermission{UserID: owner.ID, Permission: "*", Scope: "*", GrantedAt: time.Now().UnixMilli()}); err != nil {
+		t.Fatalf("grant owner *: %v", err)
+	}
 
 	adminHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
 	adminEmail := "admin@test.com"
@@ -72,6 +84,9 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	}
 	if err := s.GrantDefaultPermissions(admin.ID, "admin"); err != nil {
 		t.Fatalf("grant admin perms: %v", err)
+	}
+	if err := s.GrantPermission(&store.UserPermission{UserID: admin.ID, Permission: "*", Scope: "*", GrantedAt: time.Now().UnixMilli()}); err != nil {
+		t.Fatalf("grant admin *: %v", err)
 	}
 
 	memberHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
@@ -119,10 +134,13 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	return ts, s, cfg
 }
 
+// LoginAsAdmin posts to the new ADM-0.2 admin auth endpoint and returns the
+// `borgee_admin_session` cookie value. The legacy borgee_admin_token JWT path
+// was removed in ADM-0.2.
 func LoginAsAdmin(t *testing.T, serverURL string) string {
 	t.Helper()
 
-	body, _ := json.Marshal(map[string]string{"username": "admin", "password": "password123"})
+	body, _ := json.Marshal(map[string]string{"login": "test-admin", "password": "password123"})
 	resp, err := http.Post(serverURL+"/admin-api/v1/auth/login", "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("admin login request: %v", err)
@@ -135,12 +153,41 @@ func LoginAsAdmin(t *testing.T, serverURL string) string {
 	}
 
 	for _, c := range resp.Cookies() {
-		if c.Name == "borgee_admin_token" {
+		if c.Name == "borgee_admin_session" {
 			return c.Value
 		}
 	}
-	t.Fatal("no borgee_admin_token cookie in admin login response")
+	t.Fatal("no borgee_admin_session cookie in admin login response")
 	return ""
+}
+
+// AdminJSON sends a request authenticated by the borgee_admin_session cookie.
+// User-rail JSON helper does not work for admin-rail endpoints anymore.
+func AdminJSON(t *testing.T, method, url, sessionToken string, body any) (*http.Response, map[string]any) {
+	t.Helper()
+	var reqBody io.Reader
+	if body != nil {
+		b, _ := json.Marshal(body)
+		reqBody = bytes.NewReader(b)
+	}
+	req, err := http.NewRequest(method, url, reqBody)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if sessionToken != "" {
+		req.AddCookie(&http.Cookie{Name: "borgee_admin_session", Value: sessionToken})
+	}
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	var result map[string]any
+	json.Unmarshal(respBody, &result)
+	return resp, result
 }
 
 func LoginAs(t *testing.T, serverURL, email, password string) string {
@@ -182,8 +229,16 @@ func JSON(t *testing.T, method, url, token string, body any) (*http.Response, ma
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
-		req.Header.Set("Authorization", "Bearer "+token)
+		// ADM-0.2: /admin-api/* is gated by admin.RequireAdmin which only
+		// recognises the borgee_admin_session cookie. /api/* is gated by
+		// auth.AuthMiddleware which uses borgee_token + Bearer. Same helper
+		// signature picks the right rail by URL prefix.
+		if strings.Contains(url, "/admin-api/") {
+			req.AddCookie(&http.Cookie{Name: "borgee_admin_session", Value: token})
+		} else {
+			req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
 	}
 
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}

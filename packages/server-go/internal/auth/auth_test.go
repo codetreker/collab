@@ -35,7 +35,11 @@ func testStore(t *testing.T) *store.Store {
 	return s
 }
 
-func TestRequirePermission_AdminPasses(t *testing.T) {
+// TestRequirePermission_AdminRoleNoLongerShortcuts asserts ADM-0.2 §1 反向断言
+// 2.D: a user row with role=='admin' but no explicit permission grants now
+// receives 403 from RequirePermission. The legacy shortcut at this site is
+// gone; admin authority lives on the admin-rail (admin_sessions cookie) only.
+func TestRequirePermission_AdminRoleNoLongerShortcuts(t *testing.T) {
 	s := testStore(t)
 	admin := &store.User{ID: "admin1", DisplayName: "Admin", Role: "admin"}
 	s.CreateUser(admin)
@@ -49,8 +53,8 @@ func TestRequirePermission_AdminPasses(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rec.Code)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 (admin shortcut removed), got %d", rec.Code)
 	}
 }
 

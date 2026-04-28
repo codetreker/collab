@@ -13,10 +13,11 @@ func RequirePermission(s *store.Store, permission string, scopeResolver func(r *
 				return
 			}
 
-			if user.Role == "admin" {
-				next.ServeHTTP(w, r)
-				return
-			}
+			// ADM-0.2: legacy `users.role == "admin"` shortcut removed.
+			// Admin authority lives exclusively on the /admin-api/* rail
+			// behind admin.RequireAdmin (admin_sessions cookie). User-API
+			// permission checks here go through the wildcard `(*, *)` row
+			// (granted at registration, AP-0) or scoped permission rows.
 
 			perms, err := s.ListUserPermissions(user.ID)
 			if err != nil {

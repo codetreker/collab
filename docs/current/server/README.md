@@ -32,7 +32,9 @@ http.Server.Serve       # 0.0.0.0:4900
 | `CLIENT_DIST` | `packages/client/dist` | SPA 静态资源 |
 | `JWT_SECRET` | dev 时 `dev-secret` | prod 必填，否则 `Validate()` 报错 |
 | `DEV_AUTH_BYPASS` | `false` | 仅 dev：允许 `X-Dev-User-Id` 头 |
-| `ADMIN_USER` / `ADMIN_PASSWORD` | 空 | 都非空时才挂载 `/admin-api/*` |
+| `ADMIN_USER` / `ADMIN_PASSWORD` | 空 | **已废弃**（ADM-0.1+ 用 `BORGEE_ADMIN_LOGIN` + `BORGEE_ADMIN_PASSWORD_HASH`），保留供过渡期日志参考 |
+| `BORGEE_ADMIN_LOGIN` | — | ADM-0.1：admin bootstrap 登录名，缺 → fail-loud |
+| `BORGEE_ADMIN_PASSWORD_HASH` | — | ADM-0.1：bcrypt hash，缺 → fail-loud |
 
 ## 2. HTTP 层
 
@@ -65,7 +67,13 @@ http.Server.Serve       # 0.0.0.0:4900
 
 也就是说在 dev 模式下根本不带 cookie 也能直接访问 API。**生产 / staging 千万不要打开**。
 
-**Admin auth 完全独立**：`borgee_admin_token` cookie 或 Bearer，密码是明文环境变量比较，只有 `ADMIN_USER` 与 `ADMIN_PASSWORD` 都设置时 admin 路由才注册。
+**Admin auth 完全独立**（ADM-0.1 + ADM-0.2 stance）：
+
+- 凭证表：`admins` 表（ADM-0.1），bcrypt hash；bootstrap 由 `BORGEE_ADMIN_LOGIN` + `BORGEE_ADMIN_PASSWORD_HASH` 环境变量 fail-loud 注入（缺一启动失败）。
+- Cookie：`borgee_admin_session`，值是 32 字节随机 hex token，**不**是 admin id。`admin_sessions(token PK, admin_id, created_at, expires_at)` 表反查（ADM-0.2 §1）。
+- 中间件 `admin.RequireAdmin` 只解 `borgee_admin_session` cookie / Bearer，找不到 session 或过期 → 401。
+- 二轨完全隔离：user-rail (`borgee_token`) **永远不**授权 `/admin-api/*`；admin-rail (`borgee_admin_session`) **永远不**授权 `/api/v1/*`。`/api/v1/admin/*` 这条 god-mode 旧挂载在 ADM-0.2 已删除，无任何 user-API 路径上需要 admin 权限。
+- 字段白名单：`/admin-api/v1/{stats,users,invites,channels}` response 只回元数据（id / created_at / role / counts），**禁止**出现 `body|content|text|artifact` 等业务正文字段（`internal/admin/handlers_field_whitelist_test.go` 反射扫描守门）。
 
 **权限**（PRD F1 + AP-0 Phase 1 立场）：
 
@@ -75,7 +83,7 @@ http.Server.Serve       # 0.0.0.0:4900
   - 创建 agent (`role=agent`) → 一行 `(message.send, *)`，最小权。
   - admin (`role=admin`) → 不写默认行，admin 角色在中间件隐式过 `*`。
 - 频道创建者迁移时回填 `channel.delete / channel.manage_members / channel.manage_visibility`，scope=`channel:<id>`。
-- 中间件 `auth.RequirePermission(perm)`：admin 直放; 其他角色按 `user_permissions` 匹配, **额外** 把 `(*, *)` 视作通配通过, 再按 (`perm`, `*`) 或 (`perm`, scope) 精确匹配。
+- 中间件 `auth.RequirePermission(perm)`：**ADM-0.2 起**统一查 `user_permissions`，`(*, *)` / `(perm, *)` / `(perm, scope)` 任一命中即放行；`users.role == "admin"` **不再**短路（admin 权威只活在 `/admin-api/*` 一轨）。
 - v0 stance: AP-0 是过渡形态。Phase 4 AP-1 (三层 scope) + AP-2 (UI bundle) 会把 human 默认从 `(*, *)` 收窄到按 capability bundle 授权; bundle 名按能力 (Messaging / Workspace), **不** 按角色 (PM / Dev)。
 
 ## 4. 存储层 (`internal/store/`)

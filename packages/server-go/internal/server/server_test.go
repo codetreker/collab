@@ -39,6 +39,11 @@ func testServer(t *testing.T) (*Server, *store.Store) {
 	}
 	t.Cleanup(func() { s.Close() })
 
+	// ADM-0.2: server.New → admin.Bootstrap is fail-loud on missing
+	// BORGEE_ADMIN_* env. Provide test-only literals here too.
+	t.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
+	t.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
+
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",
 		NodeEnv:       "development",

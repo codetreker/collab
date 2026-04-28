@@ -10,22 +10,22 @@ import (
 
 func TestP0UserDeleteCascadesAgentsAndData(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
-	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+	adminSession := testutil.LoginAsAdmin(t, ts.URL)
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
-	memberID := testutil.GetUserIDByName(t, ts.URL, adminToken, "Member")
-	generalID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)
+	memberID := testutil.GetUserIDByName(t, ts.URL, adminSession, "Member")
+	generalID := testutil.GetGeneralChannelID(t, ts.URL, memberToken)
 
 	agent := testutil.CreateAgent(t, ts.URL, memberToken, "Owned Cascade Bot")
 	agentID := stringField(t, agent, "id")
 	agentKey := stringField(t, agent, "api_key")
 
-	resp, data := testutil.JSON(t, http.MethodPost, ts.URL+"/api/v1/admin/users/"+memberID+"/permissions", adminToken, map[string]string{
+	resp, data := testutil.JSON(t, http.MethodPost, ts.URL+"/admin-api/v1/users/"+memberID+"/permissions", adminSession, map[string]string{
 		"permission": "channel.manage_members",
 		"scope":      "channel:" + generalID,
 	})
 	requireStatus(t, resp, http.StatusCreated, data)
 
-	resp, data = testutil.JSON(t, http.MethodDelete, ts.URL+"/api/v1/admin/users/"+memberID, adminToken, nil)
+	resp, data = testutil.JSON(t, http.MethodDelete, ts.URL+"/admin-api/v1/users/"+memberID, adminSession, nil)
 	requireStatus(t, resp, http.StatusOK, data)
 
 	if _, err := s.GetUserByID(memberID); err == nil {

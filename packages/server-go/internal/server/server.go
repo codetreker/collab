@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"borgee-server/internal/admin"
 	"borgee-server/internal/api"
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
@@ -93,17 +94,22 @@ func (s *Server) SetupRoutes() {
 	dmHandler := &api.DmHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
 	dmHandler.RegisterRoutes(s.mux, authMw)
 
-	// Admin
-	if s.cfg.AdminUser == "" || s.cfg.AdminPassword == "" {
-		s.logger.Warn("admin routes disabled; ADMIN_USER and ADMIN_PASSWORD must be set")
-	} else {
-		adminMw := api.AdminAuthMiddleware(s.cfg)
-		adminAuthHandler := &api.AdminAuthHandler{Config: s.cfg, Logger: s.logger}
-		adminAuthHandler.RegisterRoutes(s.mux, adminMw)
-		adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
-		adminHandler.RegisterRoutes(s.mux, adminMw)
-		adminHandler.RegisterAppRoutes(s.mux, authMw)
+	// Admin (ADM-0.2: cookie拆 + RequirePermission去admin短路 + god-mode 元数据-only)
+	// Bootstrap is fail-loud (panics on missing env). Tests inject env or use
+	// testutil. The legacy api.AdminAuthHandler / api.AdminAuthMiddleware paths
+	// are retired in this PR — admin auth is exclusively the borgee_admin_session
+	// cookie backed by admin_sessions rows.
+	if err := admin.Bootstrap(s.store.DB()); err != nil {
+		s.logger.Error("admin bootstrap failed", "error", err)
 	}
+	adminAuthHandler := &admin.Handler{DB: s.store.DB(), Logger: s.logger, IsDevelopment: s.cfg.IsDevelopment()}
+	adminAuthHandler.RegisterRoutes(s.mux)
+	adminMw := admin.RequireAdmin(s.store.DB(), nil)
+	adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
+	adminHandler.RegisterRoutes(s.mux, adminMw)
+	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
+	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
+	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
 
 	// Agents
 	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}}

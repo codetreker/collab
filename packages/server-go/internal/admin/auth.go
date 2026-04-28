@@ -3,23 +3,29 @@
 //
 // Blueprint: admin-model §1.2 (B env bootstrap, 无 promote) + §3 (admins
 // 独立表). Implementation R3 PR #189 lays out the 3 sub-PRs (ADM-0.1 / 0.2 /
-// 0.3); this file lands in ADM-0.1.
+// 0.3); this file lands in ADM-0.1 and is extended in ADM-0.2 to back the
+// cookie value with a server-side `admin_sessions` row instead of carrying
+// the raw admin id.
 //
-// Hard constraints (review checklist §ADM-0.1 §3 红线):
+// Hard constraints (review checklist §ADM-0.1 + §ADM-0.2 红线):
 //   - cookie name MUST be the literal `borgee_admin_session`
+//   - cookie value MUST be an opaque session token, never a raw admin id
+//     (ADM-0.2: server-side session lookup, not parse)
 //   - this package MUST NOT import borgee-server/internal/auth (auth path
 //     isolation; grep for that import path must come up empty)
 //   - bcrypt verify MUST use subtle.ConstantTimeCompare wrapping
 //     bcrypt.CompareHashAndPassword's success/failure semantics
 //   - admins table fields are strict: id / login / password_hash / created_at
 //
-// During ADM-0.1 the legacy `/admin-api/v1/*` route family (api package,
-// users.role='admin') still works — that is the "dual-rail coexistence"
-// invariant 1.F. ADM-0.2 is what cuts the legacy rail.
+// ADM-0.2 cuts the legacy `internal/api/admin_auth.go` JWT path and the
+// `/api/v1/admin/*` user-rail god-mode mount; only `borgee_admin_session`
+// cookie + `/admin-api/v1/*` survive.
 package admin
 
 import (
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -52,6 +58,10 @@ const SessionTTL = 7 * 24 * time.Hour
 // password_hash be a bcrypt hash with cost ≥ 10.
 const MinBcryptCost = 10
 
+// SessionTokenBytes is the length (in raw bytes) of the random portion of an
+// admin session token. 32 bytes → 64 hex chars; ample for a v0 sweep table.
+const SessionTokenBytes = 32
+
 // Admin is the in-package row shape for the `admins` table created by
 // migration adm_0_1_admins (v=4).
 type Admin struct {
@@ -64,6 +74,18 @@ type Admin struct {
 // TableName pins the GORM table mapping to the literal name created by the
 // migration; we deliberately do not rely on naming conventions here.
 func (Admin) TableName() string { return "admins" }
+
+// AdminSession backs the v=5 `admin_sessions` table (ADM-0.2). Cookie value
+// is `Token` (opaque); resolution requires a row lookup, never parsing.
+type AdminSession struct {
+	Token     string `gorm:"primaryKey;column:token"`
+	AdminID   string `gorm:"column:admin_id;index"`
+	CreatedAt int64  `gorm:"column:created_at"`
+	ExpiresAt int64  `gorm:"column:expires_at;index"`
+}
+
+// TableName pins the literal name created by the migration.
+func (AdminSession) TableName() string { return "admin_sessions" }
 
 // FindByLogin returns the admin row matching login or (nil, nil) if none.
 // All other DB errors propagate.
@@ -93,23 +115,102 @@ func VerifyPassword(hash, plain string) bool {
 	return subtle.ConstantTimeCompare([]byte{ok}, []byte{1}) == 1
 }
 
-// Handler exposes the new admin auth endpoint that issues a
-// `borgee_admin_session` cookie. It is intentionally narrow: only the login
-// surface lands in ADM-0.1; logout / me are kept in the legacy admin path
-// during dual-rail and will be rebuilt under ADM-0.2.
+// CreateSession inserts a new admin_sessions row and returns the opaque token
+// to be set as the cookie value. ADM-0.2 invariant: token is never derived
+// from admin id; resolution requires a row lookup.
+func CreateSession(db *gorm.DB, adminID string, now time.Time) (string, error) {
+	buf := make([]byte, SessionTokenBytes)
+	if _, err := rand.Read(buf); err != nil {
+		return "", fmt.Errorf("admin session: rand: %w", err)
+	}
+	token := hex.EncodeToString(buf)
+	row := AdminSession{
+		Token:     token,
+		AdminID:   adminID,
+		CreatedAt: now.UnixMilli(),
+		ExpiresAt: now.Add(SessionTTL).UnixMilli(),
+	}
+	if err := db.Create(&row).Error; err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+// ResolveSession looks up the session row by token and returns the admin if
+// the row exists, is unexpired, and the joined admins row exists. Otherwise
+// returns (nil, nil); errors propagate only on DB failure.
+func ResolveSession(db *gorm.DB, token string, now time.Time) (*Admin, error) {
+	if token == "" {
+		return nil, nil
+	}
+	var s AdminSession
+	err := db.Where("token = ?", token).Take(&s).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if s.ExpiresAt <= now.UnixMilli() {
+		return nil, nil
+	}
+	var a Admin
+	err = db.Where("id = ?", s.AdminID).Take(&a).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+// DeleteSession revokes a single session token (logout).
+func DeleteSession(db *gorm.DB, token string) error {
+	if token == "" {
+		return nil
+	}
+	return db.Where("token = ?", token).Delete(&AdminSession{}).Error
+}
+
+// DeleteSessionsForAdmin revokes all sessions for a given admin id. Used by
+// ADM-0.3 backfill to invalidate legacy admin cookies.
+func DeleteSessionsForAdmin(db *gorm.DB, adminID string) error {
+	return db.Where("admin_id = ?", adminID).Delete(&AdminSession{}).Error
+}
+
+// Handler exposes the admin auth endpoints under /admin-api/auth/*.
 type Handler struct {
 	DB     *gorm.DB
 	Logger *slog.Logger
 	// IsDevelopment toggles cookie Secure flag selection (dev allows http).
 	IsDevelopment bool
+	// Now is injectable for deterministic tests; defaults to time.Now.
+	Now func() time.Time
 }
 
-// RegisterRoutes wires `POST /admin-api/auth/login` (review checklist 1.C path).
-// The path deliberately does NOT include `/v1/` so it does not collide with
-// the legacy `/admin-api/v1/auth/login` route still served by the api package
-// during dual-rail coexistence.
+func (h *Handler) now() time.Time {
+	if h.Now != nil {
+		return h.Now()
+	}
+	return time.Now()
+}
+
+// RegisterRoutes wires the admin auth surface (login / logout / me).
+// ADM-0.1 introduced /admin-api/auth/login (no /v1/) alongside the legacy
+// /admin-api/v1/auth/login JWT route in internal/api. ADM-0.2 retires the
+// JWT route and remounts /admin-api/v1/auth/* on this same handler so the
+// admin SPA continues to call /admin-api/v1/auth/login unchanged — the
+// difference is that the cookie value is now an opaque session token, not
+// a JWT.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin-api/auth/login", h.handleLogin)
+	mux.HandleFunc("POST /admin-api/auth/logout", h.handleLogout)
+	mux.Handle("GET /admin-api/auth/me", RequireAdmin(h.DB, h.now)(http.HandlerFunc(h.handleMe)))
+	// v1 aliases (admin SPA path stability across ADM-0.1 → 0.2 cutover).
+	mux.HandleFunc("POST /admin-api/v1/auth/login", h.handleLogin)
+	mux.HandleFunc("POST /admin-api/v1/auth/logout", h.handleLogout)
+	mux.Handle("GET /admin-api/v1/auth/me", RequireAdmin(h.DB, h.now)(http.HandlerFunc(h.handleMe)))
 }
 
 type loginRequest struct {
@@ -150,12 +251,20 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Session token: signed value carrying admin id. ADM-0.1 keeps it simple —
-	// store the admin id directly. ADM-0.2 will swap to a server-side session
-	// table; the cookie name stays the same.
+	// ADM-0.2: cookie value MUST be an opaque session token, never the
+	// raw admin id. CreateSession inserts an admin_sessions row.
+	token, err := CreateSession(h.DB, admin.ID, h.now())
+	if err != nil {
+		if h.Logger != nil {
+			h.Logger.Error("admin session create failed", "error", err)
+		}
+		writeJSONError(w, http.StatusInternalServerError, "session create failed")
+		return
+	}
+
 	cookie := &http.Cookie{
 		Name:     CookieName,
-		Value:    admin.ID,
+		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -175,23 +284,48 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	token := ""
+	if c, err := r.Cookie(CookieName); err == nil {
+		token = c.Value
+	}
+	if token != "" {
+		if err := DeleteSession(h.DB, token); err != nil && h.Logger != nil {
+			h.Logger.Warn("admin logout: delete session failed", "error", err)
+		}
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     CookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
+	a := AdminFromContext(r.Context())
+	if a == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":    a.ID,
+		"login": a.Login,
+	})
+}
+
 // AdminFromRequest looks up the admin associated with the request's
-// `borgee_admin_session` cookie. Returns (nil, nil) when no cookie is set or
-// the session does not match a row.
+// `borgee_admin_session` cookie via admin_sessions table. Returns (nil, nil)
+// when no cookie is set, the session is missing/expired, or the admin is gone.
 func AdminFromRequest(db *gorm.DB, r *http.Request) (*Admin, error) {
 	c, err := r.Cookie(CookieName)
 	if err != nil || c.Value == "" {
 		return nil, nil
 	}
-	var a Admin
-	err = db.Where("id = ?", c.Value).Take(&a).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &a, nil
+	return ResolveSession(db, c.Value, time.Now())
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
