@@ -11,7 +11,7 @@
 
 1. **锚点 = 人审 agent 产物 (人机界面, 非 agent 间通信)** (蓝图 §1.6 字面锁): 锚点对话**仅** owner / channel 成员对 agent commit 产物的 review 工具; agent 之间互相通信走普通 channel message + artifact `@` 引用, **不挂锚点**; **反约束**: 不开 \"agent 互发锚点\" 路径 (避免 AI 自跟 AI 锚点对话的诡异场景)
 2. **锚点挂 artifact_version 不挂 artifact** (CV-1 立场 ③ 线性版本承袭): 一个锚点 thread 锁死在创时的 `artifact_version_id` + `anchor_range` (start_offset / end_offset 字符索引) 上, artifact 滚到下个版本不自动迁移锚点 (锚跟产物绑死, 否则 review 语境漂移); **反约束**: 不做锚点跨版本自动 \"携带\" 智能 (留 v3+, 真做要解决 diff/范围漂移)
-3. **AnchorCommentAdded 套 #237 envelope** (RT-1.1 #290 envelope 锁同源): `AnchorCommentAdded{cursor, artifact_id, version, anchor_id, comment_id, channel_id, author_id, created_at, kind}` 9 字段 byte-identical 于 ArtifactUpdated 同 cursor 单调发号; 走 BPP-1 #304 envelope CI lint 自动闸; **反约束**: 不自造 envelope, 不 client timestamp 排序
+3. **AnchorCommentAdded 套 #237 envelope** (RT-1.1 #290 envelope 锁同源): `AnchorCommentAdded{cursor, artifact_id, version, anchor_id, comment_id, channel_id, author_id, created_at, author_kind}` 9 字段 byte-identical 于 ArtifactUpdated 同 cursor 单调发号 (注: 第 9 字段 `author_kind` 跟 §1 表 `anchor_comments.author_kind` 列名一致 — anchor 是评论作者非 commit 提交者, 不复用 CV-1 ArtifactUpdated 的 `committer_kind` 命名); 走 BPP-1 #304 envelope CI lint 自动闸; **反约束**: 不自造 envelope, 不 client timestamp 排序
 
 ## 1. 拆段实施 (CV-2.1 / 2.2 / 2.3, ≤ 3 PR)
 
@@ -27,6 +27,7 @@
 - **RT-1 cursor 复用**: AnchorCommentAdded 走 #290 cursor + #292 client backfill, 不另起 channel; CHN-4 collab demo (G3.4) 同共用
 - **CHN-1 channel 权限继承**: anchor 创/读权限 = artifact 所属 channel 成员权限 (CHN-1 #286 API 同源校验); 反约束: 不另起 anchor-level 权限层
 - **AL-3 不依赖**: anchor presence (\"谁在看这个 thread\") 留 v3+; v1 不挂在线状态
+- **v=14 三方撞号 sequencing 锁** (DM-2.1 战马B / CV-2.1 飞马 spec / CHN-2.1 飞马 spec 全挤 v=14): 真 sequencing **谁先 merge 谁拿 v=14, 后顺延**; 起手优先级 — DM-2 战马B (~6h 起手, 30min 阈值临过) 优先抢 v=14; 若战马B 未回报转活给战马A, 则 CV-2.1 拿 v=14, DM-2.1 顺延 v=15, CHN-2.1 v=16 (CHN-2.1 实际无 schema 改, 软约束在 server, 不抢号)
 
 ## 3. 反查 grep 锚 (Phase 3 验收)
 
@@ -65,3 +66,4 @@ git grep -nE 'agent.*reply.*new_anchor|cross.*anchor.*agent' packages/server-go/
 |---|---|---|
 | 2026-04-29 | 飞马 | v0 — spec lock Phase 3 章程严守续作第一波 (野马 ⭐, CV-1 后顺位); 3 立场 + 3 拆段 + 5 grep 反查 (含 2 反约束) + 6 反约束 + CV-1/RT-1/CHN-1 留账边界字面对齐; G3.2 闸直撑 |
 | 2026-04-29 | 飞马 | v1 — 吸收 #355 野马 CV-2 文案锁立场 ⑤ 反约束三连入 §3 grep: (a) client DOM `data-anchor-id` 仅 owner 视角 / (b) server agent POST `/api/v1/artifacts/:id/anchors` 0 hit (kind='agent' → 403 错码 `anchor.create_owner_only`) / (c) cross-anchor agent→agent 0 hit; #355 文案锁 (💬 入口 + "段落讨论" header + "针对此段写下你的 review…" placeholder + 🤖 角标 byte-identical 跟 CV-1 #347 同源 + "标为已解决"/"重新打开") 字面 CV-2.3 client SPA 实施时 byte-identical 锁 |
+| 2026-04-29 | 飞马 | v2 — 野马 #356 review drift 修 2 处: ① envelope 第 9 字段 `kind` → `author_kind` (跟 §1 反断 `author_kind='human'` + `anchor_comments.author_kind` 列名一致, 不复用 CV-1 commit 提交者用的 `committer_kind` — anchor 是评论作者); ② §2 加 v=14 三方 sequencing 锁 (DM-2.1 / CV-2.1 / CHN-2.1 真先到先拿; DM-2 战马B 优先抢 v=14, 若 30min 阈值未回报转战马A 则 CV-2.1 拿 v=14 DM-2.1 顺延 v=15, CHN-2.1 无 schema 软约束不抢号) |
