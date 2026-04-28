@@ -16,7 +16,9 @@ ln -s $(pwd)/borgee/skills/blueprintflow-workflow ~/.claude/skills/blueprintflow
 
 装完 Claude Code 重启即可见 `blueprintflow-*` skills。
 
-## 6 Skills (第一波)
+## 10 Skills
+
+### 第一波 — workflow + 角色 + cron
 
 | Skill | 触发 | 用途 |
 |---|---|---|
@@ -27,12 +29,14 @@ ln -s $(pwd)/borgee/skills/blueprintflow-workflow ~/.claude/skills/blueprintflow
 | [blueprintflow-teamlead-fast-cron-checkin](blueprintflow-teamlead-fast-cron-checkin/SKILL.md) | 15min cron | idle 派活, 不只 audit |
 | [blueprintflow-teamlead-slow-cron-checkin](blueprintflow-teamlead-slow-cron-checkin/SKILL.md) | 2-4h cron | 偏差 audit + 文档/代码一致性 + 翻牌延迟 |
 
-## 第二波 (待补)
+### 第二波 — 蓝图 + Phase + brainstorm
 
-- `blueprintflow-phase-plan` — Phase 拆 + 退出 gate + 4 道防偏离闸门
-- `blueprintflow-phase-exit-gate` — Phase 收尾联签 + closure announcement
-- `blueprintflow-blueprint-write` — 蓝图模板 (核心立场 / 概念模型 / v0/v1 边界)
-- `blueprintflow-brainstorm` — 多轮讨论 driver
+| Skill | 触发 | 用途 |
+|---|---|---|
+| [blueprintflow-brainstorm](blueprintflow-brainstorm/SKILL.md) | 模糊 idea | 概念层多轮讨论 driver — 锁立场 + 概念模型 + 反约束 |
+| [blueprintflow-blueprint-write](blueprintflow-blueprint-write/SKILL.md) | 概念锁定后 | 蓝图模板 — 核心立场 / 概念模型 / v0/v1 边界 |
+| [blueprintflow-phase-plan](blueprintflow-phase-plan/SKILL.md) | 蓝图 ready | Phase 拆 + 退出 gate + 4 道防偏离闸门 |
+| [blueprintflow-phase-exit-gate](blueprintflow-phase-exit-gate/SKILL.md) | Phase 收尾 | 4 角色联签 + closure announcement + 留账 PR # |
 
 ## 起步
 
