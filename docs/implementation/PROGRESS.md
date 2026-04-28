@@ -20,7 +20,7 @@
 |-------|------|---------|------|
 | Phase 0 基建闭环 | ✅ DONE | G0.1+G0.2+G0.3+G0.audit 全过 (G0.4/G0.5 软 gate, 不卡退出) | 起步; 含 INFRA-1a/1b 拆分; **工期 2 周** (战马 R2). 实际 5 PR (#169-#173) 一日完成 |
 | Phase 1 身份闭环 | ✅ DONE | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 + CM-3 全 merged; G1 全签 #210, G1.4 closed by #208 + #210 |
-| Phase 2 协作闭环 ⭐ | TODO | G2.1~G2.5 + G2.audit + 野马签字 | 等 Phase 1 |
+| Phase 2 协作闭环 ⭐ | 🔄 IN PROGRESS (closing) | 前置 6/6 ✅; CM-4 4-5/7 ✅ (4.0/4.1/4.2 + bug-029/030 修); 闸 2/7 严格 ✅ (G2.0 #223 / G2.3 #236) + G2.audit/G2.6 partial; 待 e2e 解 .skip + G2.4 ≥4/5 野马签 + 留账闸 Phase 4 PR 编号 → 建军+野马联签退出 | Phase 1 ✅; 锚 `docs/qa/phase-2-gate-status.md` v3 |
 | Phase 3 第二维度产品 | TODO | G3.1~G3.4 + G3.audit + 野马签字 (CV-1) | 等 Phase 2; 内部顺序锁死 |
 | Phase 4+ 剩余模块 | TODO | 各模块自身完成判定 + G4.audit | 等 Phase 3 |
 
