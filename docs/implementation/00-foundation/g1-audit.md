@@ -96,6 +96,73 @@ ok      ... 16 packages green
 
 ---
 
+## 3.5. G2.AP-0-bis audit (2026-04-28, 实测)
+
+PR #206 acceptance template 11 项是 owner 自勾, 此节是 QA 实测 + 落 audit row。
+
+### 3.5.1 Backfill migration 跑两遍 idempotent
+
+```
+$ go test ./internal/migrations/ -run AP0Bis -v
+=== RUN   TestAP0Bis_BackfillsMessageReadForLegacyAgents       --- PASS
+=== RUN   TestAP0Bis_Idempotent                                --- PASS
+=== RUN   TestAP0Bis_SkipsNonAgentRoles                        --- PASS
+=== RUN   TestAP0Bis_SkipsSoftDeletedAgents                    --- PASS
+ok      borgee-server/internal/migrations  0.007s
+```
+
+`TestAP0Bis_Idempotent` 跑 v=8 两次, 验 `(agent_id, 'message.read', '*')` 不重复插。
+`SkipsNonAgentRoles` + `SkipsSoftDeletedAgents` 是 SQL `WHERE` 守门反向断言 (role!='agent' 或 deleted_at IS NOT NULL → 不回填), 即 backfill SQL 范围正确, 不污染 member / admin / 软删 agent 行。
+
+### 3.5.2 SeedLegacyAgent + GET messages → 403 反向断言
+
+```
+$ go test ./internal/api/ -run 'TestGetMessages.*Legacy|TestGetMessages.*Agent' -v
+=== RUN   TestGetMessages_LegacyAgentNoReadPerm_403            --- PASS
+=== RUN   TestGetMessages_AgentWithReadPerm_200                --- PASS
+ok      borgee-server/internal/api  0.048s
+```
+
+`TestGetMessages_LegacyAgentNoReadPerm_403`: `testutil.SeedLegacyAgent` (只授 `message.send`, 不授 `message.read`) → GET /api/v1/channels/{id}/messages 返 403 (不是 200/404/500), 即 RequirePermission gate 真生效。配套正向: `TestGetMessages_AgentWithReadPerm_200` 默认 agent (含 `message.read`) → 200。
+
+### 3.5.3 EXPLAIN QUERY PLAN — user_permissions 索引命中
+
+`auth.RequirePermission` 调 `Store.ListUserPermissions(userID)` = `WHERE user_id = ?`。 EXPLAIN 输出 (sqlite in-mem, 真 schema):
+
+```
+== SELECT * FROM user_permissions WHERE user_id = 'u1'
+   SEARCH user_permissions USING INDEX idx_user_permissions_lookup (user_id=?)
+
+== SELECT * FROM user_permissions WHERE user_id = 'u1' AND permission = 'message.read' AND scope = '*'
+   SEARCH user_permissions USING INDEX sqlite_autoindex_user_permissions_1 (user_id=? AND permission=? AND scope=?)
+```
+
+两条全部 `SEARCH ... USING INDEX`, 无 `SCAN TABLE`。 第一条用 `idx_user_permissions_lookup` 复合索引 (user_id 前缀); 第二条用 sqlite 自动索引 (UNIQUE 约束自带, store/queries.go:257 `FirstOrCreate` 依此去重)。 `idx_user_permissions_user` 单列索引存在但未被规划器优先选 — 因 `_lookup` 复合索引覆盖更多列, sqlite 选了它。 (即: 中间件 hot path 不会全表扫描。)
+
+### 3.5.4 Default capability set 锁
+
+```
+$ grep -n '"message.read"' packages/server-go/internal/store/queries.go
+375:        perms = []string{"message.send", "message.read"}
+$ go test ./internal/store/ -run TestDefaultPermissionsAgent -v
+=== RUN   TestDefaultPermissionsAgent                          --- PASS
+ok      borgee-server/internal/store  0.014s
+```
+
+R3 Decision #1 锁 `[message.send, message.read]` 在 `GrantDefaultPermissions` 单一 source-of-truth (REG-AP0B-006)。
+
+### 3.5.5 G2.AP-0-bis audit row
+
+| Audit ID | Source milestone | 内容 (单行) | 接收 milestone | Status |
+|---|---|---|---|---|
+| AUD-G2-APB-a | AP-0-bis (#206) | v=8 backfill idempotent + role/deleted_at 守门, 实测 4 test PASS | (forward only) | ✅ closed |
+| AUD-G2-APB-b | AP-0-bis (#206) | RequirePermission gate 反向 403 实测 (TestGetMessages_LegacyAgentNoReadPerm_403) | (持续) | ✅ stable |
+| AUD-G2-APB-c | AP-0-bis (#206) | user_permissions hot-path EXPLAIN 走 idx_user_permissions_lookup, 无 SCAN | (持续) | ✅ stable |
+| AUD-G2-APB-d | AP-0-bis (#206) | Default cap set `[message.send, message.read]` 锁 queries.go:375 (R3 Decision #1) | (持续) | ✅ stable |
+| AUD-G2-APB-e | AP-0-bis (#206) | `idx_user_permissions_user` 单列索引存在但 sqlite 规划器优先选 `_lookup` 复合 — 是否退役? Phase 2 evaluate | Phase 2 (TBD) | 📝 logged |
+
+---
+
 ## 4. Phase 1 退出闸结论
 
 5 道闸 + audit row 全签 ✅ — 见 `docs/qa/signoffs/g1-exit-gate.md`。
@@ -108,3 +175,4 @@ Registry 引用: 见 `docs/qa/regression-registry.md` §4 + 第 6 节 (CM-3 + G1
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-28 | 烈马 | v1 — Phase 1 退出 gate audit 集成完成, G1.4 闭合, audit row 落地 |
+| 2026-04-28 | 烈马 | + §3.5 G2.AP-0-bis 实测 audit (4 mig test + 2 api test PASS, EXPLAIN idx_*_lookup 命中, 5 audit row 落地) |
