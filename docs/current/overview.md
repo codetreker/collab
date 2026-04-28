@@ -18,14 +18,19 @@
 
 ## 二、关键术语
 
-- **User**：人类用户，一行 `users` 记录，`role = "member" | "admin"`。
+- **User**：人类或 agent，一行 `users` 记录，`role = "member" | "agent" | "system"`（**ADM-0.3 后** `admin` 不在此 enum；admin 走独立 `admins` 表）。
+- **Admin**：独立子系统，自己的 `admins` 表 + `borgee_admin_session` cookie + `/admin-api/*` 路由。详见 [`admin/README.md`](admin/README.md)。
 - **Agent**：仍是一行 `users` 记录，`role = "agent"`，`owner_id` 指向所属 user。Agent 通过 `api_key` 鉴权。
-- **Channel**：`channels` 表，`type = "channel"`（普通频道）或 `"dm"`（私聊），用 `visibility = "public" | "private"` 区分可见性，soft delete via `deleted_at`。
+- **Organization**：`organizations` 表（CM-1.1，v=2）。1 person = 1 org，UI 永不暴露，数据层一等公民。注册 user 时自动建对应 org（CM-1.2），agent 继承 owner 的 `org_id`。
+- **Channel**：`channels` 表，`type = "channel"`（普通频道） / `"dm"`（私聊） / `"system"`（CM-onboarding 起，`#welcome` 私属频道用），用 `visibility = "public" | "private"` 区分可见性，soft delete via `deleted_at`。
 - **DM**：作为 `type="dm"` 的 channel 存储，name 形如 `dm:<uid_low>_<uid_high>`，两个用户 ID 排序后拼接，避免重复。
+- **Welcome channel**：`type="system"` 的 per-user 私属频道，注册时自动建（CM-onboarding，v=7），含一条 `sender_id='system'` 的欢迎消息 + `quick_action` JSON 按钮。
 - **Channel Group**：`channel_groups`，用于侧边栏分组，与 channel 一样用 LexoRank 排序。
+- **Agent invitation**：`agent_invitations` 表（CM-4.0，v=3） + HTTP API（CM-4.1） + ws push（RT-0 server，#237）。跨 org 拉 agent 进 channel 的状态机（`pending → approved/rejected/expired`，blueprint §4.2 流程 B）。
 - **Event**：`events` 表（自增 cursor），是所有 push 通道（WS / SSE / 长轮询）的 single source of truth。
 - **Workspace**：每个 channel 一棵虚拟文件树（`workspace_files`），既能上传，也会自动收录从消息中产生的文件。
 - **Remote Node / Binding**：用户在自己机器上跑 `remote-agent`，注册成 node；node 可以与 channel 上的某个 path 绑定，channel 内的 agent 通过 server 代理读取该路径。
+- **Schema migrations**：`schema_migrations` 表（INFRA-1a，v=1） + `internal/migrations/registry.go` 版本化迁移引擎。Phase 1+ 所有新 schema 改动走此引擎；旧 `Store.Migrate()` 大杂烩仅保 v0 表骨架。当前注册 v=1..10（v=6 跳号）。详见 [`server/migrations.md`](server/migrations.md)。
 
 ## 三、写路径扇出
 
@@ -116,9 +121,9 @@ type=response 回到 server-go → HTTP 响应给 plugin
 
 PRD 定义了三种角色（admin / user / agent）和"agent 由 owner 拉入 channel"的归属规则。代码里的实现要点：
 
-- 角色靠 `users.role` 区分；`owner_id` 表示 agent 归属。
-- 权限走 `user_permissions` 表，admin 自带 `["*"]`，普通 user 注册后默认 `channel.create / message.send / agent.manage`。频道创建者会被回填 `channel.delete / channel.manage_members / channel.manage_visibility`，scope 为 `channel:<id>`。
-- 中间件 `auth.RequirePermission` 在路由级别强制权限。
+- 角色靠 `users.role` 区分（**ADM-0.3 后只剩 `member / agent / system`**, `admin` 走 `admins` 表）；`owner_id` 表示 agent 归属。
+- 权限走 `user_permissions` 表。**AP-0 + AP-0-bis (R3 决议 #1)** 默认: human (`role=member`) → `(*, *)`一行全权; agent (`role=agent`) → `(message.send, *) + (message.read, *)` 两行; admin → 不写默认行 (admin 权威只活在 `/admin-api/*` 一轨)。频道创建者回填 `channel.delete / channel.manage_members / channel.manage_visibility`，scope `channel:<id>`。
+- 中间件 `auth.RequirePermission` 在路由级别强制权限；**ADM-0.2 起**不再有 `users.role == "admin"` 短路，纯 `user_permissions` 表查。
 
 ## 六、不在系统内的东西
 

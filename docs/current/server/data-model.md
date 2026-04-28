@@ -7,8 +7,10 @@
 
 | 表 | 关键列 | 备注 |
 |----|--------|------|
-| `users` | `id`, `display_name`, `role` (`member` / `admin` / `agent`), `email`（可空，部分唯一索引：`WHERE email IS NOT NULL`）, `password_hash`, `api_key` UNIQUE, `owner_id` FK→users, `disabled`, `deleted_at` | agent 行 `role="agent"` 且必有 `owner_id`，软删 |
-| `channels` | `id`, `name` UNIQUE, `type` (`channel` / `dm`), `visibility` (`public` / `private`), `topic`, `position` (LexoRank), `group_id` FK, `created_by`, `deleted_at` | DM name = `dm:<uid_low>_<uid_high>` |
+| `users` | `id`, `display_name`, `role` (`member` / `agent` / `system`，**ADM-0.3 后** `admin` **不再**在此 enum), `email`（可空，部分唯一索引：`WHERE email IS NOT NULL`）, `password_hash`, `api_key` UNIQUE, `owner_id` FK→users, `disabled`, `deleted_at`, `org_id` (CM-1.1) | agent 行 `role="agent"` 且必有 `owner_id`；`role="system"` 用于 `sender_id='system'` 欢迎消息发送方 (CM-onboarding)；软删 |
+| `admins` | `id`, `login` UNIQUE, `password_hash` (bcrypt), `created_at` | **ADM-0.1 (v=4)** — admin 独立子系统的凭证表；不准多 `org_id / role / is_admin / email` 字段。Bootstrap 由 `BORGEE_ADMIN_LOGIN` + `BORGEE_ADMIN_PASSWORD_HASH` env 注入 |
+| `admin_sessions` | `token` PK (32B hex), `admin_id`, `created_at`, `expires_at` | **ADM-0.2 (v=5)** — `borgee_admin_session` cookie 反查表；token 不可猜，cookie 值不能是 admin id |
+| `channels` | `id`, `name` UNIQUE, `type` (`channel` / `dm` / `system`), `visibility` (`public` / `private`), `topic`, `position` (LexoRank), `group_id` FK, `created_by`, `deleted_at`, `org_id` | DM name = `dm:<uid_low>_<uid_high>`；`system` type 给 CM-onboarding `#welcome` 私属频道用 |
 | `channel_groups` | `id`, `name`, `position`, `created_by` | 侧边栏分组 |
 | `channel_members` | PK (`channel_id`, `user_id`), `joined_at`, `last_read_at` | `last_read_at` 给未读计数用 |
 | `messages` | `id`, `channel_id`, `sender_id`, `content`, `content_type` (默认 `text`), `reply_to_id`, `edited_at`, `deleted_at` | 软删 |
@@ -101,8 +103,8 @@ DM channel 的 `name` 形如 `dm:<id_a>_<id_b>`。`normalizeDMName` 用 `sort.St
 
 | PRD 概念 | 数据库实现 |
 |----------|------------|
-| user / agent 三角色 | `users.role` + `users.owner_id` |
-| admin = `*` | `user_permissions(user_id=admin, permission='*', scope='*')` |
+| user / agent 三角色 | `users.role ∈ {member, agent, system}` (ADM-0.3 后) + `users.owner_id`；admin 走独立 `admins` 表 |
+| admin 全权 | `admins` (ADM-0.1) + `admin_sessions` (ADM-0.2)，路由 `/admin-api/*` 独立中间件，不在 `user_permissions` 写默认行 |
 | 频道归属 | `channels.created_by`（agent 创建的会归到 agent；通过 `users.owner_id` 反查到人类 owner） |
 | 公开频道 24h 预览 | `GET /api/v1/channels/{id}/preview` 不写表，只在 handler 里限定时间窗 |
 | 邀请制注册 | `invite_codes` 表 + `auth/register` 校验 `used_at IS NULL && expires_at > now()` |
