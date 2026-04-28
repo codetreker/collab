@@ -237,6 +237,8 @@ http.Server.Serve       # 0.0.0.0:4900
 
 Hub 维护 `onlineUsers map[userId]map[*Client]bool` 支持多端在线。Heartbeat goroutine 周期 ping，未响应的 client 被踢。
 
+**AL-3.1/AL-3.2 presence_sessions**：`internal/presence/` 提供 `SessionsTracker`（DB-backed read/write）+ `PresenceWriter` 接口；hub 的 register/unregister 钩到 `TrackOnline`/`TrackOffline`，写 `presence_sessions` 表（migration v=12）。`PresenceWriter` 接口让 unit test 可注 fake，单 binary 模式不需 DB-backed presence 时也能 no-op。多端 last-wins：同 user 多 session 各占一行，最后一条 offline 才标 user 整体下线。读端给 mention 路由 / sidebar / DM-2.2 fallback 共用，避免 AL-3 立场 ③ 反约束的 `IsOnline`/`IsAgentOnline` 重复实现漂移。
+
 ### 长轮询 `POST /api/v1/poll`
 
 ```

@@ -43,6 +43,18 @@
 - `agent-state.ts` (AL-1a) — `describeAgentState(agent)` 把 server 下发的 `state` + `reason` 折成 `{label, tone, hint}`；`REASON_LABELS` 锁定 6 个 reason code 文案 (`plugin_unreachable` / `plugin_timeout` / `plugin_error` / `tool_call_failed` / `manual_disable` / `unknown`). 详见 `docs/current/server/agent-runtime-state.md` wire schema。
 - `markdown.ts`、`file-links.ts` — `marked + highlight.js + dompurify` 渲染。
 
+### `hooks/usePresence.ts` (AL-3.3)
+- `markPresence(agentID, state, reason)` — WS `presence.changed` frame 入口；cache 总是写最新值，**通知 (UI 重渲染) 5s 节流**: 距上次 notify ≥ 5s 立即派发，窗口内 burst 安排 trailing flush（同 server §2.4 PresenceChange5sCoalesce 锁）。
+- `usePresence(agentID)` — React hook，订阅指定 agent 的实时 cached state；返回 `undefined` 时 `<PresenceDot/>` 走 `describeAgentState(undefined,...)` 兜底为 `已离线` (野马 §11)。
+- `__resetPresenceStoreForTest(now)` / `flushPendingForTest()` — 仅单测用；`presence.test.ts` 注入 fake clock 推进时间线，不依赖 wall time。
+- 反约束: cache 仅 `{state, reason, updatedAt}` 三元组，不存 IP / 心跳 / 连接数（acceptance §2.5 frame 字段白名单）。
+
+### `components/PresenceDot.tsx` (AL-3.3)
+- 三态 DOM 字面锁（acceptance §3.1）：`data-presence="online"` 绿点 + `在线`、`data-presence="offline"` 灰点 + `已离线`、`data-presence="error"` 红点 + `故障 (REASON_LABEL)`。
+- 反约束 §5.4：`.presence-dot` 永远跟 sibling 文本（或 compact 模式下 sr-only + title），不出现裸灰点。
+- 反约束 §5.1：穷举状态文本，绝不包含 `busy` / `idle` / `忙` / `空闲`（busy/idle 跟 BPP-1 同期，phase 2 不开）。
+- 反约束 §3.2：组件不判 role；调用方仅在 agent 行渲染（`Sidebar.tsx` `DmItem` 用 `peer.role === 'agent'` gate；`ChannelMembersModal.tsx` 用 `m.role === 'agent'` gate；row 写 `data-role` 属性供 e2e 反查 `[data-role="user"][data-presence]` count==0）。
+
 ### `hooks/`
 - `useWebSocket.ts` — 单连接 `/ws`，关键行为：
   - 重连退避 `[1s, 2s, 4s, 8s, 16s, 30s]`。
@@ -124,5 +136,7 @@
 - `channel-groups-ui.test.ts` — 分组展示逻辑。
 - `agent-invitations.test.ts` — CM-4.2 client：`createAgentInvitation` / `listAgentInvitations(role)` / `fetchAgentInvitation` / `decideAgentInvitation` 的请求形状、`{invitation}` / `{invitations}` 解包、409 → `ApiError`、`stateToLabel` 4 状态中文映射。
 - `agent-state.test.ts` (AL-1a) — `describeAgentState` 三态文案锁 + 6 reason code 表覆盖, 防退化。
+- `presence.test.ts` (AL-3.3) — `markPresence` cache + 5s 节流单测：跨窗口立即通知 / 窗口内 burst trailing flush / 多 agent anchor 独立 / 空 agentID 防御 / `PRESENCE_THROTTLE_MS===5000` 字面锁。fake clock 走 `__resetPresenceStoreForTest(()=>nowMs)` 注入。
+- `PresenceDot.test.tsx` (AL-3.3) — DOM 字面锁: 三态 `data-presence` 属性 + `.presence-online/.presence-offline/.presence-error` class + 6 reason 文案 byte-identical 跟 `agent-state.ts` 绑定; compact 模式 title fallback; 反约束 — 任意状态文本反查无 busy/idle/忙/空闲。
 
 没有组件级 React Testing Library 测试。
