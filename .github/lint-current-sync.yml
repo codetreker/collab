@@ -46,3 +46,6 @@ modules:
   - name: remote-agent
     code_prefix: packages/remote-agent/
     docs_prefix: docs/current/remote-agent/
+  - name: e2e
+    code_prefix: packages/e2e/
+    docs_prefix: docs/current/e2e/
