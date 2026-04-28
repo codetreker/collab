@@ -48,7 +48,9 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
         if (cancelled) return;
         setPendingInvitations(list.filter(inv => inv.state === 'pending').length);
       } catch {
-        // Silent — bell hides badge on failure rather than spamming errors.
+        // 401 / network error: clear badge so we don't keep showing a
+        // stale count (e.g. session expired) and don't spam toasts.
+        if (!cancelled) setPendingInvitations(0);
       }
     };
     refresh();

@@ -31,7 +31,7 @@ interface Props {
 type Filter = 'pending' | 'all';
 
 export default function InvitationsInbox({ onBack, onJumpToChannel }: Props) {
-  const { state, actions } = useAppContext();
+  const { actions } = useAppContext();
   const [invitations, setInvitations] = useState<AgentInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('pending');
@@ -69,13 +69,13 @@ export default function InvitationsInbox({ onBack, onJumpToChannel }: Props) {
 
         if (decision === 'approved') {
           // The server's CM-4.1 handler already idempotent-joined the
-          // agent. Reload channels in case the caller is a member of
-          // the target channel and we want to render an unread bump,
-          // then optionally jump.
+          // agent. Reload channels so the sidebar reflects the new
+          // membership, then jump unconditionally — server authz is
+          // the gatekeeper, and `state.channels` here would be the
+          // pre-await stale closure (find() races with the reload).
           await actions.loadChannels();
           if (onJumpToChannel) {
-            const target = state.channels.find(c => c.id === updated.channel_id);
-            if (target) onJumpToChannel(updated.channel_id);
+            onJumpToChannel(updated.channel_id);
           }
         }
       } catch (err) {
@@ -88,7 +88,7 @@ export default function InvitationsInbox({ onBack, onJumpToChannel }: Props) {
         setBusyId(null);
       }
     },
-    [busyId, actions, onJumpToChannel, state.channels],
+    [busyId, actions, onJumpToChannel],
   );
 
   const visible = filter === 'pending'

@@ -1,20 +1,19 @@
 // agent-invitations.test.ts — CM-4.2 client API + decision logic.
-// Mirrors channel-sort.test.ts style: monkey-patch globalThis.fetch and
-// dynamic-import the API module so the spy is installed before the
-// closure captures `fetch`.
+// Use vi.stubGlobal('fetch', ...) so tsc strict mode doesn't choke on
+// `globalThis.fetch = mock` (Mock type ≠ fetch signature). Dynamic-import
+// the API module after the stub so the closure captures the spy.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 describe('agent invitations API client', () => {
-  const originalFetch = globalThis.fetch;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     fetchMock = vi.fn();
-    globalThis.fetch = fetchMock;
+    vi.stubGlobal('fetch', fetchMock);
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    vi.unstubAllGlobals();
     vi.resetModules();
   });
 
