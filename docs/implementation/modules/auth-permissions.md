@@ -38,7 +38,7 @@
   - **新增 `testutil.SeedLegacyAgent(t, db)` helper** (烈马 R3 要求, CM-3 也用): 插一个旧 schema 的 agent (无 message.read) 用于 backfill 测试
   - `GET /channels/:id/messages` 加 `RequirePermission("message.read")` middleware
 - **不在范围**: agent 配置 UI 关闭 message.read (留给 AP-2 bundle UI)
-- **依赖**: 无 (可跟 ADM-0 / INFRA-2 / CM-onboarding 并行)
+- **依赖**: **ADM-0.2 已 merge** (飞马 R1 P0 ②: AP-0-bis 加 `RequirePermission("message.read")` 中间件必须在 ADM-0.2 砍掉 admin 直通短路之后, 否则 admin 既被砍直通又没 message.read 而 401 中间态); 不依赖 INFRA-2 / CM-onboarding (可与之并行)
 - **预估**: ⚡ v0 1 天
 - **Acceptance**:
   - 数据契约 4.3: 新注册 agent → user_permissions 多 2 行 (`message.send`, `message.read`)

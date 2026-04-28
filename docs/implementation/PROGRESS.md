@@ -89,17 +89,21 @@
   - 必须前置到 RT-0 之前 (烈马 R3: latency ≤ 3s 硬条件 vitest 跑不了)
   - 工期 1-2 天
 - [ ] **ADM-0** admin 拆表 (admins 独立表 + cookie 拆 + god-mode endpoint) — 战马 / 飞马 (主, 起草) / 烈马 / 野马
-  - 拆 3 段 PR (ADM-0.1 schema + auth path / ADM-0.2 SPA cookie 隔离 + god-mode / ADM-0.3 删 users.role='admin')
+  - [ ] **ADM-0.1** admins 独立表 + env bootstrap + 独立 cookie name (双轨并存)
+  - [ ] **ADM-0.2** cookie 拆 + RequirePermission 去 admin 短路 + god-mode 白名单 (users.role='admin' 调 user-api 401)
+  - [ ] **ADM-0.3** users.role enum 收 + backfill 旧 admin 行 → admins 表 + revoke session (users.role='admin' 行数 = 0)
   - 工期 server 4-6 天 + client 1 天
   - 烈马一票否决: cookie 串扰反向断言
   - 详见 [`modules/admin-model.md`](modules/admin-model.md)
 - [ ] **AP-0-bis** message.read 默认 grant + backfill 迁移 — 战马 / 飞马 / 烈马
   - 工期 1 天
   - 必带 `testutil.SeedLegacyAgent` helper (烈马 R3, CM-3 也用)
+  - **依赖 ADM-0.2 已 merge** (飞马 R1 P0 ②: AP-0-bis 加 RequirePermission("message.read") 必须在 admin 直通短路砍掉之后, 否则 admin 既被砍直通又没 message.read 而 401 中间态)
   - 详见 [`modules/auth-permissions.md`](modules/auth-permissions.md)
 - [ ] **CM-onboarding** Welcome channel + auto-join + system message — 战马 / 飞马 / 野马 (立场) / 烈马
   - 工期 0.5-1 天
-  - 依赖野马 1 周内出 `00-foundation/onboarding-journey.md`
+  - **依赖野马 `00-foundation/onboarding-journey.md` (硬截止 2026-05-05)** — 飞马 R1 P1 ③: 防卡死风险
+  - 野马 must-fix (实施时落地): Welcome system message 必带 quick action button "创建 agent" + backfill 失败的空状态降级文案 (§11 反约束) + 文案锁定位置在 onboarding-journey.md
   - 详见 [`modules/concept-model.md`](modules/concept-model.md) §10
 - [ ] **RT-0** /ws push 顶住 BPP (取代 60s polling) — 战马 / 飞马 / 烈马 / 野马
   - 工期 1.5-2 天

@@ -16,10 +16,10 @@
 
 - **目标**: blueprint admin-model §1.2 + §1.3 + §3 — `users.role` 收成二态 (`'member' | 'agent'`); admin 迁到独立 `admins` 表; admin 走独立 cookie + `/admin-api/auth/login` env bootstrap; god-mode endpoint 强制只返回元数据。
 - **Owner**: 飞马 (review 边界 / 数据契约) / 战马 (dev) / 烈马 (cookie 串扰反向断言, 一票否决)
-- **范围** (拆 3 段 PR, 顺序串行不并发):
-  - **PR-(a) `users.role` enum 收成二态**: schema_migrations v=N — `ALTER TABLE users ... CHECK (role IN ('member','agent'))`; backfill 扫 `users WHERE role='admin'` → 移到 `admins` 表 + 删 user 行 + revoke 该 user 所有 session; testutil/server.go fixture 改造 (`role=admin` 全删)。
-  - **PR-(b) admins 独立表 + `/admin-api/auth/login`**: 新增 `admins(id, login, password_hash, created_at)`; `cmd/server` 启动时读 env (`BORGEE_ADMIN_LOGIN` / `BORGEE_ADMIN_PASSWORD_HASH`) bootstrap; 独立 cookie name `borgee_admin_session`; `internal/admin/auth.go` 与 `internal/auth.go` 完全分裂 (不共享 store / middleware)。
-  - **PR-(c) cookie 拆分 + `RequirePermission` 去 admin 短路 + god-mode 元数据-only**: `RequirePermission` 中间件移除"role='admin' 直通"分支; `/admin-api/v1/*` 改吃 admin cookie; god-mode endpoint (org list / user list / channel list / count / status) 加 response struct 白名单, **绝不携带** `message.body` / `artifact.content` 字段 (单测固化); 客户端 admin SPA 改吃新 cookie path。
+- **范围** (拆 3 段 PR, **顺序串行** — 飞马 R3 R1 修正: 先建表, 再切 cookie 路径, 最后才砍 users.role 老分支):
+  - **ADM-0.1 admins 独立表 + `/admin-api/auth/login` env bootstrap**: 新增 `admins(id, login, password_hash, created_at)`; `cmd/server` 启动时读 env (`BORGEE_ADMIN_LOGIN` / `BORGEE_ADMIN_PASSWORD_HASH`) bootstrap 第一个 admin; 独立 cookie name `borgee_admin_session`; `internal/admin/auth.go` 与 `internal/auth.go` 完全分裂 (不共享 store / middleware)。**此阶段 users.role='admin' 仍可登录, 双轨并存。**
+  - **ADM-0.2 cookie 拆分 + `RequirePermission` 去 admin 短路 + god-mode 元数据-only**: `RequirePermission` 中间件移除"role='admin' 直通"分支; `/admin-api/v1/*` 改吃 admin cookie; god-mode endpoint (org list / user list / channel list / count / status) 加 response struct 白名单, **绝不携带** `message.body` / `artifact.content` 字段 (单测固化); 客户端 admin SPA 改吃新 cookie path。**此阶段 users.role='admin' 调 user-api 401, 但还在表里。**
+  - **ADM-0.3 `users.role` enum 收成二态 + backfill**: schema_migrations v=N — `ALTER TABLE users ... CHECK (role IN ('member','agent'))`; backfill 扫 `users WHERE role='admin'` → 在 `admins` 表里建对应行 (复用同 login/hash) + 删 user 行 + revoke 该 user 所有 session; testutil/server.go fixture 改造 (`role=admin` 全删)。**此阶段 users.role='admin' 行数恒为 0。**
 - **不在范围**:
   - ADM-1 用户隐私承诺页 (野马 P2 文案, 派生 milestone)
   - ADM-2 分层透明 audit log (派生)
