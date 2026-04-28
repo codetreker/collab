@@ -19,6 +19,24 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter @borgee/client
       - run: pnpm --filter @borgee/client build
 
+  client-vitest:
+    # REG-RT0-006 et al: client-side vitest. Runs in jsdom (see
+    # packages/client/vitest.config.ts) so window-dispatching tests
+    # like ws-invitation.test.ts actually execute. Was previously
+    # absent from CI entirely — fake-green guard.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @borgee/client
+      - run: pnpm --filter @borgee/client test
+
   go-test:
     runs-on: ubuntu-latest
     steps:
