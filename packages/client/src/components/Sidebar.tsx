@@ -307,6 +307,7 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
             {state.currentUser.role !== 'agent' && onAgentsOpen && (
               <button
                 className="icon-btn"
+                data-testid="sidebar-nav-agents"
                 title="Agents"
                 onClick={onAgentsOpen}
               >

@@ -82,16 +82,19 @@ test.describe('AL-3.3 client SPA presence dot (al-3.md §3.1 / §3.2)', () => {
 
     await page.goto('/');
 
-    // 进 AgentManager — quick-action 按钮在 #welcome 频道里 (CM-onboarding).
-    // 找不到 quick-action 时退到 sidebar / route 直跳.
-    await page.goto('/');
-    const quickAction = page.locator('button.message-system-quick-action');
-    if (await quickAction.count()) {
-      await quickAction.first().click();
-    } else {
-      // 兜底: AgentManager 也可能挂 nav 入口 — 至少等 SPA 渲完, 用 testid 找.
-      await page.waitForLoadState('networkidle');
-    }
+    // 进 AgentManager — 走 Sidebar 永久 nav 入口 [data-testid="sidebar-nav-agents"].
+    // 不走 #welcome 的 quick-action 按钮: 那条路径只在 CreateAgentModal 翻牌, 不
+    // 进 AgentList — 拿不到 [data-presence] 渲染 (野马 cross-grep 定位的真因).
+    // race 兜底: 先等 GET /api/v1/agents 返回 (AgentManager 渲 list 必查), 再
+    // 看 dot — 不依赖 networkidle (会被 vite HMR ws 拖死).
+    const agentsNavBtn = page.locator('[data-testid="sidebar-nav-agents"]');
+    await expect(agentsNavBtn).toBeVisible({ timeout: 10_000 });
+    const agentsListResp = page.waitForResponse(
+      (resp) => /\/api\/v1\/agents(\?|$)/.test(resp.url()) && resp.request().method() === 'GET',
+      { timeout: 10_000 },
+    );
+    await agentsNavBtn.click();
+    await agentsListResp;
 
     // §3.1 — AL-3.3 PresenceDot DOM 字面锁 (直查 [data-presence], 不绕 AL-1a
     // [data-testid="agent-state-badge"] 入口 — AL-1a + AL-3 嵌套是合理产物,
