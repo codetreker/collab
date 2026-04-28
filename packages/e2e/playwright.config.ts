@@ -98,6 +98,16 @@ export default defineConfig({
         JWT_SECRET: 'e2e-test-secret-not-for-prod',
         ADMIN_USER: 'e2e-admin',
         ADMIN_PASSWORD: 'e2e-admin-password-12345',
+        // ADM-0.1 (this PR) bootstrap is fail-loud by design (red-line:
+        // missing env → panic). Without these the Playwright webServer
+        // panics on boot and downstream PRs' e2e jobs all fail. The
+        // password is bcrypt('e2e-admin-pass-12345', cost=10) — committed
+        // because this is e2e-only data, never reachable from prod
+        // (DATABASE_PATH is the .playwright-data tmp dir).
+        // See docs/current/e2e/README.md §3.
+        BORGEE_ADMIN_LOGIN: 'e2e-admin',
+        BORGEE_ADMIN_PASSWORD_HASH:
+          '$2a$10$4Qtu/ZynUPfAMPXPCtPa2uY7B04RVGK6V1gQfyihHgnW4LYvcY01i',
       },
       stdout: 'pipe',
       stderr: 'pipe',
