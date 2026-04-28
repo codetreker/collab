@@ -261,7 +261,8 @@ func authenticateWS(hub *Hub, r *http.Request) *store.User {
 		users, err := hub.store.ListUsers()
 		if err == nil {
 			for i := range users {
-				if users[i].Role == "admin" {
+				// ADM-0.3: pick first member (users.role enum collapsed).
+				if users[i].Role == "member" {
 					return &users[i]
 				}
 			}

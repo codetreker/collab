@@ -130,7 +130,7 @@ func TestLoginMissingFields(t *testing.T) {
 func TestRegisterSuccess(t *testing.T) {
 	ts, s, _ := setupTest(t)
 
-	systemUser := createTestUser(t, s, "system@test.com", "password123", "admin")
+	systemUser := createTestUser(t, s, "system@test.com", "password123", "member")
 
 	now := time.Now().UnixMilli()
 	s.DB().Create(&store.InviteCode{
@@ -273,7 +273,7 @@ func TestLogout(t *testing.T) {
 
 func TestGetMeAuthenticated(t *testing.T) {
 	ts, s, cfg := setupTest(t)
-	user := createTestUser(t, s, "me@test.com", "password123", "admin")
+	user := createTestUser(t, s, "me@test.com", "password123", "member")
 
 	// Login first to get cookie
 	body, _ := json.Marshal(map[string]string{"email": "me@test.com", "password": "password123"})

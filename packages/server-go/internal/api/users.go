@@ -31,9 +31,10 @@ func (h *UserHandler) handleMyPermissions(w http.ResponseWriter, r *http.Request
 	var permissions []string
 	var details []map[string]any
 
-	// Both admin and member get wildcard permissions on user-side.
-	// Admin permissions are handled separately via /admin-api/v1/*.
-	if user.Role == "admin" || user.Role == "member" {
+	// ADM-0.3: no role short-circuit. Member humans hold (*, *) by AP-0
+	// default; agents/bundle-narrowed accounts list explicit rows. Admin
+	// permissions live on /admin-api/v1/* and are not addressed here.
+	if user.Role == "member" {
 		permissions = []string{"*"}
 		details = []map[string]any{{"id": 0, "permission": "*", "scope": "*", "granted_by": nil, "granted_at": 0}}
 	} else {

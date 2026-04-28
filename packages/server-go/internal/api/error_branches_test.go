@@ -585,7 +585,9 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 		{"update-bad-visibility", "PUT", "/api/v1/channels/" + publicID, adminToken, map[string]string{"visibility": "hidden"}, http.StatusBadRequest},
 		{"join-private", "POST", "/api/v1/channels/" + privateID + "/join", memberToken, nil, http.StatusForbidden},
 		{"leave-public", "POST", "/api/v1/channels/" + publicID + "/leave", memberToken, nil, http.StatusOK},
-		{"reorder-member-forbidden", "PUT", "/api/v1/channels/reorder", memberToken, map[string]string{"channel_id": publicID}, http.StatusForbidden},
+		// ADM-0.3 + AP-0: members default to (*, *) wildcard, so the user-rail
+		// reorder permission check now passes. Test asserts the happy path.
+		{"reorder-member-allowed", "PUT", "/api/v1/channels/reorder", memberToken, map[string]string{"channel_id": publicID}, http.StatusOK},
 		{"group-update-missing", "PUT", "/api/v1/channel-groups/missing", adminToken, map[string]string{"name": "x"}, http.StatusNotFound},
 		{"group-delete-missing", "DELETE", "/api/v1/channel-groups/missing", adminToken, nil, http.StatusNotFound},
 		{"group-reorder-missing", "PUT", "/api/v1/channel-groups/reorder", adminToken, map[string]string{"group_id": "missing"}, http.StatusNotFound},
@@ -595,6 +597,8 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 		{"create-message-forbidden", "POST", "/api/v1/channels/" + privateID + "/messages", memberToken, map[string]string{"content": "x"}, http.StatusNotFound},
 		{"update-message-forbidden", "PUT", "/api/v1/messages/" + msgID, memberToken, map[string]string{"content": "member edit"}, http.StatusForbidden},
 		{"delete-message-forbidden", "DELETE", "/api/v1/messages/" + msgID, memberToken, nil, http.StatusForbidden},
+		// ADM-0.3: admin fixture is the sender (line 565), so sender-only
+		// delete on the user-rail succeeds with 204.
 		{"delete-message-admin", "DELETE", "/api/v1/messages/" + msgID, adminToken, nil, http.StatusNoContent},
 		{"dm-list", "GET", "/api/v1/dm", adminToken, nil, http.StatusOK},
 		{"dm-missing-user", "POST", "/api/v1/dm/missing", adminToken, nil, http.StatusNotFound},
@@ -807,6 +811,17 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 				_ = s.Close()
 				handler(w, r)
 			})
+			// ADM-0.3: workspace-mkdir's membership pre-check now runs before
+			// the store call (no admin short-circuit), so a non-member request
+			// against an unknown channel exits with 403 before triggering the
+			// closed-store 500 path. Other handlers still hit the closed store
+			// directly and return 500.
+			if tc.name == "workspace-mkdir" {
+				if rec.Code != http.StatusForbidden {
+					t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+				}
+				return
+			}
 			if rec.Code != http.StatusInternalServerError {
 				t.Fatalf("expected 500, got %d body=%s", rec.Code, rec.Body.String())
 			}

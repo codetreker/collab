@@ -397,6 +397,10 @@ func TestAgentInvitations_GetAsAgentOwner(t *testing.T) {
 
 // admin@test.com lists invitations as owner — exercises ListAllAgents
 // branch (admins see all-agent invitations).
+// ADM-0.3: user-rail GET /api/v1/agent_invitations is owner-scoped (each
+// caller sees only their own owned-agent invitations). Cross-user enumeration
+// belongs on /admin-api/v1; the user-rail "admin" fixture (now role='member')
+// must NOT see the requester's invitation.
 func TestAgentInvitations_AdminListSeesAll(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -417,8 +421,8 @@ func TestAgentInvitations_AdminListSeesAll(t *testing.T) {
 		t.Fatalf("admin list: %d %v", resp.StatusCode, body)
 	}
 	invs, _ := body["invitations"].([]any)
-	if len(invs) < 1 {
-		t.Fatalf("admin list len = %d, want >=1", len(invs))
+	if len(invs) != 0 {
+		t.Fatalf("expected admin user-rail listing to be owner-scoped (0), got %d", len(invs))
 	}
 }
 

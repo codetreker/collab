@@ -32,10 +32,13 @@ var All = []Migration{
 	cm40AgentInvitations,
 	adm01Admins,
 	adm02AdminSessions,
-	// v=6 reserved for ADM-0.3 (users.role enum 收 + admin backfill + session revoke)
+	// v=6 was originally reserved for ADM-0.3 but the slot was skipped after
+	// CM-onboarding (v=7) / AP-0-bis (v=8) / CM-3 (v=9) landed sequentially;
+	// ADM-0.3 took v=10 to keep the registry strictly increasing.
 	cmOnboardingWelcome,
 	ap0BisMessageRead,
 	cm3OrgIDBackfill,
+	adm03UsersRoleCollapse,
 }
 
 // Default returns an Engine wired to db with All registered.
