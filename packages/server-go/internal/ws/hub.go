@@ -184,6 +184,42 @@ func (h *Hub) BroadcastEventToAll(eventType string, payload any) {
 	h.SignalNewEvents()
 }
 
+// PushAgentInvitationPending / PushAgentInvitationDecided are the RT-0
+// (#40) entry points for shipping the agent_invitation_{pending,decided}
+// frames defined in docs/blueprint/realtime.md §2.3.
+//
+// Why two typed methods (not one `Push(frame any)`): the review prep
+// (docs/qa/rt-0-server-review-prep.md §S2 + 拒收红线) makes 编译期 schema
+// 锁 a hardline — `interface{}` would let a typo pass `go build`. The
+// frame structs in event_schemas.go are the only callable shapes.
+//
+// Behaviour:
+//   - frame is delivered to every live client of `userID` (multi-device
+//     parity per realtime.md §1.4 — A 全推默认).
+//   - if `userID` has no live sessions it's a silent no-op; the row
+//     persisted by the handler is the source of truth and the client
+//     will reconcile on next reconnect / bell-poll fallback.
+//   - SignalNewEvents fires so /events long-poll waiters wake up in
+//     step (parity with BroadcastEventTo*).
+//
+// Phase 4 BPP cutover: callers stay the same; the implementation swaps
+// `BroadcastToUser` for `bpp.SendFrame` and the schema is unchanged.
+func (h *Hub) PushAgentInvitationPending(userID string, frame *AgentInvitationPendingFrame) {
+	if userID == "" || frame == nil {
+		return
+	}
+	h.BroadcastToUser(userID, frame)
+	h.SignalNewEvents()
+}
+
+func (h *Hub) PushAgentInvitationDecided(userID string, frame *AgentInvitationDecidedFrame) {
+	if userID == "" || frame == nil {
+		return
+	}
+	h.BroadcastToUser(userID, frame)
+	h.SignalNewEvents()
+}
+
 func (h *Hub) CommandStore() *CommandStore {
 	return h.cmdStore
 }

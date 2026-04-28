@@ -24,6 +24,7 @@ import (
 
 	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
+	"borgee-server/internal/ws"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -32,9 +33,46 @@ import (
 type AgentInvitationHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
+	// Hub is the RT-0 (#40) push surface. Wired with *ws.Hub in
+	// production (see internal/server/server.go); tests inject a
+	// fake to assert frame shape + recipient. nil-safe: a handler
+	// without Hub silently skips the push (the persisted row is the
+	// source of truth and the client falls back to bell-poll).
+	Hub AgentInvitationPusher
 	// Now is injected so tests can stamp deterministic decided_at /
 	// created_at values (Phase 1 testutil/clock convention).
 	Now func() time.Time
+}
+
+// AgentInvitationPusher is the RT-0 (#40) seam between the handler
+// and *ws.Hub. Defined here so the api package does not import the
+// ws package directly (mirrors the existing `hubPluginAdapter`
+// pattern in internal/server/server.go).
+//
+// The two methods are typed —编译期 schema 锁 per
+// docs/qa/rt-0-server-review-prep.md §S2 + 拒收红线 (no `interface{}`
+// payload — a typo must fail `go build`, not run silently).
+// The frames are *ws.AgentInvitationPendingFrame /
+// *ws.AgentInvitationDecidedFrame (internal/ws/event_schemas.go);
+// marshalled as-is so wire layout matches the BPP frame schema
+// byte-for-byte (CI lint enforces parity with PR #218 client TS).
+type AgentInvitationPusher interface {
+	PushAgentInvitationPending(userID string, frame *ws.AgentInvitationPendingFrame)
+	PushAgentInvitationDecided(userID string, frame *ws.AgentInvitationDecidedFrame)
+}
+
+func (h *AgentInvitationHandler) pushPending(userID string, frame *ws.AgentInvitationPendingFrame) {
+	if h.Hub == nil || userID == "" || frame == nil {
+		return
+	}
+	h.Hub.PushAgentInvitationPending(userID, frame)
+}
+
+func (h *AgentInvitationHandler) pushDecided(userID string, frame *ws.AgentInvitationDecidedFrame) {
+	if h.Hub == nil || userID == "" || frame == nil {
+		return
+	}
+	h.Hub.PushAgentInvitationDecided(userID, frame)
 }
 
 func (h *AgentInvitationHandler) now() time.Time {
@@ -183,6 +221,23 @@ func (h *AgentInvitationHandler) handleCreate(w http.ResponseWriter, r *http.Req
 		writeJSONError(w, http.StatusInternalServerError, "Failed to create invitation")
 		return
 	}
+
+	// RT-0 (#40): push agent_invitation_pending to the agent's owner so
+	// the bell badge updates ≤ 3s without polling. Field order locked
+	// to docs/blueprint/realtime.md §2.3 + PR #218 client TS interface.
+	expiresMs := int64(0)
+	if inv.ExpiresAt != nil {
+		expiresMs = *inv.ExpiresAt
+	}
+	h.pushPending(*agent.OwnerID, &ws.AgentInvitationPendingFrame{
+		Type:            ws.FrameTypeAgentInvitationPending,
+		InvitationID:    inv.ID,
+		RequesterUserID: inv.RequestedBy,
+		AgentID:         inv.AgentID,
+		ChannelID:       inv.ChannelID,
+		CreatedAt:       inv.CreatedAt,
+		ExpiresAt:       expiresMs,
+	})
 
 	writeJSONResponse(w, http.StatusCreated, map[string]any{
 		"invitation": sanitizeAgentInvitation(h.Store, inv),
@@ -346,6 +401,24 @@ func (h *AgentInvitationHandler) handlePatch(w http.ResponseWriter, r *http.Requ
 			// Don't unwind state — the persisted decision is the source of
 			// truth. A retry / sweep can reconcile membership.
 		}
+	}
+
+	// RT-0 (#40): push agent_invitation_decided to BOTH parties (the
+	// requester and the agent's owner) so every open tab updates
+	// without polling. Multi-device parity per realtime.md §1.4.
+	decidedAt := int64(0)
+	if inv.DecidedAt != nil {
+		decidedAt = *inv.DecidedAt
+	}
+	frame := &ws.AgentInvitationDecidedFrame{
+		Type:         ws.FrameTypeAgentInvitationDecided,
+		InvitationID: inv.ID,
+		State:        string(inv.State),
+		DecidedAt:    decidedAt,
+	}
+	h.pushDecided(inv.RequestedBy, frame)
+	if agent.OwnerID != nil {
+		h.pushDecided(*agent.OwnerID, frame)
 	}
 
 	writeJSONResponse(w, http.StatusOK, map[string]any{
