@@ -37,6 +37,7 @@
   4. ADD COLUMN channel_members.silent BOOLEAN NOT NULL DEFAULT 0
   5. backfill: agent 行 silent=1 (JOIN agents/users by role)
   6. CREATE INDEX idx_channel_members_org_at_join ON channel_members(org_id_at_join)
+- **历史行兼容**: v=11 是破坏式改动 (channels.name 之前是全局 UNIQUE)。**跨 org 同名历史行人工 audit, 不自动改名** — 迁移前若已存在跨 org dup name (理论不存在, 但防 dogfood DB), 迁移失败硬停 + 报错列出 dup row id, 由 ops 人工拍板; 不写自动 rename 逻辑防丢历史。
 - **Acceptance (四选一)**: **数据契约** — `cm_1_1_organizations_test.go` 风格扩展, 断言: (a) v=11 之后 schema_migrations 有行; (b) 跨 org 同名 channel INSERT 成功 (旧行为应失败); (c) idempotent 二次跑不重复 backfill; (d) agent 行 silent=1 / human 行 silent=0; (e) hasColumns guard 防迁移序冲突 (CM-onboarding v=7 已落 channel_members 时不能再 ADD)。
 - **工期**: 2 天 (含写 backfill 单测)
 - **Owner**: 战马 / 飞马 review / 烈马 数据契约
@@ -52,7 +53,7 @@
   - GET /api/v1/channels: 列 (a) 我所属 (channel_members.user_id=me) + (b) 同 org public channels; **不**返回他 org public (蓝图 §2 跨 org 必须显式邀请)
   - POST /api/v1/channels/:id/members: 仅 owner; 加 human 直接落 row, agent 走 CM-4 invitation (本 PR 不改路由, 只复用)
   - PATCH /api/v1/channels/:id/members/:uid: 改 silent flag (owner only)
-- **Acceptance (四选一)**: **e2e 断言** — testutil 起 server, 4 用例: (1) 跨 org 同名 channel 都建成功; (2) 跨 org GET 不互见; (3) 非 owner PATCH 返回 403; (4) PATCH silent=false 后 GET 返回 silent:false。**搭配** 行为不变量 — A org owner 改自己 channel 不影响 B org 同名 channel 行 (单测断言)。
+- **Acceptance (四选一)**: **e2e 断言** — testutil 起 server, 7 用例: (1) 跨 org 同名 channel 都建成功; (2) 跨 org GET 不互见; (3) 非 owner PATCH 返回 403; (4) PATCH silent=false 后 GET 返回 silent:false; (5) **POST /channels 后 channel_members count == 1** (只 creator), 同 org 另一 session GET 列表不见此 channel (private 默认; PR #263 立场 ② 锚点); (6) **agent join 触发 system message 文案锁** — POST /channels/:id/members 加 agent 落地后, messages 表新增 1 行 kind=system, sender_id='system', content 严格匹配 `"{agent_name} joined"` (不含 raw user_id, 不含 org_id; PR #263 立场 ③ 锚点); (7) **soft delete fanout system DM** — PATCH archived_at!=null 时, 每个 channel_member 各收 1 条 system DM, 文案锁 `"channel #{name} 已被 {owner_name} 关闭于 {ts}"`, 复用 ADM-0 §1.4 红线 ③ fanout 模式 (PR #263 立场 ⑤ 锚点)。**搭配** 行为不变量 — A org owner 改自己 channel 不影响 B org 同名 channel 行 (单测断言)。
 - **工期**: 2-3 天
 - **Owner**: 战马 / 飞马 review / 烈马 e2e
 - **PR 模板**: Stage: v0 / Current 同步: docs/current/server/api.md (列出新 endpoint) + docs/current/server/overview.md
@@ -87,7 +88,7 @@ CHN-1.1 (server, 2d) ──→ CHN-1.2 (server, 2-3d) ──→ CHN-1.3 (client,
 
 每 PR 必带反查锚点 (lint-able):
 - `chn-1.1`: schema 没改 channels.org_id 列 / 没破坏 cm_onboarding_welcome 迁移 / silent 列 backfill 仅 agent
-- `chn-1.2`: 跨 org GET 用例存在 / 没回退到 owner_id JOIN / agent invitation 路径未动
+- `chn-1.2`: 跨 org GET 用例存在 / 没回退到 owner_id JOIN / agent invitation 路径未动 / agent join system message 文案 == `"{agent_name} joined"` / archive fanout system DM 文案 == `"channel #{name} 已被 {owner_name} 关闭于 {ts}"` / POST /channels 后 members count == 1
 - `chn-1.3`: silent badge 渲染 / 没出现 "agent 加入立即发言" 文案
 
 ---
