@@ -26,6 +26,13 @@ func setUserContext(r *http.Request, user *store.User) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), userContextKey, user))
 }
 
+// ContextWithUser injects an authenticated user into the request context.
+// Used by tests that drive handlers directly without the live mux's auth
+// middleware. Mirrors setUserContext but exported for cross-package use.
+func ContextWithUser(ctx context.Context, user *store.User) context.Context {
+	return context.WithValue(ctx, userContextKey, user)
+}
+
 type Claims struct {
 	UserID string `json:"userId"`
 	Email  string `json:"email"`
