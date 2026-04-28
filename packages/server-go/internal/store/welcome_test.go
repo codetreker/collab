@@ -136,6 +136,62 @@ func TestCreateWelcomeChannelForUser_GracefulMessageFailure(t *testing.T) {
 	}
 }
 
+// TestListChannelsWithUnread_IncludesSystemWelcome guards bug-030: the
+// channel list endpoint used to filter `c.type = 'channel'`, which silently
+// dropped the freshly-created #welcome (type='system') row. The SPA never
+// saw the channel, so auto-select couldn't pick it and the welcome system
+// message never rendered (e2e: cm-onboarding.spec.ts:92 fail).
+//
+// Contract: a member of a type='system' channel MUST see it in
+// ListChannelsWithUnread / ListAllChannelsForAdmin output.
+func TestListChannelsWithUnread_IncludesSystemWelcome(t *testing.T) {
+	s := testStore(t)
+	if err := s.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	email := "dave@example.com"
+	u := &User{DisplayName: "Dave", Role: "member", Email: &email, PasswordHash: "h"}
+	if err := s.CreateUser(u); err != nil {
+		t.Fatal(err)
+	}
+	ch, _, err := s.CreateWelcomeChannelForUser(u.ID, u.DisplayName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.ListChannelsWithUnread(u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, c := range got {
+		if c.ID == ch.ID && c.Type == "system" && c.IsMember {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("welcome (type=system) channel missing from ListChannelsWithUnread output: %+v", got)
+	}
+
+	// A non-member must NOT see another user's type=system channel — the
+	// welcome row is per-user-private. Create a second user and assert.
+	email2 := "eve@example.com"
+	u2 := &User{DisplayName: "Eve", Role: "member", Email: &email2, PasswordHash: "h"}
+	if err := s.CreateUser(u2); err != nil {
+		t.Fatal(err)
+	}
+	got2, err := s.ListChannelsWithUnread(u2.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range got2 {
+		if c.ID == ch.ID {
+			t.Fatalf("user %s should NOT see other user's welcome channel %s", u2.ID, ch.ID)
+		}
+	}
+}
+
 // TestWelcomeConstantsMirrorMigrations protects the duplicated literal in
 // store/welcome.go from drifting away from migrations/cm_onboarding_welcome.go.
 // Per onboarding-journey.md §3 the copy is locked; both packages must agree.
