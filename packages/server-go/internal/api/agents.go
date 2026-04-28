@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	agentpkg "borgee-server/internal/agent"
 	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
@@ -41,10 +42,26 @@ type AgentHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 	Hub    AgentFileProxy
+	// State — AL-1a (#R3 Phase 2): runtime 三态查询. 提供 online/offline +
+	// error 旁路 (蓝图 agent-lifecycle §2.3). nil 时 GET 返回退化 offline.
+	State AgentRuntimeProvider
 }
 
 type AgentFileProxy interface {
 	ProxyPluginRequest(agentID string, method string, path string, body []byte) (int, []byte, error)
+}
+
+// AgentRuntimeProvider — server.go 注入的薄壳, 把 hub plugin presence +
+// agent.Tracker 错误 map 合并成单次查询. api 包不直接 import internal/ws
+// 仅为了 GetPlugin (依赖反转, 测试也好 fake).
+type AgentRuntimeProvider interface {
+	ResolveAgentState(agentID string) agentpkg.Snapshot
+}
+
+// AgentRuntimeSetter — runtime 故障旁路. 实现挂在同一个 server.go adapter
+// 上, 但 api 层只在 plugin proxy 出错时 best-effort cast + 调用.
+type AgentRuntimeSetter interface {
+	SetAgentError(agentID, reason string)
 }
 
 func (h *AgentHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
@@ -77,6 +94,36 @@ func sanitizeAgent(u *store.User) map[string]any {
 		m["api_key"] = *u.APIKey
 	}
 	return m
+}
+
+// withState — AL-1a (#R3): fold state + reason into the JSON dict the
+// client expects. Disabled agents always render as offline (蓝图 §2.4
+// 禁用 = 停接消息), 不查 runtime presence.
+func (h *AgentHandler) withState(m map[string]any, agentID string, disabled bool) map[string]any {
+	if disabled {
+		m["state"] = string(agentpkg.StateOffline)
+		return m
+	}
+	if h.State == nil {
+		m["state"] = string(agentpkg.StateOffline)
+		return m
+	}
+	snap := h.State.ResolveAgentState(agentID)
+	m["state"] = string(snap.State)
+	if snap.Reason != "" {
+		m["reason"] = snap.Reason
+	}
+	if snap.UpdatedAt != 0 {
+		m["state_updated_at"] = snap.UpdatedAt
+	}
+	return m
+}
+
+// agent_state_classify — convenience wrapper over agent.ClassifyProxyError
+// scoped to the api package. 单独命名是为了避免和 handler 里 `agent` 局部
+// 变量冲突 (handleGetAgentFiles 等).
+func agent_state_classify(status int, err error) string {
+	return agentpkg.ClassifyProxyError(status, err)
 }
 
 func (h *AgentHandler) handleCreateAgent(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +209,7 @@ func (h *AgentHandler) handleListAgents(w http.ResponseWriter, r *http.Request) 
 
 	result := make([]map[string]any, len(agents))
 	for i, a := range agents {
-		result[i] = sanitizeAgent(&a)
+		result[i] = h.withState(sanitizeAgent(&a), a.ID, a.Disabled)
 	}
 	writeJSONResponse(w, http.StatusOK, map[string]any{"agents": result})
 }
@@ -186,7 +233,7 @@ func (h *AgentHandler) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSONResponse(w, http.StatusOK, map[string]any{"agent": sanitizeAgent(agent)})
+	writeJSONResponse(w, http.StatusOK, map[string]any{"agent": h.withState(sanitizeAgent(agent), agent.ID, agent.Disabled)})
 }
 
 func (h *AgentHandler) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
@@ -379,6 +426,13 @@ func (h *AgentHandler) handleGetAgentFiles(w http.ResponseWriter, r *http.Reques
 
 	path := r.URL.Query().Get("path")
 	status, body, err := h.Hub.ProxyPluginRequest(id, "read_file", path, nil)
+	// AL-1a (#R3): runtime 故障旁路. 任意 plugin 调用失败 / 5xx 会让该
+	// agent 进入 error 态, owner 端 Sidebar 立即看到原因码 + 修复入口.
+	if reason := agent_state_classify(status, err); reason != "" && h.State != nil {
+		if setter, ok := h.State.(AgentRuntimeSetter); ok {
+			setter.SetAgentError(id, reason)
+		}
+	}
 	if err != nil {
 		writeJSONError(w, http.StatusServiceUnavailable, "Agent not connected")
 		return
