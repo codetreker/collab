@@ -96,23 +96,23 @@
 | REG-RT0-007 | rt-0.md fallback | E2E: ws disconnect 60s → polling 兜底 (#189 加补) | 烈马 | RT-0 | ⚪ pending |
 | REG-RT0-008 | rt-0.md latency | E2E Playwright stopwatch: 邀请 → owner 通知 ≤ 3s | 烈马 | RT-0 | ⚪ pending |
 
-### CM-onboarding (派活, ⚪ pending)
+### CM-onboarding (派活, 4 🟢 / 9 ⚪)
 
 | Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
 |---|---|---|---|---|---|
 | REG-CMO-001 | cm-onboarding.md tx | `internal/api/auth_test.go::TestRegister_CreatesWelcomeChannel_SameTx` (org+user+#welcome+member+system msg 同事务) | 战马 | CM-onboarding | ⚪ pending |
 | REG-CMO-002 | cm-onboarding.md tx | host-bridge/push 故障注入不影响注册成功 | 战马 | CM-onboarding | ⚪ pending |
-| REG-CMO-003 | cm-onboarding.md kind | system message kind 支持 quick action button 字段 | 战马 | CM-onboarding | ⚪ pending |
-| REG-CMO-004 | cm-onboarding.md E2E | Playwright 步骤 1: 注册后 selectedChannelId == welcomeId | 烈马 | CM-onboarding | ⚪ pending |
-| REG-CMO-005 | cm-onboarding.md E2E | Playwright 步骤 2: DOM 含 "**欢迎来到 Borgee 👋**" + button "创建 agent" | 烈马 | CM-onboarding | ⚪ pending |
+| REG-CMO-003 | cm-onboarding.md kind | `internal/store/welcome_test.go::TestCreateWelcomeChannelForUser_Success` (quick_action 列写入 + JSON 形态) + `packages/client/src/components/MessageItem.tsx` 解析 `{kind,label,action}` + e2e `button.message-system-quick-action` 可见 | 战马 | #203 | 🟢 active |
+| REG-CMO-004 | cm-onboarding.md E2E | `packages/e2e/tests/cm-onboarding.spec.ts` (auto-select welcome — `.message-system-content` 渲染即等价 selectedChannelId==welcome) | 战马 | #203 | 🟢 active |
+| REG-CMO-005 | cm-onboarding.md E2E | `packages/e2e/tests/cm-onboarding.spec.ts` toContainText("欢迎来到 Borgee") + button toHaveText("创建 agent") | 战马 | #203 | 🟢 active |
 | REG-CMO-006 | cm-onboarding.md E2E | Playwright 步骤 3-4: AgentManager 3 步 + toast "🎉 {name} 已加入你的团队" | 烈马 | CM-onboarding | ⚪ pending |
 | REG-CMO-007 | cm-onboarding.md E2E | Playwright 步骤 5: 左栏 agent 行 + subject "正在熟悉环境…" | 烈马 | CM-onboarding | ⚪ pending |
 | REG-CMO-008 | cm-onboarding.md error | E2E: register 500 → DOM "正在准备你的工作区, 稍候刷新…" + [重试] | 烈马 | CM-onboarding | ⚪ pending |
 | REG-CMO-009 | cm-onboarding.md error | E2E: 名字重复 inline error | 烈马 | CM-onboarding | ⚪ pending |
 | REG-CMO-010 | cm-onboarding.md error | E2E: runtime 503 → 创建按钮仍可点 + agent 行 "故障 (runtime_unreachable)" | 烈马 | CM-onboarding | ⚪ pending |
-| REG-CMO-011 | cm-onboarding.md §11 grep | `grep "👈 选择频道" packages/client/src/` count==0 | 飞马 | CM-onboarding | ⚪ pending |
+| REG-CMO-011 | cm-onboarding.md §11 grep | `grep -r "👈 选择频道\|👈 选择一个频道" packages/client/src/` count==0 (App.tsx 替成 "正在准备你的工作区, 稍候刷新…") | 战马 | #203 | 🟢 active |
 | REG-CMO-012 | cm-onboarding.md §11 forbidden | `docs/qa/forbidden-strings.txt` 存在 + CI lint 引用 | 飞马 | CM-onboarding | ⚪ pending |
-| REG-CMO-013 | cm-onboarding.md CODEOWNERS | `.github/CODEOWNERS` 含 `onboarding-journey.md @yema` (PR #192) | 烈马 | #192 | ⚪ pending (#192 待 merge) |
+| REG-CMO-013 | cm-onboarding.md CODEOWNERS | `.github/CODEOWNERS` 含 `onboarding-journey.md @yema` (PR #192) | 烈马 | #192 | 🟢 active |
 
 ### Sanitizer / 不变量 (跨 milestone)
 
@@ -143,9 +143,9 @@ CM-3 落地后 G1.4 进 registry 转 🟢 active 一行。
 | ADM-0 | 10 | 0 | 10 |
 | AP-0-bis | 6 | 0 | 6 |
 | RT-0 | 8 | 0 | 8 |
-| CM-onboarding | 13 | 0 | 13 |
+| CM-onboarding | 13 | 4 | 9 |
 | 跨 milestone 不变量 | 2 | 1 | 1 |
-| **总计** | **54** | **9** | **45** |
+| **总计** | **54** | **13** | **41** |
 
 Phase 2 全部 milestone 落地后, 预计 active 54 行 — G2.audit 时全员检视一遍 + 翻态 + sign off。
 
