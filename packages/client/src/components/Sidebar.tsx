@@ -36,8 +36,10 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
 
   // Poll pending agent-invitation count for the bell badge. Only owners
   // (non-agent accounts) ever receive owner-side invitations, so we skip
-  // polling for agent sessions. CM-4.3 will replace this poll with a
-  // BPP push frame.
+  // polling for agent sessions. RT-0 (#40) keeps the 60s poll as a
+  // belt-and-suspenders fallback (offline reconnect, missed frames),
+  // but the primary refresh path is the push-driven CustomEvent below.
+  // CM-4.3 will replace the poll entirely once BPP lands.
   useEffect(() => {
     if (!onInvitationsOpen) return;
     if (state.currentUser?.role === 'agent') return;
@@ -55,7 +57,18 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
     };
     refresh();
     const id = setInterval(refresh, 60_000);
-    return () => { cancelled = true; clearInterval(id); };
+    // RT-0: also expose refresh via window event so the push handler
+    // below can trigger an immediate re-fetch without re-implementing
+    // the API call. The interval stays as fallback.
+    const onPush = () => { void refresh(); };
+    window.addEventListener('borgee:invitation-pending', onPush);
+    window.addEventListener('borgee:invitation-decided', onPush);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      window.removeEventListener('borgee:invitation-pending', onPush);
+      window.removeEventListener('borgee:invitation-decided', onPush);
+    };
   }, [onInvitationsOpen, state.currentUser?.role]);
 
   useEffect(() => {
