@@ -20,6 +20,11 @@
 | **CHN-1.2** API (create / archive / list) | `POST /channels` 默认 creator-only + `POST /channels/:id/archive` 软退役 + `GET /channels` 过滤 archived | 待 PR (战马A) | 战马A |
 | **CHN-1.3** client (创建 / 归档 UI) | 创建对话框 + archived 灰显 + agent silent 不打扰 | 待 PR (战马A) | 战马A |
 
+## 1.4 spec 漂移记录 (#288 后置补丁)
+
+- **WS `channel_added` payload schema 锁**: 必须送 full `{channel}` 对象 (含 `archived_at` / `members` count / `silent` flags), **不只** `{channel_id}` — #288 (commit adaf521) 抓出 sidebar crash 链 (客户端拿 channel_id 反查 store, store 未 backfill → undefined.name 崩), 战马A 同 PR fix server `channels.go` + `queries.go` 改送 full channel + 客户端 `useWebSocket.ts` 加 undefined guard 双层防护
+- **客户端 handler 反约束**: `channel_added` / `channel_archived` handler 必须对 undefined channel guard (drop frame + warn), 不允许直接 dereference — 防 server schema 回潮窄 payload 导致 sidebar 再炸
+
 ## 2. 与 Phase 2 留账无冲突
 
 - **G2.5 presence contract** (留账 #277): channel 成员表 `channel_members` 与 presence 表独立, 不冲突
@@ -33,6 +38,7 @@ git grep -n 'archived_at.*INTEGER'    packages/server-go/internal/migrations/  #
 git grep -n 'silent.*INTEGER'         packages/server-go/internal/migrations/  # ≥ 1 hit (CHN-1.1, SQLite 无 BOOL)
 git grep -n 'UNIQUE.*org_id.*name'    packages/server-go/internal/migrations/  # ≥ 1 hit (CHN-1.1, 列序对齐 #276)
 git grep -n 'archived_at IS NULL'     packages/server-go/internal/channels/    # list 过滤 (CHN-1.2)
+git grep -n 'channel_added'           packages/client/src/hooks/useWebSocket.ts # ≥ 1 hit + 同 handler 必含 undefined guard (`if (!msg.channel)` 等价) — 防 #288 sidebar crash 回归
 ```
 
 任一 0 hit → CI fail, 视作蓝图立场被弱化。
@@ -56,3 +62,4 @@ git grep -n 'archived_at IS NULL'     packages/server-go/internal/channels/    #
 |---|---|---|
 | 2026-04-28 | 飞马 | v0 — spec lock 配套 #265 拆段, 3 立场 + 4 grep 反查 + 4 反约束 |
 | 2026-04-28 | 飞马 | v1 — 烈马 review patch: archived_at 描述对齐 #276 (INTEGER NULL); grep 路径 packages/server-go/internal/; SQLite 无 BOOL → INTEGER; UNIQUE 列序 (org_id, name) |
+| 2026-04-28 | 飞马 | v2 — #288 后置补丁: 加 §1.4 spec 漂移记录 (WS `channel_added` payload 必送 full `{channel}` 对象, 客户端必 guard undefined); §3 grep 加 `channel_added` 反查锚防回归 |
