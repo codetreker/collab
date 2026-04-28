@@ -12,7 +12,7 @@
 |------|-----|-----|-----|------|
 | **online** | 🟢 | `"在线"` | `online` | `presence.IsOnline(agent_id) == true` (WS / plugin / poll 任一活) |
 | **offline** | ⚫ | `"已离线"` | `offline` | 60s 无心跳 (跟 #303 立场 ⑤ 时序锁), 跟 DM-2 #293 §2.2 fallback 文案同根 |
-| **error** | 🔴 | `"出错: {reason}"` (`{reason}` byte-identical 跟 `agent/state.go` 6 reason codes 一致) | `error` | `agent.status == 'error'`, reason ∈ {`api_key_invalid` / `quota_exceeded` / `network_unreachable` / `runtime_crashed` / `runtime_timeout` / `unknown`} |
+| **error** | 🔴 | `"故障 ({reason_label})"` (跟 `lib/agent-state.ts` `describeAgentState` byte-identical, `{reason_label}` = REASON_LABELS[reason] 跟 AL-1a #249 REG-AL1A-005 + `agent/state.go` 6 reason codes 同源 — 改 = 改三处) | `error` | `agent.status == 'error'`, reason ∈ {`api_key_invalid` / `quota_exceeded` / `network_unreachable` / `runtime_crashed` / `runtime_timeout` / `unknown`} |
 | ~~busy / idle~~ | ❌ | **不在 v0 范围** (留 BPP-1 同期) — 反向 grep 防 leak | ❌ | — |
 
 **反约束 (跟 #303 立场 ⑥ 一致)**:
@@ -32,8 +32,10 @@ grep -rnE "tooltip.*['\"](Online|Offline|断线|下线|活跃|不在线)['\"]" p
 grep -rnE "data-presence=['\"](busy|idle)['\"]" packages/client/src/ | grep -v _test
 # 心跳/多端/IP leak 防御
 grep -rnE "last_heartbeat|connection_count|endpoint_ip|多端" packages/client/src/components/.*[Pp]resence.*\\.(tsx|ts) | grep -v _test
-# error 文案模板锁: "出错: {reason}" 必有 + reason byte-identical
-grep -rnE "出错:.*\\$\\{reason\\}|出错:.*\\{reason\\}" packages/client/src/ | grep -v _test
+# error 文案模板锁: "故障 ({reason_label})" 必有 + reason_label byte-identical 跟 AL-1a #249 REASON_LABELS
+grep -rnE "故障 \\(\\$\\{.*reason.*\\}\\)|故障 \\(\\{.*\\}\\)" packages/client/src/ | grep -v _test
+# 反向: 早期文案锁草稿 "出错:" 不应再 leak 到实施 (孤儿 drift fix #后续)
+grep -rnE "['\"]出错: " packages/client/src/ | grep -v _test
 ```
 
 ---
@@ -59,3 +61,4 @@ grep -rnE "出错:.*\\$\\{reason\\}|出错:.*\\{reason\\}" packages/client/src/ 
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-28 | 野马 | v0, 4 状态文案锁 (online/offline/error + busy/idle 反向 grep 防 leak) + 反约束 4 项 + 反向 grep 4 行 + 验收挂钩 (G2.5 demo 截屏 3 张预备) |
+| 2026-04-29 | 野马 | v0.1 patch — 修孤儿 drift: error 文案 `"出错: {reason}"` → `"故障 ({reason_label})"` 跟 AL-1a #249 实施 (`lib/agent-state.ts` `describeAgentState` + REG-AL1A-005) 字面对齐, 反向 grep 加 "出错:" 防 drift 复发. 二轮反查抓出 (PR #324 后跨 doc/impl 不一致) |
