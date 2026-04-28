@@ -169,6 +169,12 @@ http.Server.Serve       # 0.0.0.0:4900
 ### Agents
 `POST/GET/DELETE /api/v1/agents`、`POST /api/v1/agents/{id}/rotate-api-key`、`GET/PUT /api/v1/agents/{id}/permissions`、`GET /api/v1/agents/{id}/files`（通过 plugin WS 反向代理列文件）。
 
+### Agent invitations (CM-4.1)
+`POST /api/v1/agent_invitations` — channel 成员发起邀请，body `{channel_id, agent_id, expires_at?}`。Handler 显式 `state = "pending"`（不依赖 GORM default）；agent 已在 channel → 409。
+`GET /api/v1/agent_invitations[?role=owner|requester]` — `owner`（默认）= 列出本人所拥有 agent 的待办；`requester` = 列出本人创建的；admin 在 owner 模式下看全量。
+`GET /api/v1/agent_invitations/{id}` — 仅 requester / agent owner / admin 可读。
+`PATCH /api/v1/agent_invitations/{id}` body `{state: "approved"|"rejected"}` — 仅 agent owner（或 admin）可决策；状态机复用 `store.AgentInvitation.Transition`，非法转移 → 409；`approved` 同步把 agent 加入 channel（idempotent）。响应 payload hand-built sanitizer，从不直接序列化 `*store.AgentInvitation`。BPP frame / client UI / offline 检测留给 CM-4.2 / CM-4.3。
+
 ### Commands
 `GET /api/v1/commands` — 当前所有 plugin 注册过的 slash command，按 agent 分组。
 

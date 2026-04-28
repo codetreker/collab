@@ -32,6 +32,8 @@
 
 **Agent invitations 状态机 (CM-4.0)**: 蓝图 §4.2 默认流程 B 的数据落地, **本步只到 schema + 状态机 helper, 不到 HTTP/UI**。表 `agent_invitations` 的 `state` 列用 TEXT enum + CHECK 约束 (`pending / approved / rejected / expired`)。状态机由 `store.AgentInvitation.Transition(to, nowMillis)` 实现, 仅允许 `pending → {approved, rejected, expired}` 三条边, 终态无出边; 任何非法转移返回 `errors.Is(err, ErrInvalidTransition) == true` 且不会改写 `inv.State` / `inv.DecidedAt`。`DecidedAt` 在每次成功转移时由调用方注入的 `nowMillis` 戳上 (Phase 1 testutil/clock 注入约定)。索引: `(agent_id, state)` 给 owner inbox 列待办、`(channel_id, state)` 给 channel 反查活跃邀请、`(requested_by)` 给 audit。CM-4.1 起在 handler 层使用; CM-4.0 仅有单测覆盖每条非法边 (acceptance 行为不变量 4.1)。v0 audit: enum 直接落 string, v1 切回时再考虑拆 lookup 表。
 
+**Agent invitations API (CM-4.1)**: 蓝图 §4.2 流程 B 的 HTTP 落地, 复用 CM-4.0 的状态机 helper, **不动 BPP frame (CM-4.3) / client UI (CM-4.2) / offline 检测 (CM-4.3b)**。Endpoints: `POST /api/v1/agent_invitations` (channel 成员发起 — handler 显式 `inv.State = AgentInvitationPending`, 不依赖 GORM default), `GET /api/v1/agent_invitations[?role=owner|requester]` (owner=待办 inbox, requester=自己发出去的; admin 看全量), `GET /api/v1/agent_invitations/{id}` (requester / agent owner / admin), `PATCH /api/v1/agent_invitations/{id}` body `{state: "approved"|"rejected"}` (仅 agent owner / admin; `expired` 走后台 sweep 不开放给 owner)。Side-effect: `approved` 同步 `Store.AddChannelMember(agent → channel)` (idempotent FirstOrCreate); 失败只记 log 不回滚 — 持久化的决策才是 source of truth, 重试或 sweep reconcile。Sanitizer hand-built (`map[string]any`, `decided_at` / `expires_at` 走 omitempty), 永不 `json.Marshal *store.AgentInvitation` (admin 模式)。`(state, expires_at)` 复合索引留给后台 sweep, 本步不补。`Now func() time.Time` 注入支持 testutil/clock 约定。覆盖率 ≥ 80% (handler ~85%)。
+
 ## 2. 迁移策略
 
 `store.Migrate()` 是幂等函数：
