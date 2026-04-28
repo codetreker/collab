@@ -1,0 +1,10 @@
+# CODEOWNERS — auto-request review on touched paths
+#
+# Format: <pattern> <owner> [<owner> ...]
+# 单一文件用单个 owner; 跨模块文档保留无 owner (4 人 review 走 PR 流程)。
+#
+# 来源: 烈马 R3 review (PR #190 review comment, 2026-04-28) — 流程级 review,
+# 文案主权所有人 (野马) 必须出现在任何改文案的 PR review 列表里, 避免新人误改。
+
+# 野马 — onboarding journey 文案主权 (PR #190 §4 锁定原则 1)
+docs/implementation/00-foundation/onboarding-journey.md @yema
