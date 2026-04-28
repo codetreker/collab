@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"borgee-server/internal/admin"
 	"borgee-server/internal/config"
 	"borgee-server/internal/migrations"
 	"borgee-server/internal/server"
@@ -49,6 +50,15 @@ func main() {
 	// numbered migrations. See internal/migrations and docs/current/server/migrations.md.
 	if err := migrations.Default(s.DB()).Run(0); err != nil {
 		logger.Error("schema_migrations failed", "error", err)
+		os.Exit(1)
+	}
+
+	// ADM-0.1: bootstrap the env-configured admin into `admins`. Fail loud
+	// if BORGEE_ADMIN_LOGIN / BORGEE_ADMIN_PASSWORD_HASH are missing —
+	// admin auth must not silently degrade. Idempotent on re-run.
+	// Blueprint: admin-model §1.2 (B env bootstrap, 无 promote).
+	if err := admin.Bootstrap(s.DB()); err != nil {
+		logger.Error("admin bootstrap failed", "error", err)
 		os.Exit(1)
 	}
 
