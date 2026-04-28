@@ -1,0 +1,335 @@
+// Package api — agent_invitations.go: CM-4.1 HTTP handler for agent
+// invitations (cross-org: requester invites someone else's agent into a
+// channel; agent's owner approves/rejects).
+//
+// Blueprint: concept-model.md §4.2 流程 B (default).
+//
+// Boundaries (per team-lead 04/28):
+//   - HTTP only. NO BPP frame (CM-4.3), NO client UI (CM-4.2),
+//     NO offline detection / system message (CM-4.3b).
+//   - State machine reused from CM-4.0 (store.AgentInvitation.Transition).
+//   - Sanitizer hand-built. We never marshal *store.AgentInvitation
+//     directly (admin-sanitizer pattern).
+//   - Create handler MUST set inv.State = AgentInvitationPending explicitly
+//     (no GORM default reliance — 飞马 review flag #2).
+//   - (state, expires_at) composite index intentionally NOT added here —
+//     deferred for the future sweep handler (飞马 review flag #3).
+package api
+
+import (
+	"errors"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"borgee-server/internal/auth"
+	"borgee-server/internal/store"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type AgentInvitationHandler struct {
+	Store  *store.Store
+	Logger *slog.Logger
+	// Now is injected so tests can stamp deterministic decided_at /
+	// created_at values (Phase 1 testutil/clock convention).
+	Now func() time.Time
+}
+
+func (h *AgentInvitationHandler) now() time.Time {
+	if h.Now != nil {
+		return h.Now()
+	}
+	return time.Now()
+}
+
+func (h *AgentInvitationHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+	wrap := func(f http.HandlerFunc) http.Handler { return authMw(f) }
+
+	mux.Handle("POST /api/v1/agent_invitations", wrap(h.handleCreate))
+	mux.Handle("GET /api/v1/agent_invitations", wrap(h.handleList))
+	mux.Handle("GET /api/v1/agent_invitations/{id}", wrap(h.handleGet))
+	mux.Handle("PATCH /api/v1/agent_invitations/{id}", wrap(h.handlePatch))
+}
+
+// sanitizeAgentInvitation hand-builds the response payload — never marshal
+// *store.AgentInvitation directly (admin sanitizer pattern, 飞马 review flag #1).
+func sanitizeAgentInvitation(inv *store.AgentInvitation) map[string]any {
+	m := map[string]any{
+		"id":           inv.ID,
+		"channel_id":   inv.ChannelID,
+		"agent_id":     inv.AgentID,
+		"requested_by": inv.RequestedBy,
+		"state":        string(inv.State),
+		"created_at":   inv.CreatedAt,
+	}
+	if inv.DecidedAt != nil {
+		m["decided_at"] = *inv.DecidedAt
+	}
+	if inv.ExpiresAt != nil {
+		m["expires_at"] = *inv.ExpiresAt
+	}
+	return m
+}
+
+// handleCreate — POST /api/v1/agent_invitations
+//
+// Body: { channel_id, agent_id, expires_at? (epoch ms) }
+//
+// Caller MUST be a member of the target channel (only members can invite
+// others into the channel they sit in). Agent must exist; we don't check
+// here that the agent is in another org (cross-org constraint), since v0
+// the org column is mostly empty — CM-3 will tighten this. Already-pending
+// invitation for the same (channel, agent) returns 409.
+func (h *AgentInvitationHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var body struct {
+		ChannelID string `json:"channel_id"`
+		AgentID   string `json:"agent_id"`
+		ExpiresAt *int64 `json:"expires_at,omitempty"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if body.ChannelID == "" {
+		writeJSONError(w, http.StatusBadRequest, "channel_id is required")
+		return
+	}
+	if body.AgentID == "" {
+		writeJSONError(w, http.StatusBadRequest, "agent_id is required")
+		return
+	}
+
+	if _, err := h.Store.GetChannelByID(body.ChannelID); err != nil {
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
+		return
+	}
+	if !h.Store.IsChannelMember(body.ChannelID, user.ID) {
+		writeJSONError(w, http.StatusForbidden, "Not a channel member")
+		return
+	}
+
+	agent, err := h.Store.GetAgent(body.AgentID)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Agent not found")
+		return
+	}
+	if agent.OwnerID == nil {
+		writeJSONError(w, http.StatusBadRequest, "Agent has no owner")
+		return
+	}
+	// Agent already in channel — no point inviting.
+	if h.Store.IsChannelMember(body.ChannelID, agent.ID) {
+		writeJSONError(w, http.StatusConflict, "Agent already in channel")
+		return
+	}
+
+	inv := &store.AgentInvitation{
+		ID:          uuid.NewString(),
+		ChannelID:   body.ChannelID,
+		AgentID:     agent.ID,
+		RequestedBy: user.ID,
+		// Explicit pending init — do not rely on GORM column default.
+		State:     store.AgentInvitationPending,
+		CreatedAt: h.now().UnixMilli(),
+		ExpiresAt: body.ExpiresAt,
+	}
+	if err := h.Store.CreateAgentInvitation(inv); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create invitation")
+		return
+	}
+
+	writeJSONResponse(w, http.StatusCreated, map[string]any{
+		"invitation": sanitizeAgentInvitation(inv),
+	})
+}
+
+// handleGet — GET /api/v1/agent_invitations/{id}
+//
+// Visible to: the requester, or the agent's owner.
+func (h *AgentInvitationHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id := r.PathValue("id")
+	inv, err := h.Store.GetAgentInvitation(id)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Invitation not found")
+		return
+	}
+
+	if !h.canSee(user, inv) {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	writeJSONResponse(w, http.StatusOK, map[string]any{
+		"invitation": sanitizeAgentInvitation(inv),
+	})
+}
+
+// handleList — GET /api/v1/agent_invitations[?role=owner|requester]
+//
+// role=owner   → invitations addressed to agents the caller owns (default).
+// role=requester → invitations the caller created.
+// Admins listing as owner also see all-agent invitations.
+func (h *AgentInvitationHandler) handleList(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	role := r.URL.Query().Get("role")
+	if role == "" {
+		role = "owner"
+	}
+
+	var invs []store.AgentInvitation
+	var err error
+	switch role {
+	case "owner":
+		var agents []store.User
+		if user.Role == "admin" {
+			agents, err = h.Store.ListAllAgents()
+		} else {
+			agents, err = h.Store.ListAgentsByOwner(user.ID)
+		}
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to list agents")
+			return
+		}
+		ids := make([]string, len(agents))
+		for i, a := range agents {
+			ids[i] = a.ID
+		}
+		invs, err = h.Store.ListAgentInvitationsForAgents(ids)
+	case "requester":
+		invs, err = h.Store.ListAgentInvitationsByRequester(user.ID)
+	default:
+		writeJSONError(w, http.StatusBadRequest, "role must be 'owner' or 'requester'")
+		return
+	}
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to list invitations")
+		return
+	}
+
+	out := make([]map[string]any, len(invs))
+	for i := range invs {
+		out[i] = sanitizeAgentInvitation(&invs[i])
+	}
+	writeJSONResponse(w, http.StatusOK, map[string]any{"invitations": out})
+}
+
+// handlePatch — PATCH /api/v1/agent_invitations/{id}
+//
+// Body: { state: "approved" | "rejected" }
+//
+// Only the agent's owner may transition. Uses the CM-4.0 state machine
+// (inv.Transition) — illegal transitions return 409. On approval the
+// agent is added to the channel as a side-effect (the whole point of the
+// invite). DecidedAt is stamped by Transition using the injected clock.
+func (h *AgentInvitationHandler) handlePatch(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id := r.PathValue("id")
+	inv, err := h.Store.GetAgentInvitation(id)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Invitation not found")
+		return
+	}
+
+	agent, err := h.Store.GetAgent(inv.AgentID)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Agent not found")
+		return
+	}
+	if user.Role != "admin" && (agent.OwnerID == nil || *agent.OwnerID != user.ID) {
+		writeJSONError(w, http.StatusForbidden, "Only the agent owner may decide")
+		return
+	}
+
+	var body struct {
+		State string `json:"state"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	target := store.AgentInvitationState(body.State)
+	switch target {
+	case store.AgentInvitationApproved, store.AgentInvitationRejected:
+		// allowed targets via owner action; expired is sweep-only
+	default:
+		writeJSONError(w, http.StatusBadRequest, "state must be 'approved' or 'rejected'")
+		return
+	}
+
+	if err := inv.Transition(target, h.now().UnixMilli()); err != nil {
+		if errors.Is(err, store.ErrInvalidTransition) {
+			writeJSONError(w, http.StatusConflict, err.Error())
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if err := h.Store.UpdateAgentInvitationState(inv); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			writeJSONError(w, http.StatusNotFound, "Invitation not found")
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update invitation")
+		return
+	}
+
+	if inv.State == store.AgentInvitationApproved {
+		// Side-effect: agent joins the channel. Idempotent (FirstOrCreate).
+		if err := h.Store.AddChannelMember(&store.ChannelMember{
+			ChannelID: inv.ChannelID,
+			UserID:    inv.AgentID,
+			JoinedAt:  h.now().UnixMilli(),
+		}); err != nil {
+			h.Logger.Error("approved invitation: add channel member failed",
+				"invitation_id", inv.ID, "err", err)
+			// Don't unwind state — the persisted decision is the source of
+			// truth. A retry / sweep can reconcile membership.
+		}
+	}
+
+	writeJSONResponse(w, http.StatusOK, map[string]any{
+		"invitation": sanitizeAgentInvitation(inv),
+	})
+}
+
+// canSee reports whether `user` may read `inv`. Requester or agent owner
+// (or admin) only — channel members at large do not see invitations.
+func (h *AgentInvitationHandler) canSee(user *store.User, inv *store.AgentInvitation) bool {
+	if user.Role == "admin" {
+		return true
+	}
+	if inv.RequestedBy == user.ID {
+		return true
+	}
+	agent, err := h.Store.GetAgent(inv.AgentID)
+	if err != nil {
+		return false
+	}
+	return agent.OwnerID != nil && *agent.OwnerID == user.ID
+}
