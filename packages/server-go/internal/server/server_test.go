@@ -330,7 +330,7 @@ func TestRateLimitMiddlewareRejectsExhaustedClient(t *testing.T) {
 	rl.apiMax = 1
 
 	nextCalls := 0
-	handler := rateLimitMiddleware(rl, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rateLimitMiddleware(rl, false, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextCalls++
 		w.WriteHeader(http.StatusAccepted)
 	}))
@@ -350,6 +350,77 @@ func TestRateLimitMiddlewareRejectsExhaustedClient(t *testing.T) {
 	}
 	if nextCalls != 1 {
 		t.Fatalf("expected next called once, got %d", nextCalls)
+	}
+}
+
+// TestRateLimitBypass_RequiresBothHeaderAndDevMode pins the e2e bypass 双 gate:
+// only `IsDevelopment=true` AND `X-E2E-Test: 1` together skip the limiter.
+// Either gate alone (header in prod / dev without header / both off) MUST
+// fall through to the normal rate-limit path.
+//
+// 红线 / why both gates:
+//   - header alone is forgeable from outside in prod → would be a DoS-bypass hole
+//   - dev mode alone weakens local dev hygiene (real browser tab traffic
+//     would silently bypass the limiter, masking real client bugs)
+//
+// See middleware.go:rateLimitMiddleware doc comment for the full rationale.
+func TestRateLimitBypass_RequiresBothHeaderAndDevMode(t *testing.T) {
+	cases := []struct {
+		name          string
+		isDevelopment bool
+		header        string
+		// expectBypass = true means the second request (after exhaustion)
+		// should still be served with 202 (limiter skipped). false means
+		// the limiter rejects with 429 as usual.
+		expectBypass bool
+	}{
+		{name: "dev + header → bypass", isDevelopment: true, header: "1", expectBypass: true},
+		{name: "dev only (no header) → enforce", isDevelopment: true, header: "", expectBypass: false},
+		{name: "header only (prod) → enforce", isDevelopment: false, header: "1", expectBypass: false},
+		{name: "neither → enforce", isDevelopment: false, header: "", expectBypass: false},
+		// Defensive: stray header values must not be treated as the magic "1".
+		{name: "dev + header=true (not the literal 1) → enforce", isDevelopment: true, header: "true", expectBypass: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rl := newRateLimiter()
+			rl.apiRate = 0
+			rl.apiMax = 1
+
+			handler := rateLimitMiddleware(rl, tc.isDevelopment, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusAccepted)
+			}))
+
+			mkReq := func() *http.Request {
+				req := httptest.NewRequest("GET", "/api/v1/channels", nil)
+				req.RemoteAddr = "203.0.113.42:1234"
+				if tc.header != "" {
+					req.Header.Set("X-E2E-Test", tc.header)
+				}
+				return req
+			}
+
+			// First request: always succeeds (bucket has 1 token, or bypass).
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, mkReq())
+			if rec.Code != http.StatusAccepted {
+				t.Fatalf("first request: expected 202, got %d", rec.Code)
+			}
+
+			// Second request: bypass cases stay 202; enforced cases hit 429.
+			rec = httptest.NewRecorder()
+			handler.ServeHTTP(rec, mkReq())
+			if tc.expectBypass {
+				if rec.Code != http.StatusAccepted {
+					t.Fatalf("second request: expected bypass (202), got %d", rec.Code)
+				}
+			} else {
+				if rec.Code != http.StatusTooManyRequests {
+					t.Fatalf("second request: expected 429 (limiter enforced), got %d", rec.Code)
+				}
+			}
+		})
 	}
 }
 
