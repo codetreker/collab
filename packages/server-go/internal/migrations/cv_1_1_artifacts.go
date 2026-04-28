@@ -14,31 +14,41 @@ import (
 //
 // What this migration does:
 //   1. CREATE TABLE artifacts:
-//        - id              TEXT  PRIMARY KEY        (uuid; channel-scoped)
-//        - channel_id      TEXT  NOT NULL           (FK channels.id; 立场 ①
-//                                                   归属 = channel, 不是
-//                                                   author. 软删随 channel)
-//        - type            TEXT  NOT NULL CHECK 'markdown'  (立场 ④ Markdown
-//                                                   ONLY v1; 代码/图片/PDF/
-//                                                   看板留 v2+)
-//        - title           TEXT  NOT NULL
-//        - body            TEXT  NOT NULL DEFAULT ''  (current rendered body;
-//                                                   实际版本走 artifact_versions)
-//        - current_version INTEGER NOT NULL DEFAULT 1
-//        - created_at      INTEGER NOT NULL          (Unix ms)
-//        - archived_at     INTEGER NULL              (软删 — channel archive
-//                                                   级联走 list 过滤, 蓝图 §2)
+//        - id                  TEXT  PRIMARY KEY        (uuid; channel-scoped)
+//        - channel_id          TEXT  NOT NULL           (FK channels.id; 立场 ①
+//                                                       归属 = channel, 不是
+//                                                       author. 软删随 channel)
+//        - type                TEXT  NOT NULL CHECK 'markdown'  (立场 ④ Markdown
+//                                                       ONLY v1; 代码/图片/PDF/
+//                                                       看板留 v2+)
+//        - title               TEXT  NOT NULL
+//        - body                TEXT  NOT NULL DEFAULT ''  (current rendered body)
+//        - current_version     INTEGER NOT NULL DEFAULT 1
+//        - created_at          INTEGER NOT NULL          (Unix ms)
+//        - archived_at         INTEGER NULL              (软删 — channel archive
+//                                                       级联走 list 过滤, 蓝图 §2)
+//        - lock_holder_user_id TEXT  NULL                (立场 ② 单文档锁
+//                                                       30s TTL, CV-1.2 PATCH
+//                                                       conflict 409 路径; NULL
+//                                                       = 无人持锁可写)
+//        - lock_acquired_at    INTEGER NULL              (立场 ② 锁时间戳, 配合
+//                                                       lock_holder_user_id 走
+//                                                       30s TTL 过期判断)
 //   2. CREATE TABLE artifact_versions:
-//        - id              INTEGER PRIMARY KEY AUTOINCREMENT
-//        - artifact_id     TEXT  NOT NULL            (FK artifacts.id)
-//        - version         INTEGER NOT NULL
-//        - body            TEXT  NOT NULL DEFAULT ''
-//        - committer_kind  TEXT  NOT NULL CHECK ('agent','human')  (立场 ⑥
-//                                                   agent commit fanout
-//                                                   system message 路径)
-//        - committer_id    TEXT  NOT NULL            (user_id / agent_id)
-//        - created_at      INTEGER NOT NULL          (Unix ms)
-//        - UNIQUE(artifact_id, version)             (版本线性, 立场 ③)
+//        - id                       INTEGER PRIMARY KEY AUTOINCREMENT
+//        - artifact_id              TEXT  NOT NULL       (FK artifacts.id)
+//        - version                  INTEGER NOT NULL
+//        - body                     TEXT  NOT NULL DEFAULT ''
+//        - committer_kind           TEXT  NOT NULL CHECK ('agent','human')  (立场 ⑥
+//                                                       agent commit fanout
+//                                                       system message 路径)
+//        - committer_id             TEXT  NOT NULL       (user_id / agent_id)
+//        - created_at               INTEGER NOT NULL     (Unix ms)
+//        - rolled_back_from_version INTEGER NULL         (立场 ⑦ rollback 触发
+//                                                       新 commit 时记原 version,
+//                                                       NULL = 普通 commit; CV-1.2
+//                                                       POST /rollback 路径写)
+//        - UNIQUE(artifact_id, version)                 (版本线性, 立场 ③)
 //   3. CREATE INDEX idx_artifacts_channel_id        (channel 内 list 热路径)
 //   4. CREATE INDEX idx_artifact_versions_artifact_id (版本侧栏拉取)
 //
@@ -57,14 +67,16 @@ var cv11Artifacts = Migration{
 	Name:    "cv_1_1_artifacts",
 	Up: func(tx *gorm.DB) error {
 		if err := tx.Exec(`CREATE TABLE IF NOT EXISTS artifacts (
-  id              TEXT    PRIMARY KEY,
-  channel_id      TEXT    NOT NULL,
-  type            TEXT    NOT NULL CHECK (type = 'markdown'),
-  title           TEXT    NOT NULL,
-  body            TEXT    NOT NULL DEFAULT '',
-  current_version INTEGER NOT NULL DEFAULT 1,
-  created_at      INTEGER NOT NULL,
-  archived_at     INTEGER
+  id                  TEXT    PRIMARY KEY,
+  channel_id          TEXT    NOT NULL,
+  type                TEXT    NOT NULL CHECK (type = 'markdown'),
+  title               TEXT    NOT NULL,
+  body                TEXT    NOT NULL DEFAULT '',
+  current_version     INTEGER NOT NULL DEFAULT 1,
+  created_at          INTEGER NOT NULL,
+  archived_at         INTEGER,
+  lock_holder_user_id TEXT,
+  lock_acquired_at    INTEGER
 )`).Error; err != nil {
 			return err
 		}
@@ -73,13 +85,14 @@ var cv11Artifacts = Migration{
 			return err
 		}
 		if err := tx.Exec(`CREATE TABLE IF NOT EXISTS artifact_versions (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  artifact_id     TEXT    NOT NULL,
-  version         INTEGER NOT NULL,
-  body            TEXT    NOT NULL DEFAULT '',
-  committer_kind  TEXT    NOT NULL CHECK (committer_kind IN ('agent','human')),
-  committer_id    TEXT    NOT NULL,
-  created_at      INTEGER NOT NULL,
+  id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+  artifact_id              TEXT    NOT NULL,
+  version                  INTEGER NOT NULL,
+  body                     TEXT    NOT NULL DEFAULT '',
+  committer_kind           TEXT    NOT NULL CHECK (committer_kind IN ('agent','human')),
+  committer_id             TEXT    NOT NULL,
+  created_at               INTEGER NOT NULL,
+  rolled_back_from_version INTEGER,
   UNIQUE(artifact_id, version)
 )`).Error; err != nil {
 			return err

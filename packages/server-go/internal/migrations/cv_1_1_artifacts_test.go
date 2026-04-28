@@ -57,6 +57,18 @@ func TestCV11_CreatesArtifactsTable(t *testing.T) {
 		t.Error("artifacts.archived_at must be nullable (软删, 蓝图 §2)")
 	}
 
+	// 立场 ② 单文档锁 30s TTL — lock_holder_user_id + lock_acquired_at 必须
+	// 存在且 nullable (NULL = 无人持锁可写; CV-1.2 PATCH conflict 409 路径).
+	for _, name := range []string{"lock_holder_user_id", "lock_acquired_at"} {
+		c, ok := cols[name]
+		if !ok {
+			t.Fatalf("artifacts missing %q (立场 ② 单文档锁) — have %v", name, keys(cols))
+		}
+		if c.notNull {
+			t.Errorf("artifacts.%s must be nullable (NULL = 无人持锁)", name)
+		}
+	}
+
 	// 反约束: owner_id MUST NOT exist (立场 ① 归属=channel, 非 author).
 	if _, has := cols["owner_id"]; has {
 		t.Error("artifacts.owner_id exists — 反约束 broken (立场 ① channel-scoped, no author owner)")
@@ -113,6 +125,80 @@ func TestCV11_CreatesArtifactVersionsTable(t *testing.T) {
 		}
 		if !c.notNull {
 			t.Errorf("artifact_versions.%s must be NOT NULL", name)
+		}
+	}
+
+	// 立场 ⑦ rollback 路径 — rolled_back_from_version 必须存在且 nullable
+	// (NULL = 普通 commit; 非 NULL = rollback 触发的新 commit 记录原 version).
+	rb, ok := cols["rolled_back_from_version"]
+	if !ok {
+		t.Fatalf("artifact_versions missing rolled_back_from_version (立场 ⑦) — have %v", keys(cols))
+	}
+	if rb.notNull {
+		t.Error("artifact_versions.rolled_back_from_version must be nullable (NULL = 普通 commit)")
+	}
+}
+
+// TestCV11_VersionsTablePKMonotonic pins artifact_versions.id PK
+// AUTOINCREMENT — global strictly increasing across all artifacts. This
+// is a *different* invariant from UNIQUE(artifact_id, version):
+//   - PK id: cross-artifact 全局 audit 序 (每行一次性)
+//   - UNIQUE(artifact_id, version): per-artifact 线性版本号 (业务序)
+// CV-1.2 commit 路径需要全局 PK 单调供 audit log + cursor stub 复用 (虽然
+// CV-1.2 ArtifactUpdated frame 走 RT-1.1 cursor, 不是 PK; 但 PK 单调是
+// SQLite AUTOINCREMENT 显式契约, drift 会破坏 backfill 排序假设).
+func TestCV11_VersionsTablePKMonotonic(t *testing.T) {
+	db := openMem(t)
+	runCV11(t, db)
+
+	insert := func(art string, version int) error {
+		return db.Exec(`INSERT INTO artifact_versions
+			(artifact_id, version, body, committer_kind, committer_id, created_at)
+			VALUES (?, ?, '', 'human', 'user-1', 1700000000000)`,
+			art, version).Error
+	}
+	// Interleave artifacts to prove PK is global, not per-artifact.
+	if err := insert("art-A", 1); err != nil {
+		t.Fatalf("art-A v1: %v", err)
+	}
+	if err := insert("art-B", 1); err != nil {
+		t.Fatalf("art-B v1: %v", err)
+	}
+	if err := insert("art-A", 2); err != nil {
+		t.Fatalf("art-A v2: %v", err)
+	}
+	if err := insert("art-B", 2); err != nil {
+		t.Fatalf("art-B v2: %v", err)
+	}
+
+	type row struct {
+		ID         int64  `gorm:"column:id"`
+		ArtifactID string `gorm:"column:artifact_id"`
+		Version    int    `gorm:"column:version"`
+	}
+	var rows []row
+	if err := db.Raw(`SELECT id, artifact_id, version FROM artifact_versions ORDER BY id ASC`).Scan(&rows).Error; err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(rows) != 4 {
+		t.Fatalf("got %d rows, want 4", len(rows))
+	}
+	for i := 1; i < len(rows); i++ {
+		if rows[i].ID <= rows[i-1].ID {
+			t.Errorf("PK not strictly increasing at row %d: %d after %d (artifact_id %q v%d)",
+				i, rows[i].ID, rows[i-1].ID, rows[i].ArtifactID, rows[i].Version)
+		}
+	}
+	// Insertion order: art-A v1, art-B v1, art-A v2, art-B v2.
+	// PK must reflect insertion order (interleaved across artifacts).
+	wantOrder := []struct {
+		art string
+		ver int
+	}{{"art-A", 1}, {"art-B", 1}, {"art-A", 2}, {"art-B", 2}}
+	for i, w := range wantOrder {
+		if rows[i].ArtifactID != w.art || rows[i].Version != w.ver {
+			t.Errorf("row %d: got (%s, v%d), want (%s, v%d)",
+				i, rows[i].ArtifactID, rows[i].Version, w.art, w.ver)
 		}
 	}
 }
