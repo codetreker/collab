@@ -19,7 +19,29 @@
 - [ ] docs/current/server/migrations.md §7 v 行数 == registry.go `All` 长度
 - [ ] docs/current/server/data-model.md 表/列 == `internal/store/models.go` GORM struct
 - [ ] docs/current/server/http-api.md 路由 == `cmd/server/main.go` mux 注册
+- [ ] **docs/current 字面 const verify** (见 §2.1) — 旧 const 残留 → 🔴 P0
 - [ ] obsolete milestone (如 ADM-3) 标 `obsolete` 不删行 (review 追溯)
+
+### 2.1 docs/current vs main code 字面 const verify (PR #242 lessons)
+
+**触发**: 任何改 cookie 名 / migration v / handler 函数名 / 中间件名 / 路由前缀 / 文件名引用 的 PR merge 后, 下次 Phase gate audit **必跑**。
+
+**命令模板** (复制贴用):
+
+```bash
+# 1. docs/current 残留旧 const → 🔴 P0
+grep -rn "<old_const>" docs/current/ && echo "🔴 P0 drift" || echo "✅ clean"
+# 2. main 代码确认新 const 落地 (反向锁)
+grep -rn "<new_const>" packages/server-go/ packages/client/src/ | head
+
+# 例 (PR #242 实锤 4 处 drift, ADM-0 系列触发):
+grep -rn "borgee_admin_token" docs/current/    # 旧 cookie → 应 0
+grep -rn "/api/v1/admin/"     docs/current/    # ADM-0.2 删 god-mode → 仅历史标注
+grep -rn "admin_auth.go"      docs/current/    # ADM-0.2 删文件 → 应 0
+grep -rn "users.role *= *['\"]admin"  docs/current/  # ADM-0.3 enum 收 → 应 0
+```
+
+**判定**: docs/current 含旧 const 任意一处 → audit row 标 🔴 P0, 派飞马修 PR 后才放行 Phase 退出。
 
 ## 3. 红线
 
