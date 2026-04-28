@@ -29,6 +29,7 @@ var All = []Migration{
 		},
 	},
 	cm11Organizations,
+	cm40AgentInvitations,
 }
 
 // Default returns an Engine wired to db with All registered.

@@ -89,6 +89,7 @@ Borgee 当前**无外部用户**。这给了实施巨大的简化空间——但
 | main 已知 flaky test (`internal/server`) | 容忍 (CI rerun 兜底) | 修两处 goroutine leak: rateLimiter.cleanup ticker 未 Stop + Hub.StartHeartbeat 5min chan receive 退出路径; 单测 race + leak detector 必须 0 报警 | Phase 0 audit / 来自 #170 CI 偶发 fail | TODO |
 | 注册自动建 org (CM-1.2) | register/admin-create-user 各自调用 `CreateOrgForUser` 在 app 层兜底 `org_id != ''`; 列上仍是 `NOT NULL DEFAULT ''` (CM-1.1 时用空串占位) | (a) v1 切真实多 org 模型时把 column constraint 收紧成 CHECK (`org_id != ''`) 并迁移现网空串行; (b) 注册路径若失败要回滚 user (现在用顺序 CreateUser→CreateOrgForUser, 失败留 user 但无 org_id, 接受 v0 边角); (c) 拆"个人 org"概念时改成显式 join 表 | Phase 1 / CM-1.2 | TODO |
 | Migrate() 内嵌 forward-only 引擎 | `store.Migrate()` 末尾跑 `migrations.Default(db).Run(0)`, cmd/migrate 的 engine.Run 与之重复但幂等 | createSchema 拆成 v0 baseline migration 之后, `store.Migrate()` 整体退役, 只剩引擎一条路径 | Phase 1 / CM-1.2 | TODO |
+| agent_invitations 状态机 | `state` 列直接 TEXT enum + CHECK ('pending'/'approved'/'rejected'/'expired'); 状态机 helper (`store.AgentInvitation.Transition`) 只有 3 条边 (pending → 三终态), 终态无出边 | 若 v1 出现"重新邀请"或"再次发送"语义, 拆 lookup 表 (state_id INT FK → invitation_states) 并允许扩展状态; 当前 enum 直接落 string 在 v0 接受 | Phase 2 / CM-4.0 | TODO |
 | ... | ... | ... | ... | ... |
 
 **填表规则**:
