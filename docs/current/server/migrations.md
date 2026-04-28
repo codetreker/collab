@@ -229,3 +229,30 @@ SQLite cannot `ADD CHECK` post-create — covered by data-invariant + 5 reverse-
 - **ON CONFLICT(login) DO NOTHING**: bootstrap (`internal/admin/bootstrap.go`) 已先建过相同 login 的 admin → 迁移不得覆盖, 跳过即可。改成 DO UPDATE = 红线。
 - **`users.role` enum 收紧**: 字面只剩 `{'member', 'agent'}`。v0 用数据 invariant + 反向单测兜; **v1 hard-flip via `CREATE TABLE ... CHECK + RENAME`** 留 backlog (SQLite 不支持 post-create ADD CONSTRAINT)。
 - **Regression registry**: `internal/testutil/regression_suite/` 已注册 5 反向断言 (§3.A–§3.G), 任意未来迁移破坏 admin 拆表 invariant 立即红。
+
+### 7.9 v11 — `chn_1_1_channels_org_scoped`
+
+Blueprint: `docs/blueprint/channel-model.md` §1.1 (Channel = 协作场) + §2 关键不变量 (Channel 跨 org 共享 / 创建者归属) + `concept-model.md` §1.2 (agent = 同事, 默认沉默)。Phase 3 第一波, PR 拆分文档 #265。
+
+**What changes**:
+1. **Pre-flight dup detection**: `SELECT COUNT(*) GROUP BY (org_id, name) HAVING cnt > 1`. Cross-org historic dup → hard-fail with row list, **no auto-rename** (CHN-1 spec: 历史行人工 audit, 防丢历史)。
+2. **channels rebuild**: drop inline `UNIQUE(name)` via `CREATE channels_new + COPY + DROP + RENAME` (SQLite 不支持 DROP CONSTRAINT)。captured user indexes via `sqlite_master.sql IS NOT NULL` reapplied (autoindex 不回填)。
+3. `channels.archived_at INTEGER NULL` 加列 (蓝图反约束: archive 不删)。
+4. `CREATE UNIQUE INDEX idx_channels_org_id_name ON channels(org_id, name) WHERE deleted_at IS NULL` — 跨 org 同名合法, 同 org 同名拒, 软删行不占名。
+5. `channel_members.silent INTEGER NOT NULL DEFAULT 0` + `channel_members.org_id_at_join TEXT NOT NULL DEFAULT ''` (audit snapshot)。
+6. **Backfill**: `silent = 1 WHERE user_id IN (SELECT id FROM users WHERE role='agent')` — agent 默认沉默 (蓝图 §1.2 立场); `org_id_at_join = users.org_id` snapshot for audit-only join queries.
+7. `CREATE INDEX idx_channel_members_org_at_join`。
+
+**红线**:
+- **不自动 rename 历史 dup**: pre-flight 失败硬停 + 报 row 列出。任何"自动 rename + 加后缀"补丁 = 红线 (野马 R2 立场: 历史名是用户认知锚, 自动改名 = 丢历史)。
+- **rebuild 步骤完整性**: PRAGMA 抓 cols + indexes → COPY → DROP → RENAME → reapply。autoindex (来自 inline UNIQUE) 不回填; 用户索引 (idx_channels_org_id, idx_channels_position, idx_channels_group) 必须保留。
+- **silent=0 default**: column-level default 是 0 (人), backfill UPDATE 把 agent 行翻 1。任何"channel 创建即给 silent flag" = 走代码路径不走迁移。
+
+**Trimmed-schema tolerance**: `hasTable("channels"/"channel_members")` + `hasColumn` 双 guard, 与 cm_3 / cm_onboarding 同模式; 仅 channels(id) + created_by 的 trimmed scaffold (TestDefaultRegistryRunsClean 覆盖) 跳过 rebuild + 跳过 backfill。
+
+**配套测试**:
+- `chn_1_1_channels_org_scoped_test.go::TestCHN11_AddsArchivedAtAndSilentColumns` — schema 列 + 默认值断言
+- `…::TestCHN11_DropsGlobalNameUniqueAndAddsPerOrgIndex` — 跨 org 同名 INSERT 合法 / 同 org dup INSERT 拒 / idx_channels_org_id 幸存
+- `…::TestCHN11_HardFailsOnHistoricDuplicateNoAutoRename` — pre-flight 报 dup 硬停 + 不写 schema_migrations (PR #265 CHN-1.1 spec drift 行)
+- `…::TestCHN11_BackfillsAgentSilentAndOrgIDAtJoin` — agent silent=1 / human silent=0 / org_id_at_join 双方 snapshot
+- `…::TestCHN11_IsIdempotentOnRerun` + `_ToleratesTrimmedSchema`

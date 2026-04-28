@@ -10,9 +10,9 @@
 | `users` | `id`, `display_name`, `role` (`member` / `agent` / `system`，**ADM-0.3 后** `admin` **不再**在此 enum), `email`（可空，部分唯一索引：`WHERE email IS NOT NULL`）, `password_hash`, `api_key` UNIQUE, `owner_id` FK→users, `disabled`, `deleted_at`, `org_id` (CM-1.1) | agent 行 `role="agent"` 且必有 `owner_id`；`role="system"` 用于 `sender_id='system'` 欢迎消息发送方 (CM-onboarding)；软删 |
 | `admins` | `id`, `login` UNIQUE, `password_hash` (bcrypt), `created_at` | **ADM-0.1 (v=4)** — admin 独立子系统的凭证表；不准多 `org_id / role / is_admin / email` 字段。Bootstrap 由 `BORGEE_ADMIN_LOGIN` + `BORGEE_ADMIN_PASSWORD_HASH` env 注入 |
 | `admin_sessions` | `token` PK (32B hex), `admin_id`, `created_at`, `expires_at` | **ADM-0.2 (v=5)** — `borgee_admin_session` cookie 反查表；token 不可猜，cookie 值不能是 admin id |
-| `channels` | `id`, `name` UNIQUE, `type` (`channel` / `dm` / `system`), `visibility` (`public` / `private`), `topic`, `position` (LexoRank), `group_id` FK, `created_by`, `deleted_at`, `org_id` | DM name = `dm:<uid_low>_<uid_high>`；`system` type 给 CM-onboarding `#welcome` 私属频道用 |
+| `channels` | `id`, `name` (per-org UNIQUE via `idx_channels_org_id_name WHERE deleted_at IS NULL`, **CHN-1.1 v=11**), `type` (`channel` / `dm` / `system`), `visibility` (`public` / `private`), `topic`, `position` (LexoRank), `group_id` FK, `created_by`, `deleted_at`, `archived_at` (CHN-1.1, NULL=active), `org_id` | DM name = `dm:<uid_low>_<uid_high>`；`system` type 给 CM-onboarding `#welcome` 私属频道用; **跨 org 同名合法** (蓝图 channel-model §2) |
 | `channel_groups` | `id`, `name`, `position`, `created_by` | 侧边栏分组 |
-| `channel_members` | PK (`channel_id`, `user_id`), `joined_at`, `last_read_at` | `last_read_at` 给未读计数用 |
+| `channel_members` | PK (`channel_id`, `user_id`), `joined_at`, `last_read_at`, `silent` (CHN-1.1, agent 行默认 1, 人 0), `org_id_at_join` (CHN-1.1, audit snapshot) | `last_read_at` 给未读计数用; `silent` 落蓝图 concept-model §1.2 "agent = 同事但默认不抢话"立场, owner 显式翻 0 才发言 |
 | `messages` | `id`, `channel_id`, `sender_id`, `content`, `content_type` (默认 `text`), `reply_to_id`, `edited_at`, `deleted_at` | 软删 |
 | `mentions` | `id`, `message_id`, `user_id`, `channel_id` | `CreateMessageFull` 解析 `@name` 时回填 |
 | `events` | `cursor` AUTOINC PK, `kind`, `channel_id` NOT NULL, `payload` (JSON text), `created_at` | **事件日志唯一来源**，下文详述 |

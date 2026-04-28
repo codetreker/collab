@@ -39,6 +39,7 @@ var All = []Migration{
 	ap0BisMessageRead,
 	cm3OrgIDBackfill,
 	adm03UsersRoleCollapse,
+	chn11ChannelsOrgScoped,
 }
 
 // Default returns an Engine wired to db with All registered.
