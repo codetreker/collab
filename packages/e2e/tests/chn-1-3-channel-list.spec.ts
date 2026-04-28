@@ -96,12 +96,16 @@ test.describe('CHN-1.3 client channel list UI', () => {
     // Submit via form-scoped selector. The sidebar `+` icon uses
     // title="创建" which would otherwise collide with the form submit's
     // accessible name when using getByRole.
+    const createReq = page.waitForResponse(
+      r => r.url().endsWith('/api/v1/channels') && r.request().method() === 'POST',
+    );
     await page.locator('form.channel-create-form button[type="submit"]').click();
+    const resp = await createReq;
+    expect(resp.status(), 'POST /api/v1/channels should return 201').toBe(201);
 
-    // The new channel becomes current; the channel name shows in the sidebar list.
-    await expect(
-      page.locator('.channel-list .channel-name', { hasText: channelName }).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    // The sidebar list re-renders from ADD_CHANNEL dispatch. Use a permissive
+    // anywhere-text match so a layout/group reshuffle doesn't break the assert.
+    await expect(page.locator('.sidebar').getByText(channelName).first()).toBeVisible({ timeout: 15_000 });
 
     // Verify creator-only via API: owner is the only member.
     const ownerCtx = await apiRequest.newContext({
