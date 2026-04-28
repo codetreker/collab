@@ -156,6 +156,21 @@ func (h *AuthHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		h.Logger.Error("failed to add user to public channels", "error", err)
 	}
 
+	// CM-onboarding (#42): every newly registered user lands on a non-empty
+	// #welcome channel (onboarding-journey.md §3 step 1, README §核心 11).
+	// The channel is the hard contract; the system message body is graceful
+	// (logged but not fatal). External effects (push / host-bridge) are NOT
+	// in this transaction by design.
+	if _, sysOK, err := h.Store.CreateWelcomeChannelForUser(user.ID, displayName); err != nil {
+		// Channel itself failed to create — don't 500 the registration: the
+		// user + org are already committed. Surface a structured log so the
+		// client error pill ("正在准备你的工作区, 稍候刷新…") is the
+		// user-visible signal, not a generic 500.
+		h.Logger.Error("failed to create welcome channel", "user_id", user.ID, "error", err)
+	} else if !sysOK {
+		h.Logger.Warn("welcome system message insert failed; channel created without it", "user_id", user.ID)
+	}
+
 	h.signAndSetCookie(w, r, user)
 	writeJSONResponse(w, http.StatusCreated, map[string]any{"user": sanitizeUser(user)})
 }

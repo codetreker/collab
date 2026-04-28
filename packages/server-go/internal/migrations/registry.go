@@ -32,6 +32,7 @@ var All = []Migration{
 	cm40AgentInvitations,
 	adm01Admins,
 	adm02AdminSessions,
+	cmOnboardingWelcome,
 }
 
 // Default returns an Engine wired to db with All registered.

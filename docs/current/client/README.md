@@ -26,7 +26,7 @@
 1. `useEffect` 里调一次 `fetchMe()` 识别登录态（`waitForAuthReady` 的 500ms 轮询只在登录表单提交后用，不是启动）。
 2. 串行加载 user / permissions / channels / online users → `SET_INITIALIZED`。
 3. 每 30s `loadOnlineUsers()`。
-4. 没选频道时自动选第一个。
+4. 没选频道时优先选 `type='system'` (#welcome / CM-onboarding)，没有再 fallback 到 `channels[0]`。空列表时主面板显示降级文案 "正在准备你的工作区, 稍候刷新…" + [重试] 按钮（触发 `loadChannels()`），不再渲染老的 "👈 选择一个频道开始聊天"。
 5. 已加入的频道挨个 `useWebSocket().subscribe()`。
 6. 渲染 `<Sidebar/>` + 当前主面板（`AgentManager` / `InvitationsInbox` / `WorkspaceManager` / `NodeManager` / `ChannelView` / 启动屏）。
 7. 768px 以下走移动端布局，hamburger + overlay。
@@ -56,7 +56,7 @@
 - `Sidebar.tsx`、`ChannelList.tsx`（`@dnd-kit` 拖拽 → `api.reorderChannel`）。
 - `ChannelView.tsx` — 频道主区，组合 `MessageList` + `MessageInput` + `TypingIndicator` + 工具栏。
 - `MessageList.tsx` — 合并 `messages + pendingMessages` 渲染；scroll 到顶触发 `loadOlderMessages`；新消息自动 scroll 到底。
-- `MessageItem.tsx` — 单条消息：avatar、displayName、时间、`marked + dompurify` markdown、edit/delete、`<ReactionBar/>`。
+- `MessageItem.tsx` — 单条消息：avatar、displayName、时间、`marked + dompurify` markdown、edit/delete、`<ReactionBar/>`。`sender_id==='system'` 走简化分支（无头像）；若 `message.quick_action` 为 `{kind:"button",label,action}` JSON，渲染按钮，点击 `window.dispatchEvent(new CustomEvent('borgee:quick-action',{detail:{action}}))`。`App.tsx` 监听该事件：`open_agent_manager` → `setShowAgents(true)`（CM-onboarding）。
 - `MessageInput.tsx` — TipTap 编辑器（`StarterKit + Markdown + MentionExtension`），Enter 发送、Ctrl+Enter 换行、文件拖放、图片粘贴、emoji 选择器、mention 选择器、slash command 选择器。
 - `ReactionBar.tsx`、`SlashCommandPicker.tsx`、`AgentManager.tsx`、`InvitationsInbox.tsx`、`WorkspaceManager.tsx`、`NodeManager.tsx`、`ConnectionStatus.tsx`、`Toast.tsx`、`TypingIndicator.tsx`。
   - `InvitationsInbox.tsx`（CM-4.2）— 业主侧 agent 邀请收件箱：`listAgentInvitations('owner')` 拉列表，pending 行带 同意/拒绝 quick action（PATCH `/api/v1/agent_invitations/{id}` `{state}`），同意成功后 `actions.loadChannels()` 然后 `onJumpToChannel(channel_id)` 切到目标频道；409 → "该邀请已被处理或状态已变更，请刷新"。`Sidebar` 右下 🔔 铃铛每 60s 轮询 owner-role 邀请数（agent 角色跳过），CM-4.3 会替换成 BPP push frame。Bug-029 后渲染 `agent_name` / `channel_name`（前缀 `#`）/ `requester_name`，server-resolved label 缺失则 fallback 到 raw id；raw UUID 始终保留在 `title` hover 上（debug / log 引用）。`AgentInvitation` 类型见 `lib/api.ts`：`agent_name?` / `channel_name?` / `requester_name?` 三字段 optional（向后兼容旧 server）。

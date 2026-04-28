@@ -119,6 +119,15 @@ export default function MessageItem({ message, userMap, members, memberMap, curr
   });
 
   if (isSystem) {
+    // CM-onboarding: system messages may carry a quick_action button.
+    // Schema: {"kind":"button","label":string,"action":string}.
+    // v0 only supports kind="button" + action="open_agent_manager"; we dispatch
+    // a window CustomEvent so App.tsx can flip showAgents without wiring a
+    // prop chain through ChannelView → MessageList → MessageItem.
+    let quickAction: { kind?: string; label?: string; action?: string } | null = null;
+    if (message.quick_action) {
+      try { quickAction = JSON.parse(message.quick_action); } catch { quickAction = null; }
+    }
     return (
       <div className="message-item message-system">
         <div className="message-system-content">
@@ -126,6 +135,20 @@ export default function MessageItem({ message, userMap, members, memberMap, curr
             className="message-text"
             dangerouslySetInnerHTML={{ __html: renderedContent! }}
           />
+          {quickAction && quickAction.kind === 'button' && quickAction.label && quickAction.action && (
+            <button
+              type="button"
+              className="message-system-quick-action"
+              data-action={quickAction.action}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('borgee:quick-action', {
+                  detail: { action: quickAction!.action },
+                }));
+              }}
+            >
+              {quickAction.label}
+            </button>
+          )}
         </div>
       </div>
     );
