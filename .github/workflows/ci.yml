@@ -38,3 +38,38 @@ jobs:
             echo "Coverage ${COVERAGE}% is below 85% threshold"
             exit 1
           fi
+
+  e2e:
+    # INFRA-2: Playwright dual-server smoke. Boots server-go (4901) + vite (5174)
+    # via playwright.config webServer; smoke is 3 assertions (~5s) but chromium
+    # install dominates (~1min). RT-0 / CM-onboarding / G2.4 will pile on here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Install workspace deps
+        run: pnpm install --frozen-lockfile --filter @borgee/e2e --filter @borgee/client
+      - name: Install Playwright chromium
+        run: pnpm --filter @borgee/e2e exec playwright install --with-deps chromium
+      - name: Type-check client (vite dev needs tsc-clean code)
+        run: pnpm --filter @borgee/client build
+      - name: Pre-fetch server-go modules
+        run: cd packages/server-go && go mod download
+      - name: Run E2E
+        run: pnpm --filter @borgee/e2e test
+      - name: Upload Playwright report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: packages/e2e/playwright-report/
+          retention-days: 14
