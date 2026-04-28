@@ -113,7 +113,10 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'ADD_CHANNEL': {
-      // Avoid duplicates
+      // Avoid duplicates. CHN-1.3 hardening: guard against malformed WS
+      // payload (e.g., legacy `channel_added` carrying only channel_id) so
+      // the reducer never derefs undefined and crashes AppProvider.
+      if (!action.channel || !action.channel.id) return state;
       if (state.channels.some(c => c.id === action.channel.id)) return state;
       return { ...state, channels: [...state.channels, action.channel] };
     }

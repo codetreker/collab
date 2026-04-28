@@ -231,7 +231,7 @@ http.Server.Serve       # 0.0.0.0:4900
 - 控制类：`pong`、`subscribed`、`unsubscribed`、`commands_registered`、`error`（subscribe / send_message 失败时）
 - 状态类：`presence`、`typing`、`commands_updated`
 - 消息类：`new_message`、`message_edited`、`message_deleted`、`reaction_update`
-- 频道/分组类：`channel_created`、`channel_added`、`channel_removed`、`channel_deleted`、`channel_updated`、`channels_reordered`、`group_created`、`group_updated`、`group_deleted`、`groups_reordered`（注意是复数前缀）
+- 频道/分组类：`channel_created`、`channel_added`、`channel_removed`、`channel_deleted`、`channel_updated`、`channels_reordered`、`group_created`、`group_updated`、`group_deleted`、`groups_reordered`（注意是复数前缀）。CHN-1.3 fix: `channel_added` 现在 carry 完整 `{channel}` 对象（与 `channel_created` 一致），不再仅 `{channel_id}` —— 否则前端 reducer 会因 `action.channel === undefined` 而 crash AppProvider。
 - 乐观发送回执：`message_ack`（成功）、`message_nack`（失败）。**没有** `message_sent`。
 
 Hub 维护 `onlineUsers map[userId]map[*Client]bool` 支持多端在线。Heartbeat goroutine 周期 ping，未响应的 client 被踢。
