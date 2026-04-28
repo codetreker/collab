@@ -4,7 +4,7 @@
 > Contract 占号: `packages/server-go/internal/presence/contract.go` (#277, G2.5 留账锚) — `PresenceTracker.IsOnline` + `Sessions` 接口签名锁死 (read 端不动, AL-3 仅扩 write)
 > Implementation: `docs/implementation/modules/al-3-spec.md` (飞马 #301, 3 立场 + 6 grep 锚 + 5 反约束)
 > 立场反查: `docs/qa/al-3-stance-checklist.md` (野马 #303, 7 项立场 — agent-only / 三态 / 单一真源 / 跨 org / 5s+60s / 隐藏多端 / admin 白名单)
-> 拆 PR: **AL-3.1** schema (`presence_sessions` 表 + migration v=12) — ✅ **#310 (685dc15)** merged 2026-04-28 / **AL-3.2** server hub lifecycle hook + PresenceTracker 写端 — TBD / **AL-3.3** client UI presence dot — TBD
+> 拆 PR: **AL-3.1** schema (`presence_sessions` 表 + migration v=12) — ✅ **#310 (685dc15)** merged 2026-04-28 / **AL-3.2** server hub lifecycle hook + PresenceTracker 写端 — ✅ **#317 (11b52dd)** merged 2026-04-28 / **AL-3.3** client UI presence dot — 🔄 **#324** open (§3.1 default offline + §3.2 only-agent + §5.1/§5.4 反约束已落, §3.1 online/error e2e + §3.4 cross-org 等 §2.5 server push frame ready)
 > Owner: 战马A 实施 / 烈马 验收
 
 ## 验收清单
@@ -30,10 +30,10 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 3.1 sidebar agent 行 DOM 字面锁: online → `data-presence="online"` + 绿点 `<span class="presence-dot presence-online">`; offline → `data-presence="offline"` + 文本 `已离线` (NOT "灰点不说原因", 反约束 §11); error → `data-presence="error"` + reason 文案 (跟 #249 6 reason codes byte-identical) | e2e + grep | 战马A / 烈马 | `packages/e2e/tests/al-3-3-presence-dot.spec.ts::立场 ① online/offline/error DOM lock` + `grep -n "已离线" packages/client/src/components/AgentSidebarRow.tsx` count≥1 (TBD) |
-| 3.2 仅 agent 行带 dot, 人 (role='user'/'admin') 行无 presence 槽位 (立场 ① 永久不开人 presence; 反约束 e2e: 人元素 `[data-presence]` count==0) | e2e | 战马A / 烈马 | `al-3-3-presence-dot.spec.ts::立场 ② only-agent` — `expect(page.locator('[data-role="user"][data-presence]')).toHaveCount(0)` (TBD) |
-| 3.3 跟 DM-2 mention 离线 fallback 单一真源 (立场 ③): server `presence.IsOnline(agent_id)==false` → owner 收 system DM 文案 `{agent_name} 当前离线，#{channel} 中有人 @ 了它，你可能需要处理` (跨模块 contract pin, byte-identical 于 dm-2.md §2.2) | unit (server DM-2 reroute) | 战马A / 烈马 | `internal/api/mentions_offline_fallback_test.go::TestMentionFallbackUsesPresence` — fake PresenceTracker 注入 false (TBD) |
-| 3.4 跨 org 同 channel 成员都看到 agent presence (立场 ④ 跨 org 邀请进来的 agent owner 也看在线) | e2e | 战马A / 烈马 | `al-3-3-presence-dot.spec.ts::立场 ④ cross-org` — orgA channel 邀 orgB agent, orgA owner 视图 dot 渲染同语义 (TBD) |
+| 3.1 sidebar agent 行 DOM 字面锁: online → `data-presence="online"` + 绿点 `<span class="presence-dot presence-online">`; offline → `data-presence="offline"` + 文本 `已离线` (NOT "灰点不说原因", 反约束 §11); error → `data-presence="error"` + reason 文案 (跟 #249 6 reason codes byte-identical) | e2e + grep | 战马A / 烈马 | 🔄 #324 — `packages/e2e/tests/al-3-3-presence-dot.spec.ts::§3.1 default offline` 锁 `data-presence="offline"` + 文本 "已离线" 已落; `PresenceDot.test.tsx` 7 vitest 锁 online/offline/error 三态 DOM 字面 + 6 reason codes byte-identical w/ #305; online/error e2e 那两条等 §2.5 server push frame ready (REG-AL3-009b) |
+| 3.2 仅 agent 行带 dot, 人 (role='user'/'admin') 行无 presence 槽位 (立场 ① 永久不开人 presence; 反约束 e2e: 人元素 `[data-presence]` count==0) | e2e | 战马A / 烈马 | ✅ #324 — `al-3-3-presence-dot.spec.ts::§3.2 only-agent reverse` 锁 `[data-role="user"][data-presence]` count==0 + `[data-role="admin"][data-presence]` count==0; 接入点 `Sidebar.tsx`/`ChannelMembersModal.tsx` `data-role={...==='agent'?'agent':'user'}` 字面渲染; `presence-reverse-grep.test.ts::§3.2 import 白名单` 锁 PresenceDot/usePresence/markPresence 仅出现在 4-5 处 agent UI |
+| 3.3 跟 DM-2 mention 离线 fallback 单一真源 (立场 ③): server `presence.IsOnline(agent_id)==false` → owner 收 system DM 文案 `{agent_name} 当前离线，#{channel} 中有人 @ 了它，你可能需要处理` (跨模块 contract pin, byte-identical 于 dm-2.md §2.2) | unit (server DM-2 reroute) | 战马A / 烈马 | `internal/api/mentions_offline_fallback_test.go::TestMentionFallbackUsesPresence` — fake PresenceTracker 注入 false (TBD, 等 DM-2.2 实施) |
+| 3.4 跨 org 同 channel 成员都看到 agent presence (立场 ④ 跨 org 邀请进来的 agent owner 也看在线) | e2e | 战马A / 烈马 | `al-3-3-presence-dot.spec.ts::§3.4 cross-org` — orgA channel 邀 orgB agent, orgA owner 视图 dot 渲染同语义 (TBD AL-3.x, 等 §2.5 push frame + #318 邀请 acceptance 一起补 — 现 phase 单 org agent DOM 形状已锁) |
 
 ### §4 admin god-mode 元数据白名单 (立场 ⑦)
 
@@ -46,10 +46,10 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 5.1 反向 grep: `grep -rEn '"busy"\|"idle"\|StateBusy\|StateIdle' packages/server-go/internal/presence/ packages/client/src/components/AgentSidebarRow.tsx` count==0 (立场 ②, busy/idle 跟 BPP-1 #280 同期) | CI grep | 飞马 / 烈马 | spec lint job (TBD) |
-| 5.2 反向 grep: `grep -rnE 'last_heartbeat\|connection_count\|endpoints\[\]' packages/server-go/internal/api/ --exclude='*_test.go'` count==0 (立场 ⑥ 不暴露心跳/多端) | CI grep | 飞马 / 烈马 | spec lint job (TBD) |
-| 5.3 反向 grep: `grep -rnE 'presence_sessions.*cursor\|cursor.*presence' packages/server-go/` count==0 (跟 RT-1 cursor 序列拆死, 飞马 #301 锚) | CI grep | 飞马 / 烈马 | spec lint job (TBD) |
-| 5.4 反向 grep: `grep -rEn 'class=.*presence-dot[^"]*"\s*/?>' packages/client/src/` 每命中必带 sibling text (NOT 裸灰点, §11 文案守) | CI grep | 飞马 / 烈马 | manual review + lint hint, AL-3.3 PR 必跑 (TBD) |
+| 5.1 反向 grep: `grep -rEn '"busy"\|"idle"\|StateBusy\|StateIdle' packages/server-go/internal/presence/ packages/client/src/components/AgentSidebarRow.tsx` count==0 (立场 ②, busy/idle 跟 BPP-1 #280 同期) | CI grep | 飞马 / 烈马 | ✅ #324 — `packages/client/src/__tests__/presence-reverse-grep.test.ts::§5.1 PRESENCE_FILES 不出 busy/idle` 锁 PresenceDot.tsx + usePresence.ts + agent-state.ts 三文件; 跳注释行避免反约束注释自命中; server 端 grep 由 AL-3.2 PR 落 (留账 spec lint job) |
+| 5.2 反向 grep: `grep -rnE 'last_heartbeat\|connection_count\|endpoints\[\]' packages/server-go/internal/api/ --exclude='*_test.go'` count==0 (立场 ⑥ 不暴露心跳/多端) | CI grep | 飞马 / 烈马 | spec lint job (TBD, AL-3.2 server 端 frame 落地后挂) |
+| 5.3 反向 grep: `grep -rnE 'presence_sessions.*cursor\|cursor.*presence' packages/server-go/` count==0 (跟 RT-1 cursor 序列拆死, 飞马 #301 锚) | CI grep | 飞马 / 烈马 | spec lint job (TBD, AL-3.2 server frame 落地后挂) |
+| 5.4 反向 grep: `grep -rEn 'class=.*presence-dot[^"]*"\s*/?>' packages/client/src/` 每命中必带 sibling text (NOT 裸灰点, §11 文案守) | CI grep | 飞马 / 烈马 | ✅ #324 — `presence-reverse-grep.test.ts::§5.4 PresenceDot 含 presence-text/sr-only` 守 PresenceDot.tsx 渲染体里 .presence-dot 始终伴随 sibling text (compact 走 sr-only / 非 compact 走 .presence-text); `PresenceDot.test.tsx::反约束 §5.1` 三态文案不出 busy/idle |
 
 ## 退出条件
 
