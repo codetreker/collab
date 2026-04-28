@@ -26,8 +26,10 @@ import { useEffect } from 'react';
 import {
   INVITATION_PENDING_EVENT,
   INVITATION_DECIDED_EVENT,
+  ARTIFACT_UPDATED_EVENT,
   type AgentInvitationPendingFrame,
   type AgentInvitationDecidedFrame,
+  type ArtifactUpdatedFrame,
 } from '../types/ws-frames';
 
 /**
@@ -83,4 +85,30 @@ export function useInvitationFrames(handlers: {
     window.addEventListener(INVITATION_DECIDED_EVENT, listener);
     return () => window.removeEventListener(INVITATION_DECIDED_EVENT, listener);
   }, [onDecided]);
+}
+
+// ─── CV-1.2 ArtifactUpdated dispatch ────────────────────────
+//
+// Same precedent as invitation frames: useWebSocket.ts decodes the frame
+// then calls dispatchArtifactUpdated; ArtifactPanel listens via
+// useArtifactUpdated(handler) — handler decides whether to re-fetch
+// (cheap + authoritative). 立场 ⑤: envelope is signal-only, body comes
+// from GET /api/v1/artifacts/:id (the handler call).
+
+export function dispatchArtifactUpdated(frame: ArtifactUpdatedFrame): void {
+  window.dispatchEvent(
+    new CustomEvent(ARTIFACT_UPDATED_EVENT, { detail: frame }),
+  );
+}
+
+export function useArtifactUpdated(
+  handler: (frame: ArtifactUpdatedFrame) => void,
+): void {
+  useEffect(() => {
+    const listener = (e: Event) => {
+      handler((e as CustomEvent<ArtifactUpdatedFrame>).detail);
+    };
+    window.addEventListener(ARTIFACT_UPDATED_EVENT, listener);
+    return () => window.removeEventListener(ARTIFACT_UPDATED_EVENT, listener);
+  }, [handler]);
 }

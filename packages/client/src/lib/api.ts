@@ -756,3 +756,114 @@ export async function listCommands(channelId?: string): Promise<CommandsResponse
   const qs = params.toString();
   return request<CommandsResponse>(`/api/v1/commands${qs ? `?${qs}` : ''}`);
 }
+
+// ─── Artifacts (CV-1.2 server / CV-1.3 client) ─────────────
+//
+// Spec: docs/implementation/modules/cv-1-spec.md §3 (CV-1.3 段) +
+// docs/qa/acceptance-templates/cv-1.md §3 + docs/qa/cv-1-stance-checklist.md
+// (7 立场) + cv-1-stance-v1-supplement.md (②③⑤⑦ v1 字段).
+//
+// Pull-side契约: server's PushArtifactUpdated frame is signal-only (no
+// body, no committer). 当 ArtifactUpdated frame 到达 client, 必须再走
+// GET /api/v1/artifacts/:id 拿 body + committer (立场 ⑤ envelope 仅信号).
+
+export interface Artifact {
+  id: string;
+  channel_id: string;
+  type: 'markdown';
+  title: string;
+  body: string;
+  current_version: number;
+  created_at: number;
+  archived_at?: number;
+  /** 立场 ⑥ committer_kind 'agent'|'human' (head version 的). */
+  committer_kind: 'agent' | 'human';
+  committer_id: string;
+  /** 立场 ② 单文档锁 30s TTL — nil = 无人持锁可写. */
+  lock_holder_user_id?: string;
+  lock_acquired_at?: number;
+}
+
+export interface ArtifactVersion {
+  version: number;
+  body: string;
+  committer_kind: 'agent' | 'human';
+  committer_id: string;
+  created_at: number;
+  /** 立场 ⑦ rollback 路径 — 非 NULL = 该 row 是 rollback 触发的新 commit. */
+  rolled_back_from_version?: number;
+}
+
+export interface CommitArtifactResponse {
+  artifact_id: string;
+  version: number;
+  committer_id: string;
+  committer_kind: 'agent' | 'human';
+  updated_at: number;
+}
+
+export interface RollbackArtifactResponse {
+  artifact_id: string;
+  version: number;
+  rolled_back_from_version: number;
+  updated_at: number;
+}
+
+/** Create an artifact in a channel (CV-1.2 §2.1). */
+export async function createArtifact(
+  channelId: string,
+  payload: { title: string; body?: string },
+): Promise<Artifact> {
+  return request<Artifact>(`/api/v1/channels/${encodeURIComponent(channelId)}/artifacts`, {
+    method: 'POST',
+    body: JSON.stringify({ title: payload.title, body: payload.body ?? '' }),
+  });
+}
+
+/** GET head body + committer (立场 ⑤ pull 路径). */
+export async function getArtifact(artifactId: string): Promise<Artifact> {
+  return request<Artifact>(`/api/v1/artifacts/${encodeURIComponent(artifactId)}`);
+}
+
+/** GET version sidebar list (立场 ③ 线性版本号). */
+export async function listArtifactVersions(
+  artifactId: string,
+): Promise<{ versions: ArtifactVersion[] }> {
+  return request<{ versions: ArtifactVersion[] }>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/versions`,
+  );
+}
+
+/**
+ * Commit a new version. expected_version 来自 client 编辑时的 head;
+ * server 端 mismatch → 409 (立场 ② lock conflict + reload hint).
+ */
+export async function commitArtifact(
+  artifactId: string,
+  payload: { expected_version: number; body: string },
+): Promise<CommitArtifactResponse> {
+  return request<CommitArtifactResponse>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/commits`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/**
+ * Rollback to a prior version (立场 ⑦ owner-only). 服务器侧已闸 admin →
+ * 401 / 非 owner → 403 / 锁持有=别人 → 409.
+ */
+export async function rollbackArtifact(
+  artifactId: string,
+  toVersion: number,
+): Promise<RollbackArtifactResponse> {
+  return request<RollbackArtifactResponse>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/rollback`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ to_version: toVersion }),
+    },
+  );
+}

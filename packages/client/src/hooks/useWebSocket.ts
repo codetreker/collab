@@ -7,10 +7,12 @@ import type { ConnectionState, Message, Channel, ChannelGroup, PendingMessage } 
 import {
   dispatchInvitationPending,
   dispatchInvitationDecided,
+  dispatchArtifactUpdated,
 } from './useWsHubFrames';
 import type {
   AgentInvitationPendingFrame,
   AgentInvitationDecidedFrame,
+  ArtifactUpdatedFrame,
 } from '../types/ws-frames';
 import { markPresence } from './usePresence';
 import type { AgentRuntimeReason, AgentRuntimeState } from '../lib/api';
@@ -445,6 +447,15 @@ export function useWebSocket() {
       case 'agent_invitation_decided': {
         // RT-0 (#40): cross-client sync of approve/reject/expire.
         dispatchInvitationDecided(data as unknown as AgentInvitationDecidedFrame);
+        break;
+      }
+      case 'artifact_updated': {
+        // CV-1.2 (#342): server → client signal that an artifact's head
+        // moved (commit or rollback). Envelope is signal-only (立场 ⑤),
+        // ArtifactPanel re-fetches GET /artifacts/:id for body+committer.
+        // Schema lock: docs/blueprint/realtime.md §2.3 + cursor.go::ArtifactUpdatedFrame
+        // (BPP-1 #304 envelope CI lint enforces byte-identical wire shape).
+        dispatchArtifactUpdated(data as unknown as ArtifactUpdatedFrame);
         break;
       }
       case 'error':

@@ -40,6 +40,8 @@
 
 ### `lib/`
 - `api.ts` — 全部 REST 调用集中在这里。`request<T>()` 用 `fetch` + `credentials: 'include'`（cookie auth）；dev 时塞 `X-Dev-User-Id` 头；非 2xx 抛 `ApiError`。`Agent` interface 含 `state` / `reason` / `state_updated_at` (AL-1a Phase 2 三态: online/offline/error)。
+- `markdown.ts` — CV-1.3 artifact 渲染复用同 `marked + DOMPurify` 管线 (立场 ④ Markdown ONLY); ArtifactPanel 直接 `dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}`, 不接 HTML 直插 / 不接 type 切换。
+- `api.ts` (CV-1.3) — Artifact 5 endpoints: `createArtifact(channelId, {title, body})` / `getArtifact(id)` / `listArtifactVersions(id)` / `commitArtifact(id, {expected_version, body})` / `rollbackArtifact(id, toVersion)`. 类型 `Artifact` / `ArtifactVersion` (含 `committer_kind: 'agent'|'human'`, `rolled_back_from_version?`) / `CommitArtifactResponse` / `RollbackArtifactResponse`. 409 全部抛 `ApiError`, 调用方自决文案 (ArtifactPanel 锁 `'内容已更新, 请刷新查看'`)。
 - `agent-state.ts` (AL-1a) — `describeAgentState(agent)` 把 server 下发的 `state` + `reason` 折成 `{label, tone, hint}`；`REASON_LABELS` 锁定 6 个 reason code 文案 (`plugin_unreachable` / `plugin_timeout` / `plugin_error` / `tool_call_failed` / `manual_disable` / `unknown`). 详见 `docs/current/server/agent-runtime-state.md` wire schema。
 - `markdown.ts`、`file-links.ts` — `marked + highlight.js + dompurify` 渲染。
 
@@ -54,6 +56,10 @@
 - 反约束 §5.4：`.presence-dot` 永远跟 sibling 文本（或 compact 模式下 sr-only + title），不出现裸灰点。
 - 反约束 §5.1：穷举状态文本，绝不包含 `busy` / `idle` / `忙` / `空闲`（busy/idle 跟 BPP-1 同期，phase 2 不开）。
 - 反约束 §3.2：组件不判 role；调用方仅在 agent 行渲染（`Sidebar.tsx` `DmItem` 用 `peer.role === 'agent'` gate；`ChannelMembersModal.tsx` 用 `m.role === 'agent'` gate；row 写 `data-role` 属性供 e2e 反查 `[data-role="user"][data-presence]` count==0）。
+
+### `hooks/useWsHubFrames.ts` (RT-0 / CV-1.2-client)
+- `dispatchInvitationPending` / `dispatchInvitationDecided` + `useInvitationFrames({onPending,onDecided})` — RT-0 邀请 push → CustomEvent (`borgee:invitation-pending` / `borgee:invitation-decided`) → InvitationsInbox / Sidebar 铃铛 listener。
+- `dispatchArtifactUpdated(frame)` + `useArtifactUpdated(handler)` (CV-1.3) — `useWebSocket.ts` 的 `case 'artifact_updated'` 调 dispatch, 派发 `borgee:artifact-updated` CustomEvent (字面锁, 见 `__tests__/ws-artifact-updated.test.ts`); ArtifactPanel 用 hook 订阅, handler 自决是否 re-fetch。立场 ⑤: 7-field envelope `{type, cursor, artifact_id, version, channel_id, updated_at, kind}` 仅信号, **不**带 body / committer (反向断言已锁在单测)。
 
 ### `hooks/`
 - `useWebSocket.ts` — 单连接 `/ws`，关键行为：
@@ -73,6 +79,7 @@
 - `MessageList.tsx` — 合并 `messages + pendingMessages` 渲染；scroll 到顶触发 `loadOlderMessages`；新消息自动 scroll 到底。
 - `MessageItem.tsx` — 单条消息：avatar、displayName、时间、`marked + dompurify` markdown、edit/delete、`<ReactionBar/>`。`sender_id==='system'` 走简化分支（无头像）；若 `message.quick_action` 为 `{kind:"button",label,action}` JSON，渲染按钮，点击 `window.dispatchEvent(new CustomEvent('borgee:quick-action',{detail:{action}}))`。`App.tsx` 监听该事件：`open_agent_manager` → `setShowAgents(true)`（CM-onboarding）。
 - `MessageInput.tsx` — TipTap 编辑器（`StarterKit + Markdown + MentionExtension`），Enter 发送、Ctrl+Enter 换行、文件拖放、图片粘贴、emoji 选择器、mention 选择器、slash command 选择器。
+- `ArtifactPanel.tsx` (CV-1.3) — channel 维度 Markdown artifact 协作面板 (Canvas tab)。立场反查在文件头注释 (① 归属=channel / ② 单文档锁 30s TTL → 409 toast 文案锁 `'内容已更新, 请刷新查看'` / ③ 版本线性 asc, rollback 也是新增 row / ④ Markdown ONLY 走 `renderMarkdown` / ⑤ frame 仅信号, body 走 GET pull / ⑥ committer_kind 决定 🤖/👤 badge / ⑦ rollback 按钮 owner-only — `channel.created_by===currentUser.id`)。状态机: 空 → `handleCreate` (`window.prompt` 标题) → 拿到 head + version list → 渲染。`handleSubmit` 走 `commitArtifact({expected_version, body})`, 409 → `showToast(CONFLICT_TOAST)` + `reload()` 让 expected_version 前进。`handleRollback(toVersion)` confirm 后调 `rollbackArtifact`, 同样 409 共用 toast 文案。WS push 接入: `useArtifactUpdated((frame)=>{ if(frame.channel_id!==channelId) return; if(frame.artifact_id!==artifact?.id) return; void reload(artifact.id) })` — 立场 ⑤ pull-after-signal, 不消费 frame 的 body/committer (envelope 里也没有)。反约束: 不上 CRDT, 不自造 envelope, 不用 client timestamp 排序。
 - `ReactionBar.tsx`、`SlashCommandPicker.tsx`、`AgentManager.tsx`、`InvitationsInbox.tsx`、`WorkspaceManager.tsx`、`NodeManager.tsx`、`ConnectionStatus.tsx`、`Toast.tsx`、`TypingIndicator.tsx`。
   - `InvitationsInbox.tsx`（CM-4.2）— 业主侧 agent 邀请收件箱：`listAgentInvitations('owner')` 拉列表，pending 行带 同意/拒绝 quick action（PATCH `/api/v1/agent_invitations/{id}` `{state}`），同意成功后 `actions.loadChannels()` 然后 `onJumpToChannel(channel_id)` 切到目标频道；409 → "该邀请已被处理或状态已变更，请刷新"。`Sidebar` 右下 🔔 铃铛每 60s 轮询 owner-role 邀请数（agent 角色跳过），CM-4.3 会替换成 BPP push frame。Bug-029 后渲染 `agent_name` / `channel_name`（前缀 `#`）/ `requester_name`，server-resolved label 缺失则 fallback 到 raw id；raw UUID 始终保留在 `title` hover 上（debug / log 引用）。`AgentInvitation` 类型见 `lib/api.ts`：`agent_name?` / `channel_name?` / `requester_name?` 三字段 optional（向后兼容旧 server）。
 
@@ -138,5 +145,7 @@
 - `agent-state.test.ts` (AL-1a) — `describeAgentState` 三态文案锁 + 6 reason code 表覆盖, 防退化。
 - `presence.test.ts` (AL-3.3) — `markPresence` cache + 5s 节流单测：跨窗口立即通知 / 窗口内 burst trailing flush / 多 agent anchor 独立 / 空 agentID 防御 / `PRESENCE_THROTTLE_MS===5000` 字面锁。fake clock 走 `__resetPresenceStoreForTest(()=>nowMs)` 注入。
 - `PresenceDot.test.tsx` (AL-3.3) — DOM 字面锁: 三态 `data-presence` 属性 + `.presence-online/.presence-offline/.presence-error` class + 6 reason 文案 byte-identical 跟 `agent-state.ts` 绑定; compact 模式 title fallback; 反约束 — 任意状态文本反查无 busy/idle/忙/空闲。
+
+- `ws-artifact-updated.test.ts` (CV-1.3) — `dispatchArtifactUpdated` 派发 `borgee:artifact-updated` CustomEvent + 7-field key 顺序字面锁 (`['type','cursor','artifact_id','version','channel_id','updated_at','kind']`, 跟 server `cursor.go::ArtifactUpdatedFrame` 锁; BPP-1 #304 envelope CI lint 反查 server 侧) + commit/rollback 双 kind round-trip + 反向断言 frame 不漏 `body|committer_id|committer_kind` (立场 ⑤) + event-name 字面锁 `'borgee:artifact-updated'`。
 
 没有组件级 React Testing Library 测试。

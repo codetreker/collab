@@ -3815,3 +3815,117 @@ body {
 .create-group-modal {
   max-width: 360px;
 }
+
+/* CV-1.3 ArtifactPanel — channel canvas tab */
+.artifact-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-primary);
+}
+.artifact-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  padding: 40px 20px;
+}
+.artifact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.artifact-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.artifact-title {
+  margin: 0;
+  font-size: 1.1em;
+}
+.artifact-version-tag {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.artifact-body-area {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.artifact-rendered {
+  flex: 1;
+}
+.artifact-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.artifact-textarea {
+  width: 100%;
+  min-height: 320px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.95em;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  resize: vertical;
+}
+.artifact-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+.artifact-err {
+  color: var(--danger, #c0392b);
+  font-size: 0.9em;
+  margin: 0;
+}
+.artifact-versions {
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  max-height: 220px;
+  overflow: auto;
+}
+.artifact-versions h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+.artifact-version-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.artifact-version-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.9em;
+}
+.artifact-version-row.head .artifact-version-label {
+  font-weight: 600;
+}
+.artifact-version-label {
+  flex: 1;
+}
+.artifact-version-kind {
+  opacity: 0.8;
+}
+.artifact-rollback-btn {
+  margin-left: auto;
+}
