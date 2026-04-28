@@ -40,6 +40,7 @@ var All = []Migration{
 	cm3OrgIDBackfill,
 	adm03UsersRoleCollapse,
 	chn11ChannelsOrgScoped,
+	al31PresenceSessions,
 }
 
 // Default returns an Engine wired to db with All registered.
