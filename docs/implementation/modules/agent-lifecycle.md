@@ -16,14 +16,27 @@
 
 ## 2. Milestones
 
-### AL-1: 状态四态扩展
+### AL-1: 状态三态 (Phase 2 起步) + busy/idle 留 Phase 4 (R3 调整)
 
-- **目标**: blueprint §2.3 — agent 四态 + 故障可解释。
-- **Owner**: 飞马 (review 状态机) / 战马 / 野马 (UX 立场) / 烈马
-- **范围**: `agent_status(agent_id, state, error_reason, updated_at)` 表; 状态机 `online ⇄ busy / online → error → online (recover) / offline`; UI 区分四态
-- **依赖**: CM-4 (presence 接口)
-- **预估**: ⚡ v0 1 周
-- **Acceptance**: 行为不变量 4.1 (状态机非法转移单测) + 蓝图行为对照 §2.3
+> **2026-04-28 4 人 review #5 决议** (蓝图 agent-lifecycle §2.3 已固化): busy/idle 在 Phase 2 不实现 (source 必须是 plugin 上行 `task_started/task_finished` frame, 没 BPP 就只能 stub, stub 一旦上 v1 要拆掉 = 白写)。**Phase 2 在线列表只承诺 online/offline + error 旁路**, busy/idle 跟 BPP 同期 (Phase 4) 落地。
+> **野马硬条件 §11**: Phase 2 Sidebar 显示 online/offline 时, 不准用"灰点 + 不说原因"糊弄, 必须明确文案 ("已离线" 而不是模糊 idle 灰)。
+
+- **目标**: blueprint §2.3 (R3 已固化分 Phase) — Phase 2 三态 (online/offline + error), Phase 4 补 busy/idle。
+- **Owner (Phase 2 部分)**: 战马 / 飞马 / 烈马 / 野马 (§11 文案审过)
+- **范围 (Phase 2 — AL-1a)**:
+  - online/offline 由 hub.OnlineUsers + plugin connection map 推
+  - error 旁路: agent runtime 故障时旁路态显示原因码
+  - **Sidebar 文案**: "已离线" / "在线" / "故障 (api_key_invalid)" 等具体文案 (野马审过)
+- **范围 (Phase 4 — AL-1b, BPP 同期)**:
+  - busy: BPP frame `task_started` → state busy
+  - idle: BPP frame `task_finished` → state idle (>5min 无活动)
+- **依赖 (Phase 2)**: CM-4 (presence 接口)
+- **依赖 (Phase 4)**: BPP-1 (协议骨架)
+- **预估**: ⚡ v0 AL-1a 3-4 天 / AL-1b 4-5 天 (BPP 同期)
+- **Acceptance** (Phase 2 部分):
+  - 行为不变量 4.1: 状态机非法转移单测 (online↔offline / error 旁路)
+  - 蓝图行为对照 §2.3 (Phase 2 行)
+  - 用户感知签字 (野马, 走 G2.4 截屏的"左栏团队感知"那张): online/offline 文案明确, 不用糊弄灰
 
 ### AL-2: agent 配置 SSOT + 热更新 (拆 a/b)
 
@@ -65,7 +78,8 @@
 
 | Milestone | §X.Y | 立场一句话 |
 |-----------|------|-----------|
-| AL-1 | agent-lifecycle §2.3 | 四态 + 故障可解释 |
+| AL-1a | agent-lifecycle §2.3 (Phase 2 部分, R3 2026-04-28) | online/offline + error 三态 + 文案明确 (§11 不糊弄) |
+| AL-1b | agent-lifecycle §2.3 (Phase 4 部分, BPP 同期) | busy/idle 加进来, 走 BPP `task_started`/`task_finished` |
 | AL-2a | agent-lifecycle §2.1 加条 + 核心 §9 | 配置 SSOT 表 + update API |
 | AL-2b | agent-lifecycle §2.1 加条 + 核心 §9 | 配置热更新 BPP frame, 改 prompt 立即生效不重启 |
 | AL-3 | (实施加条) | presence 完整版, 复用 CM-4 接口契约 |

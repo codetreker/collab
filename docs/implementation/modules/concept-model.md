@@ -63,7 +63,7 @@
 
 ### CM-3: 资源归属切 org_id 直查 (Phase 1 后置)
 
-> 顺序说明: CM-3 在 **CM-4 之后** 做。理由: CM-3 是查询路径优化 (蓝图行为对照), demo 不依赖, 不应阻塞 CM-4 的产品标志性 demo。
+> 顺序说明: CM-3 在 **CM-4 + ADM-0 之后** 做 (R3 2026-04-28: ADM-0 admin 拆表会改 admin user fixture, CM-3 写路径 acceptance 用同 fixture 必须等 ADM-0 落)。理由: CM-3 是查询路径优化 (蓝图行为对照), demo 不依赖, 不应阻塞 CM-4 的产品标志性 demo。
 
 - **目标**: blueprint §2 — agent 创建资源归 owner, 查询不绕 owner_id JOIN。
 - **范围**: 拆 2 个 PR, 各自独立可合 main:
@@ -71,13 +71,37 @@
   - **CM-3.2 读路径**: admin stats 之外的"按 owner 聚合"查询切到 `WHERE org_id = ?`
 - **不在范围**:
   - 删 `owner_id` 字段 ❌ (v0 阶段也保留, 它是不同语义: agent 归属哪个 user)
-- **依赖**: CM-1 (org_id 列存在), CM-4 (Phase 2 已退出, 协作闭环验证完毕)
+- **依赖**: CM-1 (org_id 列存在), CM-4 (Phase 2 已退出, 协作闭环验证完毕), **ADM-0 (admin 拆表完成, R3 2026-04-28)**
 - **预估**: ⚡ v0 阶段 1 周 (CM-3.1 + CM-3.2 各 3-4 天)
 
 #### Acceptance spec
 - ✅ CM-3.1 (数据契约): 创建 message/channel/file 时, `org_id` 自动填上, NOT NULL 约束跑得过
 - ✅ CM-3.2 (蓝图行为对照): 主要 "我的 channel/我的文件" 查询走 `WHERE org_id = ?`, 不再 JOIN `owner_id` (grep 代码可证)
 - ✅ 行为对照: blueprint §2 直查
+- ✅ G1.4 闭合 (Phase 1 退出 gate): SQL EXPLAIN 走 idx_*_org_id + 黑名单 grep `JOIN.*owner_id` 命中 0
+
+---
+
+### CM-onboarding: Welcome channel + 默认 system message (R3 新增, 2026-04-28)
+
+> **2026-04-28 4 人 review #6 决议** (野马 + 飞马盲点 B): 蓝图 concept-model §10 已固化 onboarding 硬产出。注册路径必须 auto-create #welcome channel, 否则业主第一分钟空屏, §1.4 团队感知主体验体感断档。
+
+- **目标**: blueprint §10 (R3 已固化) — 业主注册第一分钟看到非空屏。
+- **Owner**: 战马 / 飞马 / 野马 (立场签字 — 文案审过) / 烈马
+- **范围**:
+  - migration v=N: 注册流程 (`auth.handleRegister` + `admin.handleCreateUser` 两处) auto-create 1 个 system channel `#welcome` (业主 owner + member)
+  - 同事务写 1 条 system message: "欢迎! 试试创建你的第一个 agent 协作伙伴 →" (野马审过文案)
+  - `App.tsx` 注册成功后 default selected channel = #welcome (取代当前空屏 "👈 选择频道")
+  - 旧 user backfill: migration 加现网"无 channel" 的 user 自动建 #welcome
+- **不在范围**:
+  - 完整 onboarding journey UI (看野马 `00-foundation/onboarding-journey.md` 1 周内出, 反推后续 surface)
+  - agent 创建引导 / agent 上线 subject 文案 (留给 AL-2)
+- **依赖**: CM-1.2 (注册自动建 org) ✅
+- **预估**: ⚡ v0 0.5-1 天
+- **Acceptance**:
+  - 数据契约: 新 user 注册后 `channels` 表多 1 行 (kind=system, name=welcome), `channel_members` 多 1 行, `messages` 多 1 行 system
+  - E2E (Playwright): 注册 → 进 app → 第一眼看到 #welcome 已 selected + 见 system 欢迎消息
+  - 行为不变量 4.1: 旧 user backfill migration up → 无 channel 的 user 都有 #welcome (单测覆盖)
 
 ---
 
@@ -187,5 +211,6 @@ CM-1 + CM-3 + CM-4 + CM-5 全部 acceptance spec 通过 → concept-model 模块
 |-----------|----------------|-----------|
 | CM-1 | concept-model §1.1 + §2 | 1 person = 1 org, UI 永久不暴露; 数据层 org first-class |
 | CM-3 | concept-model §2 | 资源归 org, 查询直查 org_id 不走 owner_id JOIN |
+| CM-onboarding | concept-model §10 (R3 2026-04-28) | 业主注册第一分钟非空屏, Welcome channel + system message |
 | CM-4 | concept-model §1.2 + §1.4 + §5.1 + §5.2 | agent 是同事不是工具; 团队感知主体验; 离线 fallback 给 owner; 跨 org 邀请 owner-only |
 | CM-5 | concept-model §1.3 + auth-permissions §1.4 | agent 间协作允许, 扩权仍 owner-only |
