@@ -162,6 +162,17 @@ func (s *Server) SetupRoutes() {
 	pollHandler := &api.PollHandler{Store: s.store, Logger: s.logger, Hub: s.hub, Config: s.cfg}
 	pollHandler.RegisterRoutes(s.mux, authMw)
 
+	// CV-1.2 artifacts (canvas-vision §0; channel-scoped artifact CRUD +
+	// commit + rollback + WS push). Pusher routes to ws.Hub which owns
+	// the RT-1.1 ArtifactUpdated frame envelope (#290 byte-identical).
+	artifactHandler := &api.ArtifactHandler{
+		Store:  s.store,
+		Logger: s.logger,
+		Hub:    broadcaster,
+		Pusher: &hubArtifactAdapter{s.hub},
+	}
+	artifactHandler.RegisterRoutes(s.mux, authMw)
+
 	// WebSocket endpoints
 	s.mux.HandleFunc("/ws", ws.HandleClient(s.hub))
 	s.mux.HandleFunc("/ws/plugin", ws.HandlePlugin(s.hub))
@@ -296,6 +307,17 @@ func (a *hubBroadcastAdapter) BroadcastEventToUser(userID string, eventType stri
 
 func (a *hubBroadcastAdapter) SignalNewEvents() {
 	a.hub.SignalNewEvents()
+}
+
+// hubArtifactAdapter exposes ws.Hub.PushArtifactUpdated through the
+// api.ArtifactPusher interface so internal/api does not import internal/ws
+// (mirrors the AgentInvitationPusher / hubPluginAdapter pattern).
+type hubArtifactAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubArtifactAdapter) PushArtifactUpdated(artifactID string, version int64, channelID string, updatedAt int64, kind string) (cursor int64, sent bool) {
+	return a.hub.PushArtifactUpdated(artifactID, version, channelID, updatedAt, kind)
 }
 
 type hubPluginAdapter struct {
