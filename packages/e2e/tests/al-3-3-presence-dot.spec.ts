@@ -102,8 +102,10 @@ test.describe('AL-3.3 client SPA presence dot (al-3.md §3.1 / §3.2)', () => {
     const dot = page.locator('[data-presence]').first();
     await expect(dot).toBeVisible({ timeout: 5000 });
     await expect(dot).toHaveAttribute('data-presence', 'offline');
-    // class 字面锁: .presence-dot.presence-offline (跟 §5.4 sibling-text 反查同源).
-    await expect(dot).toHaveClass(/presence-offline/);
+    // class 字面锁: 内嵌 .presence-dot 子节点带 .presence-offline (PresenceDot.tsx:38;
+    // 外层 [data-presence] wrapper class 是 .presence-inline, dot 颜色类挂在 child span).
+    const dotInner = dot.locator('.presence-dot');
+    await expect(dotInner).toHaveClass(/presence-offline/);
     // 文本字面 "已离线" — describeAgentState() 锁住 (跟 #305 content lock).
     // PresenceDot compact 模式下文案在 sr-only / title; 这里用最近的 badge 容器看 visible 文案.
     const badge = page.locator('[data-testid="agent-state-badge"]').first();
