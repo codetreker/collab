@@ -7,6 +7,7 @@ import ChannelView from './components/ChannelView';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import AgentManager from './components/AgentManager';
+import InvitationsInbox from './components/InvitationsInbox';
 import WorkspaceManager from './components/WorkspaceManager';
 import NodeManager from './components/NodeManager';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -41,6 +42,7 @@ function AppInner() {
   const [authenticated, setAuthenticated] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
+  const [showInvitations, setShowInvitations] = useState(false);
   const [showWorkspaces, setShowWorkspaces] = useState(false);
   const [showRemoteNodes, setShowRemoteNodes] = useState(false);
 
@@ -132,6 +134,7 @@ function AppInner() {
 
   const closeAllViews = useCallback(() => {
     setShowAgents(false);
+    setShowInvitations(false);
     setShowWorkspaces(false);
     setShowRemoteNodes(false);
   }, []);
@@ -182,12 +185,20 @@ function AppInner() {
         <div className="sidebar-overlay" onClick={closeSidebar} />
       )}
       <div className={`sidebar-wrapper ${isMobile ? (sidebarOpen ? 'sidebar-open' : 'sidebar-closed') : ''}`}>
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAgentsOpen={() => setShowAgents(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAgentsOpen={() => setShowAgents(true)} onInvitationsOpen={() => setShowInvitations(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
       </div>
 
       <div className="main-content">
         {showAgents ? (
           <AgentManager onBack={() => setShowAgents(false)} />
+        ) : showInvitations ? (
+          <InvitationsInbox
+            onBack={() => setShowInvitations(false)}
+            onJumpToChannel={(channelId) => {
+              actions.selectChannel(channelId);
+              closeAllViews();
+            }}
+          />
         ) : showWorkspaces ? (
           <WorkspaceManager onBack={() => setShowWorkspaces(false)} />
         ) : showRemoteNodes ? (
