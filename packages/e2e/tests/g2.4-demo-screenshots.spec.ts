@@ -19,9 +19,12 @@
 //     待 AL-1b (subject 文案锁) + e2e mock infra 后置, 标 .skip 留接入点。
 import { test, expect, request as apiRequest } from '@playwright/test';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 const ADMIN_LOGIN = 'e2e-admin';
 const ADMIN_PASSWORD = 'e2e-admin-pass-12345';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const SCREENSHOT_DIR = path.resolve(__dirname, '../../../docs/qa/screenshots');
 
 async function bootstrapUser(serverURL: string, page: any, baseURL: string, displayName: string) {
