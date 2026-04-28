@@ -9,6 +9,7 @@
 - `agent_invitation_decided` — server → owner + invitee, 决议落地 (accept/decline).
 
 **Phase 4 加 (BPP-1 主体)**:
+- `session.resume` / `session.resume_ack` — RT-1.3 (#293), runtime 重连后的 replay 握手. 三 mode `incremental` (default) / `none` (cold start) / `full` (agent 显式), server **不 default full** (反约束). 详见 [`bpp/session-resume.md`](./bpp/session-resume.md).
 - `agent_runtime_state` — 复用 #249 enum (`online/offline/error`) + 6 reason codes; 替代当前 GET 内联 `state` 字段的 poll 模式.
 - `config_hot_reload` — AL-2b, owner 改 agent 配置后 server → runtime 推送, 不重启.
 - `agent_busy_started` / `agent_idle_started` — AL-1b, runtime → server, 触发 #249 deferred 的 busy/idle 子态 (4 人 review #5 决议: 没 BPP 不准 stub).
