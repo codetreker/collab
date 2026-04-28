@@ -125,7 +125,9 @@ runtime 在 `session.resume` 时根据 agent 配置和当前 context window 选 
 
 **v0 audit row (CM-4.3a)**: Phase 2 `/ws` hub 发 invitation event; v1 切 BPP 时 server 切发送源 (`hub.Broadcast` → `bpp.SendFrame`), client handler 0 改 (因 schema 等同)。
 
-**野马硬条件 (G2.4 签字门槛)**: 邀请发出 → owner 端收到通知 latency **必须 ≤ 3s** (stopwatch 截屏作 acceptance 证据)。60s polling 不接受。
+**Schema 等同性强制 (飞马 R3 acceptance 补)**: CI lint 检查 `bpp/frame_schemas.go` 的 `agent_invitation_*` frame 与 `ws/event_schemas.go` 的对应 event payload **byte-identical 或 type alias**, 任何字段名/顺序/类型分歧 → CI fail。这是 v1 切换"client handler 0 改"承诺的硬保障。
+
+**野马硬条件 (G2.4 签字门槛)**: 邀请发出 → owner 端收到通知 latency **必须 ≤ 3s** (stopwatch 截屏作 acceptance 证据)。60s polling 不接受。**烈马 R3 加补**: latency 验收必须用 Playwright (vitest 跑不了真 ws + UI 时序), **INFRA-2 Playwright scaffold 必须前置到 CM-4.3a 之前落地**, 不能等 G2.audit。
 
 ---
 

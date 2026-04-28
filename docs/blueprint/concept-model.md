@@ -160,3 +160,28 @@
 | Cross-org collaboration | 多 org 成员同处一个 `channel_members` |
 | Agent 代表自己 | mention/DM/通知按 sender_id 路由，不展开到 owner |
 | 资源归属 | `created_by` 字段；将来用 `org_id` 直查 |
+
+## 10. 新用户第一分钟旅程 (Onboarding 硬产出)
+
+> **2026-04-28 4 人 review #6 决议 (野马 + 飞马盲点 B 联合)**: 缺端到端"新用户第一分钟"旅程 = §1.4 团队感知主体验体感断档。**注册路径硬产出**: 业主第一分钟必须看到非空屏。
+
+### 必落硬产出 (CM-onboarding milestone)
+
+注册成功后, server 端**强制**:
+
+1. **auto-create personal org** (CM-1.2 已落 ✅)
+2. **auto-create 第一个 channel `#welcome`** (新增, 系统 channel, 业主自动是 owner+member)
+3. **auto-write 1 条 system message** 到 `#welcome`: "欢迎! 试试创建你的第一个 agent 协作伙伴 →"
+4. **auto-select** `#welcome` 作为业主登录后的默认进入 channel (App.tsx 现状显示空屏要改)
+
+### 完整 onboarding journey (野马补 doc 路径)
+
+> 野马 1 周内出 `docs/implementation/00-foundation/onboarding-journey.md`, 含以下 5 步 + error/empty/skip 三态:
+>
+> 1. 注册成功 → 默认进 `#welcome` system channel (空 org 不是空白)
+> 2. 收到 system message "你的第一个 agent 还没创建, 试试?"
+> 3. 创建 agent 流程 (3 步内, host-bridge 装时不问, §1.3)
+> 4. agent 上线 → 左栏出现 + subject 文案 ("正在熟悉环境")
+> 5. **产品口播**: "未来你会看到 agent 互相协作" (§1.3 体感断档兜底, 野马盲点 B2 — agent↔agent 在 CM-5/Phase 4, 中间 6 个月不能让用户感觉 agent 是单兵木偶)
+
+野马签字 `onboarding-journey.md` + 飞马/战马反推 surface 缺口 + 建军 sign off → 进 Phase 2 验收。
