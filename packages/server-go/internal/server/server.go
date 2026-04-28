@@ -120,8 +120,8 @@ func (s *Server) SetupRoutes() {
 	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}}
 	agentHandler.RegisterRoutes(s.mux, authMw)
 
-	// Agent invitations (CM-4.1)
-	agentInvitationHandler := &api.AgentInvitationHandler{Store: s.store, Logger: s.logger}
+	// Agent invitations (CM-4.1 + RT-0 #40 push wiring)
+	agentInvitationHandler := &api.AgentInvitationHandler{Store: s.store, Logger: s.logger, Hub: s.hub}
 	agentInvitationHandler.RegisterRoutes(s.mux, authMw)
 
 	// Reactions
