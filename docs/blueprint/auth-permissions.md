@@ -50,9 +50,9 @@
 
 #### 创建 agent 时
 
-- **默认只有 `message.send`**——最小起步
+- **默认 `[message.send, message.read]`** — 最小起步 + 默认能读 channel 历史 (B29 / 4 人 review #1 决议, 2026-04-28: owner 想"agent 不偷看"是合理需求, 但默认开, 关闭走 agent 配置)
 - **不**勾选角色或预设包——保持 [agent-lifecycle §2.1](agent-lifecycle.md) "无角色库"立场
-- 创建即就绪，能发消息
+- 创建即就绪，能发消息 + 能读所在 channel
 
 #### 主入口（B）：动态请求
 
@@ -115,7 +115,7 @@ owner 一键 grant，agent 自动重试动作。
 | 不变量 | 含义 |
 |--------|------|
 | Admin = `*` | 系统管理员永远拥有所有 capability，不可剥夺 |
-| Agent 默认最小 | 创建即只有 `message.send`，其它由 owner 显式 grant |
+| Agent 默认最小 | 创建即只有 `[message.send, message.read]` (能发能读 channel)，其它由 owner 显式 grant; owner 可在 agent 配置里关掉 `message.read` 阻止 agent 看 channel 历史 |
 | Bundle 不是数据 | UI 层概念，server 端只看 capability list |
 | 跨 org 只减不加 | channel owner 对外部 agent 只能 mute/kick，不能 grant |
 | Permission denied 走 BPP | 不靠 HTTP 错误码，由协议层路由到 owner DM |
@@ -129,6 +129,7 @@ owner 一键 grant，agent 自动重试动作。
 ### Messaging
 
 - `message.send`
+- `message.read` — gate `GET /channels/:id/messages`; agent 默认有, owner 可在 agent 配置里关掉以阻止 agent 看 channel 历史 (B29 / 4 人 review #1 决议, 2026-04-28)
 - `message.edit_own`
 - `message.delete_own`
 - `mention.user`

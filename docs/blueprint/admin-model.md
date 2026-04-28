@@ -19,21 +19,28 @@
   - 产品代码不为 admin 写分支（admin 没有 agent、没有 channel、不在 user 表的 role 里走 product 流程）
   - 否则会引爆"admin 有没有自己的 agent / org / DM"等连锁矛盾
 
-### 1.2 Admin 来源：C 混合
+### 1.2 Admin 来源：B (env bootstrap, 无 promote)
+
+> **2026-04-28 4 人 review 立场冲突 #2 决议 (B29 路线)**: 撤销原 "promote 已有 user" 路径; admin **完全独立于 users 表**, 只通过 env 创建。
 
 | 阶段 | 入口 |
 |------|------|
-| **首个 admin** | 环境变量 `ADMIN_USER` / `ADMIN_PASSWORD` bootstrap | 防空表自举漏洞，唯一启动入口 |
-| **后续 admin** | 现有 admin 在 SPA 里 promote 已有 user | 走 audit log |
+| **首个 admin** | 环境变量 `ADMIN_USER` / `ADMIN_PASSWORD` bootstrap | 防空表自举漏洞, 唯一启动入口 |
+| **后续 admin** | 现有 admin 在 SPA 里**新建 admins 行** (输入用户名 + 密码, 不是 promote 任何 user) | 走 audit log |
 
 #### 数据模型
 
-- `users.role = 'admin'` 标记
-- `admin_grants(promoted_by, promoted_at, promoted_user_id)` 表记录每次提升
+- **独立 `admins(id, username, password_hash, created_at, created_by, last_login_at)` 表**
+- ❌ ~~`users.role = 'admin'`~~ — 撤销, users.role 现在只有 `('member','agent')`
+- ❌ ~~`admin_grants(promoted_user_id, ...)` 表~~ — 撤销, admin 不再 promote 自 user
+- `admin_audit(admin_id, action, target_type, target_id, metadata, created_at)` 保留
 
-> 注意：被 promote 的 user **不再是该 org 的成员**——他成为 admin 即从 org 模型中"出列"。这条隐含规则需在 promote 时显式确认（"提升 X 为 admin 将让他失去 org 成员身份")。
+> **关键收益 (飞马 R 锁定)**: admin 走独立 cookie + 独立 auth path, 不再有"admin 拿 user cookie 走 user-api"的边角漏洞; CM-3 (org_id 直查) 之后再也不用考虑"admin 没 org 怎么办"。
 
-### 1.3 边界：硬隔离 + 内容必须用户授权
+### 1.3 边界：硬隔离 + 内容必须用户授权 + admin 走独立 god-mode endpoint
+
+> **2026-04-28 飞马盲点 A1 加补**: admin 看 channel **元数据** (列表/成员/计数) 走 `/admin-api/channels/:id` (god-mode 路径, 跳过 capability 检查), **不复用 user-api**。
+> ⚠️ **god-mode 仅暴露元数据**, **绝不返回 message.body / artifact 内容**; admin 读消息正文仍必须走 §1.3 的 impersonation 路径 (用户主动 24h grant)。这是平台运维语义, 跟普通用户的 capability gate 是两套体系, 但都不破坏 §0 "内容不可读" 契约。
 
 #### Admin **可看**（元数据层）
 
@@ -103,8 +110,11 @@
 
 | 不变量 | 含义 |
 |--------|------|
+| Admin ∉ users 表 | admin 走独立 `admins` 表, 永不出现在 users 表 (4 人 review #2 决议, 2026-04-28) |
 | Admin ∉ Org | admin 永远不是任何 org 的成员，也不出现在 channel members |
+| Admin 走独立 cookie | admin SPA 用独立 cookie name, 不与 user cookie 冲突; admin 永远不能调 user-api |
 | Admin 默认看不到内容 | 必须用户主动 grant impersonate 才能"看进去" |
+| Admin 看 channel 元数据走 god-mode endpoint | `/admin-api/channels/:id` 跳过 capability 检查 (平台运维语义), 不复用 user-api; **god-mode endpoint 绝不返回 message.body / artifact 内容**, 只返回元数据 (列表/成员/计数) — 飞马 P0 inter-doc 一致性补 |
 | 受影响者**必感知** admin 操作 | 系统强制下发 system message，不能关闭 |
 | Audit 100% 留痕 | admin 一切操作进 audit_log |
 | Audit 分层可见 | admin 之间全可见，user 只见与己相关，全站不公开 |
@@ -114,8 +124,10 @@
 ## 3. 数据模型片段
 
 ```
-admin_grants:
-  id, promoted_user_id, promoted_by, promoted_at
+admins:
+  id, username, password_hash, created_at, created_by, last_login_at
+  -- 完全独立于 users 表 (4 人 review #2 决议, 2026-04-28)
+  -- 首个 admin 由 env 创建; 后续 admin 由现有 admin 在 SPA 新建 (不是 promote user)
 
 admin_audit:
   id, admin_id, action, target_type, target_id,
@@ -126,16 +138,29 @@ impersonation_grants:
   -- 由 user 创建（设置面勾选）；admin 仅消费这条记录
 ```
 
+> ❌ 撤销: ~~`admin_grants` 表~~ — admin 不再 promote 自 user, 不需此表。
+
 ## 4. 与现状的差距
 
 | 目标态 | 现状 | 差距 |
 |--------|------|------|
-| 独立 SPA + 独立 cookie | ✅ 已有 | 把它从"奇怪"改为"有意设计"——文档更新，代码不动 |
-| Admin promote 链 | 当前只 env，无 promote | 加 `admin_grants` 表 + SPA promote 流程 + audit 集成 |
+| 独立 `admins` 表 + 独立 cookie | users.role='admin' 共用 users 表 + 共用 cookie | **拆表 + 拆 auth path** (4 人 review #2 决议, 2026-04-28; 实施见 implementation/admin-model.md ADM-0) |
+| Admin 走独立 god-mode endpoint | admin SPA 复用部分 user-api + 走 admin_grants 短路 | **新建 `/admin-api/channels/...` 等独立 endpoint, 跳过 capability 检查** |
 | 硬隔离内容访问 | admin force delete 不读内容，但 API 层无显式限制 | server 加 admin 白名单 endpoint，明确**禁止** admin 调任何"读内容"的 user-facing API |
 | Impersonate 主动授权 | 不存在 | 设置面开关 + `impersonation_grants` 表 + 24h 过期机制 + 顶部红色横幅 UX |
 | 受影响者 system message | force delete 已有通知 | 扩展到所有 admin 写动作（封禁、重置、改密码等） |
 | Audit log + 分层可见 | 无 audit | 新建 `admin_audit` 表 + admin SPA 列表 + per-user 自助查询 |
+| 用户侧"隐私承诺"页 | 不存在 | ADM-1 加用户设置页"admin 完全不在你的协作圈"截屏 (野马盲点 B1, 2026-04-28) — 文案见 §4.1 锁定 |
+
+### 4.1 用户侧隐私承诺页文案 (ADM-1 acceptance 硬标尺)
+
+> **2026-04-28 野马 R3 锁定**: ADM-1 用户设置页必须含以下 3 条承诺文案 (一字不漏 / 顺序不变); ADM-1 截屏 acceptance 必须包含此页 + 至少 1 张 admin 写操作 system message 通知截屏, 否则 §13 不签。
+
+1. **Admin 是平台运维, 不是协作者** — 永不出现在 channel / DM / 团队列表里。
+2. **Admin 看不到消息 / 文件 / artifact 内容** — 除非你主动授权 impersonate (24h 时窗, 顶部红色横幅常驻, 可随时撤销)。
+3. **Admin 能看的是元数据** (用户名 / channel 名 / 条数 / 登录时间), **看不到正文**。
+
+> 文案目的: 让用户在第一次进设置页就能读懂"admin 跟我有什么关系", 不需要看 docs / 不需要问客服。这条是 §0 "强权但不窥视" 立场对用户的兑现。
 
 ---
 
