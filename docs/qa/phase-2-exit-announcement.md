@@ -59,7 +59,12 @@
 
 - [x] 飞马 (architecture / 闸 1+2): ✅ 拍板 — 引 PR #267 readiness review §4 (5+1 严格闸 SIGNED + 条件性 3 闸 #248 condition + 留账 2 闸挂 Phase 4 PR 编号: AL-3 / BPP-1 / ADM-1) + §5 Phase 3 entry 唯一冲突点 (RT-1 envelope 套 #237, 已 PR #269 spec 守门) (date: 2026-04-28)
 - [ ] 战马A (实施 / 闸 3): _________________ (date: ____)
-- [ ] 野马 (PM / 闸 4 G2.4): _________________ (date: ____)
+- [x] **野马** (PM / 闸 4 G2.4): **野马 ✅** (date: 2026-04-28) — 立场 OK + 反约束守住, 锚:
+  - PR #263 Phase 3 立场反查 (CHN-1 / CV-1 / RT-1) — Phase 3 入口立场齐全, 跟 Phase 2 退出无漂移
+  - PR #211 ADM-0 立场反查表 — admin 隐藏 / impersonation 红色横幅 / 受影响者 system message / god-mode 不返回内容 4 项闸 4 红线无漂移
+  - PR #228 ADM-1 隐私承诺 — 3 条承诺文案锁住, 配 ADM-0 §1.4 红线 ③ fanout 模式
+  - CM-3 资源归属反查 (#208) — org_id 直查闭合, 跨 org 403 反断言全绿
+  - G2.4 demo 用户感知 4/6 → 接受条件性 (#2/#3/#4/#6 留 Phase 4 acceptance template AL-1b/ADM-1 同期补签, 不阻塞 Phase 2 退出)
 - [x] **烈马** (QA / 闸 4 acceptance): **烈马 ✅** (date: 2026-04-28)
   - acceptance 全可机器化: `docs/qa/acceptance-templates/` AL-2a (#264) + ADM-2 (#266) 各 7 验收, 加上历史模板 (al-1b / adm-1 / cm-onboarding / adm-0 / al-1a) 全套 — 每行 unit / E2E / CI grep / reverse-grep / 反射扫描 实施方式锁
   - regression-registry 全 active 53 行 (#270 翻牌: REG-RT0-008 ⚪→🟢 + 新增 REG-RT0-009 rate-limit bypass 5-row matrix; RT-0 8→9, total 64→65)
@@ -78,3 +83,4 @@
 | 2026-04-28 | 烈马 | v2 — 锁 deferred PR #: G2.5→#277 (战马A AL-3 占号), G2.6→#274 (飞马 BPP-1 占号), G2.4 PARTIAL 升 5/6 引 #275 (野马 G2.4 #5) |
 | 2026-04-28 | 飞马 | §7 飞马联签 ✅ — 引 #267 readiness §4/§5 + #269 RT-1 envelope 守门 |
 | 2026-04-28 | 烈马 | v1.1 — §7 烈马 QA 联签 ✅ (acceptance 机器化 + #270 翻牌 + 留账 PR 编号锁) |
+| 2026-04-28 | 野马 | v1.2 — PM 联签落 (§7 野马签字位), 引 #263 / #211 / #228 / CM-3 锚点, 立场无漂移 |
