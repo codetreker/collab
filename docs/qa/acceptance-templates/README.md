@@ -22,7 +22,7 @@
 
 | Milestone | 文件 | 状态 |
 |---|---|---|
-| INFRA-2 (Playwright scaffold) | `infra-2.md` | (本 PR 不产出, 该 milestone 是基础设施, 不走 acceptance template) |
+| INFRA-2 (Playwright scaffold) | `infra-2.md` | ✅ (基础设施验收: config / smoke test / CI / 命令入口) |
 | ADM-0 (admin 拆表 3 段 PR) | `adm-0.md` | ✅ |
 | AP-0-bis (message.read 默认) | `ap-0-bis.md` | ✅ |
 | RT-0 (/ws push 顶 BPP) | `rt-0.md` | ✅ |
