@@ -14,6 +14,8 @@
 
 ### ADM-0: admin 拆表 (admins 独立表 + cookie 拆 + god-mode 元数据-only)
 
+> Status (2026-04-28): ADM-0.1 ✅ DONE (#197) / ADM-0.2 ✅ DONE (#201) / ADM-0.3 🔄 IN PROGRESS (task #63, v=10)
+
 - **目标**: blueprint admin-model §1.2 + §1.3 + §3 — `users.role` 收成二态 (`'member' | 'agent'`); admin 迁到独立 `admins` 表; admin 走独立 cookie + `/admin-api/auth/login` env bootstrap; god-mode endpoint 强制只返回元数据。
 - **Owner**: 飞马 (review 边界 / 数据契约) / 战马 (dev) / 烈马 (cookie 串扰反向断言, 一票否决)
 - **范围** (拆 3 段 PR, **顺序串行** — 飞马 R3 R1 修正: 先建表, 再切 cookie 路径, 最后才砍 users.role 老分支):
