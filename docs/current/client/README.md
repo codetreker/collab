@@ -55,6 +55,7 @@
 
 ### `components/`
 - `Sidebar.tsx`、`ChannelList.tsx`（`@dnd-kit` 拖拽 → `api.reorderChannel`）。
+  - **CHN-1.3 (#265 拆段 3/3)** — 创建对话框默认 `visibility=public` + 不预选成员（creator-only，配合 server CHN-1.2 立场 ①）；`SortableChannelItem` 根据 `Channel.archived_at` 显示 `📦` + `已归档` badge + `channel-item-archived` 类（灰显 + 删除线）；`ChannelMembersModal` 危险区域新增 归档/恢复 按钮（PATCH `archived: true|false`，server 标 timestamp + 系统 DM "channel #{name} 已被 ... 关闭于 ..."）；agent member 行额外渲染 `🔕 silent` badge（CHN-1.2 schema `channel_members.silent=true`）。
 - `ChannelView.tsx` — 频道主区，组合 `MessageList` + `MessageInput` + `TypingIndicator` + 工具栏。
 - `MessageList.tsx` — 合并 `messages + pendingMessages` 渲染；scroll 到顶触发 `loadOlderMessages`；新消息自动 scroll 到底。
 - `MessageItem.tsx` — 单条消息：avatar、displayName、时间、`marked + dompurify` markdown、edit/delete、`<ReactionBar/>`。`sender_id==='system'` 走简化分支（无头像）；若 `message.quick_action` 为 `{kind:"button",label,action}` JSON，渲染按钮，点击 `window.dispatchEvent(new CustomEvent('borgee:quick-action',{detail:{action}}))`。`App.tsx` 监听该事件：`open_agent_manager` → `setShowAgents(true)`（CM-onboarding）。

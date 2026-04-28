@@ -14,6 +14,10 @@ export interface Channel {
   unread_count?: number;
   position?: string;
   group_id?: string | null;
+  // CHN-1.2 立场 ⑤: server-stamped archive timestamp. nil = active;
+  // non-nil = archived (channel is read-only, hidden from default lists).
+  // Distinct from a deleted channel — archive preserves history.
+  archived_at?: number | null;
 }
 
 export interface User {

@@ -87,9 +87,9 @@ export async function createChannel(
 
 export async function updateChannel(
   channelId: string,
-  updates: { name?: string; topic?: string; visibility?: 'public' | 'private' },
+  updates: { name?: string; topic?: string; visibility?: 'public' | 'private'; archived?: boolean },
 ): Promise<Channel> {
-  if (updates.topic !== undefined && !updates.name && !updates.visibility) {
+  if (updates.topic !== undefined && !updates.name && !updates.visibility && updates.archived === undefined) {
     const data = await request<{ channel: Channel }>(`/api/v1/channels/${channelId}/topic`, {
       method: 'PUT',
       body: JSON.stringify({ topic: updates.topic }),
@@ -101,6 +101,13 @@ export async function updateChannel(
     body: JSON.stringify(updates),
   });
   return data.channel;
+}
+
+// CHN-1.2 立场 ⑤: archive flip is server-stamped. Pass `true` to retire,
+// `false` to un-archive. Server emits a system DM to channel members on the
+// `false → true` transition so that everyone observes the closure.
+export async function archiveChannel(channelId: string, archived: boolean): Promise<Channel> {
+  return updateChannel(channelId, { archived });
 }
 
 export async function joinChannel(channelId: string): Promise<void> {
@@ -173,6 +180,11 @@ export interface ChannelMember {
   role: string;
   avatar_url?: string | null;
   joined_at: number;
+  // CHN-1.2 立场 ⑥ (concept-model §1.4): when true, this member does not
+  // auto-broadcast on lifecycle events. Default false for humans; backfilled
+  // to true for agents — UI renders a "silent" badge so peers know the agent
+  // listens but won't chime in unprompted.
+  silent?: boolean;
 }
 
 export async function fetchChannelMembers(channelId: string): Promise<ChannelMember[]> {
