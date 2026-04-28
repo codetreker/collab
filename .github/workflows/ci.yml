@@ -57,6 +57,22 @@ jobs:
             exit 1
           fi
 
+  bpp-envelope-lint:
+    # BPP-1 (#274/#280) envelope CI lint — G2.6 真落.
+    # Pins 5 invariants (byte-identical with RT-0 #237, direction lock
+    # control 6 / data 3, frame whitelist closure, godoc anchor) +
+    # reverse-grep guard against stray full-replay defaults.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Install dependencies
+        run: cd packages/server-go && go mod download
+      - name: Run BPP-1 envelope lint
+        run: ./scripts/lint-bpp-envelope.sh
+
   e2e:
     # INFRA-2: Playwright dual-server smoke. Boots server-go (4901) + vite (5174)
     # via playwright.config webServer; smoke is 3 assertions (~5s) but chromium
