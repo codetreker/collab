@@ -93,14 +93,17 @@ test.describe('AL-3.3 client SPA presence dot (al-3.md §3.1 / §3.2)', () => {
       await page.waitForLoadState('networkidle');
     }
 
-    // §3.1 — agent badge offline DOM 字面锁.
-    const badge = page.locator('[data-testid="agent-state-badge"]').first();
-    await expect(badge).toBeVisible({ timeout: 5000 });
-    await expect(badge).toHaveAttribute('data-state', 'offline');
-    // PresenceDot 内 [data-presence="offline"] (在 badge 内 nested).
-    const dot = badge.locator('[data-presence]');
+    // §3.1 — AL-3.3 PresenceDot DOM 字面锁 (直查 [data-presence], 不绕 AL-1a
+    // [data-testid="agent-state-badge"] 入口 — AL-1a + AL-3 嵌套是合理产物,
+    // 但 e2e 必须走 AL-3 自己的入口, 防 AL-1a 内耦合掩盖 drift).
+    const dot = page.locator('[data-presence]').first();
+    await expect(dot).toBeVisible({ timeout: 5000 });
     await expect(dot).toHaveAttribute('data-presence', 'offline');
+    // class 字面锁: .presence-dot.presence-offline (跟 §5.4 sibling-text 反查同源).
+    await expect(dot).toHaveClass(/presence-offline/);
     // 文本字面 "已离线" — describeAgentState() 锁住 (跟 #305 content lock).
+    // PresenceDot compact 模式下文案在 sr-only / title; 这里用最近的 badge 容器看 visible 文案.
+    const badge = page.locator('[data-testid="agent-state-badge"]').first();
     await expect(badge).toContainText('已离线');
     // §5.1 反约束: badge 里不出 busy / idle / 忙 / 空闲.
     const badgeText = (await badge.textContent()) ?? '';
