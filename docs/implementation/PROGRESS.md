@@ -87,7 +87,7 @@
 
 - [ ] **INFRA-2** Playwright scaffold (E2E) — 战马 / 飞马 / 烈马
   - 必须前置到 RT-0 之前 (烈马 R3: latency ≤ 3s 硬条件 vitest 跑不了)
-  - 工期 1-2 天
+  - 工期 2-3 天 (战马 R1: vite orchestrate + cookie fixtures + chromium CI)
 - [ ] **ADM-0** admin 拆表 (admins 独立表 + cookie 拆 + god-mode endpoint) — 战马 / 飞马 (主, 起草) / 烈马 / 野马
   - [ ] **ADM-0.1** admins 独立表 + env bootstrap + 独立 cookie name (双轨并存)
   - [ ] **ADM-0.2** cookie 拆 + RequirePermission 去 admin 短路 + god-mode 白名单 (users.role='admin' 调 user-api 401)
