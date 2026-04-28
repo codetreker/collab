@@ -72,16 +72,16 @@
 | REG-ADM0-009 | adm-0.md fixture | `testutil/server.go` 删 `role=admin` user fixture, 改 `SeedAdmin` | 飞马 | ADM-0.1 | ⚪ pending |
 | REG-ADM0-010 | adm-0.md regression | 已 merged admin SPA 测试 (≥ 8 个) 跟改 fixture 后 CI 全绿 | 烈马 | ADM-0.3 | ⚪ pending |
 
-### AP-0-bis (派活, ⚪ pending)
+### AP-0-bis (PR #206 merged, 6 🟢)
 
 | Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
 |---|---|---|---|---|---|
-| REG-AP0B-001 | ap-0-bis.md 数据契约 | `store/queries_test.go::TestGrantDefaultPermissions_NewAgent` 多 2 行 (send + read) | 战马 | AP-0-bis | ⚪ pending |
-| REG-AP0B-002 | ap-0-bis.md backfill | `migrations/N_test.go::TestBackfillMessageRead_Up` (用 SeedLegacyAgent) | 战马 | AP-0-bis | ⚪ pending |
-| REG-AP0B-003 | ap-0-bis.md backfill | 同上 ::TestBackfillMessageRead_Down (回滚干净) | 战马 | AP-0-bis | ⚪ pending |
-| REG-AP0B-004 | ap-0-bis.md gate | `api/messages_test.go::TestGetMessages_NoReadPerm_403` | 战马 | AP-0-bis | ⚪ pending |
-| REG-AP0B-005 | ap-0-bis.md helper | `testutil/seed_legacy_agent.go` 存在 + godoc | 飞马 | AP-0-bis | ⚪ pending |
-| REG-AP0B-006 | ap-0-bis.md cap list | `grep 'message.read' internal/auth/capabilities.go` count==1 | 飞马 | AP-0-bis | ⚪ pending |
+| REG-AP0B-001 | ap-0-bis.md 数据契约 | `internal/store/store_coverage_test.go::TestDefaultPermissionsAgent` 断言 agent 默认 `[message.send, message.read]` 2 行 | 战马 | #206 | 🟢 active |
+| REG-AP0B-002 | ap-0-bis.md backfill | `internal/migrations/ap_0_bis_message_read_test.go::TestAP0Bis_BackfillsMessageReadForLegacyAgents` (用 SeedLegacyAgent + post-Up assert `(agent_id, 'message.read', '*')` 行存在) | 战马 | #206 | 🟢 active |
+| REG-AP0B-003 | ap-0-bis.md backfill | `internal/migrations/ap_0_bis_message_read_test.go::TestAP0Bis_Idempotent` (re-run v=8 不重复插入 — v0 forward-only 契约下替代 Down 回滚断言) | 战马 | #206 | 🟢 active |
+| REG-AP0B-004 | ap-0-bis.md gate | `internal/api/messages_perm_test.go::TestGetMessages_LegacyAgentNoReadPerm_403` (反向 + 配套正向 `TestGetMessages_AgentWithReadPerm_200`) | 战马 | #206 | 🟢 active |
+| REG-AP0B-005 | ap-0-bis.md helper | `internal/testutil/server.go::SeedLegacyAgent` 存在 + godoc (helper 同文件 SeedAgent/SeedAdmin 一致, 未独立 seed_legacy_agent.go) | 飞马 | #206 | 🟢 active |
+| REG-AP0B-006 | ap-0-bis.md cap list | `grep -n '"message.read"' packages/server-go/internal/store/queries.go` count==1 (canonical list at `GrantDefaultPermissions` line 375 — 项目无 `auth/capabilities.go`, 默认权限 source-of-truth 在 store) | 飞马 | #206 | 🟢 active |
 
 ### RT-0 (派活, 依赖 INFRA-2, ⚪ pending)
 
@@ -120,6 +120,7 @@
 |---|---|---|---|---|---|
 | REG-INV-001 | CM-4.1 + Phase 1 | `grep -rE 'c.JSON.*\b(User\|AgentInvitation)\b' internal/api/` count==0 | 飞马 | (持续) | 🟢 active |
 | REG-INV-002 | ADM-0 4.1.c | `internal/admin/handlers_field_whitelist_test.go` god-mode response 反射扫描 fail-closed (含未来新增 endpoint 自动覆盖, forbidden={body,content,text,artifact}) | 烈马 | ADM-0.2 (#201) | 🟢 active |
+| REG-INV-003 | bug-030 (CM-onboarding 后置) | `internal/store/welcome_test.go::TestListChannelsWithUnread_IncludesSystemWelcome` 双断言 (本人看见 type='system' #welcome + 别人看不见 — membership LEFT JOIN gate); `grep -n "c.type IN" internal/store/queries.go` count≥1 含 'system' (ListChannelsWithUnread + ListAllChannelsForAdmin WHERE 子句 must include system + membership 守门) | 烈马 | #203 + bug-030 fix 22ed221 | 🟢 active |
 
 ---
 
@@ -140,17 +141,18 @@ CM-3 落地后 G1.4 进 registry 转 🟢 active 一行。
 |---|---|---|---|
 | CM-4.x | 8 | 8 | 0 |
 | INFRA-2 | 7 | 0 | 7 |
-| ADM-0 | 10 | 0 | 10 |
-| AP-0-bis | 6 | 0 | 6 |
+| ADM-0 | 10 | 3 | 7 |
+| AP-0-bis | 6 | 6 | 0 |
 | RT-0 | 8 | 0 | 8 |
-| CM-onboarding | 13 | 4 | 9 |
-| 跨 milestone 不变量 | 2 | 1 | 1 |
-| **总计** | **54** | **13** | **41** |
+| CM-onboarding | 13 | 5 | 8 |
+| 跨 milestone 不变量 | 3 | 3 | 0 |
+| **总计** | **55** | **25** | **30** |
 
-Phase 2 全部 milestone 落地后, 预计 active 54 行 — G2.audit 时全员检视一遍 + 翻态 + sign off。
+Phase 2 全部 milestone 落地后, 预计 active 55 行 — G2.audit 时全员检视一遍 + 翻态 + sign off。
 
 ## 6. 更新日志
 
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-28 | 烈马 | v1 初版, 收纳 #186/#185/#183 (active) + R3 5 milestone (pending) |
+| 2026-04-28 | 烈马 | flip AP-0-bis 6 行 ⚪ → 🟢 (PR #206 merged) + 加 REG-INV-003 bug-030 守门 (ListChannelsWithUnread system membership) |
