@@ -40,6 +40,7 @@
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
 | 4.1 `/admin-api/agents/:id` 返回 `{status, reason, last_offline_at}` 字段白名单, 不返回 `current_message_in_flight` / `active_channel_ids` / `endpoints[]` (ADM-0 §1.3 红线复用 REG-ADM0); admin 不触发 agent ping/wake (admin 只观测) | unit + grep | 战马A / 烈马 | `internal/api/admin_agents_test.go::TestAdminGodModeOmitsPresenceInternals` + `grep -rnE 'current_message\|active_channel_ids\|in_flight' internal/api/admin*.go --exclude='*_test.go'` count==0 (TBD) |
+| 4.2 跨 org 默认隐私反约束 (#301 spec §4): 未邀请进 channel 的 cross-org 调用方 `IsOnline(agent_id)` 返回 false (隐私默认, 不暴露在线性); 仅 §3.4 跨 org 邀请进入同 channel 后才同显 (立场 ④) | unit | 战马A / 烈马 | `internal/presence/cross_org_test.go::TestIsOnlineDefaultsFalseForCrossOrgWithoutChannelMembership` (TBD) |
 
 ### §5 蓝图行为对照 (反查锚, 每 PR 必带)
 
