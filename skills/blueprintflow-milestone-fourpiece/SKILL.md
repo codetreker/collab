@@ -1,5 +1,5 @@
 ---
-name: borgee-milestone-fourpiece
+name: blueprintflow-milestone-fourpiece
 description: Milestone 启动 4 件套并行模板 — spec brief / stance checklist / acceptance template / content lock。4 PR 互引 §X.Y, drift 跨 PR review 抓出。
 ---
 
@@ -70,7 +70,7 @@ milestone 启动时 (Teamlead):
 3. 派烈马: acceptance template (临时 clone, ≤50 行, 引飞马 spec + 野马 stance 锚)
 4. (仅 client UI) 派野马: content lock (临时 clone, ≤40 行)
 
-4 件套 ready 后 PR open, 派 review (走 borgee:pr-review-flow)
+4 件套 ready 后 PR open, 派 review (走 blueprintflow:pr-review-flow)
 ```
 
 ## 拆段实施 (4 件套 merged 后)
@@ -80,7 +80,7 @@ milestone 启动时 (Teamlead):
 - 1.2 server (API + 业务逻辑 + 反向断言 test)
 - 1.3 client (SPA UI + e2e Playwright)
 
-每段 PR 走 `borgee:pr-review-flow`。
+每段 PR 走 `blueprintflow:pr-review-flow`。
 
 ## Follow-up patch 模式
 

@@ -1,5 +1,5 @@
 ---
-name: borgee-phase-plan
+name: blueprintflow-phase-plan
 description: 蓝图 ready 后, 把项目拆成 Phase + 退出 gate + 4 道防偏离闸门。落地 PROGRESS.md + execution-plan + roadmap。
 ---
 
@@ -47,7 +47,7 @@ description: 蓝图 ready 后, 把项目拆成 Phase + 退出 gate + 4 道防偏
 3. **闸 3 反查表** (PM + Architect): 每模块文档末尾, 立场一句话写不出 = 漂移
 4. **闸 4 标志性 milestone 签字 + 关键截屏** (PM, AI 团队不录视频)
 
-闸 1+2 在 spec brief PR 走 (`borgee:milestone-fourpiece`), 闸 3 在 stance + acceptance 走, 闸 4 在 demo signoff 走 (`borgee:phase-exit-gate` 收尾)。
+闸 1+2 在 spec brief PR 走 (`blueprintflow:milestone-fourpiece`), 闸 3 在 stance + acceptance 走, 闸 4 在 demo signoff 走 (`blueprintflow:phase-exit-gate` 收尾)。
 
 ## 落地清单
 
@@ -71,7 +71,7 @@ description: 蓝图 ready 后, 把项目拆成 Phase + 退出 gate + 4 道防偏
 | Phase 4+ 剩余 | TODO | G4.audit | 等 Phase 3 |
 ```
 
-每 PR merged 立即更新对应 milestone 行 ⚪→✅ (走 follow-up 翻牌 PR, 跟 `borgee:pr-review-flow`)。
+每 PR merged 立即更新对应 milestone 行 ⚪→✅ (走 follow-up 翻牌 PR, 跟 `blueprintflow:pr-review-flow`)。
 
 ## 反模式
 
@@ -84,6 +84,6 @@ description: 蓝图 ready 后, 把项目拆成 Phase + 退出 gate + 4 道防偏
 
 蓝图 ready 后:
 ```
-follow skill borgee-phase-plan
+follow skill blueprintflow-phase-plan
 落 PROGRESS.md + execution-plan + roadmap
 ```

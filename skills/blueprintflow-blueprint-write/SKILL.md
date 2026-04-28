@@ -1,5 +1,5 @@
 ---
-name: borgee-blueprint-write
+name: blueprintflow-blueprint-write
 description: 概念锁定后, Architect + PM 落蓝图模板 — 核心立场 / 概念模型 / 反约束 / v0/v1 边界。docs/blueprint/*.md 是产品形状的 source of truth。
 ---
 
@@ -65,7 +65,7 @@ Borgee 实例: 11 篇蓝图 + 14 条核心立场。
 6. **管控元数据 OK, 读你内容必须授权** (§13 — admin god-mode 边界)
 7-14: ...
 
-每条立场必须能写出 5-7 项反查 (`borgee:milestone-fourpiece` stance checklist 用)。
+每条立场必须能写出 5-7 项反查 (`blueprintflow:milestone-fourpiece` stance checklist 用)。
 
 ## 立场写不出反约束 = 立场不成立
 
@@ -77,7 +77,7 @@ Borgee 实例: 11 篇蓝图 + 14 条核心立场。
 ## 流程
 
 ### 1. 概念多轮讨论
-跟 `borgee:brainstorm` 配套 — Teamlead 主持 PM + Architect 多轮 (Borgee 跑了 11 轮), 每轮锁 1-2 个概念 + 立场。
+跟 `blueprintflow:brainstorm` 配套 — Teamlead 主持 PM + Architect 多轮 (Borgee 跑了 11 轮), 每轮锁 1-2 个概念 + 立场。
 
 ### 2. 落蓝图 (PR)
 Architect + PM 配对落 docs/blueprint/<module>.md, 走 PR review (战马 + QA 也参与, 立场必须 dev/QA 也认同, 否则实施漂)。
@@ -99,6 +99,6 @@ freeze 后修改走 PR + 4 角色 review (跟实施 PR 同审格)。修改原因
 
 概念多轮讨论锁定后:
 ```
-follow skill borgee-blueprint-write
+follow skill blueprintflow-blueprint-write
 落 docs/blueprint/<module>.md
 ```

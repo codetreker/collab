@@ -1,5 +1,5 @@
 ---
-name: borgee-brainstorm
+name: blueprintflow-brainstorm
 description: 概念层多轮讨论 driver — Teamlead 主持 PM + Architect 锁立场 + 概念 + 反约束。新模块 / 新立场 / 蓝图改动前必走。
 ---
 
@@ -9,7 +9,7 @@ description: 概念层多轮讨论 driver — Teamlead 主持 PM + Architect 锁
 
 ## 何时用
 
-- 新产品起步 (跟 `borgee:blueprint-write` 配套)
+- 新产品起步 (跟 `blueprintflow:blueprint-write` 配套)
 - 新模块加入 (e.g. CV-2 加 anchor 对话)
 - 现有立场冲突 (实施暴露立场没拍清楚)
 - 蓝图改动 (大改之前必经)
@@ -17,7 +17,7 @@ description: 概念层多轮讨论 driver — Teamlead 主持 PM + Architect 锁
 ## 不用的场景
 
 - 实施细节技术选型 (e.g. SQLite vs Postgres) — 这是 spec brief 的事, 不是 brainstorm
-- 已锁立场的 milestone 实施 (跟 `borgee:milestone-fourpiece` 走)
+- 已锁立场的 milestone 实施 (跟 `blueprintflow:milestone-fourpiece` 走)
 
 ## 多轮讨论结构
 
@@ -36,7 +36,7 @@ Teamlead 抛 3 题, PM + Architect 各答 ≤ 200 字:
 每轮产出 ≤ 5 行立场草稿, 入下轮基线。
 
 ### 末轮: 立场 freeze
-Teamlead 总结 5-7 立场 + 反约束, PM + Architect 双签字, 进 `borgee:blueprint-write` 落地。
+Teamlead 总结 5-7 立场 + 反约束, PM + Architect 双签字, 进 `blueprintflow:blueprint-write` 落地。
 
 实例: Borgee 跑了 11 轮 brainstorm, 锁 14 条核心立场。
 
@@ -82,14 +82,14 @@ brainstorm 完结时:
 - [ ] 5-7 立场全有 "主张 + 反约束 + 场景 + v0/v1 边界"
 - [ ] 反约束能机器化 (反向 grep / 反向断言)
 - [ ] PM + Architect 双签字
-- [ ] 入 `borgee:blueprint-write` 写蓝图
+- [ ] 入 `blueprintflow:blueprint-write` 写蓝图
 
 ## 调用方式
 
 新模块 / 新立场:
 ```
-follow skill borgee-brainstorm
+follow skill blueprintflow-brainstorm
 开始多轮讨论 (Teamlead + PM + Architect)
 ```
 
-讨论收敛后接 `borgee:blueprint-write`。
+讨论收敛后接 `blueprintflow:blueprint-write`。
