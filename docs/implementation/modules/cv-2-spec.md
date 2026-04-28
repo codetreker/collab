@@ -36,6 +36,10 @@ git grep -nE 'AnchorCommentAdded\{[^}]*cursor'          packages/server-go/inter
 git grep -nE 'anchor.*end_offset.*CHECK'                packages/server-go/internal/migrations/   # ≥ 1 hit (range 反向校验)
 git grep -nE 'anchor.*author_kind.*=.*"agent".*author_kind.*=.*"agent"' packages/server-go/internal/   # 0 hit (立场 ① 反 agent→agent thread)
 git grep -nE 'anchor.*migrate.*to.*next_version|anchor.*follow.*version' packages/server-go/internal/   # 0 hit (反约束 立场 ② 不跨版本迁移)
+# #355 野马反约束三连 (锚点钉死人审, 立场 ① 字面落)
+git grep -nE 'anchor-comment-btn|data-anchor-id'        packages/client/src/components/ArtifactPanel.tsx   # ≥ 1 hit (① hover 入口 — owner 视角); agent 视角 e2e 反断 0
+git grep -nE 'createAnchor.*kind.*=.*"agent"|kind=="agent".*POST.*anchors' packages/server-go/internal/   # 0 hit (server agent role POST 锚 → 403, 错码 anchor.create_owner_only)
+git grep -nE 'agent.*reply.*new_anchor|cross.*anchor.*agent' packages/server-go/internal/                   # 0 hit (cross-anchor agent→agent 同 403)
 ```
 
 任一 0 hit (除反约束行) → CI fail.
@@ -60,3 +64,4 @@ git grep -nE 'anchor.*migrate.*to.*next_version|anchor.*follow.*version' package
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-29 | 飞马 | v0 — spec lock Phase 3 章程严守续作第一波 (野马 ⭐, CV-1 后顺位); 3 立场 + 3 拆段 + 5 grep 反查 (含 2 反约束) + 6 反约束 + CV-1/RT-1/CHN-1 留账边界字面对齐; G3.2 闸直撑 |
+| 2026-04-29 | 飞马 | v1 — 吸收 #355 野马 CV-2 文案锁立场 ⑤ 反约束三连入 §3 grep: (a) client DOM `data-anchor-id` 仅 owner 视角 / (b) server agent POST `/api/v1/artifacts/:id/anchors` 0 hit (kind='agent' → 403 错码 `anchor.create_owner_only`) / (c) cross-anchor agent→agent 0 hit; #355 文案锁 (💬 入口 + "段落讨论" header + "针对此段写下你的 review…" placeholder + 🤖 角标 byte-identical 跟 CV-1 #347 同源 + "标为已解决"/"重新打开") 字面 CV-2.3 client SPA 实施时 byte-identical 锁 |
