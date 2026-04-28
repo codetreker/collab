@@ -18,6 +18,7 @@
 package agent
 
 import (
+	"strings"
 	"sync"
 	"time"
 )
@@ -139,7 +140,7 @@ func ClassifyProxyError(status int, err error) string {
 		return ReasonQuotaExceeded
 	}
 	if err != nil {
-		msg := err.Error()
+		msg := strings.ToLower(err.Error())
 		if containsAny(msg, "api key", "api_key", "unauthorized") {
 			return ReasonAPIKeyInvalid
 		}
@@ -159,41 +160,13 @@ func ClassifyProxyError(status int, err error) string {
 	return ""
 }
 
+// containsAny — true if s contains any of subs. Caller passes pre-lowercased s
+// for case-insensitive matching.
 func containsAny(s string, subs ...string) bool {
 	for _, sub := range subs {
-		if indexOf(s, sub) >= 0 {
+		if strings.Contains(s, sub) {
 			return true
 		}
 	}
 	return false
-}
-
-// indexOf — case-insensitive substring index. 不 import strings 减依赖.
-func indexOf(s, sub string) int {
-	if len(sub) == 0 {
-		return 0
-	}
-	if len(sub) > len(s) {
-		return -1
-	}
-	for i := 0; i+len(sub) <= len(s); i++ {
-		match := true
-		for j := 0; j < len(sub); j++ {
-			a, b := s[i+j], sub[j]
-			if a >= 'A' && a <= 'Z' {
-				a += 32
-			}
-			if b >= 'A' && b <= 'Z' {
-				b += 32
-			}
-			if a != b {
-				match = false
-				break
-			}
-		}
-		if match {
-			return i
-		}
-	}
-	return -1
 }

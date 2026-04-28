@@ -92,16 +92,16 @@ func TestWithState_NilProviderFallsBackToOffline(t *testing.T) {
 }
 
 func TestAgentStateClassify_Wiring(t *testing.T) {
-	// agent_state_classify is the convenience adapter the handler calls
+	// classifyAgentProxyError is the convenience adapter the handler calls
 	// inside ProxyPluginRequest error paths. Assert the wiring forwards
 	// to agent.ClassifyProxyError unchanged for the canonical cases.
-	if got := agent_state_classify(401, errors.New("Unauthorized")); got != agentpkg.ReasonAPIKeyInvalid {
+	if got := classifyAgentProxyError(401, errors.New("Unauthorized")); got != agentpkg.ReasonAPIKeyInvalid {
 		t.Errorf("401 → %q, want %q", got, agentpkg.ReasonAPIKeyInvalid)
 	}
-	if got := agent_state_classify(503, nil); got != agentpkg.ReasonRuntimeCrashed {
+	if got := classifyAgentProxyError(503, nil); got != agentpkg.ReasonRuntimeCrashed {
 		t.Errorf("503 → %q, want %q", got, agentpkg.ReasonRuntimeCrashed)
 	}
-	if got := agent_state_classify(200, nil); got != "" {
+	if got := classifyAgentProxyError(200, nil); got != "" {
 		t.Errorf("happy path → %q, want empty", got)
 	}
 }
