@@ -175,6 +175,8 @@ http.Server.Serve       # 0.0.0.0:4900
 `GET /api/v1/agent_invitations/{id}` — 仅 requester / agent owner / admin 可读。
 `PATCH /api/v1/agent_invitations/{id}` body `{state: "approved"|"rejected"}` — 仅 agent owner（或 admin）可决策；状态机复用 `store.AgentInvitation.Transition`，非法转移 → 409；`approved` 同步把 agent 加入 channel（idempotent）。响应 payload hand-built sanitizer，从不直接序列化 `*store.AgentInvitation`。BPP frame / client UI / offline 检测留给 CM-4.2 / CM-4.3。
 
+`sanitizeAgentInvitation` 自 bug-029 修起 JOIN `users` + `channels` 解析三个 label 字段：`agent_name`（agent 所属 user 的 display_name，agent 本身没 name 列）、`channel_name`、`requester_name`。lookup miss → 字段输出空串（key 始终在，UI 端 `name || id` fallback）。store 为 `nil` 时（白盒测试径）三字段全部空串。改 sanitizer 字段集 = 同步改 `agent_invitations_test.go::TestAgentInvitations_SanitizerKeys` 白名单（red line）。
+
 ### Commands
 `GET /api/v1/commands` — 当前所有 plugin 注册过的 slash command，按 agent 分组。
 
