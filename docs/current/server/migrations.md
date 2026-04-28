@@ -148,3 +148,19 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at ON admin_sessions(expir
 
 **ADM-0.2 收尾后还活着的 admin code**:
 `internal/admin/{auth.go, middleware.go, handlers.go, bootstrap.go}` + 本迁移。`internal/api/admin_auth.go` / `admin_e2e_test.go` 被删除, `internal/api/admin.go::RegisterAppRoutes` 移除。
+
+> v=6 originally reserved for ADM-0.3 — slot skipped after CM-onboarding (v=7) / AP-0-bis (v=8) / CM-3 (v=9) landed sequentially. ADM-0.3 took v=10 to keep the registry strictly increasing.
+
+### 7.4 v9 — `cm_3_org_id_backfill`
+
+Blueprint: `docs/qa/cm-3-resource-ownership-checklist.md` (PR #200, 野马). CM-1.1 (v=2) added the `org_id` columns + indexes; v=9 backfills legacy rows on 4 resource tables (`channels`, `messages`, `workspace_files`, `remote_nodes`) via `org_id <- users.org_id` joined on creator/sender/uploader FK. Idempotent + trimmed-schema tolerant via `hasTable`/`hasColumn` PRAGMA introspection. v0 leaves un-stampable rows at `org_id=''` (CrossOrg returns false → falls through to membership checks); v1 will hard-flip NOT NULL.
+
+### 7.5 v10 — `adm_0_3_users_role_collapse`
+
+Blueprint: `docs/implementation/modules/adm-0-review-checklist.md` §ADM-0.3. Collapses `users.role` enum to `{'member', 'agent'}` and seals user-rail / admin-rail split. **4-step admin backfill 顺序锁** in single transaction:
+1. `INSERT INTO admins (login, …) SELECT … FROM users WHERE role='admin' ON CONFLICT(login) DO NOTHING`
+2. `DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE role='admin')`
+3. `DELETE FROM user_permissions WHERE user_id IN (…)` (ADM-0.2 wildcard sweep)
+4. `DELETE FROM users WHERE role='admin'`
+
+SQLite cannot `ADD CHECK` post-create — covered by data-invariant + 5 reverse-assertion tests (§3.A–§3.G); v1 hard-flip via `CREATE+RENAME` deferred. Post-migration, admin authority lives exclusively on `/admin-api/*` behind `borgee_admin_session`; AP-0 default `(*, *)` carries human-member authority on the user rail.
