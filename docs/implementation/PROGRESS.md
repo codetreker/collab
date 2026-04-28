@@ -19,7 +19,7 @@
 | Phase | 状态 | 退出条件 | 备注 |
 |-------|------|---------|------|
 | Phase 0 基建闭环 | ✅ DONE | G0.1+G0.2+G0.3+G0.audit 全过 (G0.4/G0.5 软 gate, 不卡退出) | 起步; 含 INFRA-1a/1b 拆分; **工期 2 周** (战马 R2). 实际 5 PR (#169-#173) 一日完成 |
-| Phase 1 身份闭环 | 🔄 4/5 + audit ✅, G1.4 待 CM-3 | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 已 merge; G1.4 (读路径 EXPLAIN + grep) 等 CM-3 写路径完成后补一次再全闭合 |
+| Phase 1 身份闭环 | ✅ DONE | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 + CM-3 全 merged; G1 全签 #210, G1.4 closed by #208 + #210 |
 | Phase 2 协作闭环 ⭐ | TODO | G2.1~G2.5 + G2.audit + 野马签字 | 等 Phase 1 |
 | Phase 3 第二维度产品 | TODO | G3.1~G3.4 + G3.audit + 野马签字 (CV-1) | 等 Phase 2; 内部顺序锁死 |
 | Phase 4+ 剩余模块 | TODO | 各模块自身完成判定 + G4.audit | 等 Phase 3 |
@@ -61,16 +61,16 @@
   - [x] PR CM-1.4 admin 调试页 (visibility checkpoint, 非 acceptance) (PR #180)
 - [x] **AP-0** 默认权限注册回填 (与 CM-1 并行) — 战马 / 飞马 / 野马 / 烈马
   - [x] PR AP-0.1 注册时写默认权限 (human=`*`, agent=`message.send`) (PR #177)
-- [ ] **CM-3** 资源归属 org_id 直查 (CM-4 之后) — 战马 / 飞马 / 野马 / 烈马
-  - [ ] PR CM-3.1 写路径 (4 张表填 org_id)
-  - [ ] PR CM-3.2 读路径 (查询切 WHERE org_id)
+- [x] **CM-3** 资源归属 org_id 直查 (CM-4 之后) — 战马 / 飞马 / 野马 / 烈马 (PR #208)
+  - [x] PR CM-3.1 写路径 (4 张表 stamp org_id at INSERT) (PR #208)
+  - [x] PR CM-3.2 读路径 (跨 org 403 + JOIN owner_id 全删) (PR #208)
 
 **Gates**
 
 - [x] G1.1 数据层 org_id 落地 — 战马/烈马 / 证据: 烈马本地 fresh DB SQL 直查 — schema_migrations v2 cm_1_1_organizations / organizations DDL / users·channels·messages·workspace_files·remote_nodes 5 表 org_id TEXT NOT NULL DEFAULT '' / 5 索引 idx_*_org_id 全部确认
 - [x] G1.2 注册自动建 org E2E — 战马/烈马 / 证据: 真实 POST /api/v1/auth/register 路径, users.org_id 非空 + organizations 行 name="<DisplayName>'s org" (烈马本地 in-mem sqlite acceptance run, 2026-04-28)
 - [x] G1.3 agent 继承 owner org — 战马/烈马 / 证据: member 创 agent → agent.OrgID == owner.OrgID; admin 创 human → 自动建 org (同上 run)
-- [ ] ⏸ G1.4 读路径直查 (SQL EXPLAIN + grep 黑名单) — 飞马/烈马 / **延后到 CM-3 写路径完成后补**, 不阻塞 Phase 2 起跑 (团队 R2 共识)
+- [x] G1.4 读路径直查 (SQL EXPLAIN + grep 黑名单) — 飞马/烈马 / 证据: closed by #208 (CM-3 写/读路径 stamp + 跨 org 403) + #210 (g1-audit.md §2.1 黑名单 grep count==0 / §2.2 三类 403 PASS / §2.3 EXPLAIN 走 idx_*_org_id)
 - [x] G1.5 UI 不泄漏 org_id (合约测试) — 烈马/野马 / 证据: 用户面 6 端点 + 2 响应体 leak-scan 全部不含 `org_id` (GET /api/v1/users/me, /admin-api/v1/auth/me, /admin-api/v1/users, /api/v1/agents; POST /api/v1/auth/register, /api/v1/agents 响应); /admin-api/v1/stats by_org 是 admin-only 故意暴露, 白名单
 - [x] **G1.audit** v0 代码债 audit 行已登记 (organizations 删库 / users.org_id 加列) — 飞马 (PR #182)
 
@@ -85,27 +85,27 @@
 
 ### Phase 2 解封前置 (R3 新增)
 
-- [ ] **INFRA-2** Playwright scaffold (E2E) — 战马 / 飞马 / 烈马
+- [x] **INFRA-2** Playwright scaffold (E2E) — 战马 / 飞马 / 烈马 (PR #195 merged)
   - 必须前置到 RT-0 之前 (烈马 R3: latency ≤ 3s 硬条件 vitest 跑不了)
   - 工期 2-3 天 (战马 R1: vite orchestrate + cookie fixtures + chromium CI)
-- [ ] **ADM-0** admin 拆表 (admins 独立表 + cookie 拆 + god-mode endpoint) — 战马 / 飞马 (主, 起草) / 烈马 / 野马
-  - [ ] **ADM-0.1** admins 独立表 + env bootstrap + 独立 cookie name (双轨并存)
-  - [ ] **ADM-0.2** cookie 拆 + RequirePermission 去 admin 短路 + god-mode 白名单 (users.role='admin' 调 user-api 401)
-  - [ ] **ADM-0.3** users.role enum 收 + backfill 旧 admin 行 → admins 表 + revoke session (users.role='admin' 行数 = 0)
+- 🔄 **ADM-0** admin 拆表 (admins 独立表 + cookie 拆 + god-mode endpoint) — 战马 / 飞马 (主, 起草) / 烈马 / 野马
+  - [x] **ADM-0.1** admins 独立表 + env bootstrap + 独立 cookie name (双轨并存) (PR #197 merged)
+  - [x] **ADM-0.2** cookie 拆 + RequirePermission 去 admin 短路 + god-mode 白名单 (users.role='admin' 调 user-api 401) (PR #201 merged)
+  - [ ] **ADM-0.3** users.role enum 收 + backfill 旧 admin 行 → admins 表 + revoke session (users.role='admin' 行数 = 0) — 🔄 IN PROGRESS (task #63, v=10)
   - 工期 server 4-6 天 + client 1 天
   - 烈马一票否决: cookie 串扰反向断言
   - 详见 [`modules/admin-model.md`](modules/admin-model.md)
-- [ ] **AP-0-bis** message.read 默认 grant + backfill 迁移 — 战马 / 飞马 / 烈马
+- [x] **AP-0-bis** message.read 默认 grant + backfill 迁移 — 战马 / 飞马 / 烈马 (PR #206 merged, v=8)
   - 工期 1 天
   - 必带 `testutil.SeedLegacyAgent` helper (烈马 R3, CM-3 也用)
   - **依赖 ADM-0.2 已 merge** (飞马 R1 P0 ②: AP-0-bis 加 RequirePermission("message.read") 必须在 admin 直通短路砍掉之后, 否则 admin 既被砍直通又没 message.read 而 401 中间态)
   - 详见 [`modules/auth-permissions.md`](modules/auth-permissions.md)
-- [ ] **CM-onboarding** Welcome channel + auto-join + system message — 战马 / 飞马 / 野马 (立场) / 烈马
+- [x] **CM-onboarding** Welcome channel + auto-join + system message — 战马 / 飞马 / 野马 (立场) / 烈马 (PR #203 merged, v=7)
   - 工期 0.5-1 天
   - **依赖野马 `00-foundation/onboarding-journey.md` (硬截止 2026-05-05)** — 飞马 R1 P1 ③: 防卡死风险
   - 野马 must-fix (实施时落地): Welcome system message 必带 quick action button "创建 agent" + backfill 失败的空状态降级文案 (§11 反约束) + 文案锁定位置在 onboarding-journey.md
   - 详见 [`modules/concept-model.md`](modules/concept-model.md) §10
-- [ ] **RT-0** /ws push 顶住 BPP (取代 60s polling) — 战马 / 飞马 / 烈马 / 野马
+- [ ] **RT-0** /ws push 顶住 BPP (取代 60s polling) — 战马 / 飞马 / 烈马 / 野马 (⏳ pending, task #40, INFRA-2 已就绪可解锁)
   - 工期 1.5-2 天
   - 依赖 INFRA-2 (latency E2E 验)
   - 蓝图 realtime §2.3: schema 必须等同未来 BPP frame, CI lint 强制
@@ -125,7 +125,12 @@
 
 - [ ] **ADM-1** SPA + 元数据/内容硬隔离 + 用户隐私承诺页 — 飞马 / 战马 / 野马 / 烈马
   - 用户承诺页 3 条文案锁死 (admin-model §4.1)
+  - 隐私承诺反查表 v0 ✅ 落 (PR #211, 野马)
   - 详见 [`modules/admin-model.md`](modules/admin-model.md)
+
+**配套 doc 工件 (Phase 2 已落)**:
+- ADM-0 立场反查表 v0 ✅ (PR #205, 野马)
+- G2.4 5 张截屏 spec + 野马 partial 签 ✅ (PR #199 计划 + 后续 spec)
 
 **Gates**
 
@@ -260,3 +265,4 @@ AP-3 ─┘
 | 2026-04-27 | team-lead | R2 review 落 20 项: Phase 0 工期 2 周 / G2.5 触发点 stub / 闸 5 覆盖率收紧 / 跨模块 PR 拆契约+实现 / CM-4.4 PR 与签字解耦 / Sessions 多端压测留 AL-3 / thinking subject 挪 BPP-2 / DL-4 头部排序锁 / ADM-2 取消 ⭐ / G3.4 加 chat+artifact 双 tab / G2.4 加 subject 文案 + agent↔agent 口播 / HB-4 测量基准锁 / CV-4 timer 单测 + 5s 不刷新 / blueprint §1.3 加协作语义边界 / presence 路径 internal/presence/contract.go / 签字回滚仅 reopen milestone |
 | 2026-04-28 | 烈马 | Phase 0 闭环: PR #169-#173 全 merged + Gates G0.1-G0.5 + G0.audit 全 ✅, G0.5 evidence 落 `docs/evidence/g0.5/README.md` |
 | 2026-04-28 | 烈马 | Phase 1 收口: CM-1 (PR #176/#178/#179/#180) + AP-0 (#177) + G1.audit (#182) 全 merged; Gates G1.1/G1.2/G1.3/G1.5 ✅ (烈马本地 fresh DB SQL 直查 + 真实 HTTP register/agent E2E + 6 端点 leak-scan); G1.4 ⏸ 待 CM-3 写路径完成后补; Phase 概览改 🔄 4/5 + audit ✅ |
+| 2026-04-28 | 飞马 | D1–D9 flip (audit #212 派活): Phase 1 改 ✅ DONE (G1.4 closed by #208 + #210, CM-3 closed by #208); Phase 2 解封前置 5/6 改 [x] (INFRA-2 #195, ADM-0.1 #197, ADM-0.2 #201, AP-0-bis #206, CM-onboarding #203); ADM-0 总括改 🔄 (ADM-0.3 #63 in progress); RT-0 留 ⏳; 配套 doc 工件 (#205 ADM-0 立场反查 / #211 ADM-1 隐私承诺 / #199 G2.4 截屏 plan) 落 Phase 2 后置区 |
