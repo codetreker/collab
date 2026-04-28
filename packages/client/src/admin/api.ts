@@ -32,10 +32,17 @@ export interface AdminSession {
   username: string;
 }
 
+export interface OrgStatsRow {
+  org_id: string;
+  user_count: number;
+  channel_count: number;
+}
+
 export interface AdminStats {
   user_count: number;
   channel_count: number;
   online_count: number;
+  by_org?: OrgStatsRow[];
 }
 
 export interface AdminUser {

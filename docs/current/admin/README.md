@@ -45,7 +45,7 @@ Borgee 的 admin 面是一个**独立子系统**：不同的 SPA 入口（`admin
 
 | Method | Path | 行为要点 |
 |--------|------|----------|
-| GET | `/stats` | 用户数 / 频道数 / 在线数；后者来自 `Store.GetOnlineUsers()` |
+| GET | `/stats` | 用户数 / 频道数 / 在线数；后者来自 `Store.GetOnlineUsers()`。CM-1.3 起额外返回 `by_org: [{org_id, user_count, channel_count}, ...]` (按 org 聚合, 见 `server/data-model.md`)。CM-1.4 dashboard 用它做 visibility checkpoint |
 | GET | `/users` | 全量列表（含 soft-deleted），暴露 `email/disabled/last_seen` |
 | POST | `/users` | bcrypt 哈希密码；**role 硬锁为 `member`**——admin 不能从这里造另一个 admin；自动授默认权限并加入公开频道 |
 | PATCH | `/users/{id}` | 改 `display_name/password/role/require_mention/disabled`。`role` 仍只接受 `member`。**禁用会级联禁用名下所有 agent**（`cascadeDisableAgents`），重新启用同样级联 |
@@ -96,7 +96,7 @@ Borgee 的 admin 面是一个**独立子系统**：不同的 SPA 入口（`admin
 | 文件 | 路由 | 调用的端点 |
 |------|------|------------|
 | `LoginPage.tsx` | `/admin` | `POST /auth/login` |
-| `DashboardPage.tsx` | `/admin/dashboard` | `GET /stats` |
+| `DashboardPage.tsx` | `/admin/dashboard` | `GET /stats`. 渲染 4 个 stat card (Users/Channels/Online/**Orgs**) + "Organizations (debug)" 表格列出 `by_org[]` 每行 `org_id / user_count / channel_count`. CM-1.4 visibility checkpoint, admin-only, blueprint §1.1 不向终端用户暴露 org_id |
 | `UsersPage.tsx` | `/admin/users` | `GET /users`、`PATCH /users/{id}`、`DELETE /users/{id}`、`POST /users`（modal） |
 | `UserDetailPage.tsx` | `/admin/users/:id` | `GET /users` 后 `.find()`、`GET /users/{id}/agents` —— 只读 |
 | `ChannelsPage.tsx` | `/admin/channels` | `GET /channels`、`DELETE /channels/{id}/force`；UI 镜像 server 守卫，`#general` 与 DM 不显示 force 按钮 |
