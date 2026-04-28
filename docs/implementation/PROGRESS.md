@@ -21,7 +21,7 @@
 | Phase 0 基建闭环 | ✅ DONE | G0.1+G0.2+G0.3+G0.audit 全过 (G0.4/G0.5 软 gate, 不卡退出) | 起步; 含 INFRA-1a/1b 拆分; **工期 2 周** (战马 R2). 实际 5 PR (#169-#173) 一日完成 |
 | Phase 1 身份闭环 | ✅ DONE | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 + CM-3 全 merged; G1 全签 #210, G1.4 closed by #208 + #210 |
 | Phase 2 协作闭环 ⭐ | ✅ DONE | 4 角色联签 (#271/#272/#273/#279) + 5+1 严格闸 SIGNED + 3 PARTIAL #248 condition + 2 DEFERRED 挂 Phase 4 PR # | closure #284 (建军 2026-04-28); 留账 G2.4 #275 / G2.5 #277 / G2.6 #274+#280; 锚 `docs/qa/phase-2-exit-announcement.md` |
-| Phase 3 第二维度产品 | 🔄 IN PROGRESS | RT-1 三段 ✅ (#290 server cursor + #292 client backfill + #296 BPP session.resume); CHN-1 三段 ✅ (#276 schema + #286 API + #288 client SPA); CV-1 立场 ✅ (#282+#295 v0/v1 切换条件); BPP-1 envelope CI lint 留账 (#274/#280 真落待) | Phase 2 ✅ closed; 锚 acceptance-templates `chn-1.md` (#287+#289) / `rt-1.md` (#291) / `cv-1-stance-checklist.md` (#282+#295) |
+| Phase 3 第二维度产品 | 🔄 IN PROGRESS | RT-1 三段 ✅ (#290 server cursor + #292 client backfill + #296 BPP session.resume); CHN-1 三段 ✅ (#276 schema + #286 API + #288 client SPA); AL-3 三段 ✅ (#310 schema v=12 + #317 hub lifecycle + #324+#327 client dot); CV-1.1 schema ✅ (#334 cd7e12a + 22203ea follow-up, acceptance flip #340); CV-1.2 server API in-flight (战马A, frame 守 #290 byte-identical); BPP-1 envelope CI lint 留账 (#274/#280 真落待) | Phase 2 ✅ closed; 锚 acceptance-templates `chn-1.md` (#287+#289) / `rt-1.md` (#291) / `cv-1.md` (#340) / `al-3.md` |
 | Phase 4+ 剩余模块 | TODO | 各模块自身完成判定 + G4.audit | 等 Phase 3 |
 
 ---
@@ -151,15 +151,18 @@
 
 **Milestones (内部顺序锁死)**
 
-1. [ ] **CHN-1** workspace 与 channel 关联
-   - [ ] PR CHN-1.1 schema + 自动建 workspace
-   - [ ] PR CHN-1.2 channel API 返回 workspace_id
-2. [ ] **CV-1** ⭐ artifact 表 + 版本机制
-   - [ ] PR CV-1.1 schema + 创建 API
-   - [ ] PR CV-1.2 版本不可变约束 + 列表 API
+1. [x] **CHN-1** workspace 与 channel 关联 ✅
+   - [x] PR CHN-1.1 schema + 自动建 workspace (PR #276 merged, v=11)
+   - [x] PR CHN-1.2 channel API 返回 workspace_id (PR #286 merged)
+   - [x] PR CHN-1.3 client SPA workspace 侧栏 (PR #288 merged)
+2. [ ] **CV-1** ⭐ artifact 表 + 版本机制 (🔄 IN PROGRESS)
+   - [x] PR CV-1.1 schema (artifacts + artifact_versions, v=13) (PR #334 cd7e12a + 22203ea follow-up; acceptance flip #340)
+   - [ ] PR CV-1.2 server API + WS push (in-flight, 战马A; frame 守 #290 byte-identical, 锚 #341 acceptance §2.5 align)
    - [ ] PR CV-1.3 workspace UI 列 artifacts
-3. [ ] **RT-1** artifact 推送 (从 Phase 4 提前)
-   - [ ] PR RT-1.1 BPP `ArtifactUpdated` frame + server 转发
+3. [x] **RT-1** artifact 推送 (从 Phase 4 提前) ✅
+   - [x] PR RT-1.1 BPP `ArtifactUpdated` frame + server cursor (PR #290 merged)
+   - [x] PR RT-1.2 client backfill `?since=N` (PR #292 merged)
+   - [x] PR RT-1.3 BPP `session.resume` frame (PR #296 merged)
 4. [ ] **CV-2** 锚点对话
 5. [ ] **CV-3** D-lite 画布渲染
 6. [ ] **CHN-2** DM 概念独立 (可与 CV-2/3 并行)
@@ -203,8 +206,11 @@ AP-3 ─┘
   - [ ] **AL-1b** busy/idle (Phase 4, 跟 BPP task_started/task_finished frame 同期)
 - [ ] **AL-2a** config 表 + update API (并行 CM-*)
 - [ ] **AL-2b** BPP ConfigUpdated frame (与 BPP-3 同 PR)
-- [ ] **AL-3** presence 完整版 (复用 CM-4 的 IsOnline + Sessions 接口)
-- [ ] **AL-4** 退役 = 禁用
+- [x] **AL-3** presence 完整版 ✅ (复用 PresenceTracker IsOnline + Sessions 接口, #277 stub → 真实施)
+  - [x] **AL-3.1** schema (presence_sessions 表, v=12) (PR #310 merged)
+  - [x] **AL-3.2** server hub WS lifecycle hook (PR #317 merged)
+  - [x] **AL-3.3** client UI presence dot (PR #324 + #327 follow-up merged)
+- [ ] **AL-4** 退役 = 禁用 (spec brief + 文案锁 + acceptance 全 merged: #313/#318/#319/#321/#322; 实施待战马B)
 
 ### plugin-protocol (BPP)
 - [ ] **BPP-1** 协议骨架 + 直连 flag + grep no-runtime + thinking subject 反约束 (工期 2 周)
@@ -269,3 +275,4 @@ AP-3 ─┘
 | 2026-04-28 | 烈马 | Phase 1 收口: CM-1 (PR #176/#178/#179/#180) + AP-0 (#177) + G1.audit (#182) 全 merged; Gates G1.1/G1.2/G1.3/G1.5 ✅ (烈马本地 fresh DB SQL 直查 + 真实 HTTP register/agent E2E + 6 端点 leak-scan); G1.4 ⏸ 待 CM-3 写路径完成后补; Phase 概览改 🔄 4/5 + audit ✅ |
 | 2026-04-28 | 飞马 | D1–D9 flip (audit #212 派活): Phase 1 改 ✅ DONE (G1.4 closed by #208 + #210, CM-3 closed by #208); Phase 2 解封前置 5/6 改 [x] (INFRA-2 #195, ADM-0.1 #197, ADM-0.2 #201, AP-0-bis #206, CM-onboarding #203); ADM-0 总括改 🔄 (ADM-0.3 #63 in progress); RT-0 留 ⏳; 配套 doc 工件 (#205 ADM-0 立场反查 / #211 ADM-1 隐私承诺 / #199 G2.4 截屏 plan) 落 Phase 2 后置区 |
 | 2026-04-28 | 飞马 | Phase 概览 flip: Phase 2 → ✅ DONE (closure #284 4 联签 #271/#272/#273/#279 + 5+1 严格闸 SIGNED + 3 PARTIAL #248 + 2 DEFERRED 留账 #274/#275/#277/#280, 锚 phase-2-exit-announcement.md); Phase 3 → 🔄 IN PROGRESS (RT-1 三段 #290+#292+#296 + CHN-1 三段 #276+#286+#288 + CV-1 立场 #282+#295 实施 / BPP-1 envelope CI lint 留账) |
+| 2026-04-29 | 飞马 | Phase 3 详细段 stale flip (audit 抓出 ⚠️): CHN-1 ⚪→✅ (#276/#286/#288 三段全闭); RT-1 ⚪→✅ (#290/#292/#296 三段全闭, 拆出 RT-1.2 + RT-1.3); CV-1 ⚪→🔄 (CV-1.1 ✅ #334+#340, CV-1.2 in-flight 战马A 锚 #341 frame align); Phase 4+ AL-3 ⚪→✅ (#310/#317/#324/#327 三段全闭, 加 stub→真实施备注); AL-4 备注实施前置全 merged #313/#318/#319/#321/#322 待战马B; Phase 概览行同步更新 (CHN-1/RT-1/AL-3 ✅, CV-1.1 ✅, CV-1.2 in-flight) |
