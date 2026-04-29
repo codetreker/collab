@@ -43,11 +43,11 @@ import (
 // byte-identical — direction lock plugin→server.
 func TestBPPEnvelopeFrameWhitelist(t *testing.T) {
 	envs := bpp.AllBPPEnvelopes()
-	if got, want := len(envs), 10; got != want {
-		t.Fatalf("BPP-1 envelope count: got %d, want %d (control 6 + data 4 incl AL-2b agent_config_ack)", got, want)
+	if got, want := len(envs), 12; got != want {
+		t.Fatalf("BPP envelope count: got %d, want %d (BPP-1 control 6 + data 3 + AL-2b ack +1 + BPP-2.2 task +2 = 12)", got, want)
 	}
 	wl := bpp.BPPEnvelopeWhitelist()
-	if got, want := len(wl), 10; got != want {
+	if got, want := len(wl), 12; got != want {
 		t.Fatalf("whitelist size: got %d, want %d", got, want)
 	}
 	seen := map[string]struct{}{}
@@ -97,8 +97,8 @@ func TestBPPEnvelopeDirectionLock(t *testing.T) {
 	if ctrl != 6 {
 		t.Errorf("control-plane envelope count: got %d, want 6 (§2.1)", ctrl)
 	}
-	if data != 4 {
-		t.Errorf("data-plane envelope count: got %d, want 4 (§2.2 + AL-2b agent_config_ack)", data)
+	if data != 6 {
+		t.Errorf("data-plane envelope count: got %d, want 6 (§2.2 + AL-2b agent_config_ack + BPP-2.2 task_started/task_finished)", data)
 	}
 }
 
