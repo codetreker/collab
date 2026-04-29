@@ -171,6 +171,13 @@ func (s *Server) SetupRoutes() {
 	layoutHandler := &api.LayoutHandler{Store: s.store, Logger: s.logger}
 	layoutHandler.RegisterRoutes(s.mux, authMw)
 
+	// BPP-3.2.2 owner DM 一键 grant — POST /api/v1/me/grants
+	// (蓝图 auth-permissions.md §1.3 主入口字面 + bpp-3.2-spec.md §1
+	// 立场 ②). owner-only ACL + capability ∈ AP-1 14 项 const + scope ∈
+	// v1 三层. action ∈ {grant, reject, snooze}; reject/snooze v1 仅 audit.
+	meGrantsHandler := &api.MeGrantsHandler{Store: s.store, Logger: s.logger}
+	meGrantsHandler.RegisterRoutes(s.mux, authMw)
+
 	// AL-2a.2 agent_configs — SSOT REST endpoints (owner-only, fail-closed
 	// runtime-field reject, acceptance #264 §4.1.a-d). 蓝图 §1.4 字段划界 +
 	// §1.5 BPP frame `agent_config_update` AL-2b 已落 — PATCH 后 fanout

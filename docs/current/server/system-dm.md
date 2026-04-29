@@ -45,3 +45,34 @@ DM emit 失败 (channel 缺失 / 网络) → 仅 log warn, audit 行已落不 ro
 - 单测: `internal/store/admin_actions_test.go` (5 模板 + 反约束); `internal/api/adm_2_2_audit_hook_test.go` (full path E2E)
 - spec brief: [`docs/implementation/modules/adm-2-spec.md`](../../implementation/modules/adm-2-spec.md) §2 ADM-2.2
 - acceptance: [`docs/qa/acceptance-templates/adm-2.md`](../../qa/acceptance-templates/adm-2.md)
+
+---
+
+## 4. BPP-3.2.1 — `request_capability_grant` system DM (Phase 5)
+
+> BPP-3.2.1 (#494 follow-up) · Phase 5 · 蓝图 [`auth-permissions.md`](../../blueprint/auth-permissions.md) §1.3 主入口字面 + spec [`bpp-3.2-spec.md`](../../implementation/modules/bpp-3.2-spec.md) §1 立场 ① + content-lock [`bpp-3.2-content-lock.md`](../../qa/bpp-3.2-content-lock.md) §1+§2.
+
+### 4.1 触发路径
+
+Plugin SDK 收 BPP-3.1 `permission_denied` frame (after AP-1 `auth.HasCapability` false 路径) → plugin 上行 `SemanticActionFrame{Action: "request_capability_grant"}` → BPP-2.1 dispatcher 路由到 `internal/api/capability_grant.go::CapabilityGrantHandler` → handler 写 system DM 到 owner's `type='system'` channel (CM-onboarding #203 既有).
+
+### 4.2 DM body 字面 byte-identical (content-lock §1)
+
+模板 const: `internal/api/capability_grant.go::CapabilityGrantDMTemplate`
+```
+{agent_name} 想 {attempted_action} 但缺权限 {required_capability}
+```
+
+字段 byte-identical 跟 BPP-3.1 PermissionDeniedFrame body + AP-1 `auth.abac.go` 403 body (跨 PR drift 守, content-lock §5 五处). 反向 grep `agent.*尝试.*权限\|agent.*请求.*授权` 在 internal/api/ count==0 (近义词漂禁).
+
+### 4.3 quick_action JSON shape (content-lock §2)
+
+```json
+{"action":"grant","agent_id":"<uuid>","capability":"<14-AP-1-const>","scope":"<v1-three-layer>","request_id":"<uuid>"}
+```
+
+`action` 默认 `"grant"` (server-emitted); client UI 渲染三按钮 grant/reject/snooze 时按用户点击替换 action 字面 POST `/api/v1/me/grants`.
+
+### 4.4 Capability + scope 校验
+
+`required_capability` 必走 AP-1 `auth.Capabilities` 14 项 const; 字典外值 reject + log warn `bpp.grant_capability_disallowed`. 反向 grep `GrantPermission.*Permission:.*"<literal>"` 在 internal/api/ count==0 (跟 AP-1 反约束 #1 同源).
