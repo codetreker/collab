@@ -30,6 +30,19 @@ description: Teamlead 慢节奏巡检 (2-4h) — 偏差 audit + 文档/代码一
 - 派 QA 翻牌 PR (跟 #287 / #289 / #315 / #320 同模式)
 - regression-registry count 数学 audit (active + pending = 总计)
 
+### 5. 已开 PR 任务完成度 audit (不只看 CI)
+
+新协议下一 milestone 一 PR — PR 早开, 全员往里叠 commit. slow-cron 看每个 open PR 的 Acceptance/Test plan 还剩多少 `[ ]`:
+
+- `gh pr view <N> --json body | jq -r .body | grep -E "^- \\[ \\]"` 列还没勾的项
+- 多 `[ ]` 项 + 长时间无 commit (≥4h) → 派对应角色 commit 进 worktree
+- **不要急着 merge**: CI 绿 + LGTM 齐 但 Acceptance 还有 `[ ]` → 留 PR comment "等 X 角色补 Y", 不 merge
+
+**典型卡点**:
+- 战马代码进了 + e2e 进了, 但 acceptance template 还 ⚪ → 烈马没 commit
+- 实施全有, 但 docs/current sync 没补 → 派战马补
+- 4 件套 spec 在 main 旧 PR, 没 cherry-pick 进 milestone worktree → 派飞马 commit 进 worktree
+
 ## out-of-date 红线 (兜底)
 - 任一蓝图文件 mtime > 7 天且对应 milestone 在最近 PR 推进 → 派架构师在该蓝图文件加 "Last reviewed: <date>" 行
 - 防"蓝图躺坟"式漂移
