@@ -169,7 +169,7 @@
 7. [ ] **CHN-3** 个人分组 reorder + pin — 4 件套 ✅ (spec #371 / 文案锁 待野马 / acceptance #376 / stance #366); CHN-3.1/3.2/3.3 实施待战马B
 8. [ ] **CV-4** artifact iterate 完整流 — 4 件套 ✅ (spec #365 / 文案锁 #380 / acceptance #384 / stance #385); CV-4.1/4.2/4.3 实施待战马A
 9. [ ] **CHN-4** channel 协作场骨架 demo (收尾) — 4 件套 ✅ (spec #374 / 文案锁 #382 / acceptance #381 / stance #378); CHN-4.1/4.2/4.3 实施待战马 (G3.4 三签退出闸: 战马 e2e + 烈马 acceptance + 野马 双 tab 截屏文案锁验)
-10. [ ] **DM-2** mention (从 Phase 4 提前, G3.4 协作场骨架依赖) — 4 件套 ✅ (spec #312/#362/#377 / 文案锁 #314 / acceptance #293 / 借 spec stance); DM-2.1 ✅ #361 + DM-2.2 ✅ #372 + **DM-2.3 ✅ #388** (76fb0f8, client SPA mention 渲染收口) — DM-2 三段全闭 ⭐ (REG-DM2-001..009 🟢 #383, -010 留 client 翻牌)
+10. [x] **DM-2** mention (从 Phase 4 提前, G3.4 协作场骨架依赖) — 4 件套 ✅ (spec #312/#362/#377 / 文案锁 #314 / acceptance #293 / 借 spec stance); DM-2.1 ✅ #361 + DM-2.2 ✅ #372 + **DM-2.3 ✅ #388** (76fb0f8, client SPA mention 渲染收口) — DM-2 **三段四件全闭** ⭐ (REG-DM2-001..015 全 🟢, closure follow-up: -010 ⚪→🟢 + -011..015 加 5 行)
 
 **Gates**
 
