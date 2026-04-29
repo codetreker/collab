@@ -117,6 +117,12 @@ func (s *Server) SetupRoutes() {
 	}
 	userHandler.RegisterRoutes(s.mux, authMw)
 
+	// CHN-3.2 user_channel_layout — personal preferences (本人写本人读;
+	// admin god-mode endpoint 白名单不含 user_channel_layout, ADM-0 §1.3 +
+	// AL-3 #303 ⑦ 同模式).
+	layoutHandler := &api.LayoutHandler{Store: s.store, Logger: s.logger}
+	layoutHandler.RegisterRoutes(s.mux, authMw)
+
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
 	channelHandler.RegisterRoutes(s.mux, authMw)
