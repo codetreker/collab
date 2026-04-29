@@ -40,8 +40,11 @@
 | **CHN-2** | `g3.x-dm-view-no-workspace.png` | DM 视图反向断言无 workspace tab + 无 channel-only 控件 | #354 ④ + 7 源同根 |
 | **CHN-2** | `g3.x-dm-mention-third-blocked.png` | DM `@<3rd_user>` 候选空 + placeholder "私信仅限两人..." | #354 ⑤ |
 | **CHN-3** | `g3.x-chn3-sidebar-reorder.png` | sidebar 拖拽 reorder + group ▼/▶ 折叠 + DM 行无拖拽 handle | #371 §3 + #366 ④ |
-| **CHN-4 followup** | `g3.x-chn4-followup-dm-no-handle.png` | DM 行 sidebar 不挂 drag handle ⋮⋮ count==0 反约束视觉证据 | #371 §3 + chn-4-followup.spec.ts §DM-handle |
-| **CHN-4 followup** | `g3.x-chn4-followup-cross-org-isolation.png` | 跨 org 隔离 — 用户 A 不见用户 B org 的 channel/DM list | chn-4-followup.spec.ts §cross-org |
+| **CHN-4 followup** | `g3.4-chn4-followup-dm-no-handle.png` | DM 行 sidebar 不挂 drag handle ⋮⋮ count==0 反约束视觉证据 | #371 §3 + chn-4-followup.spec.ts §DM-handle |
+| **CHN-4 followup** | `g3.4-chn4-followup-cross-org-isolation.png` | 跨 org 隔离 — 用户 A 不见用户 B org 的 channel/DM list | chn-4-followup.spec.ts §cross-org |
+| **CHN-4 G3.4 5 张** | `g3.4-chn4-collab-skeleton-overview.png` | 协作场骨架主路径 (channel + 双 tab + member 列表 + agent 🤖) — 野马 PM 签字 demo 主图 | #382 ⑥ + chn-4-content-lock §6 + chn-4-screenshots-followup.spec.ts §1 |
+| **CHN-4 G3.4 5 张** | `g3.4-chn4-dual-tab-chat.png` | "聊天" tab active byte-identical (跟 #382 ① + chn-4-content-lock ① 同源) | chn-4-screenshots-followup.spec.ts §2 |
+| **CHN-4 G3.4 5 张** | `g3.4-chn4-dual-tab-workspace.png` | "工作区" tab active byte-identical (跟 #382 ① + chn-4-content-lock ① 同源) | chn-4-screenshots-followup.spec.ts §3 |
 | **DM-2** | `g2.6-mention-render.png` | `<span data-mention-id>@{display_name}</span>` 蓝色高亮 + raw UUID 仅 attr | #314 ① |
 | **DM-2** | `g2.6-mention-candidate.png` | textarea `@` 候选列表 + agent 🤖 角标 | #314 ② |
 | **DM-2** | `g2.6-offline-fallback-dm.png` | system DM "{agent_name} 当前离线，#{channel} 中有人 @ 了它，你可能需要处理" byte-identical | #314 ③ |
