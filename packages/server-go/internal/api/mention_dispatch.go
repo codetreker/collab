@@ -83,6 +83,21 @@ type MentionFrameBroadcaster interface {
 	PushMentionPushed(messageID, channelID, senderID, mentionTargetID, bodyPreview string, createdAt int64) (int64, bool)
 }
 
+// MentionPushNotifier is the DL-4.6 cross-device fan-out seam. Mention
+// dispatch invokes this for EACH target (online + offline) so users
+// receive Web Push on devices where the SPA tab is not focused (browser
+// SW handles visibility-based dedup).
+//
+// Best-effort: implementation MUST NOT propagate errors (跟 ws push 同
+// 模式). Implemented by *push.Gateway in production; tests inject a
+// recording fake to assert call invocation.
+//
+// 反约束 (DL-4 spec §0 立场 ②): push fire-and-forget — Notify 返回
+// attempts count 仅 observability, 不 error 语义.
+type MentionPushNotifier interface {
+	NotifyMention(targetUserID, senderID, channelName, bodyPreview string, createdAt int64) int
+}
+
 // MentionDispatcher fans out mentions parsed from a fresh message:
 //   - Validates targets exist + are members of the channel (caller-side
 //     cross-channel reject is done before this — see Validate).
@@ -96,6 +111,9 @@ type MentionDispatcher struct {
 	Store    *store.Store
 	Presence presence.PresenceTracker
 	Hub      MentionFrameBroadcaster
+	// PushNotifier — DL-4.6 cross-device push seam. Nil-safe (legacy
+	// pre-DL-4 callers leave nil → no push fan-out).
+	PushNotifier MentionPushNotifier
 
 	// Now indirection — tests pin to a fixed clock (跟 store/* time-injected
 	// patterns同模式). Production callers leave nil → time.Now is used.
@@ -216,6 +234,14 @@ func (d *MentionDispatcher) Dispatch(messageID, channelID, channelName, senderID
 	var firstErr error
 	bodyPreview := ws.TruncateBodyPreview(body)
 	for _, tid := range targetIDs {
+		// DL-4.6 cross-device push (best-effort, fire-and-forget) — fired
+		// for ALL targets regardless of online state. Browser SW handles
+		// visibility-based dedup (focused tab suppresses notification).
+		// Targets without subscriptions return attempts==0 (no-op).
+		if d.PushNotifier != nil {
+			d.PushNotifier.NotifyMention(tid, senderID, channelName, bodyPreview, createdAt)
+		}
+
 		if d.Presence != nil && d.Presence.IsOnline(tid) {
 			if d.Hub != nil {
 				d.Hub.PushMentionPushed(messageID, channelID, senderID, tid, bodyPreview, createdAt)

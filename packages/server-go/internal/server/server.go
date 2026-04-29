@@ -136,9 +136,24 @@ func (s *Server) SetupRoutes() {
 	// MentionFrameBroadcaster interface via PushMentionPushed (#NNN
 	// mention_pushed_frame.go). Nil presence => skip dispatch (legacy
 	// boot path, smoke survives without DM-2 fanout).
+	//
+	// DL-4.3 push gateway — server→browser fan-out via VAPID. Init early
+	// so MentionDispatcher can pick up MentionPushNotifier seam. Falls
+	// back to noop when VAPID env unset (跟 admin Bootstrap 区分: push
+	// 是体验补丁不阻 server 启动).
+	pushGW, err := push.NewGateway(s.store, s.logger)
+	if err != nil {
+		s.logger.Info("push.NewGateway: VAPID env unset, falling back to noop", "err", err)
+		pushGW = push.NewNoopGateway(s.logger)
+	}
+	mentionPushNotifier := push.NewMentionNotifier(pushGW)
+
 	var mentionDispatcher *api.MentionDispatcher
 	if pt, err := presence.NewSessionsTracker(s.store.DB()); err == nil {
 		mentionDispatcher = api.NewMentionDispatcher(s.store, pt, s.hub)
+		// DL-4.6 cross-device fan-out — mention also fires push (best-
+		// effort, browser SW handles visibility-based dedup).
+		mentionDispatcher.PushNotifier = mentionPushNotifier
 	} else {
 		s.logger.Warn("mention dispatcher init skipped — presence tracker unavailable", "err", err)
 	}
@@ -204,15 +219,8 @@ func (s *Server) SetupRoutes() {
 	}
 	pushSubsHandler.RegisterRoutes(s.mux, authMw)
 
-	// DL-4.3 push gateway — server→browser fan-out via VAPID. Falls back
-	// to noop when VAPID env unset (跟 admin Bootstrap 区分: push 是体验
-	// 补丁, 不阻 server 启动).
-	pushGW, err := push.NewGateway(s.store, s.logger)
-	if err != nil {
-		s.logger.Info("push.NewGateway: VAPID env unset, falling back to noop", "err", err)
-		pushGW = push.NewNoopGateway(s.logger)
-	}
-	_ = pushGW // wired into mention/agent_task_state_changed fan-out hook in DL-4.6 follow-up
+	// (DL-4.3 push gateway init moved earlier — line ~85 — to feed
+	// MentionDispatcher.PushNotifier.)
 
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
