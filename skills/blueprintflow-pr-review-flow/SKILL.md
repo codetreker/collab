@@ -1,11 +1,11 @@
 ---
 name: blueprintflow-pr-review-flow
-description: PR open 后 review + admin merge 流程 — 双 review 路径 / LGTM 模板 / lint patch / admin merge agent / ruleset 兜底。
+description: PR open 后 review + merge 流程 — 双 review 路径 / LGTM 模板 / 不 admin bypass / 真 CI 全绿合。
 ---
 
 # PR Review Flow
 
-PR open 后到 merged 的标准流程, 含双 review 路径 + admin merge agent + ruleset 兜底协议。
+PR open 后到 merged 的标准流程. **绝对不 admin bypass / 不 ruleset disable** — CI 必须真过, flaky 真修不绕.
 
 ## PR template 必备
 
@@ -118,22 +118,26 @@ Agent({
 - ❌ NOT-LGTM 由 subagent 自己仲裁 (升级 persistent)
 - ❌ subagent prompt 不带具体 cross-ref PR # / commit SHA (review 失去 byte-identical 验证能力)
 
-## Admin merge agent
+## Merge agent
 
-派 general-purpose agent (background) 跑:
+派 general-purpose agent (background) 跑. **绝对不 admin / 不 ruleset disable**:
 
 ```
-Admin merge PR #<N>:
+Merge PR #<N>:
 
 1. gh pr view <N> --json statusCheckRollup,mergeStateStatus,body
-2. 如 PR template lint 缺字段 (常见 5 项: Blueprint / Touches / Current 同步 / Acceptance / Stage):
+2. 如 PR template lint 缺字段 (Blueprint § / Touches / Acceptance / Stage / Current 同步):
    patch body via gh api -X PATCH /repos/<owner>/<repo>/pulls/<N> --input <(jq ...)
    close+reopen 触发 lint rerun
-3. CI 全绿 + mergeable=CLEAN → gh pr merge <N> --squash --admin
-4. 报 merge time + SHA + lint 修没 + 用没 ruleset 兜底
+3. CI 真过 + mergeable=CLEAN + LGTM → gh pr merge <N> --squash --delete-branch
+4. **CI fail (任何 check) → 派 author 修, 不 bypass**:
+   - go-test/client-vitest/e2e/bpp-envelope-lint/coverage/build/typecheck FAILURE → 全部真 fail, 必修
+   - PR template lint regex 误报 → 修 lint regex 让真合规 body 过, 不 bypass
+   - DIRTY → author rebase main
+5. 报 merge time + SHA (无 admin/无 ruleset disable)
 ```
 
-注: `gh pr edit --body` 在某些环境不生效, 用 `gh api PATCH` 直 patch JSON。
+注: `gh pr edit --body` 在某些环境不生效, 用 `gh api PATCH` 直 patch JSON.
 
 ### Batch 模式 (加速 — 多 PR 一波)
 

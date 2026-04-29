@@ -1,11 +1,13 @@
 ---
 name: blueprintflow-milestone-fourpiece
-description: Milestone 启动 4 件套并行模板 — spec brief / stance checklist / acceptance template / content lock。4 PR 互引 §X.Y, drift 跨 PR review 抓出。
+description: Milestone 启动 4 件套 (spec/stance/acceptance/content-lock), 跟实施代码一起在**一个 PR** 里落 — 不再拆多个 docs PR。
 ---
 
 # Milestone 4 件套
 
-每个 milestone 实施前必须先落 4 个 docs PR 形成基线, 才开实施。**4 件套并行**, 不是串行 — 互引 §X.Y, drift 跨 PR review 抓出。
+每个 milestone **一个 PR 一次合**: 4 件套 + 三段实施 + e2e + docs/current sync + REG flip + acceptance ⚪→✅ + PROGRESS [x] **全在同一 PR** 内. 不再拆 spec/acceptance/文案锁/stance 4 个独立 docs PR, 也不拆 schema/server/client 三个实施 PR.
+
+**反例 (旧做法)**: 一个 milestone 拆 8-10 PR, 每个双 review + CI + rebase + §5 totals 串行写竞争 + closure follow-up 拖尾. 实际比"一 PR 整 milestone"慢得多.
 
 ## 4 件套
 
@@ -73,31 +75,42 @@ milestone 启动时 (Teamlead):
 4 件套 ready 后 PR open, 派 review (走 blueprintflow:pr-review-flow)
 ```
 
-## 拆段实施 (4 件套 merged 后)
+## 拆段实施 (在同一 PR 内顺序提交)
 
-战马按 §1 拆段顺序实施, 每段 ≤3 天 / ≤500 行:
+战马在**同一 branch + 同一 PR** 内按 §1 拆段提交多个 commit:
 - 1.1 schema (migration v=N + 表 + drift test)
 - 1.2 server (API + 业务逻辑 + 反向断言 test)
 - 1.3 client (SPA UI + e2e Playwright)
+- 1.4 docs/current sync (server / client docs)
+- 1.5 REG-* 翻 🟢 + acceptance template ⚪→✅ + PROGRESS [x]
 
-每段 PR 走 `blueprintflow:pr-review-flow`。
+不开多 PR. 用 worktree:
 
-## Follow-up patch 模式
+```bash
+cd /workspace/borgee
+git worktree add .worktrees/<milestone> -b feat/<milestone> origin/main
+cd .worktrees/<milestone>
+# 干活 (多 commit 也 OK)
+git push -u origin feat/<milestone>
+gh pr create
+# PR merge 后:
+cd /workspace/borgee
+git worktree remove .worktrees/<milestone>
+```
 
-milestone PR merged 后, 单独开 patch PR 翻 🟢 (不在原 PR 加 commit, 历史干净):
-- acceptance template 段翻 🟢 + 实施证据回填 (引 PR # + commit SHA)
-- regression-registry 加 REG-* 行 (count 数学对账 + 留账标 ⚪/⏸️)
+## Closure 在 PR 内一次落, 不开 follow-up
 
-实例: CHN-1.3 #289 / RT-1 closure #298 / AL-3.1 #315 / AL-3.2 #320
+acceptance ⚪→✅ + REG-* + PROGRESS [x] 都在实施 PR 内同 commit 落. **不开 closure follow-up PR**.
 
 ## 反模式
 
 - ❌ 跳过 4 件套直接实施 (立场漂移无法抓)
-- ❌ 4 件套串行写 (拖慢 milestone 启动)
+- ❌ 拆成多 PR (spec/schema/server/client/closure 各自一个 PR, 反而慢)
 - ❌ 实施 PR 不引 spec § 锚点 (跨 PR drift 无法抓)
-- ❌ 实施 PR 把 acceptance template ⚪→🟢 翻牌也写一起 (历史脏, 拆 follow-up PR)
+- ❌ 用 `/tmp/<work>` 临时 clone (改用 `.worktrees/<milestone>`)
+- ❌ 一个 milestone 多个 branch (撞车 + 历史脏)
 - ❌ **文案锁早于实施太久, 不跟既有实施 cross-grep**
 
   **背景**: AL-3 #305 文案锁草稿期写 `"出错: {reason}"`, 但 AL-1a #249 既有实施 + REG-AL1A-005 是 `"故障 ({reason})"`, 文案锁字面没跟既有实施 cross-grep, 后续 AL-3 #324 跟 AL-1a 实施对齐 (合理), 文案锁文档变孤儿 (PR #336 fix).
 
-  **如何应用**: 写文案锁 (任何 content-lock PR) 前必跑 grep 反查既有实施: `grep -rnE "<候选字面>" packages/{client,server-go}/`. 如有命中既有字面, 文案锁字面跟它对齐 (实施先于文案锁的情况下), 不要按草稿臆想字面写; 如既有实施跟立场冲突, 应同步开 patch 改实施 + 文案锁两边 byte-identical, 不能让文案锁字面孤儿留账.
+  **如何应用**: 写文案锁前必跑 grep 反查既有实施: `grep -rnE "<候选字面>" packages/{client,server-go}/`. 如有命中既有字面, 文案锁字面跟它对齐, 不要按草稿臆想字面写; 如既有实施跟立场冲突, 应同步改实施 + 文案锁两边 byte-identical.

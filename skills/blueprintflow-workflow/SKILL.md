@@ -160,8 +160,10 @@ tmux attach -t $SESSION
 
 ## 关键协议
 
-- **Worktree 隔离**: 主 worktree 给战马 in-flight (一次只一个), 其他用 `/tmp/<name>-<topic>` 临时 clone
-- **PR template 顶部 4 行裸 metadata**: `Blueprint: §X.Y` / `Touches:` / `Current 同步:` / `Stage: v0|v1`
+- **Worktree 协议**: 战马 worktree 在 repo 根 `.worktrees/<milestone>`, 不再 `/tmp/`. 一 milestone 一 worktree 一 branch (`feat/<milestone>`).
+- **一 milestone 一 PR**: 4 件套 + 三段实施 + e2e + docs/current sync + REG flip + acceptance ⚪→✅ + PROGRESS [x] **全在同一 PR**, 不拆多 PR. 不开 closure follow-up.
+- **PR 合并不 admin bypass**: CI 必须真过, flaky 真修不 bypass (含 PR template lint 误报 / e2e flaky / coverage 卡线 — 都修不绕)
+- **PR template 顶部 4 行裸 metadata**: `Blueprint: §X.Y` / `Touches:` / `Current 同步:` / `Stage: v0|v1` (或 h2 章节式)
 - **Migration v 号串行发号** (如适用): 分配前先 grep 确认
 - **规则 6 (current 同步)**: 代码改 → docs/current 必同步, PR 级 lint 强制
 - **立场漂移 5 层防御**: spec grep + acceptance 反查锚 + stance 黑名单 + content-lock byte-identical + PR 跨文件 cross-check
