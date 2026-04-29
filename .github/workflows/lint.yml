@@ -22,13 +22,13 @@ jobs:
           fi
 
           # 闸 2 grep: at least one `Blueprint:` line with §X.Y anchor
-          if ! echo "$BODY" | grep -E '^[[:space:]]*Blueprint:[[:space:]].+§' >/dev/null; then
+          if ! echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Blueprint:?(\*\*)?[[:space:]].+§' >/dev/null; then
             echo "::error::PR body missing 'Blueprint: <module> §X.Y' line"
             fail=1
           fi
 
           # Touches: header
-          if ! echo "$BODY" | grep -E '^[[:space:]]*Touches:[[:space:]].+' >/dev/null; then
+          if ! echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Touches:?(\*\*)?[[:space:]].+' >/dev/null; then
             echo "::error::PR body missing 'Touches: <subsystems>' line"
             fail=1
           fi
@@ -40,13 +40,13 @@ jobs:
           fi
 
           # Acceptance section heading
-          if ! echo "$BODY" | grep -E '^##[[:space:]]*Acceptance' >/dev/null; then
+          if ! echo "$BODY" | grep -E '^##[[:space:]]*(\*\*)?Acceptance(\*\*)?' >/dev/null; then
             echo "::error::PR body missing '## Acceptance' section"
             fail=1
           fi
 
           # Stage line
-          if ! echo "$BODY" | grep -E '^[[:space:]]*Stage:[[:space:]](v0|v1)' >/dev/null; then
+          if ! echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Stage:?(\*\*)?[[:space:]](v0|v1)' >/dev/null; then
             echo "::error::PR body missing 'Stage: v0' (or v1) line"
             fail=1
           fi
