@@ -228,6 +228,40 @@ func (h *PollHandler) handleStreamGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userChannels := h.Store.GetUserChannelIDs(user.ID)
+
+	// CRITICAL ordering — subscribe + snapshot cursor BEFORE we tell the
+	// client we are connected. Otherwise the client may issue a write
+	// (e.g. POST /messages) that commits at cursor=N+1 in the window
+	// between our `:connected` flush and our SubscribeEvents/GetLatestCursor
+	// pair. Two race shapes that ordering closes:
+	//
+	//   (A) commit happens before GetLatestCursor: snapshot reads N+1 and
+	//       the select-loop's `cursor > snapshot` filter silently drops the
+	//       new event — it is treated as "already delivered" though the
+	//       client has seen nothing. This is the real cause of the
+	//       TestP1SSEReconnectBackfill 30s deadline on slow CI.
+	//
+	//   (B) commit happens after GetLatestCursor but SignalNewEvents fires
+	//       before SubscribeEvents: the signal has no subscriber and is
+	//       dropped. The next event-loop iteration only wakes on heartbeat
+	//       (15s) or another unrelated signal, so the message lingers
+	//       undelivered.
+	//
+	// By snapshotting + subscribing here — before WriteHeader — every
+	// commit the client can possibly issue lives strictly after our
+	// snapshot, and SignalNewEvents either bumps a buffered slot (cap=1)
+	// we drain on entering the select, or it raced ahead of our subscribe
+	// (impossible since the client cannot have observed us yet). PR #527
+	// (deadline 5s→30s) was treating a symptom; this is the true fix.
+	ctx := r.Context()
+	var signal chan struct{}
+	if h.Hub != nil {
+		signal = h.Hub.SubscribeEvents()
+		defer h.Hub.UnsubscribeEvents(signal)
+	}
+	cursor := h.Store.GetLatestCursor()
+
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -237,13 +271,16 @@ func (h *PollHandler) handleStreamGet(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, ":connected\n\n")
 	flusher.Flush()
 
-	userChannels := h.Store.GetUserChannelIDs(user.ID)
-	cursor := h.Store.GetLatestCursor()
-
 	if lastID := r.Header.Get("Last-Event-ID"); lastID != "" {
 		if c, err := strconv.ParseInt(lastID, 10, 64); err == nil && c < cursor {
-			h.sendBackfill(w, flusher, c, userChannels, user.ID)
-			cursor = h.Store.GetLatestCursor()
+			backfilled := h.sendBackfill(w, flusher, c, userChannels, user.ID)
+			if backfilled > cursor {
+				cursor = backfilled
+			}
+			// sendBackfill returned the highest cursor it emitted (or `c`
+			// if none). Use max(snapshot, backfilled) as the live-loop
+			// low-water so events in [snapshot+1, backfilled] are not
+			// re-emitted by the signal path.
 		}
 	}
 
@@ -252,13 +289,6 @@ func (h *PollHandler) handleStreamGet(w http.ResponseWriter, r *http.Request) {
 
 	memberRefresh := time.NewTicker(60 * time.Second)
 	defer memberRefresh.Stop()
-
-	ctx := r.Context()
-	var signal chan struct{}
-	if h.Hub != nil {
-		signal = h.Hub.SubscribeEvents()
-		defer h.Hub.UnsubscribeEvents(signal)
-	}
 
 	for {
 		select {
@@ -366,17 +396,19 @@ func (h *PollHandler) handleEventsBackfill(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func (h *PollHandler) sendBackfill(w http.ResponseWriter, flusher http.Flusher, since int64, channelIDs []string, userID string) {
+func (h *PollHandler) sendBackfill(w http.ResponseWriter, flusher http.Flusher, since int64, channelIDs []string, userID string) int64 {
 	events, err := h.Store.GetEventsSinceWithChanges(since, 500, channelIDs, channelChangeKinds)
 	if err != nil {
-		return
+		return since
 	}
 	for _, e := range events {
 		fmt.Fprintf(w, "event: %s\nid: %d\ndata: %s\n\n", e.Kind, e.Cursor, e.Payload)
 	}
 	if len(events) > 0 {
 		flusher.Flush()
+		return events[len(events)-1].Cursor
 	}
+	return since
 }
 
 func sseWrite(w http.ResponseWriter, event string, id int64, data string) {
