@@ -885,16 +885,21 @@ export async function listCommands(channelId?: string): Promise<CommandsResponse
 
 /**
  * CV-3.1/3.2 (#396 / #400): artifact kind enum extended from the v1
- * 'markdown' lock to three kinds. 字面 byte-identical 跟
- * cv-3-content-lock.md §1 ① + cv_3_2_artifact_validation.go ArtifactKind*
- * 同源 (反 camelCase `imageLink` / 同义词 `pdf|kanban|mindmap` 漂移).
+ * 'markdown' lock to three kinds. CV-2 v2 (#cv-2-v2): extends to 5 项 with
+ * 'video_link' / 'pdf_link' (byte-identical 跟 cv_2_v2_media_preview.go
+ * schema CHECK + cv_3_2_artifact_validation.go ValidArtifactKinds 同源).
  */
-export type ArtifactKind = 'markdown' | 'code' | 'image_link';
+export type ArtifactKind =
+  | 'markdown'
+  | 'code'
+  | 'image_link'
+  | 'video_link'
+  | 'pdf_link';
 
 export interface Artifact {
   id: string;
   channel_id: string;
-  /** CV-3.1: 三态 enum (was 'markdown'-only in CV-1). */
+  /** CV-3.1 + CV-2 v2: 5 态 enum (was 'markdown'-only in CV-1). */
   type: ArtifactKind;
   title: string;
   body: string;
@@ -907,6 +912,8 @@ export interface Artifact {
   /** 立场 ② 单文档锁 30s TTL — nil = 无人持锁可写. */
   lock_holder_user_id?: string;
   lock_acquired_at?: number;
+  /** CV-2 v2 (#cv-2-v2): server-recorded thumbnail / poster URL (https only). */
+  preview_url?: string;
 }
 
 export interface ArtifactVersion {

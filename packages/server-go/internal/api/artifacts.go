@@ -133,6 +133,8 @@ func (h *ArtifactHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Ha
 	mux.Handle("GET /api/v1/artifacts/{artifactId}/versions", wrap(h.handleListVersions))
 	mux.Handle("POST /api/v1/artifacts/{artifactId}/commits", wrap(h.handleCommit))
 	mux.Handle("POST /api/v1/artifacts/{artifactId}/rollback", wrap(h.handleRollback))
+	// CV-2 v2 (#cv-2-v2): owner-only preview thumbnail generation.
+	mux.Handle("POST /api/v1/artifacts/{artifactId}/preview", wrap(h.handlePreview))
 }
 
 // artifactRow is the raw shape we read back via gorm.Raw.Scan. We don't
@@ -149,6 +151,8 @@ type artifactRow struct {
 	ArchivedAt        *int64  `gorm:"column:archived_at"`
 	LockHolderUserID  *string `gorm:"column:lock_holder_user_id"`
 	LockAcquiredAt    *int64  `gorm:"column:lock_acquired_at"`
+	// CV-2 v2 (#cv-2-v2) — server-recorded thumbnail/poster URL (https only).
+	PreviewURL        *string `gorm:"column:preview_url"`
 }
 
 type versionRow struct {
@@ -166,7 +170,7 @@ func (h *ArtifactHandler) loadArtifact(id string) (*artifactRow, error) {
 	var rows []artifactRow
 	if err := h.Store.DB().Raw(`SELECT
   id, channel_id, type, title, body, current_version, created_at,
-  archived_at, lock_holder_user_id, lock_acquired_at
+  archived_at, lock_holder_user_id, lock_acquired_at, preview_url
 FROM artifacts WHERE id = ?`, id).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -270,7 +274,7 @@ func (h *ArtifactHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		req.Type = ArtifactKindMarkdown
 	}
 	if !IsValidArtifactKind(req.Type) {
-		writeJSONError(w, http.StatusBadRequest, "artifact.invalid_kind: type must be one of [markdown code image_link]")
+		writeJSONError(w, http.StatusBadRequest, "artifact.invalid_kind: type must be one of [markdown code image_link video_link pdf_link]")
 		return
 	}
 	// CV-3.2 metadata gate (acceptance §1.3 / §1.4 + 文案锁 §1 ②④⑤):
@@ -714,6 +718,10 @@ func (h *ArtifactHandler) serializeArtifact(a *artifactRow, committerKind, commi
 	}
 	if a.LockAcquiredAt != nil {
 		out["lock_acquired_at"] = *a.LockAcquiredAt
+	}
+	// CV-2 v2 (#cv-2-v2): preview_url echoed when set; null/missing when absent.
+	if a.PreviewURL != nil {
+		out["preview_url"] = *a.PreviewURL
 	}
 	return out
 }

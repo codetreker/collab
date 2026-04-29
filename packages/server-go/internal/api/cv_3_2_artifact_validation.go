@@ -41,20 +41,27 @@ import (
 // ArtifactKindMarkdown / ArtifactKindCode / ArtifactKindImageLink — CV-3
 // 三态 enum, byte-identical 跟 cv_3_1_artifact_kinds.go schema CHECK
 // + cv-3-content-lock.md §1 ① + spec §0 立场 ①.
+// ArtifactKindVideoLink / ArtifactKindPDFLink — CV-2 v2 #cv-2-v2 扩 5 项,
+// byte-identical 跟 cv_2_v2_media_preview.go schema CHECK 同源.
 const (
 	ArtifactKindMarkdown  = "markdown"
 	ArtifactKindCode      = "code"
 	ArtifactKindImageLink = "image_link"
+	ArtifactKindVideoLink = "video_link"
+	ArtifactKindPDFLink   = "pdf_link"
 )
 
 // ValidArtifactKinds is the closed enum the server accepts at request
 // time. Mirrors the schema CHECK constraint installed by migration v=17
-// (cv_3_1_artifact_kinds). Drift between this slice and the migration
-// CHECK is caught by the server validation tests + the schema test.
+// (cv_3_1_artifact_kinds) + extended by v=27 (cv_2_v2_media_preview).
+// Drift between this slice and the migration CHECKs is caught by the
+// server validation tests + the schema test.
 var ValidArtifactKinds = []string{
 	ArtifactKindMarkdown,
 	ArtifactKindCode,
 	ArtifactKindImageLink,
+	ArtifactKindVideoLink,
+	ArtifactKindPDFLink,
 }
 
 // IsValidArtifactKind reports whether k is one of the three accepted
@@ -226,6 +233,14 @@ func ValidateArtifactMetadata(kind string, m ArtifactMetadata) error {
 				return errInvalidImageLinkURL("metadata.thumbnail_url: " + err.Error())
 			}
 		}
+		return nil
+
+	case ArtifactKindVideoLink, ArtifactKindPDFLink:
+		// CV-2 v2 立场 ① + ② — body=URL (跟 image_link 同精神, body 即 URL),
+		// preview_url generated lazily by POST /artifacts/:id/preview owner-only.
+		// metadata 当前无 per-kind contract (留账 v3+ 加 'duration'/'pages' 等);
+		// URL 合法性 validated at preview generation time (https-only 红线
+		// 跟 ValidateImageLinkURL 同源).
 		return nil
 
 	default:
