@@ -61,6 +61,16 @@ const (
 	// lifecycle, 跟 task-level (busy) 正交.
 	FrameTypeBPPTaskStarted  = "task_started"
 	FrameTypeBPPTaskFinished = "task_finished"
+
+	// BPP-5 plugin reconnect handshake — plugin upstream signals
+	// reconnect-with-cursor (蓝图 §1.6 重连恢复 + §2.1 connect 路径承袭;
+	// reconnect ≠ connect — connect 是首次身份+capabilities, reconnect
+	// 携带 last_known_cursor 恢复, 字段集不交). cursor resume **复用
+	// RT-1.3 #296 既有 mechanism** (bpp.ResolveResume + Mode=incremental,
+	// AfterCursor=last_known_cursor); state 翻转走 AL-1 5-state graph
+	// 既有 error→online valid edge (无 persisted "connecting" 中间态,
+	// connecting 仅 spec 概念名, 跟 #492 valid edge byte-identical).
+	FrameTypeBPPReconnectHandshake = "reconnect_handshake"
 )
 
 // Direction is the hard direction lock the lint enforces.
@@ -385,6 +395,40 @@ type TaskFinishedFrame struct {
 func (TaskFinishedFrame) FrameType() string         { return FrameTypeBPPTaskFinished }
 func (TaskFinishedFrame) FrameDirection() Direction { return DirectionPluginToServer }
 
+// ReconnectHandshakeFrame — BPP-5 plugin reconnect handshake.
+//
+// Direction lock plugin→server. Sent when a plugin reopens the BPP
+// socket AFTER an earlier connect (BPP-1 #304) was disconnected. The
+// frame carries `last_known_cursor` so the server can resume the
+// shared event sequence (RT-1.3 #296 ResolveResume incremental mode);
+// agents are scoped from the plugin connection's authenticated user
+// (BPP-1 connect handshake), so this frame doesn't re-authenticate.
+//
+// 6 字段 byte-identical 跟 spec brief §1 BPP-5.1:
+//   {Type, PluginID, AgentID, LastKnownCursor, DisconnectAt, ReconnectAt}
+//
+// 反约束 (跟 spec §0 + stance §1 立场承袭):
+//   - **不复用 ConnectFrame** — connect 携 Token + Capabilities (首次身份);
+//     reconnect 携 last_known_cursor (恢复). 字段集不交.
+//   - **不另开 channel/sub_protocol** — 单 BPP envelope frame, 跟 BPP-3
+//     dispatcher 复用 (PluginFrameDispatcher 注册).
+//   - **cursor resume 复用 RT-1.3** — server handler 调
+//     bpp.ResolveResume(SessionResumeRequest{Mode: incremental,
+//     AfterCursor: LastKnownCursor}, …). 不另起 sequence.
+//   - 字段顺序锁: type/plugin_id/agent_id/last_known_cursor/disconnect_at/
+//     reconnect_at — 跟 BPP-1 #304 envelope CI lint reflect 自动覆盖.
+type ReconnectHandshakeFrame struct {
+	Type            string `json:"type"`
+	PluginID        string `json:"plugin_id"`
+	AgentID         string `json:"agent_id"`
+	LastKnownCursor int64  `json:"last_known_cursor"`
+	DisconnectAt    int64  `json:"disconnect_at"` // Unix ms
+	ReconnectAt     int64  `json:"reconnect_at"`  // Unix ms
+}
+
+func (ReconnectHandshakeFrame) FrameType() string         { return FrameTypeBPPReconnectHandshake }
+func (ReconnectHandshakeFrame) FrameDirection() Direction { return DirectionPluginToServer }
+
 // bppEnvelopeWhitelist — single-source-of-truth list of permitted
 // BPP-1 envelope OpNames. The reflection lint asserts every exported
 // frame struct in this file maps to exactly one entry here and
@@ -404,6 +448,7 @@ var bppEnvelopeWhitelist = map[string]Direction{
 	FrameTypeBPPAgentConfigAck: DirectionPluginToServer, // AL-2b #481
 	FrameTypeBPPTaskStarted:    DirectionPluginToServer, // BPP-2.2 #485
 	FrameTypeBPPTaskFinished:   DirectionPluginToServer, // BPP-2.2 #485
+	FrameTypeBPPReconnectHandshake: DirectionPluginToServer, // BPP-5
 }
 
 // BPPEnvelopeWhitelist exposes the registry to tests in other packages
@@ -435,5 +480,6 @@ func AllBPPEnvelopes() []BPPEnvelope {
 		AgentConfigAckFrame{}, // AL-2b #481 §1.2
 		TaskStartedFrame{},    // BPP-2.2 #485
 		TaskFinishedFrame{},   // BPP-2.2 #485
+		ReconnectHandshakeFrame{}, // BPP-5
 	}
 }

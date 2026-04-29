@@ -94,6 +94,19 @@ func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	ackDispatcher := bpp.NewAckDispatcher(ackHandler, ownerResolver)
 	pfd := bpp.NewPluginFrameDispatcher(logger)
 	pfd.Register(bpp.FrameTypeBPPAgentConfigAck, bpp.NewAckFrameAdapter(ackDispatcher))
+
+	// BPP-5 reconnect handshake — plugin upstream signals reconnect
+	// with last_known_cursor; handler resolves cursor via RT-1.3
+	// ResolveResume (incremental mode) + clears agent error (AL-1
+	// 5-state error → online valid edge, agent.Tracker.Clear SSOT).
+	// Reuses the BPP-3 PluginFrameDispatcher boundary.
+	reconnectHandler := bpp.NewReconnectHandler(s,
+		&channelScopeAdapter{store: s},
+		ownerResolver,
+		srv.agentTracker,
+		logger)
+	pfd.Register(bpp.FrameTypeBPPReconnectHandshake, reconnectHandler)
+
 	hub.SetPluginFrameRouter(&pluginFrameRouterAdapter{pfd: pfd})
 
 	// BPP-4.1 heartbeat watchdog: 30s plugin liveness threshold, flips
@@ -585,4 +598,16 @@ type hubLivenessAdapter struct {
 
 func (a *hubLivenessAdapter) SnapshotLastSeen() map[string]time.Time {
 	return a.hub.SnapshotPluginLastSeen()
+}
+
+// channelScopeAdapter wires *store.Store.GetUserChannelIDs into the
+// bpp.ChannelScopeResolver interface (跟 hubLivenessAdapter 同模式) —
+// signature 差异: store 返 []string 无 error, interface 返 ([]string, error)
+// 跟 RT-1.3 acceptance §2.5 同 scope.
+type channelScopeAdapter struct {
+	store *store.Store
+}
+
+func (a *channelScopeAdapter) ChannelIDsForOwner(ownerUserID string) ([]string, error) {
+	return a.store.GetUserChannelIDs(ownerUserID), nil
 }
