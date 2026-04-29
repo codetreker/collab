@@ -255,6 +255,33 @@ func (h *MessageHandler) handleCreateMessage(w http.ResponseWriter, r *http.Requ
 		parsedMentionTargets = targets
 	}
 
+	// CV-8: artifact comment thread reply validators (1-level depth + agent
+	// thinking subject 5-pattern 第 6 处链 RT-3 + BPP-2.2 + AL-1b + CV-5 +
+	// CV-7 + CV-8 byte-identical). Only fires on artifact_comment with
+	// reply_to_id; non-comment paths unchanged.
+	if ct == "artifact_comment" && body.ReplyToID != nil && *body.ReplyToID != "" {
+		parent, perr := h.Store.GetMessageByID(*body.ReplyToID)
+		if perr != nil {
+			writeJSONErrorCode(w, http.StatusBadRequest, "comment.reply_target_invalid", "reply target not found")
+			return
+		}
+		if parent.ContentType != "artifact_comment" {
+			writeJSONErrorCode(w, http.StatusBadRequest, "comment.reply_target_invalid", "reply target must be an artifact comment")
+			return
+		}
+		if parent.ReplyToID != nil && *parent.ReplyToID != "" {
+			writeJSONErrorCode(w, http.StatusBadRequest, "comment.thread_depth_exceeded", "thread depth limited to 1 level")
+			return
+		}
+		// Agent senders must pass the 5-pattern thinking-subject guard
+		// byte-identical to CV-5 / CV-7 (errcode 同字符串).
+		if user.Role == "agent" && violatesThinkingSubjectCV8(content) {
+			writeJSONErrorCode(w, http.StatusBadRequest, "comment.thinking_subject_required",
+				"agent comment must carry a concrete subject (thinking-only body rejected)")
+			return
+		}
+	}
+
 	msg, err := h.Store.CreateMessageFull(channelID, user.ID, content, ct, body.ReplyToID, body.Mentions)
 	if err != nil {
 		h.Logger.Error("failed to create message", "error", err)
