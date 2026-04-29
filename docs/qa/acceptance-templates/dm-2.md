@@ -2,7 +2,7 @@
 
 > 蓝图: `concept-model.md` §4 (agent 代表自己 — mention 只 ping 目标, 不抄送 owner) + §4.1 (agent 离线 fallback — owner 系统 DM + 节流 5 分钟/channel + ❌ 不转发原始内容) + 野马 #211 ADM-0 反查 (mention 路由按 sender_id, 不展开到 owner)
 > Implementation: `docs/implementation/modules/dm-2-spec.md` (飞马 #312, 3 立场 + 3 拆段 + 6 grep 反查)
-> 拆 PR (拟): **DM-2.1** schema migration v=14 (`message_mentions` 表) + **DM-2.2** server parser + WS push + offline fallback 5min 节流 + **DM-2.3** client SPA mention 渲染 (display name / 不漏 UUID)
+> 拆 PR (拟): **DM-2.1** schema migration v=15 (`message_mentions` 表; v=14 被 CV-2.1 #359 抢号顺延) + **DM-2.2** server parser + WS push + offline fallback 5min 节流 + **DM-2.3** client SPA mention 渲染 (display name / 不漏 UUID)
 > Owner: 战马B 实施 (待 spawn) / 烈马 验收
 
 ## 验收清单
@@ -16,7 +16,7 @@
 | 1.0.a 表 schema 三轴: `id` PK AUTOINCREMENT + `message_id` NOT NULL FK `messages.id` + `target_user_id` NOT NULL FK `users.id` + `created_at` NOT NULL; pragma assert `PRAGMA table_info(message_mentions)` 5 列字面 (id/message_id/target_user_id/created_at/[id 自动]) | migration drift test | 战马B / 烈马 | `internal/migrations/dm_2_1_message_mentions_test.go::TestDM21_CreatesMessageMentionsTable` (TBD, 跟 AL-3.1 #310 `TestAL31_CreatesPresenceSessionsTable` 同模式 — pragma table_info + NOT NULL 全列断言) |
 | 1.0.b UNIQUE(message_id, target_user_id) — 同 message 同 target 二次 INSERT reject (dedup, 立场 ⑥ agent=同事 同语义); pragma assert `PRAGMA index_list` 含 `sqlite_autoindex_message_mentions_*` UNIQUE | migration drift test | 战马B / 烈马 | `dm_2_1_message_mentions_test.go::TestDM21_RejectsDuplicateMentionPerMessage` (TBD, 跟 #310 `TestAL31_RejectsDuplicateSessionID` 同模式) |
 | 1.0.c INDEX `idx_message_mentions_target_user_id` (mention 路由热路径 — fanout 时按 target 查); pragma assert `PRAGMA index_list(message_mentions)` 含 `idx_message_mentions_target_user_id` | migration drift test | 战马B / 烈马 | `dm_2_1_message_mentions_test.go::TestDM21_HasTargetUserIDIndex` (TBD, 跟 #310 `TestAL31_HasUserIDIndex` 同模式) |
-| 1.0.d migration v=13 → v=14 串行号 + idempotent rerun no-op; `registry.go` v=14 字面锁 (CV-1.1 #311 v=13 后 forward-only) | migration drift test | 战马B / 烈马 | `dm_2_1_message_mentions_test.go::TestDM21_Idempotent` (TBD, 跟 #310 `TestAL31_Idempotent` 同模式); `grep -n "v=14\|14:" packages/server-go/internal/migrations/registry.go` count==1 |
+| 1.0.d migration v=14 → v=15 串行号 + idempotent rerun no-op; `registry.go` v=15 字面锁 (CV-2.1 #359 抢 v=14 顺延 / AL-4.1 顺延 v=16 / CV-3.1 v=17) | migration drift test | 战马B / 烈马 | `dm_2_1_message_mentions_test.go::TestDM21_Idempotent` (PR #361 真落, 跟 #310 `TestAL31_Idempotent` 同模式); `grep -n "v=15\|15:" packages/server-go/internal/migrations/registry.go` count==1 |
 | 1.0.e 反约束 — 表无 `cursor` 列 (跟 RT-1 cursor 序列拆死, #312 spec §3 反向 grep 锚); 反约束 — 表无 `fanout_to_owner_id` / `cc_owner_id` 列 (立场 ③ mention 永不抄送 owner, 蓝图 §4); pragma 反向断言 column list 不含上述列名 | migration drift test + CI grep | 飞马 / 烈马 | `dm_2_1_message_mentions_test.go::TestDM21_NoCursorOrFanoutOwnerColumns` (TBD, 反向 column list); `grep -nE 'message_mentions.*cursor\|message_mentions.*owner_id\|fanout_to_owner' packages/server-go/internal/migrations/dm_2_1_*.go --exclude='*_test.go'` count==0 |
 
 ### 数据契约 (蓝图 §4 — mention 路由按 sender_id)
