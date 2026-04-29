@@ -214,8 +214,8 @@ func (h *MessageHandler) handleCreateMessage(w http.ResponseWriter, r *http.Requ
 	if ct == "" {
 		ct = "text"
 	}
-	if ct != "text" && ct != "image" && ct != "command" {
-		writeJSONError(w, http.StatusBadRequest, "content_type must be 'text', 'image', or 'command'")
+	if ct != "text" && ct != "image" && ct != "command" && ct != "artifact_comment" {
+		writeJSONError(w, http.StatusBadRequest, "content_type must be 'text', 'image', 'command', or 'artifact_comment'")
 		return
 	}
 
@@ -335,6 +335,20 @@ func (h *MessageHandler) handleUpdateMessage(w http.ResponseWriter, r *http.Requ
 	if existing.SenderID != user.ID {
 		writeJSONError(w, http.StatusForbidden, "Can only edit your own messages")
 		return
+	}
+
+	// CV-7 立场 ③: agent edit on artifact-comment-typed message must
+	// re-pass the 5-pattern thinking-subject guard. byte-identical 跟
+	// CV-5 #530 artifact_comments.go::violatesThinkingSubject — 5-pattern
+	// 第 5 处链 (RT-3 + BPP-2.2 + AL-1b + CV-5 + CV-7). 5-pattern 改 =
+	// 改 5 处 byte-identical.
+	if existing.ContentType == "artifact_comment" {
+		sender, _ := h.Store.GetUserByID(existing.SenderID)
+		if sender != nil && sender.Role == "agent" && violatesThinkingSubjectCV7(content) {
+			writeJSONErrorCode(w, http.StatusBadRequest, "comment.thinking_subject_required",
+				"agent comment must carry a concrete subject (thinking-only body rejected)")
+			return
+		}
 	}
 
 	msg, err := h.Store.UpdateMessage(messageID, content)

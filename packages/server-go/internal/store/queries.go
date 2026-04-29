@@ -430,7 +430,7 @@ func (s *Store) ListChannelMessages(channelID string, before, after *int64, limi
 	q := s.db.Table("messages m").
 		Select("m.*, u.display_name AS sender_name").
 		Joins("JOIN users u ON u.id = m.sender_id").
-		Where("m.channel_id = ?", channelID)
+		Where("m.channel_id = ? AND m.deleted_at IS NULL", channelID)
 
 	if after != nil {
 		q = q.Where("m.created_at > ?", *after).Order("m.created_at ASC")
