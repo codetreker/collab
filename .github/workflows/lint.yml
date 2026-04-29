@@ -5,11 +5,14 @@ on:
     branches: [main]
 
 jobs:
-  pr-template:
-    name: PR template (Blueprint / Touches / Current 同步)
+  pr-lint:
+    name: PR lint (template + current 同步)
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR body has required blocks
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: PR template (Blueprint / Touches / Current 同步 / Acceptance / Stage)
         env:
           BODY: ${{ github.event.pull_request.body }}
           TITLE: ${{ github.event.pull_request.title }}
@@ -57,14 +60,7 @@ jobs:
           fi
           echo "PR template ok"
 
-  current-sync:
-    name: current sync (规则 6)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Lint current 同步
+      - name: current sync (规则 6)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
