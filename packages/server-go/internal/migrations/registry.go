@@ -42,6 +42,7 @@ var All = []Migration{
 	chn11ChannelsOrgScoped,
 	al31PresenceSessions,
 	cv11Artifacts,
+	cv21AnchorComments,
 }
 
 // Default returns an Engine wired to db with All registered.
