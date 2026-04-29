@@ -129,3 +129,45 @@ PRD F1: admin = 全权运维 + 不在 org 内. 代码层:
 - session token 64 hex chars, 失窃等价 admin 全权 — 紧急 `DELETE FROM admin_sessions WHERE admin_id=...` 即时吊销.
 - `ForceDeleteChannel` 不可撤回; admin 误操作无 undo. `#general` / DM 类型频道 server 端守卫.
 - ADM-0.3 后 `users.role='admin'` count=0 是 G2.0 不变量 — 任何 migration 想恢复 admin role 在 users 表都会破坏 regression suite §3.A–§3.G.
+
+## 6. ADM-2 audit + impersonate (Phase 4)
+
+> Spec: `docs/implementation/modules/adm-2-spec.md` § 1-2; content lock `docs/qa/adm-2-content-lock.md`; stance `docs/qa/adm-2-stance-checklist.md`. Acceptance: `docs/qa/acceptance-templates/adm-2.md`.
+
+### 数据契约 (ADM-2.1 v=22, ADM-2.2 v=23)
+
+- **`admin_actions`** 表 (v=22): `id PK / actor_id FK admins / target_user_id FK users / action enum CHECK / metadata JSON / created_at`. CHECK 5 字面 byte-identical: `delete_channel | suspend_user | change_role | reset_password | start_impersonation`. 双索引 `idx_admin_actions_target_user_id_created_at` + `idx_admin_actions_actor_id_created_at`.
+- **`impersonation_grants`** 表 (v=23): `id PK / user_id FK users / granted_at / expires_at / revoked_at NULL`. 蓝图 §3 字面 "由 user 创建, admin 仅消费" — actor_id 不入此表. Index `idx_impersonation_grants_user_id_expires`.
+
+### Endpoints
+
+**User-rail** (`/api/v1/me/*`, 走 `borgee_token` cookie):
+- `GET /api/v1/me/admin-actions` — 立场 ④ 只见自己 (server `WHERE target_user_id = current`, ?target_user_id 参数被忽略防 inject); user-rail 不返 `actor_id` raw.
+- `GET /api/v1/me/impersonation-grant` — 业主端 BannerImpersonate 查询.
+- `POST /api/v1/me/impersonation-grant` — 业主授权 24h (server 固定 expires_at = granted_at + 24h); 已有 active grant → 409 `impersonate.grant_already_active`.
+- `DELETE /api/v1/me/impersonation-grant` — 业主主动撤销 (204).
+
+**Admin-rail** (`/admin-api/v1/audit-log`, 走 `borgee_admin_session`):
+- `GET /admin-api/v1/audit-log` — 立场 ③ 互可见 (无 WHERE 默认; 可选 `?actor_id=` / `?action=` / `?target_user_id=` 三 filter); user cookie → 401 (REG-ADM0-002 共享底线).
+
+### 5 admin write-action audit hook
+
+`internal/api/admin.go` 的 3 handler 已 wrap:
+- `DELETE /admin-api/v1/channels/{id}/force` → action=`delete_channel` (target=channel.created_by; metadata={channel_id, channel_name})
+- `PATCH /admin-api/v1/users/{id}` `disabled=true` → `suspend_user`
+- `PATCH /admin-api/v1/users/{id}` `password` → `reset_password`
+- `PATCH /admin-api/v1/users/{id}` `role` 改 → `change_role` (metadata={old_role, new_role})
+- `start_impersonation` 留 admin SPA 端 future patch wire
+
+audit + DM emit 走 `store.EmitAdminActionAudit` (composite); DM emit failure 不 rollback audit (蓝图 §2 优先).
+
+### Forward-only 立场 ⑤
+
+Schema 不挂 `updated_at` 列, server 不开 UPDATE/DELETE 路径. 反向 grep `UPDATE admin_actions\|DELETE FROM admin_actions` 在 `internal/` 除 migration 应 count==0.
+
+### 反约束 (stance §2 ADM2-NEG-001..010)
+
+- DM body 字面不含 `{admin_id}` / `{actor_id}` / `${adminId}` template placeholder
+- DM body 不渲染 raw UUID actor_id (走 `actorLogin` = `admins.Login`)
+- DM body `{ts}` 走 `time.Format("2006-01-02 15:04")` 不是 epoch ms
+- `admin_actions.metadata` 不挂 body/content/text/artifact 字段 (god-mode 仅元数据)
