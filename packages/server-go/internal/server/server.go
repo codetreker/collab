@@ -248,6 +248,13 @@ func (s *Server) SetupRoutes() {
 	al5Handler := &api.AL5Handler{Store: s.store, Logger: s.logger}
 	al5Handler.RegisterRoutes(s.mux, authMw)
 
+	// BPP-8.2 plugin lifecycle audit list — owner-only GET
+	// /api/v1/agents/{agentId}/lifecycle (复用 admin_actions audit forward-only,
+	// 跟 ADM-2.1 + AP-2 + BPP-4 跨四 milestone audit 同精神 锁链第 5 处;
+	// admin god-mode 不挂 ADM-0 §1.3 红线).
+	bpp8Handler := &api.BPP8LifecycleListHandler{Store: s.store, Logger: s.logger}
+	bpp8Handler.RegisterRoutes(s.mux, authMw)
+
 	// DL-4 web push subscriptions — POST/DELETE /api/v1/push/subscribe.
 	// 蓝图 client-shape.md L22 (Mobile PWA + Web Push VAPID).
 	pushSubsHandler := &api.PushSubscriptionsHandler{
