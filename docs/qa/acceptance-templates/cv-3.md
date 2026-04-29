@@ -1,0 +1,77 @@
+# Acceptance Template — CV-3: D-lite 画布渲染 (artifact kind 扩展: code + image_link)
+
+> 蓝图: `canvas-vision.md` §1.2 (D-lite, 不是 Miro) + §1.4 (artifact 集合: Markdown / 代码片段带语言标注 / 设计稿图片或链接 / 看板待办 v2+) + §2 v1 不做清单 (❌ 无限画布 / ❌ 多 artifact 关联 / ❌ CRDT / ❌ PDF / ❌ 看板)
+> Spec: `docs/implementation/modules/cv-3-spec.md` (飞马 #363, 3 立场 + 3 拆段 + 9 grep 反查 (5 反约束))
+> 文案锁: `docs/qa/cv-3-content-lock.md` (野马 #370, 7 处字面 + XSS 红线两道闸 + 11 行反向 grep)
+> 拆 PR (拟): **CV-3.1** schema enum 扩 v=17 + server validation + **CV-3.2** client 三 renderer + mention preview + **CV-3.3** e2e + G3.4 demo 3 截屏归档
+> Owner: 战马A 实施 (CV-3 顺位 CV-2 后) / 烈马 验收
+
+## 验收清单
+
+### §1 schema (CV-3.1) — artifacts.kind enum 扩 + server validation
+
+> 锚: 飞马 #363 spec §1 CV-3.1 + CV-1.1 #334 schema 三轴 + #370 ② 11 项语言白名单字面
+
+| 验收项 | 实施方式 | Owner | 实施证据 |
+|---|---|---|---|
+| 1.1 `artifacts.kind` enum CHECK 加 `'code'` / `'image_link'` (CV-1.1 #334 既有 `'markdown'` 不动); migration v=17 (CV-3.1) → v=18 (CV-4.1) sequencing 字面延续 v=14/15/16/17 | migration drift test | 战马A / 烈马 | `internal/migrations/cv_3_1_artifact_kinds_test.go::TestCV31_AcceptsCodeAndImageLinkKinds` (TBD) + registry.go v=17 字面锁 |
+| 1.2 反约束 — kind CHECK reject `'pdf'` / `'kanban'` / `'mindmap'` (蓝图 §2 v1 不做字面禁) | migration drift test | 飞马 / 烈马 | `cv_3_1_artifact_kinds_test.go::TestCV31_RejectsPdfKanbanMindmap` (TBD, 三 reject 子断言) + grep `kind.*CHECK.*'pdf'\|kanban\|mindmap'` 0 hit |
+| 1.3 server `POST /artifacts` body validation: `kind=='code'` 必含 `metadata.language` ∈ 11 项白名单 (`go|ts|js|py|md|sh|sql|yaml|json|html|css` + `text` fallback); 缺/外白名单值 → HTTP 400 `artifact.invalid_language` | unit | 战马A / 烈马 | `internal/api/cv_3_1_validation_test.go::TestCV31_CodeArtifact_RequiresLanguage` (TBD, table-driven 12 项白名单 + 反向 reject `golang`/`typescript`/`python` 全名) |
+| 1.4 server `POST /artifacts` body validation: `kind=='image_link'` 必含 `metadata.kind` ∈ `('image','link')` + URL 校验 https only (反约束 javascript: / data: / http: reject) | unit | 战马A / 烈马 | `cv_3_1_validation_test.go::TestCV31_ImageLink_RequiresHttpsOnly` (TBD, 三 reject 子断言: javascript:/data:/http:) |
+| 1.5 反约束 — 不裂表 `artifact_code` / `artifact_images` (立场 ① enum 扩不裂表) | grep | 飞马 / 烈马 | `grep -nE 'CREATE TABLE.*artifact_code\|CREATE TABLE.*artifact_images' packages/server-go/internal/migrations/` count==0 |
+
+### §2 client SPA (CV-3.2) — kind switch 三 renderer + mention preview
+
+> 锚: 飞马 #363 spec §1 CV-3.2 + 野马 #370 文案锁 7 处字面 + DOM 锁
+
+| 验收项 | 实施方式 | Owner | 实施证据 |
+|---|---|---|---|
+| 2.1 `<ArtifactPanel>` kind switch 三分支 — DOM `data-artifact-kind="markdown\|code\|image_link"` byte-identical 跟 #370 ① 同源 (反 camelCase `imageLink` 漂移) | vitest + e2e | 战马A / 烈马 | `packages/client/src/__tests__/artifact-panel-kind-switch.test.ts::renders three kinds with data-artifact-kind` (TBD, 三 enum DOM 反断) |
+| 2.2 `<CodeRenderer>` 11 项语言徽标 byte-identical 跟 #370 ② 同源 — `<span class="code-lang-badge" data-lang="{lang}">{LANG_LABEL[lang]}</span>` 跟 spec §0 ① 11 项白名单 byte-identical (LANG_LABEL = lang 大写) | vitest table-driven | 战马A / 烈马 | `__tests__/code-renderer-language.test.ts::11 项白名单 + text fallback 12 项` (TBD, table-driven 反 `golang`/`typescript`/`python` 全名同义词) |
+| 2.3 `<CodeRenderer>` 复制按钮 — `<button class="code-copy-btn" title="复制代码" aria-label="复制代码">📋</button>` byte-identical (icon 锁 📋 + title/aria 双绑); 点后 toast `"已复制"` byte-identical 1.5s 自动消 | e2e | 战马A / 烈马 | `packages/e2e/tests/cv-3-2-code-copy.spec.ts::点击 → clipboard.writeText 触发 + toast` (TBD); 反向 grep 同义词 0 hit (`Copy\|Copy to clipboard\|复制到剪贴板\|拷贝`) |
+| 2.4 `<ImageLinkRenderer>` image 分支 — `<img loading="lazy" src="{https_url}" alt="{title}" class="artifact-image">` byte-identical, max-height 480px CSS 锁; **XSS 红线第一道**: src 反向 grep `javascript:\|data:image\|http:` count==0 | vitest + e2e | 战马A / 烈马 | `__tests__/image-link-renderer.test.ts::strictly assert loading="lazy" + https only` (TBD, 反向 reject 三协议) |
+| 2.5 `<ImageLinkRenderer>` link 分支 — `<a href="{https_url}" target="_blank" rel="noopener noreferrer" class="artifact-link">{title}</a>` byte-identical; **XSS 红线第二道**: vitest 必须 **strictly assert** rel attr 字串原样 (字串 `"noopener noreferrer"` 而非 `includes`, 漏 = reverse-tab XSS leak) | vitest | 战马A / 烈马 | `__tests__/image-link-renderer.test.ts::link rel byte-identical strict assert` (TBD, `expect(rel).toBe("noopener noreferrer")` 字串原样) |
+| 2.6 mention 引用 preview kind 三模式 — markdown 头 80 字符 + ellipsis `…` / code 头 5 行 + 语言徽标 (跟 §2.2 byte-identical) / image 缩略图 `<img loading="lazy" style="max-width: 192px">` byte-identical 跟 #370 ⑥ 同源; 容器 DOM `<span class="artifact-preview" data-artifact-kind="{kind}">` 包裹 | vitest + e2e | 战马A / 烈马 | `__tests__/mention-preview-kind.test.ts::三模式截断 byte-identical` (TBD) |
+| 2.7 kind 兜底文案 (CHECK 外的旧/未来 kind) — `<div class="artifact-kind-unsupported">此 artifact 类型 ({kind}) 暂不支持渲染</div>` byte-identical (中文字面占位 `{kind}` 仅展示原 kind 字串, 不渲染 body, 优雅降级) | vitest | 战马A / 烈马 | `__tests__/artifact-kind-fallback.test.ts::renders unsupported with kind name` (TBD, 反向断言不 throw + 不渲染 body) |
+| 2.8 反约束 — 不渲染 raw HTML (XSS 红线): `dangerouslySetInnerHTML.*body` 反向 grep count==0 | grep | 飞马 / 烈马 | `grep -nE 'dangerouslySetInnerHTML.*body\|innerHTML.*=.*body' packages/client/src/components/Artifact*.tsx` count==0 |
+
+### §3 e2e + G3.4 demo (CV-3.3) — 全流验证 + 截屏归档
+
+> 锚: 飞马 #363 spec §1 CV-3.3 + 章程 G3.4 协作场骨架 demo 退出公告价值
+
+| 验收项 | 实施方式 | Owner | 实施证据 |
+|---|---|---|---|
+| 3.1 e2e 创 code artifact (Go) → 渲染 prism syntax highlight class hit (`prism-token` / `prism-code` 等); 跟 CV-1.3 #348 markdown render e2e 模式 byte-identical | e2e | 战马A / 烈马 | `packages/e2e/tests/cv-3-3-canvas-d-lite.spec.ts::§3.1 code artifact prism 高亮 + 11 项语言徽标` (TBD) |
+| 3.2 e2e 创 image_link artifact (https URL) → `<img>` DOM 验 + `loading="lazy"` 实测; 反向断言 javascript:/data:/http: URL reject 400 | e2e | 战马A / 烈马 | `cv-3-3-canvas-d-lite.spec.ts::§3.2 image_link 渲染 + URL 协议反向 reject` (TBD) |
+| 3.3 e2e mention 引用 code/image artifact → 流内 preview 缩略 (跟 §2.6 byte-identical, 跟 CV-1.3 #348 §3.3 模式同) | e2e | 战马A / 烈马 | `cv-3-3-canvas-d-lite.spec.ts::§3.3 mention preview 三模式` (TBD) |
+| 3.4 G3.4 demo 截屏 3 张 byte-identical 入 `docs/qa/screenshots/g3.4-cv3-{markdown,code-go-highlight,image-embed}.png` (撑章程退出公告, 跟 G2.4#5 / G2.5 / G2.6 / G3.x 同模式) | Playwright `page.screenshot()` | 战马A / 野马 / 烈马 | `cv-3-3-canvas-d-lite.spec.ts::G3.4 demo 截屏归档` (TBD); 截屏文件 commit 入 docs/qa/screenshots/ |
+
+### §4 反向 grep / e2e 兜底 (跨 CV-3.x 反约束)
+
+> 锚: 飞马 #363 spec §3 5 反约束 grep + 野马 #370 §2 11 行反向 grep (含 XSS 红线两道闸)
+
+| 验收项 | 实施方式 | Owner | 实施证据 |
+|---|---|---|---|
+| 4.1 反约束 — CRDT 0 hit: `grep -rnE 'CRDT\|yjs\|automerge' packages/client/ packages/server-go/` count==0 (蓝图 §2 字面 "CRDT 巨坑不踩") | CI grep | 飞马 / 烈马 | _(每 CV-3.* PR 必跑)_ |
+| 4.2 反约束 — javascript:/data:/http: image src 0 hit: `grep -rnE 'src=\{?["'"'"']?(javascript:\|data:image\|http:)' packages/client/src/components/ImageLinkRenderer.tsx` count==0 | CI grep | 飞马 / 烈马 | _(每 CV-3.2/3.3 PR 必跑)_ |
+| 4.3 反约束 — kind 同义词 / camelCase 漂移 0 hit: `grep -rnE "['\"]( imageLink\|code_image\|pdf\|kanban\|mindmap)['\"]" packages/client/src/components/Artifact*.tsx` count==0 | CI grep | 飞马 / 烈马 | _(每 CV-3.2 PR 必跑)_ |
+| 4.4 反约束 — 全名语言同义词 0 hit (短码唯一): `grep -rnE "['\"]( golang\|typescript\|python\|shell\|bash\|plaintext)['\"]" packages/client/src/components/CodeRenderer.tsx` count==0 | CI grep | 飞马 / 烈马 | _(每 CV-3.2 PR 必跑)_ |
+| 4.5 反约束 — DOM `[data-artifact-kind="markdown\|code\|image_link"]` ≥ 3 (三 enum 各 ≥1, 漏 = 视觉混淆) | CI grep | 飞马 / 烈马 | `grep -rnE 'data-artifact-kind=["'"'"'](markdown\|code\|image_link)["'"'"']' packages/client/src/components/ArtifactPanel.tsx` count≥3 |
+
+## 边界 (跟其他 milestone 关系)
+
+| Milestone | 关系 | 字面承袭 |
+|---|---|---|
+| CV-1 ✅ | markdown 路径不破 (kind='markdown' 老 artifact 渲染保持 #346 既有) | CV-1.3 ArtifactPanel kind switch 入口 byte-identical |
+| CV-2 #356/#360 | anchor 仅挂 markdown artifact (server 前置 `anchor.unsupported_artifact_kind` 403) — code/image 加锚留 v3+ | CV-2 §4 反约束 字面承袭 |
+| CV-4 #365 | iterate 适用所有 kind (intent 文本同适用); diff view code 走 prism + jsdiff 行级, image_link 走前后缩略图并排 fallback | CV-4 立场 ③ client diff 字面承袭 |
+| RT-1 ✅ | ArtifactUpdated frame `kind` 字段已存在, 复用同 envelope 不另起 | cursor.go::ArtifactUpdatedFrame.Kind byte-identical |
+| BPP-1 ✅ #304 | envelope CI lint 自动覆盖 frame 字段顺序 | reflect 比对 server-go 端字段顺序 |
+
+## 退出条件
+
+- §1 schema 5 项 + §2 client 8 项 + §3 e2e + demo 4 项 + §4 反向 grep 5 项**全绿** (一票否决)
+- XSS 红线两道闸全 0 hit (image src 协议 + link rel strictly assert byte-identical)
+- 登记 `docs/qa/regression-registry.md` REG-CV3-001..017 (5 schema + 8 client + 3 e2e + 1 demo 截屏归档)
+- G3.4 demo 截屏 3 张归档 (撑章程 Phase 3 退出公告)
+- v=14-17 sequencing 字面延续 (CV-2.1 ✅ / DM-2.1 ✅ / AL-4.1 v=16 / **CV-3.1 v=17**)
