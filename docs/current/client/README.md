@@ -39,10 +39,10 @@
 - `ThemeContext.tsx` — 主题切换。
 
 ### `lib/`
-- `api.ts` — 全部 REST 调用集中在这里。`request<T>()` 用 `fetch` + `credentials: 'include'`（cookie auth）；dev 时塞 `X-Dev-User-Id` 头；非 2xx 抛 `ApiError`。`Agent` interface 含 `state` / `reason` / `state_updated_at` (AL-1a Phase 2 三态: online/offline/error)。
+- `api.ts` — 全部 REST 调用集中在这里。`request<T>()` 用 `fetch` + `credentials: 'include'`（cookie auth）；dev 时塞 `X-Dev-User-Id` 头；非 2xx 抛 `ApiError`。`Agent` interface 含 `state` / `reason` / `state_updated_at` (AL-1a Phase 2 三态 online/offline/error + AL-1b #453 Phase 4 解封 busy/idle 两态 = 5-state) + `last_task_id` / `last_task_started_at` / `last_task_finished_at` (AL-1b BPP frame busy/idle 态时 server 填的 task 元数据).
 - `markdown.ts` — CV-1.3 artifact 渲染复用同 `marked + DOMPurify` 管线 (立场 ④ Markdown ONLY); ArtifactPanel 直接 `dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}`, 不接 HTML 直插 / 不接 type 切换。
 - `api.ts` (CV-1.3) — Artifact 5 endpoints: `createArtifact(channelId, {title, body})` / `getArtifact(id)` / `listArtifactVersions(id)` / `commitArtifact(id, {expected_version, body})` / `rollbackArtifact(id, toVersion)`. 类型 `Artifact` / `ArtifactVersion` (含 `committer_kind: 'agent'|'human'`, `rolled_back_from_version?`) / `CommitArtifactResponse` / `RollbackArtifactResponse`. 409 全部抛 `ApiError`, 调用方自决文案 (ArtifactPanel 锁 `'内容已更新, 请刷新查看'`)。
-- `agent-state.ts` (AL-1a) — `describeAgentState(agent)` 把 server 下发的 `state` + `reason` 折成 `{label, tone, hint}`；`REASON_LABELS` 锁定 6 个 reason code 文案 (`plugin_unreachable` / `plugin_timeout` / `plugin_error` / `tool_call_failed` / `manual_disable` / `unknown`). 详见 `docs/current/server/agent-runtime-state.md` wire schema。
+- `agent-state.ts` (AL-1a + AL-1b) — `describeAgentState(state, reason)` 把 server 下发的 `state` + `reason` 折成 `{text, tone}`；AL-1a 三态 `online`/`offline`/`error` (`REASON_LABELS` 锁 6 reason — api_key_invalid/quota_exceeded/network_unreachable/runtime_crashed/runtime_timeout/unknown); AL-1b (#453, Phase 4 解封) 加 `busy → "在工作"` tone='ok' / `idle → "空闲"` tone='muted' (acceptance al-1b.md §3.1+§3.2 byte-identical, 反约束 §3.4 grep 反 "活跃"/"running"/"Standing by"/"等待中" 模糊词). 详见 `docs/current/server/agent-runtime-state.md` wire schema + `docs/current/server/data-model.md` agent_status v=21 表 + GET /api/v1/agents/:id/status 5-state 合并 (error > busy > idle > online > offline).
 - `markdown.ts`、`file-links.ts` — `marked + highlight.js + dompurify` 渲染。
 
 ### `hooks/usePresence.ts` (AL-3.3)
@@ -51,10 +51,12 @@
 - `__resetPresenceStoreForTest(now)` / `flushPendingForTest()` — 仅单测用；`presence.test.ts` 注入 fake clock 推进时间线，不依赖 wall time。
 - 反约束: cache 仅 `{state, reason, updatedAt}` 三元组，不存 IP / 心跳 / 连接数（acceptance §2.5 frame 字段白名单）。
 
-### `components/PresenceDot.tsx` (AL-3.3)
-- 三态 DOM 字面锁（acceptance §3.1）：`data-presence="online"` 绿点 + `在线`、`data-presence="offline"` 灰点 + `已离线`、`data-presence="error"` 红点 + `故障 (REASON_LABEL)`。
+### `components/PresenceDot.tsx` (AL-3.3 + AL-1b)
+- AL-3 三态 DOM 字面锁（acceptance §3.1）：`data-presence="online"` 绿点 + `在线`、`data-presence="offline"` 灰点 + `已离线`、`data-presence="error"` 红点 + `故障 (REASON_LABEL)`。
+- AL-1b (#453, Phase 4) 扩 busy/idle 两态 — `data-task-state` 槽位独立 attr (busy/idle 时填字面, 其他态填空 string); `presence-task-busy` / `presence-task-idle` CSS class; busy/idle 时 `data-presence` 仍为 'online' (busy/idle = 连着, 跟 AL-3 hub session 同源 — task-state 是独立维度); 文案 `在工作` / `空闲` (acceptance al-1b.md §3.1+§3.2 byte-identical).
 - 反约束 §5.4：`.presence-dot` 永远跟 sibling 文本（或 compact 模式下 sr-only + title），不出现裸灰点。
-- 反约束 §5.1：穷举状态文本，绝不包含 `busy` / `idle` / `忙` / `空闲`（busy/idle 跟 BPP-1 同期，phase 2 不开）。
+- 反约束 §5.1 (AL-3 Phase 2 旧条) Phase 4 解封 — busy/idle 字面 AL-1b 合法 describeAgentState() 输出 + PresenceDot data-task-state attr 字面; 仅守 server-side enum 名 leak (StateBusy / StateIdle Go 字面) 不漂入 client (presence-reverse-grep.test.ts §5.1 修).
+- 反约束 §3.4 (AL-1b) — agent-state.ts 不出现 "活跃"/"running"/"Standing by"/"等待中" 模糊词 (presence-reverse-grep.test.ts §3.4 反查锚 + PresenceDot.test.tsx 双层闸).
 - 反约束 §3.2：组件不判 role；调用方仅在 agent 行渲染（`Sidebar.tsx` `DmItem` 用 `peer.role === 'agent'` gate；`ChannelMembersModal.tsx` 用 `m.role === 'agent'` gate；row 写 `data-role` 属性供 e2e 反查 `[data-role="user"][data-presence]` count==0）。
 
 ### `hooks/useWsHubFrames.ts` (RT-0 / CV-1.2-client)
