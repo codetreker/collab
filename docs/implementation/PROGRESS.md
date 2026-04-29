@@ -173,13 +173,13 @@
 
 **Gates**
 
-- [ ] G3.1 artifact 创建 + 推送 E2E (RT-1 推送非轮询) — 战马/烈马
-- [ ] G3.2 锚点对话 E2E — 战马/烈马
-- [ ] G3.3 用户感知签字 (CV-1 ⭐) — **野马** / 截屏 3 张: artifact 列表 / 添加新版本 / v1↔v2 切换
-- [ ] G3.4 协作场骨架 (CHN-4) E2E — 战马/烈马
+- [x] G3.1 artifact 创建 + 推送 E2E (RT-1 推送非轮询) — 战马/烈马 / ✅ SIGNED 烈马 2026-04-29 `docs/qa/signoffs/g3.1-rt1-cv1-liema-signoff.md` (5/5 验收通过, RT-1.1/1.2/1.3 + CV-1.2/1.3 + #348 e2e 真 4901+5174 ≤3s)
+- [x] G3.2 锚点对话 E2E — 战马/烈马 / ✅ SIGNED 烈马 2026-04-29 `docs/qa/signoffs/g3.2-cv2-liema-signoff.md` (5/5 验收通过, CV-2.1/2.2/2.3 + REG-CV2 #421 + 反约束三连永久锁 + AnchorCommentAdded 10 字段 byte-identical)
+- [x] G3.3 用户感知签字 (CV-1 ⭐) — **野马** / 截屏 3 张: artifact 列表 / 添加新版本 / v1↔v2 切换 / ✅ SIGNED 野马 2026-04-29 `docs/qa/signoffs/g3.3-cv1-yema-signoff.md` (锚 #403, 5/5 验收 + kindBadge 二元跨 milestone 五处单测锁源头)
+- [x] G3.4 协作场骨架 (CHN-4) E2E — 战马/烈马 / ✅ SIGNED 烈马 acceptance 2026-04-29 `docs/qa/signoffs/g3.4-chn4-liema-signoff.md` (5/5 验收通过, CHN-4 #411/#423/#428; **三签 2/3** 战马 e2e + 烈马 acceptance ✅, 野马双 tab 5 张 ⏸️ 截屏待 follow-up)
 - [ ] **G3.audit** v0 代码债 audit 行已登记 (artifacts 表 / artifact_versions / anchor_comments / RT-1 frame) — 飞马
 
-**野马签字 (CV-1)**: ___ (日期: ___)
+**野马签字 (CV-1)**: ✅ SIGNED #403 (野马 PM, 2026-04-29) — `docs/qa/signoffs/g3.3-cv1-yema-signoff.md` 5/5 验收通过 (artifact 归属 channel / 单文档锁 30s + 409 conflict / 版本线性 + rollback DOM gate / kindBadge 二元 / ArtifactUpdated 7 字段)
 
 ---
 
@@ -285,3 +285,4 @@ AP-3 ─┘
 | 2026-04-29 | 战马A | CHN-3 三段四件全闭 closure flip — Phase 3 主线 milestone 7/9 收口: CHN-3 milestone `[ ]` → `[x]` (CHN-3.1 schema v=19 ✅ #410 0cde6f9 / CHN-3.2 server REST GET-PUT /me/layout + DM reject `layout.dm_not_grouped` 5 源 byte-identical ✅ #412 / CHN-3.3 client SPA 拖拽 ⋮⋮ + 折叠 ▼/▶ + 右键 pin "置顶"/"取消置顶" + 失败 toast "侧栏顺序保存失败, 请重试" 5 源同根 ✅ #415 bad0112 / CHN-3.3 e2e Playwright 4 cases + G3.x screenshot 1 张 ✅ #422 4940e24 + #425 ESM/screenshot path 修); acceptance template `chn-3.md` §1.1-§3.5 五项 TBD → ✅ 翻牌 (15 验收项 全 evidence 锚 PR/SHA + 测试名 byte-identical); REG-CHN3-001..005 在 #418 占号待 rebase merge (本 PR 不动 registry — 跟 #418 解耦避免 hunk overlap). 主线进度 3/9 → 4/9 (CHN-1/CV-1/RT-1/CHN-3 闭). |
 | 2026-04-29 | 战马A (audit follow-up) | PROGRESS Phase 概览 stale flip — line 24 Phase 3 行 vs 真状态 drift (战马D #436 修详细段后, 概览行还说 "8 milestone 4 件套全闭 + CHN-4 wiring 进行中", 跟 #428 closure / #442 G3 evidence / #443 G3.audit skeleton / #403 G3.3 SIGNED 全脱节). 修 2 处:<br>(1) line 24 Phase 3 概览: 状态 `🔄 IN PROGRESS` → `🔄 收口中 (G3 退出闸三签 pending)`; 备注重写为 11 milestone 全闭 + G3.1/3.2/3.3/3.4/audit 各闸状态 (G3.3 ✅ SIGNED #403, G3.1/3.2/3.4 ✅ READY, G3.audit DRAFT #443) + G3 evidence #442 锚.<br>(2) line 25 Phase 4+ 备注: `等 Phase 3` → 起步路径预计 (AL-1b / AL-2a/2b / BPP-* / DL-4 → HB-1/CS-3 / CM-4/CM-5 + AP-3 / RT-3 ⭐), 给 PM 起步预演路径锚.<br>跟 #438 docs PR ≤30 行净改 + #436 audit 模式同根, 概览维度 audit (line 24-25), 详细 milestone 段不动 (#436 已修). |
 | 2026-04-29 | 战马D (audit follow-up) | PROGRESS.md Phase 3 概览 + 详细段 stale flip — line 24 概览行 stale 严重 (说 "实施进度 CV-2.1+2.2 / CV-3.1 / DM-2 三段全闭" + "待战马起手 CV-2.3/CV-3.2-3/CV-4/CHN-2/CHN-3/CHN-4", 跟实际全闭进度脱节 2 周). 修 4 处:<br>(1) line 24 概览: "七 milestone 4 件套全闭" → "八 milestone 4 件套全闭 (CV-2/CV-3/CV-4 + CHN-2/CHN-3/CHN-4 + DM-2 + AL-4)"; "实施进度" 段 重写, 列出真闭环 7 milestone (CV-2/DM-2/CV-3/CHN-2/CHN-3/CV-4/AL-4 全 ✅ + CHN-4 client wiring ✅ #411/#423 + closure follow-up #428 stacked); 删 "待战马起手" 行 (全部已起完).<br>(2) line 167 CV-3 `[ ]` → `[x]` 三段全闭 (#396/#400/#408 全 merged).<br>(3) line 170 CV-4 `[ ]` → `[x]` 三段全闭 (#405/#409/#416 全 merged + REG-CV4-006..010 stacked).<br>(4) line 214-217 AL-4 `[ ]` → `[x]` 三段全闭 (#398/#414/#417 全 merged + #427 follow-up); AL-4.2/4.3 子段 [ ] → [x] 实测 PR merged.<br>跟 #283 飞马 / #284 烈马 / #350 / #383 / #418 / #435 / #436 同模式 docs only Phase concept 概览 stale flip, 跟 audit 抓 drift 模式一致, 5 行净改动 (≤80 budget 严守). |
+| 2026-04-29 | 烈马 | G3.1/G3.2/G3.4 acceptance signoff ✅ SIGNED + G3.3 ⭐ 野马签字行 sync (#403): G3.1 RT-1+CV-1 artifact 创建+推送 E2E (5/5 验收通过, RT-1.1/1.2/1.3 #290/#292/#296 + CV-1.2/1.3 #342/#346/#348 真 4901+5174 ≤3s) + G3.2 CV-2 锚点对话 E2E (5/5 验收, CV-2.1/2.2/2.3 #359/#360/#404+#421 + 反约束三连永久锁 agent 不能开 thread / cross-anchor / version-pin immutable + AnchorCommentAdded 10 字段 byte-identical 三源闭环) + G3.4 CHN-4 协作场骨架 E2E 烈马 acceptance 一签 (5/5 验收, #411/#423/#428 + DM 永不含 workspace 7 源 byte-identical 永久锁 + runtime stub vs server mock 区分注释字面锁 + 跨 milestone byte-identical 链承袭, **三签 2/3** 战马 e2e + 烈马 acceptance ✅, 野马双 tab 5 张 ⏸️ 截屏待 follow-up). 锚 #442 evidence bundle §1+§2+§4. 跟 #403 G3.3 野马 signoff 同模式 (真 e2e 实施证据 + 立场反查 + acceptance template 闭锁). G3.audit 飞马留账行 (软 gate) 仍 ⚪ pending, 不阻 G3.1/G3.2/G3.4 烈马签字. |
