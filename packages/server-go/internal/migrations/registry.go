@@ -43,6 +43,7 @@ var All = []Migration{
 	al31PresenceSessions,
 	cv11Artifacts,
 	cv21AnchorComments,
+	dm21MessageMentions,
 }
 
 // Default returns an Engine wired to db with All registered.
