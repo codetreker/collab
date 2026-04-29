@@ -7,7 +7,7 @@
 
 ## 拆 PR 顺序 (新协议: 一 milestone 一 PR)
 
-- **AL-1 整 milestone** PR — 一 PR 装 schema (agent_state_log v=25) + state machine validator (6-state graph + 6 reason 复用 AL-1a 字面) + AppendAgentStateTransition helper + GET /api/v1/agents/:id/state-log endpoint + 20 unit tests + closure
+- **AL-1 整 milestone** PR — 一 PR 装 schema (agent_state_log v=25) + state machine validator (5-state graph: online/busy/idle/error/offline + '' sentinel = pre-online 初始态不算 state + 6 reason 复用 AL-1a 字面) + AppendAgentStateTransition helper + GET /api/v1/agents/:id/state-log endpoint + 20 unit tests + closure
 
 > 历史: AL-1a #249 (online/offline + 6 reason) + AL-1b #453/#457/#462 (busy/idle 5-state) 已 merged 各自 PR. AL-1 wrapper 此 PR 真闭 — 跟 ADM-2 整 milestone PR #484 同模式.
 
