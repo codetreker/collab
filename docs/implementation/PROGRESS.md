@@ -211,7 +211,10 @@ AP-3 ─┘
   - [x] **AL-3.1** schema (presence_sessions 表, v=12) (PR #310 merged)
   - [x] **AL-3.2** server hub WS lifecycle hook (PR #317 merged)
   - [x] **AL-3.3** client UI presence dot (PR #324 + #327 follow-up merged)
-- [ ] **AL-4** 退役 = 禁用 (spec brief + 文案锁 + acceptance 全 merged: #313/#318/#319/#321/#322; 实施待战马B)
+- [ ] **AL-4** runtime registry (3 件套全 merged: #313 v0/#379 v2 spec / #318 acceptance / #319 stance / #321 文案锁 / #322; **AL-4.1 schema v=16 ✅ #398 1327c82**; AL-4.2 server in-flight 战马E #414 / AL-4.3 client #417 战马C in-flight)
+  - [x] **AL-4.1** schema (agent_runtimes 表, v=16) (PR #398 merged 1327c82)
+  - [ ] **AL-4.2** server start/stop API + heartbeat hook + admin god-mode (in-flight 战马E #414)
+  - [ ] **AL-4.3** client SPA agent settings 启停 UI (in-flight 战马C #417)
 
 ### plugin-protocol (BPP)
 - [ ] **BPP-1** 协议骨架 + 直连 flag + grep no-runtime + thinking subject 反约束 (工期 2 周)
