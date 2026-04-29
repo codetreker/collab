@@ -71,7 +71,7 @@ grep -rnE "['\"]\\{agent_name\\} 已更新设置['\"]|agent.*config.*system.*mes
 
 - AL-2a schema PR (新 v=N): 立场 ①②③ — `agent_configs` 表 4 列 (`agent_id PK / schema_version int / blob JSON / updated_at`) + 反向断言无 runtime-only 字段 + 反 multi-row config_key 模式
 - AL-2a server PR: 立场 ①③④⑤⑥⑦ — `PATCH /config` owner-only `RequirePermission('agent.config.update')` ≥1 hit + 整 blob 替换 atomic + schema_version server 单调发号 + admin god-mode 字段白名单不返 blob + AL-2b BPP frame 不裂 + 反向断言无 system message broadcast
-- AL-2a entry 闸: 立场 ①-⑦ 全锚 + §2 黑名单 grep 全 0 (除标 ≥1) + 跨 milestone byte-identical (reason 五处单测锁 #249 + AL-3 #305 + CV-4 #380 + AL-4 #387 + 野马 #al-2a-content-lock) + RT-1 4 frame + BPP-1 9 frame 锁守 + AL-2b 留账锁
+- AL-2a entry 闸: 立场 ①-⑦ 全锚 + §2 黑名单 grep 全 0 (除标 ≥1) + 跨 milestone byte-identical (reason 六处单测锁 AL-1a #249 + AL-3 #305 + CV-4 #380 + AL-4 #387/#461 + AL-1b #458 + 野马 #al-2a-content-lock) + RT-1 4 frame + BPP-1 9 frame 锁守 + AL-2b 留账锁
 
 ---
 
@@ -80,3 +80,4 @@ grep -rnE "['\"]\\{agent_name\\} 已更新设置['\"]|agent.*config.*system.*mes
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-29 | 野马 | v0, 7 立场 (Borgee SSOT 字段划界永久锁 / 整 blob 替换反 multi-row / schema_version server 单调反 client 算 / PATCH owner-only admin 元数据 only / AL-2a 不裂 BPP frame 留 AL-2b / model 通用渲染不写死枚举 / memory_ref 指针不存内容) 承袭蓝图 §1.4 字段划界 + R3 决议 AL-2 拆 a/b + 跨 milestone byte-identical (reason 五处单测锁 + admin 元数据 only 跟 AL-3 ⑦ + AL-4 ② 同模式); 12 行反向 grep (含 2 预期 ≥1 + 10 反约束) + 10 项不在范围 + 验收挂钩二段对齐. #338 cross-grep 反模式遵守: 既有 REASON_LABELS (#249) + AL-3/CV-4/AL-4 立场字面已稳定, 本 stance 跟既有 byte-identical 引用 |
+| 2026-04-29 | 野马 | v0.x patch — cross-milestone reason count audit (跟 #461 同模式 follow-up): "五处单测锁"/"四处单测锁"/"三处单测锁" → "六处单测锁" (AL-1a #249 + AL-3 #305 + CV-4 #380 + AL-2a #454 + AL-1b #458 + AL-4 #387/#461); CHN-4 stance ④ "6 源" → "7 源" 跟 body 列举 7 源对齐. 跟 #339/#393/#387/#461 follow-up patch 同模式, 历史干净 |

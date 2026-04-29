@@ -56,7 +56,7 @@ grep -rnE 'autoRetry.*iteration|setTimeout.*POST.*iterate.*failed' packages/clie
 
 - ① iterate 按钮 e2e: owner 视角 DOM 出现 + 非 owner DOM omit (count==0) + DM 视图 / non-markdown artifact 不渲染反向断言
 - ② intent textarea + agent picker e2e: placeholder 字面锁 + 候选列表 agent-only (人/admin 反向断言不在)
-- ③ state 4 态 vitest table-driven: `data-iteration-state` 4 enum + 文案 byte-identical + failed reason 走 REASON_LABELS (改 reason = 改三处单测锁)
+- ③ state 4 态 vitest table-driven: `data-iteration-state` 4 enum + 文案 byte-identical + failed reason 走 REASON_LABELS (改 reason = 改六处单测锁: AL-1a #249 + AL-3 #305 + CV-4 本 + AL-2a #454 + AL-1b #458 + AL-4 #387/#461)
 - ④ iteration completed e2e: 自动 navigate 到新 version + kindBadge 🤖 byte-identical (跟 CV-1 #347 line 251 同源单测) + 走 CV-1 既有 fanout 不另发 (#365 立场 ② 单源)
 - ⑤ diff view e2e: tab 文案 "对比" byte-identical + jsdiff 行级蓝绿 + ARIA label 反向断言 + deep-link `?diff=vN..vM` 进对比模式 + image_link kind fallback 缩略图并排
 - ⑥ iteration history inline e2e: 折叠区 `data-section="iteration-history"` + intent_text 头 40 字截断 + messages 流反向断言无 iteration state 进度
@@ -84,3 +84,4 @@ grep -rnE 'autoRetry.*iteration|setTimeout.*POST.*iterate.*failed' packages/clie
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-29 | 野马 | v0, 7 处文案锁 (iterate 按钮 🔄 "请求 agent 迭代" owner-only DOM omit + intent textarea "告诉 agent 你希望它做什么…" + state 4 态字面 byte-identical 跟 AL-1a #249 REASON_LABELS 同源 + completed 自动跳新版 + kindBadge 🤖 跟 CV-1 #347 line 251 byte-identical + diff view "对比" 蓝绿配色 a11y ARIA label + iteration history inline `data-section` + failed state 无重试按钮反约束) + 14 行反向 grep (含 4 预期 ≥1 + 10 反约束) + G3.4 demo 4 张截屏预备. #338 cross-grep 反模式遵守: 既有 ArtifactPanel/REASON_LABELS 字面已稳定, 本锁跟既有 byte-identical |
+| 2026-04-29 | 野马 | v0.x patch — cross-milestone reason count audit (跟 #461 同模式 follow-up): "五处单测锁"/"四处单测锁"/"三处单测锁" → "六处单测锁" (AL-1a #249 + AL-3 #305 + CV-4 #380 + AL-2a #454 + AL-1b #458 + AL-4 #387/#461); CHN-4 stance ④ "6 源" → "7 源" 跟 body 列举 7 源对齐. 跟 #339/#393/#387/#461 follow-up patch 同模式, 历史干净 |
