@@ -93,3 +93,69 @@ DOM：`<tr className={'privacy-row-' + row.kind} data-row-kind={row.kind}>` — 
 - acceptance：`docs/qa/acceptance-templates/adm-1.md` (11 验收项，9/11 ✅ + 2/11 ⏸️ ADM-2 留账)
 - registry：`docs/qa/regression-registry.md` REG-ADM1-001..006 (6 🟢)
 - PR 串：#455 实施 + #459 e2e + 双截屏 + #464 closure
+
+## 7. ADM-2 扩展 (PR #484, Phase 4 第二个 admin-model milestone)
+
+`Settings/` 目录新增 3 个组件 + App 顶部 1 个 banner, 跟 ADM-1 PrivacyPromise 同 tab 三段:
+
+### 7.1 ImpersonateGrantSection.tsx (业主授权 24h)
+
+DOM 锚 `[data-section="impersonate-grant"]` + `[data-action="grant-impersonate"]` / `[data-action="revoke-impersonate"]`. 字面 byte-identical 跟 `docs/qa/adm-2-content-lock.md §3` 同源:
+- 标题: "临时授权 admin 影响"
+- 描述: "授权后 24h 内, admin 可对你的账号执行 password 重置 / suspend / role 调整等写动作; 24h 后自动失效。"
+- 状态行: "当前状态: 未授权" / "当前状态: 已授权剩 23h59m (于 {ts} 起算)"
+- 按钮: "授权 (24h, 顶部会显示红色横幅常驻)" / "立即撤销"
+- 错误转换: 409 grant_already_active → "已有未过期授权, 请先撤销当前授权或等待自动过期。"
+
+走 `lib/api.ts::getMyImpersonateGrant / createMyImpersonateGrant / revokeMyImpersonateGrant`. 立场 ⑦ + content-lock §3.
+
+### 7.2 AdminActionsList.tsx (影响记录子段)
+
+DOM 锚 `[data-section="admin-actions-history"]` + 每行 `[data-action-row data-action={action}]`. 字面 byte-identical 跟 content-lock §4 同源:
+- 标题: "admin 对你的影响记录 (最近 50 条)"
+- 空态: "从未被 admin 影响过 — 你的隐私边界完整。"
+- 5 action 中文动词字面: 删除了你的 channel / 暂停了你的账号 / 调整了你的账号角色 / 重置了你的登录密码 / 开启了对你账号的 24h impersonate
+- 时间格式: `YYYY-MM-DD HH:MM` (跟 server `time.Format("2006-01-02 15:04")` 同源)
+
+走 `lib/api.ts::getMyAdminActions`. 立场 ④ user 只见自己 + 反约束: 不渲染 raw `actor_id` UUID (server-side sanitizer omits, client 兜底也不读).
+
+### 7.3 BannerImpersonate.tsx (顶部红横幅, App-level)
+
+mount 在 `App.tsx` 顶部 (跟 ADM-1 §4.1 R3 第 2 条 "顶部红色横幅常驻可随时撤销" 兑现锚). DOM `[data-banner="impersonate-active"]`. 仅在 `getMyImpersonateGrant()` 返 active grant (revoked_at=null + expires_at>now) 才渲染。
+
+字面 byte-identical 跟 content-lock §2: `support {admin_username} 正在协助你, 剩 {h}h{m}m。 [立即撤销]`
+
+刷新策略 (反约束: 不挂 ws frame, 立场 ⑥ 跟 CHN-4 同精神):
+- 30s 轮询拉 `getMyImpersonateGrant()` (服务端 grant 变化时下刷)
+- 1s setInterval 重算 client 端倒计时 (active grant 期间)
+
+`{admin_username}` 走 server `sanitizeImpersonateGrant` 派生 (admin SPA 真使用 grant 时 stamp 字段); fallback "support" 字面承袭蓝图 §1.4 row 2.
+
+### 7.4 SettingsPage.tsx 更新
+
+privacy tab 渲染从 `<PrivacyPromise/>` 单段扩为 3 段:
+1. `<PrivacyPromise/>` (ADM-1 隐私承诺锁)
+2. `<ImpersonateGrantSection/>` (ADM-2 业主授权)
+3. `<AdminActionsList/>` (ADM-2 影响记录)
+
+注释字面: `// ADM-2.2 业主授权 24h impersonate (acceptance §4.2.a; 立场 ⑦ + content-lock §3)` + `// ADM-2.2 影响记录 (acceptance §4.1.c; 立场 ④ 只见自己 + content-lock §4 字面)`
+
+### 7.5 lib/api.ts 扩展 (4 helpers)
+
+`getMyAdminActions` / `getMyImpersonateGrant` / `createMyImpersonateGrant` / `revokeMyImpersonateGrant` — 跟 `getMyLayout / putMyLayout` (CHN-3.2) 同模式. 走 `request<T>()` helper + `BASE` (空字符串, vite proxy 同源). 反约束: 不引入新 ws subscription (跟立场 ⑥ 同精神).
+
+### 7.6 测试 (3 文件 18 cases PASS)
+
+- `__tests__/BannerImpersonate.test.tsx` 6 cases: no-grant 不渲染 / revoked 不渲染 / active 字面 byte-identical / admin_username unset fallback / 反向 raw UUID 不渲染 (ADM2-NEG-001) / 撤销点击调 revokeGrant
+- `__tests__/AdminActionsList.test.tsx` 3 cases: 空态字面 byte-identical / 5 action 中文动词字面 / 反向 actor_id raw 不渲染
+- `__tests__/SettingsPage.test.tsx` (4 cases, 改 mock api 防 jsdom fetch unhandled rejection) — privacy tab 默认 active + back button + 反 details + tab 字面
+
+### 7.7 锚
+
+- 蓝图: `docs/blueprint/admin-model.md` §1.4 (谁能看到什么 + 三红线) + §3 (impersonation_grants 数据模型片段) + §4.1 R3 (ADM-1 文案兑现锚)
+- spec: `docs/implementation/modules/adm-2-spec.md` §2-3
+- content lock: `docs/qa/adm-2-content-lock.md` §1+§2+§3+§4
+- stance: `docs/qa/adm-2-stance-checklist.md` (7 立场 + 10 反约束)
+- acceptance: `docs/qa/acceptance-templates/adm-2.md` §4.1.c+§4.2.a (9/11 ✅ + 2/11 ⏸️ follow-up)
+- registry: REG-ADM2-008 (BannerImpersonate) + REG-ADM2-009 (AdminActionsList + ImpersonateGrantSection)
+- PR: #484 (一 milestone 一 PR)
