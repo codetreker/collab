@@ -31,6 +31,7 @@ import { useArtifactUpdated, useAnchorCommentAdded } from '../hooks/useWsHubFram
 import { renderMarkdown } from '../lib/markdown';
 import CodeRenderer from './CodeRenderer';
 import ImageLinkRenderer from './ImageLinkRenderer';
+import MediaPreview from './MediaPreview';
 import {
   ApiError,
   type Artifact,
@@ -590,7 +591,13 @@ export default function ArtifactPanel({ channelId }: Props) {
  * cv_3_2_artifact_validation.go ArtifactKind* 同源.
  */
 export function normalizeKind(raw: string | undefined): ArtifactKind | string {
-  if (raw === 'markdown' || raw === 'code' || raw === 'image_link') {
+  if (
+    raw === 'markdown' ||
+    raw === 'code' ||
+    raw === 'image_link' ||
+    raw === 'video_link' ||
+    raw === 'pdf_link'
+  ) {
     return raw;
   }
   return raw ?? 'markdown';
@@ -632,6 +639,25 @@ function ArtifactBody({ artifact }: { artifact: Artifact }) {
       return (
         <div data-artifact-kind="image_link" className="artifact-rendered">
           <ImageLinkRenderer body={artifact.body} title={artifact.title} subKind="image" />
+        </div>
+      );
+    case 'video_link':
+      // CV-2 v2 立场 ② HTML5 native — preview_url 当 poster.
+      return (
+        <div data-artifact-kind="video_link" className="artifact-rendered">
+          <MediaPreview
+            kind="video_link"
+            body={artifact.body}
+            title={artifact.title}
+            previewUrl={artifact.preview_url}
+          />
+        </div>
+      );
+    case 'pdf_link':
+      // CV-2 v2 立场 ② <embed type="application/pdf"> 浏览器内嵌.
+      return (
+        <div data-artifact-kind="pdf_link" className="artifact-rendered">
+          <MediaPreview kind="pdf_link" body={artifact.body} title={artifact.title} />
         </div>
       );
     default:
