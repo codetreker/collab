@@ -1,6 +1,8 @@
-# DL-4 spec brief — Web Push gateway + plugin manifest API (must-fix 收口)
+# DL-4 spec brief — Web Push gateway + PWA installable manifest API (must-fix 收口)
 
 > 战马E · Phase 4 · ≤200 行 spec · 蓝图 [`client-shape.md`](../../blueprint/client-shape.md) L22 ("Mobile PWA + Web Push (VAPID)") + L37 ("没推送 = AI 团队像后台脚本不像同事") + L46 (实现路径: manifest.json + push subscription endpoint + VAPID key + server-go push 通道接 [data-layer §3.4 global_events fan-out](../../blueprint/data-layer.md)).
+>
+> ⚠️ **拆死锚 — 跟 HB-1 #491 plugin-manifest 命名碰撞防御** (zhanma-a 抓出 drift): 本 spec 的 manifest endpoint 是 **PWA installable web app manifest** (浏览器 install prompt 用, HTTPS + bearer 无签). HB-1 的 `GET /api/v1/plugin-manifest` 是 **install-butler 消费的 binary plugin manifest** (双签必需, 蓝图 host-bridge §1.2 ① + §4.5 "未签 100% reject"). 两个 endpoint 两套安全模型, 本 PR endpoint 命名走 `/api/v1/pwa/manifest` (含 `pwa` 字面避混淆), 不用 `manifest/plugins` 字面.
 
 ## 0. 关键约束 (3 条立场, 蓝图字面)
 
@@ -17,7 +19,7 @@
 | DL-4.1 schema | `internal/migrations/dl_4_1_web_push_subscriptions.go` (新, v=24) | 8 列 (id PK / user_id NOT NULL / endpoint UNIQUE / p256dh_key / auth_key / user_agent / created_at / last_used_at NULL) + idx_user_id + 6 test (Creates / EndpointUNIQUE / NoDomainBleed / HasIndex / Idempotent / VersionIs24) |
 | DL-4.2 server endpoints | `internal/api/push_subscriptions.go` (新) | POST `/api/v1/push/subscribe` UPSERT body{endpoint, p256dh, auth} + DELETE `/api/v1/push/subscribe?endpoint=...` 行删除 + auth 走 user cookie + owner-only ACL (跟 layout.go 同模式) |
 | DL-4.3 push gateway | `internal/push/gateway.go` (新) + `internal/api/server.go` wire (改) | `Gateway.Send(userID, payload)` 查 user 全 subscription → web-push 库加密 → POST endpoint; 410 Gone → 表删除 last_used_at stamp; failure best-effort log warn 不阻 caller |
-| DL-4.4 manifest API | `internal/api/manifest.go` (新) + `packages/client/public/manifest.json` (新) | GET `/api/v1/manifest/plugins` (列已注册 plugin 元数据 — name/icon/version/runtime); manifest.json 静态文件 (PWA install) |
+| DL-4.4 manifest API | `internal/api/pwa_manifest.go` (新) + `packages/client/public/manifest.webmanifest` (新) | GET `/api/v1/pwa/manifest` (PWA installable web app manifest — name/short_name/start_url/display/icons; 浏览器 install prompt 消费, **跟 HB-1 #491 plugin-manifest 拆死命名**); manifest.webmanifest 静态文件 (PWA install) |
 | DL-4.5 client subscribe | `packages/client/src/push/subscribe.ts` (新) + main.tsx wire | navigator.serviceWorker + PushManager.subscribe(VAPID public key) → POST /api/v1/push/subscribe + 设置页 toggle (订阅/退订) |
 | DL-4.6 fan-out hook | `internal/api/mention_dispatch.go` (改) + `internal/ws/agent_task_state_changed_frame.go` (改) | 每个 push frame 派发后 server-side check: recipient online via ws → ws push (现有路径); offline → push.Gateway.Send |
 | DL-4.7 e2e + closure | `packages/e2e/tests/dl-4-push.spec.ts` (新) + REG-DL4-001..010 + acceptance + PROGRESS [x] | 5 cases: subscribe/unsubscribe round-trip + push payload encryption / fan-out online vs offline 路由 / 410 Gone 表 GC / cross-user reject (REG-INV-002) / DELETE single source |
@@ -35,12 +37,14 @@
 git grep -nE 'web_push_subscriptions\b' packages/server-go/internal/   # ≥ 1 hit (schema + handler 字面)
 git grep -nE 'PushManager.subscribe|navigator.serviceWorker' packages/client/src/   # ≥ 1 hit (client 订阅入口)
 git grep -nE 'VAPID|vapid' packages/server-go/internal/                # ≥ 1 hit (env 读 + library 调用)
-# 反约束 (5 条 0 hit)
+# 反约束 (6 条 0 hit)
 git grep -nE 'push.*device_id|push.*device_kind' packages/server-go/internal/   # 0 hit (跟 al_3_1 multi-session 同源)
 git grep -nE 'web_push_subscriptions.*cursor|push.*hub\.cursors\.NextCursor' packages/server-go/   # 0 hit (push 不下沉 sequence)
 git grep -nE 'web_push_subscriptions.*enabled|web_push_subscriptions.*paused|web_push_subscriptions.*muted' packages/server-go/   # 0 hit (单源)
 git grep -nE 'admin.*push\.Gateway|admin.*PushSubscribe' packages/server-go/internal/api/admin*.go   # 0 hit (ADM-0 §1.3 红线)
 git grep -nE 'push.*api_key|push.*secret|push.*token' packages/server-go/internal/migrations/dl_4_1_*   # 0 hit (secret 在 env 不入表)
+# DL-4 vs HB-1 endpoint 拆死锚 (zhanma-a drift audit) — DL-4 endpoint 字面不能含 'plugin-manifest'
+git grep -nE 'manifest/plugins|plugin-manifest' packages/server-go/internal/api/pwa_manifest.go packages/client/src/   # 0 hit in DL-4 范围 (HB-1 独占该字面)
 ```
 
 ## 4. 不在本轮范围 (反约束 deferred)
