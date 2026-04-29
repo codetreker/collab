@@ -16,6 +16,7 @@ import (
 	"borgee-server/internal/config"
 	"borgee-server/internal/server"
 	"borgee-server/internal/store"
+	"borgee-server/internal/testutil/clock"
 
 	"github.com/gorilla/websocket"
 	"golang.org/x/crypto/bcrypt"
@@ -149,6 +150,45 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	})
 
 	return ts, s, cfg
+}
+
+// NewTestServerWithFakeClock is the PERF-JWT-CLOCK variant: returns the same
+// httptest server as NewTestServer plus a *clock.Fake injected into the
+// server's AuthHandler for JWT iat/exp minting. Tests use the fake clock to
+// advance the JWT timestamp (1s granularity) without time.Sleep.
+//
+// Example (token rotation test):
+//
+//	ts, _, _, fake := testutil.NewTestServerWithFakeClock(t)
+//	tok1 := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+//	fake.Advance(2 * time.Second)
+//	tok2 := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
+//	// tok1 != tok2 (different iat byte-identical 跟 prod 1s sleep 等价)
+//
+// Production path 不变 — server.New() 默认 clk=nil, AuthHandler.now() 走
+// time.Now() byte-identical 跟 PERF-JWT-CLOCK 前.
+func NewTestServerWithFakeClock(t *testing.T) (*httptest.Server, *store.Store, *config.Config, *clock.Fake) {
+	t.Helper()
+	ts, s, cfg := NewTestServer(t)
+	// Start fake clock at real now() — JWT exp/iat are validated by
+	// auth.AuthMiddleware via stdlib jwt.WithLeeway/time.Now (NOT injected),
+	// so the minted exp must be in the future relative to wall-clock.
+	// Tests Advance the fake clock to skip over JWT 1s iat granularity.
+	fake := clock.NewFake(time.Now())
+	// Reach into the test server to install the fake clock. We need a handle
+	// on *server.Server but NewTestServer returns *httptest.Server only —
+	// this is fine because httptest wraps srv.Handler() and we constructed
+	// srv inside NewTestServer above. For the fake-clock variant we re-build:
+	// reset httptest with a fresh srv that has SetClock called. To keep
+	// shared fixture seeding, we reuse the store + cfg (already populated).
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := server.New(cfg, logger, s)
+	srv.SetClock(fake)
+	// Replace the handler atomically: close prior ts, mount new one.
+	ts.Close()
+	ts2 := httptest.NewServer(srv.Handler())
+	t.Cleanup(func() { ts2.Close() })
+	return ts2, s, cfg, fake
 }
 
 // LoginAsAdmin posts to the new ADM-0.2 admin auth endpoint and returns the

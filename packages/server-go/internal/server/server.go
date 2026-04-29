@@ -19,6 +19,7 @@ import (
 	"borgee-server/internal/config"
 	"borgee-server/internal/presence"
 	"borgee-server/internal/store"
+	"borgee-server/internal/testutil/clock"
 	"borgee-server/internal/ws"
 )
 
@@ -30,6 +31,27 @@ type Server struct {
 	hub          *ws.Hub
 	agentTracker *agent.Tracker
 	startTime    time.Time
+	// clk is the time source for JWT mint (PERF-JWT-CLOCK). Defaults to Real
+	// in New(); tests inject *clock.Fake via SetClock to advance JWT iat
+	// without sleeping. nil-safe via getClock().
+	clk clock.Clock
+	// authHandler is held so SetClock can wire injected clock post-construction.
+	authHandler *api.AuthHandler
+}
+
+// SetClock injects a clock for JWT mint. Tests use *clock.Fake to advance
+// JWT iat (1s granularity) without time.Sleep. Production never calls this —
+// New() leaves clk nil and AuthHandler falls back to time.Now() (byte-identical
+// to pre-refactor path).
+func (s *Server) SetClock(c clock.Clock) {
+	s.clk = c
+	// Re-wire AuthHandler.Clock — handler was constructed in SetupRoutes
+	// with Clock=nil; we patch the field here so subsequent JWT mints use
+	// the injected clock. Routes are only mounted once, AuthHandler is the
+	// owner of /api/v1/auth/login so this is the single mutation point.
+	if s.authHandler != nil {
+		s.authHandler.Clock = c
+	}
 }
 
 func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
@@ -90,7 +112,9 @@ func (s *Server) SetupRoutes() {
 		Store:  s.store,
 		Config: s.cfg,
 		Logger: s.logger,
+		Clock:  s.clk, // nil → handler.now() falls back to time.Now() (production path)
 	}
+	s.authHandler = authHandler
 	authHandler.RegisterRoutes(s.mux)
 
 	authMw := auth.AuthMiddleware(s.store, s.cfg)

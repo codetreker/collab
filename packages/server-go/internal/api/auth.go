@@ -12,6 +12,7 @@ import (
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
 	"borgee-server/internal/store"
+	"borgee-server/internal/testutil/clock"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -20,6 +21,19 @@ type AuthHandler struct {
 	Store  *store.Store
 	Config *config.Config
 	Logger *slog.Logger
+	// Clock is the time source for JWT iat/exp minting. nil → Real (production
+	// path byte-identical: time.Now()). Tests inject *clock.Fake to skip JWT
+	// 1s iat granularity wait without sleeping (PERF-JWT-CLOCK).
+	Clock clock.Clock
+}
+
+// now returns the handler's current time, falling back to Real when Clock is
+// nil (backward-compat — existing prod construction sites do not pass Clock).
+func (h *AuthHandler) now() time.Time {
+	if h.Clock != nil {
+		return h.Clock.Now()
+	}
+	return time.Now()
 }
 
 var emailRegexp = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
@@ -223,8 +237,8 @@ func (h *AuthHandler) signAndSetCookie(w http.ResponseWriter, r *http.Request, u
 		UserID: user.ID,
 		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(h.now().Add(7 * 24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(h.now()),
 		},
 	}
 

@@ -8,7 +8,11 @@ import (
 )
 
 func TestP0TokenRotationKeepsWebSocketAlive(t *testing.T) {
-	ts, _, _ := testutil.NewTestServer(t)
+	// PERF-JWT-CLOCK: was time.Sleep(1100ms) — JWT iat 1s 秒级 granularity
+	// 真等. 改用 fake clock 跳 2s, 省 1.1s wall-clock × 该 test 跑次数.
+	// AuthHandler 走 server.SetClock(fake) 注入路径 — production 路径
+	// (clk=nil → time.Now()) byte-identical 不变.
+	ts, _, _, fake := testutil.NewTestServerWithFakeClock(t)
 	firstToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	channelID := testutil.GetGeneralChannelID(t, ts.URL, firstToken)
 
@@ -16,7 +20,9 @@ func TestP0TokenRotationKeepsWebSocketAlive(t *testing.T) {
 	testutil.WSWriteJSON(t, conn, map[string]string{"type": "subscribe", "channel_id": channelID})
 	testutil.WSReadUntil(t, conn, "subscribed")
 
-	time.Sleep(1100 * time.Millisecond)
+	// Advance fake clock past JWT 1s iat granularity → second login mints
+	// a different token (different iat) without real wall-clock wait.
+	fake.Advance(2 * time.Second)
 	secondToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	if secondToken == firstToken {
 		t.Fatal("expected login to rotate jwt token")
