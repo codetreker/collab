@@ -77,7 +77,14 @@ review 内容必须包含锚 (跟 spec/stance/acceptance 字面 cross-check):
 - §X.Y 反约束守住吗?
 - 跟 byte-identical 模板 (e.g. #237 envelope) 一致吗?
 
-双 LGTM + CI 全绿 + mergeable=CLEAN → 标准 squash merge (见下方 Merge 段).
+**Merge 三联签** (CI + LGTM + 任务完成度):
+- ① CI 真过 (statusCheckRollup 全 SUCCESS, 永远不 admin/ruleset bypass)
+- ② ≥1 non-author LGTM (gh pr review --approve OR LGTM 评论 from 不同 reviewer 身份)
+- ③ **teamlead 审 PR body Acceptance + Test plan 全勾** (`gh pr view <N> --json body | jq -r .body | grep -cE "^- \[ \]"` 必须 == 0)
+
+三联签全过 → 标准 squash merge. 任一缺 → 不合.
+
+详细 merge gate 协议见 `blueprintflow-teamlead-fast-cron-checkin §5`. 任务完成度判据 (一 milestone 一 PR 协议下) 在那里展开.
 
 ### Review subagent 并行模式 (加速 — 推荐)
 
