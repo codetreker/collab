@@ -195,6 +195,12 @@ func (s *Server) SetupRoutes() {
 	})
 	msgHandler.RegisterRoutes(s.mux, authMw, sendPerm, readPerm)
 
+	// DM-4.1 — agent message edit 多端同步. PATCH /api/v1/channels/{channelId}/messages/{messageId}
+	// 走 RT-3 既有 fan-out (events INSERT message_edited + Hub.BroadcastEventToChannel
+	// 多端覆盖). DM-only 路径校验 (channel.Type != "dm" → 403). owner-only ACL.
+	dm4EditHandler := &api.DM4MessageEditHandler{Store: s.store, Hub: broadcaster, Logger: s.logger}
+	dm4EditHandler.RegisterRoutes(s.mux, authMw)
+
 	// Users
 	userHandler := &api.UserHandler{
 		Store:  s.store,

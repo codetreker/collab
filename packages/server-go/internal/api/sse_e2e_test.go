@@ -16,9 +16,11 @@ func TestP1SSEReconnectBackfill(t *testing.T) {
 
 	stream := testutil.DialSSE(t, ts.URL, token)
 	testutil.PostMessage(t, ts.URL, token, channelID, "first sse event")
+	// Skip transient heartbeat frames — server interleaves keepalives
+	// with real `message` events, ordering is timing-dependent on slow CI.
 	first := readSSEUntilDataContains(t, stream, "first sse event")
-	if first.ID == "" {
-		t.Fatalf("expected SSE event with non-empty ID: %+v", first)
+	if (first.Event != "message" && first.Event != "new_message") || first.ID == "" {
+		t.Fatalf("unexpected first SSE event: %+v", first)
 	}
 	stream.Close()
 
