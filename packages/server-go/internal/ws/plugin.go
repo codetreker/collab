@@ -109,17 +109,35 @@ func HandlePlugin(hub *Hub) http.HandlerFunc {
 				go pc.handleAPIResponse(msg.ID, msg.Data)
 			case "response":
 				pc.resolveRequest(msg.ID, 200, msg.Data)
-				// AL-2b ack ingress — `agent_config_ack` BPP frame routing
-				// deferred to BPP-3 plugin 真实施 PR. Reason: this read loop
-				// uses a generic `{type, id, data}` envelope (api_request/
-				// api_response RPC), distinct from BPP-1 envelope frames
-				// ({type, ...payload-direct-fields}). Routing BPP frames here
-				// requires a unified frame dispatcher boundary — that's
-				// BPP-3 plugin connection lifecycle territory, not AL-2b's
-				// 1-frame add. AL-2b ships frame schema (#472 / 351f18e) +
-				// hub push (35667d9) + ack dispatcher (7b98e4c) + api fanout
-				// (351f18e); ingress wire follows in BPP-3 along with
-				// generic BPP frame dispatch.
+			default:
+				// BPP-3 (this PR) unified BPP frame dispatcher boundary.
+				// AL-2b ack ingress (`agent_config_ack`) and any future
+				// Plugin→Server BPP frames (BPP-2 task lifecycle, etc.)
+				// land here.
+				//
+				// 立场: RPC envelope above ({type, id, data}) is request-
+				// reply; BPP envelope here is fire-and-forget event
+				// stream — different shapes, different lifecycle, hence
+				// the dispatch boundary split.
+				//
+				// nil-safe: if SetPluginFrameRouter never called (early
+				// boot or unit tests not exercising plugin BPP frames),
+				// soft-skip. Same forward-compat semantics as router
+				// receiving unknown frame type.
+				router := hub.pluginFrameRouterSnapshot()
+				if router == nil {
+					continue
+				}
+				// Pass the FULL raw wire payload (`data`, not the inner
+				// `msg.Data`) — BPP frames have shape `{type, ...payload-
+				// direct-fields}`, no `data` wrapper. plugin.go's
+				// json.Unmarshal above into the {type, id, data} struct
+				// only peeks `type`; the raw bytes are still the full
+				// frame.
+				if _, err := router.Route(data, PluginSessionContext{OwnerUserID: user.ID}); err != nil {
+					hub.logger.Warn("bpp.plugin_frame_route_failed",
+						"agent_id", user.ID, "type", msg.Type, "error", err)
+				}
 			}
 		}
 	}

@@ -223,7 +223,7 @@ AP-3 ─┘
 ### plugin-protocol (BPP)
 - [ ] **BPP-1** 协议骨架 + 直连 flag + grep no-runtime + thinking subject 反约束 (工期 2 周)
 - [ ] **BPP-2** 抽象语义层 — 4 件套 ✅ (spec `bpp-2-spec.md` 战马E v0 / acceptance `bpp-2.md` 战马E v0 / 文案锁 `bpp-2-content-lock.md` 战马E v0 / stance `bpp-2-stance-checklist.md` 战马E v0); BPP-2.1 dispatch 层 + BPP-2.2 task lifecycle (跟 AL-1b 同期) + BPP-2.3 agent_config_update (跟 AL-2b/BPP-3 同期) — 实施待战马 spawn
-- [ ] **BPP-3** 配置 SSOT + 热更新 (与 AL-2b 同合)
+- [x] **BPP-3** plugin 上行 BPP frame 统一 dispatcher 边界 ✅ (PR feat/bpp-3): `internal/bpp/plugin_frame_dispatcher.go` 新 `PluginFrameDispatcher` (Register direction-lock + envelope-whitelist 守 / Route 软跳未知 type 前向兼容) + `AckFrameAdapter` 接 AL-2b `AckDispatcher` (deferred from #481, plugin.go RPC envelope vs BPP frame 拆死) + `internal/api/agent_config_ack_handler.go` 真接 `AgentConfigAckHandlerImpl` (3 status × log path) + `AgentOwnerResolver` (跟 anchor #360 owner-only 同源 store.GetAgent) + `internal/ws/hub.go` 加 `pluginFrameRouter` 字段 + `PluginFrameRouter` interface (跟 ws→bpp 反向 import 守, 同 BPP-2.1 ActionHandler 模式) + `internal/ws/plugin.go` read loop default case 路由 + `internal/server/server.go` 启动 wire-up (`pluginFrameRouterAdapter` ws/bpp PluginSessionContext bridge); 15 dispatcher unit + 5 handler unit 全绿; AL-2b ack 入站三态 (applied/rejected/stale) plugin → server 通路开闸闭环
 - [ ] **BPP-4** 失联与故障状态
 
 ### host-bridge (Borgee Helper)

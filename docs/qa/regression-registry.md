@@ -215,6 +215,18 @@
 | REG-BPP1-007 | rt-1.md §1.d cross-module dispatcher prefix RT-0 byte-identical | `internal/bpp/schema_equivalence_test.go::TestBPPEnvelopeMatchesRT0Dispatcher` — RT-0 #237 dispatcher prefix (`{"type":...,"cursor":...}`) byte-identical 锁, 跟 ArtifactUpdated frame 同模式 | 飞马 / 烈马 | #304 | 🟢 active |
 | REG-BPP1-008 | rt-1.md §3.c cross-module dispatcher prefix RT-1.3 byte-identical | `schema_equivalence_test.go::TestBPPEnvelopeAlsoMatchesRT13Resume` — RT-1.3 #296 session.resume frame prefix byte-identical 锁; CI workflow lint job 在 `.github/workflows/ci.yml` 跑全部 8 子测试 | 飞马 / 烈马 | #304 | 🟢 active |
 
+### BPP-3 plugin 上行 frame 统一 dispatcher 边界 (PR feat/bpp-3, AL-2b ack ingress 真接管, 6 🟢)
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-BPP3-001 | plugin-protocol.md §2.2 (Plugin → Server data plane) + AL-2b acceptance §2.5 ack ingress | `internal/bpp/plugin_frame_dispatcher_test.go::TestPluginFrameDispatcher_Route_Happy` — Register + Route 路径 closed-loop, AckFrameAdapter 真接 AckDispatcher | 战马A / 烈马 | feat/bpp-3 | 🟢 active |
+| REG-BPP3-002 | plugin-protocol.md §1.5 direction lock — server→plugin frame 不可注册到 plugin 上行 dispatcher | `plugin_frame_dispatcher_test.go::TestPluginFrameDispatcher_Register_PanicsOnServerToPluginFrame` — `FrameTypeBPPAgentConfigUpdate` 注册即 panic (defense-in-depth, 跟 BPP-1 #304 direction lock 同模式) | 战马A / 烈马 | feat/bpp-3 | 🟢 active |
+| REG-BPP3-003 | bpp envelope.go whitelist 闭包 — Register 必须走 envelope.go SSOT, 防 typo 路径 | `plugin_frame_dispatcher_test.go::TestPluginFrameDispatcher_Register_PanicsOnUnknownFrameType` — whitelist 外 frame type panic | 战马A / 烈马 | feat/bpp-3 | 🟢 active |
+| REG-BPP3-004 | 前向兼容 — plugin upgrade 可发 server 不识别的 frame, dispatcher 软跳不掉链接 | `plugin_frame_dispatcher_test.go::TestPluginFrameDispatcher_Route_UnknownType_SoftSkip` + `TestPluginFrameDispatcher_Route_MalformedJSON_SoftSkip` — 未知 type / malformed JSON 都返 (false, nil) 不 reject | 战马A / 烈马 | feat/bpp-3 | 🟢 active |
+| REG-BPP3-005 | AL-2b acceptance §2.5 ack 三态 log path — applied/rejected/stale 各自 log key 不混 | `internal/api/agent_config_ack_handler_test.go::TestBPP3_HandleAck_Applied/Rejected/Stale` — 三状态 log key `bpp.agent_config_ack_{applied,rejected,stale}` 字面分支 | 战马A / 烈马 | feat/bpp-3 | 🟢 active |
+| REG-BPP3-006 | anchor #360 owner-only ACL + bpp.AckDispatcher cross-owner gate — `AgentOwnerResolver` 走 store.GetAgent SSOT | `agent_config_ack_handler_test.go::TestBPP3_OwnerResolver_ResolvesOwner` + `TestBPP3_OwnerResolver_MissingAgent` — 真 owner 解析 + missing 返 error 守 cross-owner reject 路径 | 战马A / 烈马 | feat/bpp-3 | 🟢 active |
+
+
 ### CV-1 (PR #334 merged CV-1.1 schema, 4 🟢 + PR #342 merged CV-1.2 server API, 7 🟢 + PR #346 merged CV-1.3 client SPA, 5 🟢 + 1 ⏸️ e2e)
 
 | Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |

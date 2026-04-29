@@ -15,6 +15,7 @@ import (
 	"borgee-server/internal/agent"
 	"borgee-server/internal/api"
 	"borgee-server/internal/auth"
+	"borgee-server/internal/bpp"
 	"borgee-server/internal/config"
 	"borgee-server/internal/presence"
 	"borgee-server/internal/store"
@@ -55,6 +56,22 @@ func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	srv.SetupRoutes()
 
 	hub.SetHandler(srv.Handler())
+
+	// BPP-3 plugin-upstream BPP frame dispatcher boundary. Wires the
+	// AL-2b agent_config_ack frame ingress (deferred from #481 to BPP-3
+	// per plugin.go default-case routing). Construction order:
+	//   1. concrete api-side AgentConfigAckHandler + OwnerResolver
+	//   2. typed bpp.AckDispatcher (validates Status/Reason/cross-owner)
+	//   3. AckFrameAdapter wraps typed dispatcher into FrameDispatcher
+	//   4. PluginFrameDispatcher registers (FrameTypeBPPAgentConfigAck → adapter)
+	//   5. hub.SetPluginFrameRouter — plugin.go read loop default case
+	//      now routes any non-RPC envelope frame here.
+	ackHandler := &api.AgentConfigAckHandlerImpl{Store: s, Logger: logger}
+	ownerResolver := &api.AgentOwnerResolver{Store: s}
+	ackDispatcher := bpp.NewAckDispatcher(ackHandler, ownerResolver)
+	pfd := bpp.NewPluginFrameDispatcher(logger)
+	pfd.Register(bpp.FrameTypeBPPAgentConfigAck, bpp.NewAckFrameAdapter(ackDispatcher))
+	hub.SetPluginFrameRouter(&pluginFrameRouterAdapter{pfd: pfd})
 
 	ctx := context.Background()
 	go hub.StartHeartbeat(ctx)
@@ -466,4 +483,16 @@ func (a *agentRuntimeAdapter) ResolveAgentState(agentID string) agent.Snapshot {
 
 func (a *agentRuntimeAdapter) SetAgentError(agentID, reason string) {
 	a.tracker.SetError(agentID, reason)
+}
+
+// pluginFrameRouterAdapter wires *bpp.PluginFrameDispatcher into the
+// ws.PluginFrameRouter interface (跟 hubArtifactAdapter / hubAnchorAdapter
+// 同模式 — internal/ws 不 import internal/bpp; bpp.PluginSessionContext
+// 跟 ws.PluginSessionContext byte-identical 单字段 OwnerUserID).
+type pluginFrameRouterAdapter struct {
+	pfd *bpp.PluginFrameDispatcher
+}
+
+func (a *pluginFrameRouterAdapter) Route(raw []byte, sess ws.PluginSessionContext) (bool, error) {
+	return a.pfd.Route(raw, bpp.PluginSessionContext{OwnerUserID: sess.OwnerUserID})
 }
