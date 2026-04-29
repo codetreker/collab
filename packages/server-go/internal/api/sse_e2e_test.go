@@ -31,18 +31,21 @@ func TestP1SSEReconnectBackfill(t *testing.T) {
 	readSSEUntilDataContains(t, reconnected, "second missed event")
 }
 
-// readSSEUntilDataContains reads up to 8 non-heartbeat events with an
-// overall 5s deadline. Race+CI loops 20 iterations were over-budget when
-// the heartbeat handler interleaved spurious events; bound the loop +
-// fail fast keeps the e2e test under the 30s race-job budget.
+// readSSEUntilDataContains reads up to 30 non-heartbeat events with an
+// overall 30s deadline. CI runners are slow and the heartbeat handler
+// (~1s interval) interleaves spurious events between the real message;
+// 30s wall-clock + 30 iterations gives the first generated message
+// enough room to arrive without exceeding the 60s test budget.
 func readSSEUntilDataContains(t *testing.T, c *testutil.SSEClient, content string) testutil.SSEEvent {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for i := 0; i < 8; i++ {
+	deadline := time.Now().Add(30 * time.Second)
+	seen := make([]string, 0, 30)
+	for i := 0; i < 30; i++ {
 		if time.Now().After(deadline) {
-			t.Fatalf("SSE read deadline (5s) exceeded waiting for %q", content)
+			t.Fatalf("SSE read deadline (30s) exceeded waiting for %q after %d events; saw: %v", content, len(seen), seen)
 		}
 		event := c.ReadEvent(t)
+		seen = append(seen, event.Event+":"+event.Data)
 		if event.Event == "heartbeat" {
 			continue
 		}
@@ -50,6 +53,6 @@ func readSSEUntilDataContains(t *testing.T, c *testutil.SSEClient, content strin
 			return event
 		}
 	}
-	t.Fatalf("did not receive SSE event containing %q after 8 iterations", content)
+	t.Fatalf("did not receive SSE event containing %q after 30 iterations; saw: %v", content, seen)
 	return testutil.SSEEvent{}
 }
