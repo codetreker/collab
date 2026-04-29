@@ -37,7 +37,9 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter @borgee/client
       - run: pnpm --filter @borgee/client test
 
-  go-test:
+  go-test-race:
+    # CI-SPLIT-RACE-COV: race-only job, no coverage. Pure data-race signal —
+    # fail-fast for goroutine bugs without coverage's race-flake.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,12 +48,35 @@ jobs:
           go-version: '1.25'
       - name: Install dependencies
         run: cd packages/server-go && go mod download
-      - name: Run tests with race detector
-        run: cd packages/server-go && go test ./... -race -coverprofile=coverage.out -coverpkg=borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server
+      - name: Run tests with race detector (no coverage)
+        run: cd packages/server-go && go test -timeout=120s -race ./...
+
+  go-test-cov:
+    # CI-SPLIT-RACE-COV: coverage-only job, no race. Deterministic coverage
+    # value — race detector affects goroutine scheduling, which makes some
+    # defer/panic branches hit non-deterministically (e.g. ws/hub.go::
+    # StartHeartbeat 33.3% no-race vs 58.3% with-race), bleeding into
+    # coverage % flakes ±0.1%. Replaces the legacy `go-test` job; ruleset
+    # required-checks should reference both `go-test-race` + `go-test-cov`.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Install dependencies
+        run: cd packages/server-go && go mod download
+      - name: Run tests with coverage (no race)
+        run: cd packages/server-go && go test -timeout=120s -coverprofile=coverage.out -coverpkg=borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server ./...
       - name: Check coverage threshold
         run: |
           COVERAGE=$(cd packages/server-go && go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
+          # Threshold = 84% (deterministic no-race baseline; was 85% with race
+          # but race scheduler bumps StartHeartbeat coverage 33.3%→58.3%
+          # non-deterministically. New invariant: 84% no-race deterministic
+          # is the truth; the prior 85% was race-detector flake masquerading
+          # as ratchet — relying on it was the bug we're fixing).
           if (( $(echo "$COVERAGE < 84" | bc -l) )); then
             echo "Coverage ${COVERAGE}% is below 84% threshold"
             exit 1
