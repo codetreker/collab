@@ -545,6 +545,19 @@
 > - REG-RR-006 (AL-1 #492 `internal/store/agent_state_log.go::validReasons` 同样改走 SSOT — 本 PR baseline 是 main, AL-1 在 feat/al-1 stacked, merge 顺序 #492 → 本 PR follow-up commit)
 > - REG-RR-007 (client SPA `lib/agent-reasons.ts` 客户端文案 SSOT, 跨层 byte-identical lock, future refactor)
 > - REG-RR-008 (deprecation: `internal/agent.Reason*` re-export 标 // Deprecated, 后续 milestone 全切到 `reasons.*` 直接 import)
+
+### DL-4 Web Push gateway + PWA install 三件套 (PR #490 一 milestone 一 PR 整闭, 待 merge)
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-DL4-001 | dl-4.md §1.1+§1.2+§1.3 — schema v=26 web_push_subscriptions 8 列 byte-identical (id PK / user_id / endpoint UNIQUE / p256dh_key / auth_key / user_agent / created_at / last_used_at NULL) + idx_user_id; NoDomainBleed 12 列反约束 (vapid_secret/private_key/api_key/token/session_token/device_id/device_kind/device_type/org_id/cursor/enabled/paused/muted) | `internal/migrations/dl_4_1_web_push_subscriptions_test.go` 6 test (CreatesTable / EndpointUNIQUE / NoDomainBleed / HasUserIDIndex / Idempotent / VersionIs26) PASS | 战马E / 烈马 | #490 | 🟢 active |
+| REG-DL4-002 | dl-4.md §2.1-§2.4 — POST/DELETE /api/v1/push/subscribe 路径完整 (UPSERT 同 endpoint 重注册 + DELETE idempotent + 缺字段 400 push.endpoint_invalid + 401 unauth + cross-user 409+403 push.cross_user_reject REG-INV-002 fail-closed) | `internal/api/dl_4_2_push_subscriptions_test.go` 7 test (SubscribeRoundTrip / UpsertSameEndpoint / CrossUserReject / InvalidPayload 4 sub-case / UnsubscribeIdempotent / UnsubscribeRequiresEndpoint / UnauthorizedNoToken) PASS | 战马E / 烈马 | #490 | 🟢 active |
+| REG-DL4-003 | dl-4.md §3.1-§3.4 — push gateway VAPID env-driven (BORGEE_VAPID_PUBLIC/PRIVATE_KEY/SUBJECT 缺即 error, 回退 noop dev 不阻 server 启动); Send fan-out attempts count 返 + fire-and-forget 不 propagate; 410 Gone → DELETE row 单源 GC (蓝图 L22 字面承袭) | `internal/push/gateway_test.go` 6 test (NoopGateway / NewGateway_RequiresEnv / NewGateway_AllEnvSet / Send_ZeroSubscriptions / Send_410GoneDeletesRow httptest 假 410 server + 单源 GC 真验证 / Gateway_InterfaceShape compile gate) PASS | 战马E | #490 | 🟢 active |
+| REG-DL4-004 | dl-4.md §4.1-§4.3 + ⚠️ 拆死锚 — PWA Web App Manifest GET /api/v1/pwa/manifest 公开 endpoint (W3C App Manifest 标准 + Content-Type application/manifest+json + display=standalone 蓝图 L22 字面 + 192/512 W3C 基线 + theme/background 双源对齐 client manifest.json) + NoSecretsLeak 8 forbidden + NameNotPluginManifest 实测 server 不响应 HB-1 字面 (zhanma-a drift audit 锚源 — DL-4 vs HB-1 #491 拆死) | `internal/api/pwa_manifest_test.go` 5 test (PublicEndpoint 200 / ContentType W3C MIME prefix / RequiredFields 字段集 + display + 基线 / NoSecretsLeak 8 substring / NameNotPluginManifest 实证) PASS | 战马E / 飞马 / 烈马 | #490 | 🟢 active |
+| REG-DL4-005 | dl-4.md §5.1-§5.3 — client subscribe 三件套 (sw.js push event handler + showNotification + notificationclick 跳 SPA 路由; pushSubscribe.ts helper 4 export + urlBase64ToUint8Array W3C VAPID 编码; e2e 真路径 manifest fetch + sw.js text-scan + 命名拆死 e2e 实测) | `packages/client/src/__tests__/pushSubscribe.test.ts` 6 vitest + `packages/e2e/tests/dl-4-pwa-subscribe.spec.ts` 3 case PASS | 战马E | #490 | 🟢 active |
+| REG-DL4-006 | dl-4.md §6.1-§6.3 — fan-out hook (mention dispatch 路径加 PushNotifier seam, online + offline 都派 browser SW dedup; AgentTaskNotifier seam 留 RT-3.2 派生 hook 接 deferred 待 BPP-2.2 plugin 上行落地; nil-safe Gateway/Notifier nil → 0 attempts 不 panic) | `internal/push/mention_notifier_test.go` 5 test PASS | 战马E | #490 | 🟢 active |
+| REG-DL4-007 | dl-4.md §7 反向 grep 8 锚 (≥1 hit: web_push_subscriptions / PushManager.subscribe + navigator.serviceWorker / VAPID; 0 hit: device_id+device_kind / web_push.*cursor / web_push.*enabled+paused+muted / admin.*push.Gateway / manifest/plugins+plugin-manifest in pwa_manifest+client) | acceptance §7 grep 表 + Phase 4 验收 + DL-4 实施 PR 必跑 (CI 阶段执行) | 战马E / 飞马 | #490 | ⚪ pending |
+
 ---
 
 ## 4. Phase 1 引用 (不重抄)
@@ -598,7 +611,8 @@ Phase 1 退出 gate 全签: 见 `docs/qa/signoffs/g1-exit-gate.md` (2026-04-28).
 | REFACTOR-REASONS | 5 | 5 | 0 |
 | BPP-3.2 | 18 | 17 | 1 |
 | BPP-4 | 9 | 9 | 0 |
-| **总计** | **296** | **271** | **25** |
+| DL-4 | 7 | 6 | 1 |
+| **总计** | **303** | **277** | **26** |
 
 Phase 2 全部 milestone 落地后, 预计 active 55 行 — G2.audit 时全员检视一遍 + 翻态 + sign off。
 

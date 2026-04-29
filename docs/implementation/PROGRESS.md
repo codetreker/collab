@@ -258,7 +258,7 @@ AP-3 ─┘
 - [ ] **DL-1** 接口抽象 (A 必修)
 - [ ] **DL-2** events 双流 + retention
 - [ ] **DL-3** 阈值哨
-- [ ] **DL-4** server-side services (plugin manifest API + Web Push gateway) — must-fix 收口
+- [x] **DL-4** server-side services (PWA Web App Manifest + Web Push subscriptions + VAPID gateway + mention fan-out hook) — must-fix 收口 (PR #490, 一 milestone 一 PR; 7 段 6/7 实施 + 1 ⏸️ AgentTaskNotifier RT-3.2 派生 hook 待 BPP-2.2 plugin 上行落地)
 
 ### client-shape
 - [ ] **CS-1** 三栏 + Artifact 分级
