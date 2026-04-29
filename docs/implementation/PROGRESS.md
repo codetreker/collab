@@ -123,9 +123,13 @@
 
 ### Phase 2 后置 (CM-4 闸 4 通过后)
 
-- [ ] **ADM-1** SPA + 元数据/内容硬隔离 + 用户隐私承诺页 — 飞马 / 战马 / 野马 / 烈马
-  - 用户承诺页 3 条文案锁死 (admin-model §4.1)
-  - 隐私承诺反查表 v0 ✅ 落 (PR #211, 野马)
+- [x] **ADM-1** 用户侧隐私承诺页 (Phase 4 启动 milestone) — 战马B (实施) / 战马D (e2e + 截屏) / 野马 (文案 + G4.1 demo 签字 ⏸️) / 烈马 (验收)
+  - 用户承诺页 3 条文案锁死 (admin-model §4.1) ✅ #455 PrivacyPromise.tsx PRIVACY_PROMISES + drift test (vite `?raw` import doc-as-truth) + PRIVACY_TABLE_ROWS 八行三色锁
+  - 隐私承诺反查表 v0 ✅ 落 (PR #211, 野马) + 实施 spec ✅ #228 (1 组件 + 1 页面 + 5 反向断言)
+  - 实施 PR ✅ #455 (PrivacyPromise + SettingsPage + drift + 14 vitest cases + ⚙️ 按钮 wiring)
+  - e2e + G4.1 双截屏 ✅ #459 (3 cases PASS, `g4.1-adm1-{privacy-promise,privacy-table}.png` 入 git, 真 4901+5174 不 mock)
+  - REG-ADM1-001..006 6 行 🟢 落 registry ✅ (drift / promise literal / table byte-identical / 三色锁 / details 反约束 / admin-user 路径分叉)
+  - 联签项 (admin 写动作 system DM `admin_name` 非 UUID) ⏸️ deferred 给 ADM-2 真实施 (蓝图 §1.4 R3 字面已锁)
   - 详见 [`modules/admin-model.md`](modules/admin-model.md)
 
 **配套 doc 工件 (Phase 2 已落)**:
@@ -243,7 +247,7 @@ AP-3 ─┘
 - [ ] **CM-5** agent 间独立协作 (新增, X2 冲突裁决) — Phase 4
 
 ### admin-model
-- [ ] **ADM-1** SPA + 元数据/内容硬隔离 + 用户隐私承诺可见 (核心 §13)
+- [x] **ADM-1** 用户隐私承诺页 ✅ Phase 4 启动 milestone — 战马B 实施 #455 + 战马D e2e/截屏 #459 (3 cases PASS, `g4.1-adm1-{privacy-promise,privacy-table}.png` 入 git, REG-ADM1-001..006 6 🟢; 联签 ADM-2 留账)
 - [ ] **ADM-2** 分层透明 (取消 ⭐, 野马 R2 — 普通用户无感)
 - [ ] **ADM-3** 来源 C 混合
 
