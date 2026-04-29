@@ -42,7 +42,7 @@
 |---|---|---|---|
 | 3.1 iterate 触发按钮 — `<button class="iterate-btn" data-iteration-target-agent-id="" title="请求 agent 迭代">🔄</button>` byte-identical (跟 #380 ① 同源, owner-only DOM omit 跟 CV-1 #347 line 254 showRollbackBtn 同模式 defense-in-depth); 非 owner / DM 视图 / non-markdown artifact 不渲染 | vitest + e2e | 战马A / 烈马 | `__tests__/iterate-btn.test.ts::ownerOnly DOM omit + DM/non-markdown 反向断言` (TBD, 跟 #380 ① byte-identical strict assert) |
 | 3.2 intent textarea + agent picker — placeholder `"告诉 agent 你希望它做什么…"` byte-identical (跟 #380 ② 同源, 协作语境锁); agent picker 候选仅 channel member.kind='agent' (反约束: 人/admin 不在候选) | vitest + e2e | 战马A / 烈马 | `__tests__/intent-input.test.ts::placeholder + agent-only candidates` (TBD); `grep -rnE "placeholder=['\"](告诉 agent 你希望它做什么…)['\"]" packages/client/src/components/Iterate*.tsx` count≥1 |
-| 3.3 state 4 态文案 byte-identical — DOM `data-iteration-state="{pending\|running\|completed\|failed}"` + 文案 (`"等待 agent 开始…"` / `"agent 正在迭代…"` / `"已生成 v{N}"` / `"失败: {reason_label}"`) byte-identical 跟 #380 ③ 同源; failed reason 走 AL-1a #249 REASON_LABELS byte-identical (改 = 改三处单测锁 #249 + AL-3 #305 + #380) | vitest table-driven | 战马A / 烈马 | `__tests__/iteration-state-labels.test.ts::4 态文案 byte-identical + REASON_LABELS 同源` (TBD, table-driven 反 "Pending/Running/Completed/Failed" 英文 + "处理中/进行中/出错/成功" 同义词) |
+| 3.3 state 4 态文案 byte-identical — DOM `data-iteration-state="{pending\|running\|completed\|failed}"` + 文案 (`"等待 agent 开始…"` / `"agent 正在迭代…"` / `"已生成 v{N}"` / `"失败: {reason_label}"`) byte-identical 跟 #380 ③ 同源; failed reason 走 AL-1a #249 REASON_LABELS byte-identical (改 = 改八处单测锁 #249 + AL-3 #305 + #380) | vitest table-driven | 战马A / 烈马 | `__tests__/iteration-state-labels.test.ts::4 态文案 byte-identical + REASON_LABELS 同源` (TBD, table-driven 反 "Pending/Running/Completed/Failed" 英文 + "处理中/进行中/出错/成功" 同义词) |
 | 3.4 completed 自动 navigate 新版本 + kindBadge 二元 — iteration completed → 自动 navigate 到新 artifact_version_id 视图; kindBadge `🤖 {agent_name}` byte-identical 跟 CV-1 #347 line 251 byte-identical (改 = 改五处: #347 + #355 + #314 + #380 + 此); 走 CV-1 既有 fanout 路径不另发 (立场 ② 单源) | vitest + e2e | 战马A / 烈马 | `__tests__/iteration-complete-navigate.test.ts` (TBD, navigate 触发 + kindBadge byte-identical) |
 | 3.5 diff view tab + jsdiff 蓝绿配色 — tab 文案 `"对比"` byte-identical (单字, 跟 #380 ⑤ 同源); diff 视图 `"v{N} ↔ v{M}"` 标题; jsdiff 行级配色 `data-diff-line="add\|del\|context"` ARIA label (a11y, 仅靠颜色辨识 visually impaired 不漏); deep-link `?diff=vN..vM` 进对比模式; image_link kind fallback 缩略图并排 (jsdiff 不适用) | vitest + e2e | 战马A / 烈马 | `__tests__/diff-view.test.ts::jsdiff 蓝绿 + ARIA + image_link fallback` (TBD); `grep -nE 'data-diff-line=["'"'"'](add\|del\|context)["'"'"']' packages/client/src/components/Diff*.tsx` count≥1 (a11y 反断, 跟 #380 ⑤ 同源) |
 | 3.6 iteration history inline (artifact panel 折叠区) — `data-section="iteration-history"` + active + 最近 5 条 + intent_text 头 40 字截断 (隐私 + UI 噪声防御); 反约束: messages 流不渲染 iteration state 进度 (跟 CHN-4 #374/#378 立场 ② 域隔离同源) | vitest + grep | 战马A / 烈马 | `__tests__/iteration-history-inline.test.ts` (TBD, 折叠区 + 截断 + messages 流反断); `grep -rnE 'messages.*iterate_progress\|messages.*iteration_state\|MessageList.*iteration' packages/client/src/` count==0 |
@@ -72,7 +72,7 @@
 | CHN-4 #374/#378 | iterate 是 workspace tab 内事; messages 流不渲染 iteration state 进度 (立场 ② 域隔离) | 双 tab 不交叉 |
 | RT-1 ✅ | IterationStateChangedFrame 9 字段共序 cursor (跟 ArtifactUpdated 7 / AnchorCommentAdded 10 / MentionPushed 8 同模式) | hub.cursors 单调发号 |
 | AL-4 spec #319/#379 | runtime 未落时 stub fail-closed reason='runtime_not_registered' (跟 AL-1a #249 6 reason byte-identical) | error_reason 枚举不另起 |
-| AL-1a #249 | failed reason 跟 6 reason 枚举字面 byte-identical 三处单测锁 (#249 + AL-3 #305 + #380 + 本) | REASON_LABELS 同源 |
+| AL-1a #249 | failed reason 跟 6 reason 枚举字面 byte-identical 八处单测锁 (#249 + AL-3 #305 + #380 + 本) | REASON_LABELS 同源 |
 | ADM-0 §1.3 | admin god-mode 不返 intent_text raw (隐私 user 输入) | 字段白名单 |
 | BPP-1 ✅ #304 | envelope CI lint reflect 比对 server-go 端字段顺序自动覆盖 | 字段顺序锁 |
 
@@ -80,7 +80,7 @@
 
 - §1 schema 5 项 + §2 server 7 项 + §3 client 7 项 + §4 反向 grep 7 项**全绿** (一票否决)
 - state machine 4 态转移图反断 (合法 4 + 反向回退 reject) + AL-4 stub 双路径切换 (未落 fail-closed / 落地 completed) 全绿
-- failed reason 跟 AL-1a #249 + AL-3 #305 + #380 三处单测锁 byte-identical 守住
+- failed reason 跟 AL-1a #249 + AL-3 #305 + #380 八处单测锁 byte-identical 守住
 - intent_text admin god-mode 反断 (ADM-0 §1.3 红线) + messages 流 iteration state 反断 (CHN-4 #374/#378 立场 ② 同源) 守住
 - 登记 `docs/qa/regression-registry.md` REG-CV4-001..026 (5 schema + 7 server + 7 client + 7 反向 grep)
 - v=14-18 sequencing 字面延续 (CV-2.1 ✅ / DM-2.1 ✅ / AL-4.1 v=16 / CV-3.1 v=17 / **CV-4.1 v=18**)
