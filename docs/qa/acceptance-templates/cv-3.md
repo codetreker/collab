@@ -41,10 +41,10 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 3.1 e2e 创 code artifact (Go) → 渲染 prism syntax highlight class hit (`prism-token` / `prism-code` 等); 跟 CV-1.3 #348 markdown render e2e 模式 byte-identical | e2e | 战马A / 烈马 | `packages/e2e/tests/cv-3-3-canvas-d-lite.spec.ts::§3.1 code artifact prism 高亮 + 11 项语言徽标` (TBD) |
-| 3.2 e2e 创 image_link artifact (https URL) → `<img>` DOM 验 + `loading="lazy"` 实测; 反向断言 javascript:/data:/http: URL reject 400 | e2e | 战马A / 烈马 | `cv-3-3-canvas-d-lite.spec.ts::§3.2 image_link 渲染 + URL 协议反向 reject` (TBD) |
-| 3.3 e2e mention 引用 code/image artifact → 流内 preview 缩略 (跟 §2.6 byte-identical, 跟 CV-1.3 #348 §3.3 模式同) | e2e | 战马A / 烈马 | `cv-3-3-canvas-d-lite.spec.ts::§3.3 mention preview 三模式` (TBD) |
-| 3.4 G3.4 demo 截屏 3 张 byte-identical 入 `docs/qa/screenshots/g3.4-cv3-{markdown,code-go-highlight,image-embed}.png` (撑章程退出公告, 跟 G2.4#5 / G2.5 / G2.6 / G3.x 同模式) | Playwright `page.screenshot()` | 战马A / 野马 / 烈马 | `cv-3-3-canvas-d-lite.spec.ts::G3.4 demo 截屏归档` (TBD); 截屏文件 commit 入 docs/qa/screenshots/ |
+| 3.1 e2e 创 code artifact (Go) → 渲染 prism syntax highlight class hit (`prism-token` / `prism-code` 等); 跟 CV-1.3 #348 markdown render e2e 模式 byte-identical | e2e | 战马A / 烈马 | ⏸️ **deferred CV-5+ list endpoint** (ArtifactPanel v1 仅 setArtifact via handleCreate UI, default type='markdown'; code-kind 走 REST 直接创但 panel 不渲染. `packages/e2e/tests/cv-3-3-deferred.spec.ts::§3.1 code artifact (Go) prism syntax highlight class hit` test.fixme 占位锚, closure path body comment 已写 — list endpoint 落地后切真路径) |
+| 3.2 e2e 创 image_link artifact (https URL) → `<img>` DOM 验 + `loading="lazy"` 实测; 反向断言 javascript:/data:/http: URL reject 400 | e2e | 战马A / 烈马 | `packages/e2e/tests/cv-3-3-renderers.spec.ts::§3.2 image_link 协议反向 reject — javascript:/data:/http: 400 (XSS 红线第一道)` PASS (#408, REST 协议反断 server-side; UI 渲染 `<img loading="lazy">` 走 vitest ImageLinkRenderer.test.tsx 单测 byte-identical) |
+| 3.3 e2e mention 引用 code/image artifact → 流内 preview 缩略 (跟 §2.6 byte-identical, 跟 CV-1.3 #348 §3.3 模式同) | e2e | 战马A / 烈马 | ⏸️ **deferred CV-5+ list endpoint** (mention `<artifact:id>` token preview 走 GET /artifacts/:id 已通, 但 3 kinds round-trip e2e 需 list view 验证创建; vitest `MentionArtifactPreview.test.tsx` 单测 3 kinds DOM 字面锁 byte-identical 已闭. `cv-3-3-deferred.spec.ts::§3.3 mention preview kind 三模式` test.fixme 占位锚) |
+| 3.4 G3.4 demo 截屏 3 张 byte-identical 入 `docs/qa/screenshots/g3.4-cv3-{markdown,code-go-highlight,image-embed}.png` (撑章程退出公告, 跟 G2.4#5 / G2.5 / G2.6 / G3.x 同模式) | Playwright `page.screenshot()` | 战马A / 野马 / 烈马 | 🟢 1/3: `g3.4-cv3-markdown.png` PASS (#408 `cv-3-3-renderers.spec.ts::§3.4 G3.4 demo markdown 截屏`) ;  ⏸️ 2/3 deferred CV-5+ list endpoint: `g3.4-cv3-code-go-highlight.png` + `g3.4-cv3-image-embed.png` (`cv-3-3-deferred.spec.ts::§3.4 ... code/image_link` test.fixme 占位锚, list endpoint 落地后切真路径 + page.screenshot path-locked) |
 
 ### §4 反向 grep / e2e 兜底 (跨 CV-3.x 反约束)
 
