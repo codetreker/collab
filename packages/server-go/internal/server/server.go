@@ -18,6 +18,7 @@ import (
 	"borgee-server/internal/bpp"
 	"borgee-server/internal/config"
 	"borgee-server/internal/presence"
+	"borgee-server/internal/push"
 	"borgee-server/internal/store"
 	"borgee-server/internal/testutil/clock"
 	"borgee-server/internal/ws"
@@ -202,6 +203,16 @@ func (s *Server) SetupRoutes() {
 		Logger: s.logger,
 	}
 	pushSubsHandler.RegisterRoutes(s.mux, authMw)
+
+	// DL-4.3 push gateway — server→browser fan-out via VAPID. Falls back
+	// to noop when VAPID env unset (跟 admin Bootstrap 区分: push 是体验
+	// 补丁, 不阻 server 启动).
+	pushGW, err := push.NewGateway(s.store, s.logger)
+	if err != nil {
+		s.logger.Info("push.NewGateway: VAPID env unset, falling back to noop", "err", err)
+		pushGW = push.NewNoopGateway(s.logger)
+	}
+	_ = pushGW // wired into mention/agent_task_state_changed fan-out hook in DL-4.6 follow-up
 
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
