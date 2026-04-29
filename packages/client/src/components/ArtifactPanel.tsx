@@ -43,6 +43,7 @@ import {
   rollbackArtifact,
 } from '../lib/api';
 import AnchorThreadPanel from './AnchorThreadPanel';
+import IteratePanel from './IteratePanel';
 
 interface Props {
   channelId: string;
@@ -459,6 +460,24 @@ export default function ArtifactPanel({ channelId }: Props) {
           })}
         </ul>
       </aside>
+
+      {/* CV-4.3 — iterate UI (#409 server / #405 schema).
+          立场 ⑥ owner-only DOM omit (defense-in-depth, 跟 line ~441
+          showRollbackBtn 同模式). non-markdown artifact 不渲染 — iterate
+          UI 仅在 markdown kind 上 (CV-2 §4 反约束承袭, code/image_link
+          iterate v0 走 spec brief #365 §2 协调待 CV-3 协同). */}
+      {isOwner && artifact.type === 'markdown' && (
+        <IteratePanel
+          artifactId={artifact.id}
+          channelId={channelId}
+          isOwner={isOwner}
+          onIterationCompleted={() => {
+            // commit 走 CV-1 既有路径 — ArtifactUpdated frame 已触发 reload;
+            // 此回调让 panel 跳到新版本视图 (current_version 已 reload 更新).
+            void reload(artifact.id);
+          }}
+        />
+      )}
     </div>
   );
 }

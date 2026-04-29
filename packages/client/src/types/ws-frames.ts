@@ -169,3 +169,48 @@ export interface AnchorCommentAddedFrame {
 
 export const ANCHOR_COMMENT_ADDED_EVENT = 'borgee:anchor-comment-added';
 export type AnchorCommentAddedEvent = CustomEvent<AnchorCommentAddedFrame>;
+
+// ─── CV-4.2 IterationStateChanged frame (#409 envelope) ─────
+//
+// Spec: docs/implementation/modules/cv-4-spec.md §1 CV-4.2 + §0 立场 ②.
+// Server lock: packages/server-go/internal/ws/iteration_state_frame.go
+//   IterationStateChangedFrame — 9 字段 byte-identical:
+//   {type, cursor, iteration_id, artifact_id, channel_id, state,
+//    error_reason, created_artifact_version_id, completed_at}
+//
+// Push 仅信号 (跟 ArtifactUpdated/AnchorComment/MentionPushed 同模式):
+// 不带 intent_text (admin god-mode 字段白名单不含 intent_text — ADM-0
+// §1.3 红线 + AL-3 #303 ⑦ + AL-4 #379 v2 同源); body 走 GET
+// /api/v1/artifacts/:id/iterations/:iid 拉.
+//
+// state 4 态 byte-identical 跟 cv-4-content-lock §1 ③ 同源
+// ('pending' | 'running' | 'completed' | 'failed').
+//
+// error_reason 走 AL-1a #249 6 reason byte-identical (跟 lib/agent-state.ts
+// REASON_LABELS 同源 — 改 reason = 改三处 #249 + AL-3 #305 + 此 frame).
+
+export type IterationState = 'pending' | 'running' | 'completed' | 'failed';
+
+/**
+ * `iteration_state_changed` — server → client push fired on each
+ * artifact_iterations row state transition (CV-4.2 #409). Reuses
+ * RT-1.1 cursor envelope so reconnect-backfill (RT-1.2) covers it.
+ */
+export interface IterationStateChangedFrame {
+  type: 'iteration_state_changed';
+  /** RT-1.1 monotonic server cursor; client must NOT sort by completed_at. */
+  cursor: number;
+  iteration_id: string;
+  artifact_id: string;
+  channel_id: string;
+  state: IterationState;
+  /** AL-1a 6 reason 之一 (跟 REASON_LABELS 同源); 仅 state='failed' 时非空. */
+  error_reason?: string | null;
+  /** Schema FK PK (artifact_versions.id); 仅 state='completed' 时非空. */
+  created_artifact_version_id?: number | null;
+  /** Unix ms; 仅 state IN ('completed','failed') 时非空. */
+  completed_at?: number | null;
+}
+
+export const ITERATION_STATE_CHANGED_EVENT = 'borgee:iteration-state-changed';
+export type IterationStateChangedEvent = CustomEvent<IterationStateChangedFrame>;

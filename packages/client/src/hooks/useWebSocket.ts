@@ -10,6 +10,7 @@ import {
   dispatchArtifactUpdated,
   dispatchMentionPushed,
   dispatchAnchorCommentAdded,
+  dispatchIterationStateChanged,
 } from './useWsHubFrames';
 import type {
   AgentInvitationPendingFrame,
@@ -17,6 +18,7 @@ import type {
   ArtifactUpdatedFrame,
   MentionPushedFrame,
   AnchorCommentAddedFrame,
+  IterationStateChangedFrame,
 } from '../types/ws-frames';
 import { markPresence } from './usePresence';
 import type { AgentRuntimeReason, AgentRuntimeState } from '../lib/api';
@@ -485,6 +487,18 @@ export function useWebSocket() {
         // + anchor_comment_frame.go::AnchorCommentAddedFrame (10 字段
         // byte-identical, BPP-1 #304 envelope CI lint).
         dispatchAnchorCommentAdded(data as unknown as AnchorCommentAddedFrame);
+        break;
+      }
+      case 'iteration_state_changed': {
+        // CV-4.2 (#409): server → client signal that an artifact_iterations
+        // row transitioned state (pending → running → completed|failed).
+        // Envelope is signal-only (立场 ② + ⑦ — frame 无 intent_text);
+        // IteratePanel listens via useIterationStateChanged and refetches
+        // GET /artifacts/:id/iterations/:iid for full body + intent_text.
+        // Schema lock: docs/implementation/modules/cv-4-spec.md §1 CV-4.2
+        // + iteration_state_frame.go::IterationStateChangedFrame (9 字段
+        // byte-identical, BPP-1 #304 envelope CI lint).
+        dispatchIterationStateChanged(data as unknown as IterationStateChangedFrame);
         break;
       }
       case 'error':
