@@ -407,8 +407,8 @@ function MergedDmList({ dms, currentChannelId, onlineUserIds, users, currentUser
   if (validDms.length === 0 && availableMembers.length === 0) return null;
 
   return (
-    <div className="dm-list">
-      <div className="online-header">私信</div>
+    <div className="dm-list" data-kind="dm">
+      <div className="online-header" data-kind="dm">私信</div>
       {validDms.map(dm => (
         <DmItem
           key={dm.id}

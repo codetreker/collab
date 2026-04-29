@@ -236,6 +236,14 @@ func (h *ArtifactHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusForbidden, "Channel is archived")
 		return
 	}
+	// CHN-2.1 立场 ② DM 无 workspace (蓝图 §1.2 字面禁; #353 acceptance §2.3
+	// 同源 — DM channel cross-type 反约束). DM channel 创 artifact → 403
+	// `dm.workspace_not_supported` 兜底, 防 client UI bug 漏检.
+	// 反向 grep 锚: `dm.workspace_not_supported` count≥1 (本行).
+	if ch.Type == "dm" {
+		writeJSONErrorCode(w, http.StatusForbidden, "dm.workspace_not_supported", "DM 无 workspace, 跟 channel 拆")
+		return
+	}
 	if !h.canAccessChannel(channelID, user.ID) {
 		// 反约束: cross-channel + cross-org → 403 (CHN-1 双轴隔离同).
 		writeJSONError(w, http.StatusForbidden, "Forbidden")

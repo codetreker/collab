@@ -85,8 +85,22 @@ export default function MessageInput({ channelId, disabled, disabledHint }: Prop
 
   const mentionActiveRef = useRef(false);
 
+  // CHN-2.3 (#357 §1.2 + #354 §1 ⑤) — channelType 决定 mention 浮层在
+  // 候选空时的兜底文案. DM 走锁文案 "私信仅限两人, 想加人请新建频道";
+  // channel 走既有 (浮层关闭). 用 ref 保持 createMentionExtension 的稳定
+  // identity (suggestion render 闭包), 又能跨 channel 切换跟到最新值.
+  const channel = state.channels.find(c => c.id === channelId);
+  const dmChannel = state.dmChannels.find(c => c.id === channelId);
+  const channelType: 'dm' | 'channel' = (dmChannel || channel?.type === 'dm') ? 'dm' : 'channel';
+  const channelTypeRef = useRef<'dm' | 'channel'>(channelType);
+  channelTypeRef.current = channelType;
+
   const mentionExtension = useMemo(
-    () => createMentionExtension(() => mentionUsersRef.current, mentionActiveRef),
+    () => createMentionExtension(
+      () => mentionUsersRef.current,
+      mentionActiveRef,
+      () => channelTypeRef.current,
+    ),
     [],
   );
 

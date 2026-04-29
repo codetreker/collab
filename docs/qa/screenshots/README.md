@@ -6,6 +6,19 @@
 
 ---
 
+## 0. G3.3 CV-1 用户感知签字闸截屏 (野马签依据 — Phase 3 退出闸前置)
+
+> **范围**: G3.3 = CV-1 单 milestone signoff (跟 G3.4 协作场骨架 demo 拆开). CV-1 #346 + #348 实施全闭, 此段锁 G3.3 签字依据 3 张截屏路径 byte-identical.
+> **签字 doc**: `docs/qa/signoffs/g3.3-cv1-yema-signoff.md`
+
+| 截屏文件 | 验内容 (G3.3 野马签依据) | 文案锁源 |
+|---------|------------------------|----------|
+| `g3.3-cv1-markdown-render.png` | markdown artifact 渲染 + `data-artifact-id` 字面 + ArtifactPanel kindBadge 二元 (创建版本 v1 由 owner) | CV-1 #346 + #347 line 251 |
+| `g3.3-cv1-commit-dropdown.png` | version dropdown 显示 v1/v2 + agent commit 触发 fanout `{agent_name} 更新 {artifact_name} v{n}` byte-identical (跟 artifacts.go:591 同源) | CV-1 #347 line 591 + REG-CV1-013 |
+| `g3.3-cv1-rollback-flow.png` | rollback owner-only DOM gate 三条件 (`isOwner && !isHead && !editing`) + 409 conflict toast `"内容已更新, 请刷新查看"` byte-identical + rollback 后版本 label "v3 (rollback from v1)" 字面 | CV-1 #347 line 254 + line 49 + REG-CV1-014/015 |
+
+---
+
 ## 1. 截屏路径锁 (各 milestone 文案锁 §6 截屏挂钩 byte-identical 同源)
 
 | Milestone | 截屏文件 | 验内容 (野马签依据) | 文案锁源 |
