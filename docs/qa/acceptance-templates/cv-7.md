@@ -1,4 +1,4 @@
-# Acceptance Template — CV-7: artifact comment edit / delete / reaction
+# Acceptance Template — CV-7: artifact comment edit / delete / reaction ✅
 
 > 蓝图 `canvas-vision.md` L24 字面 + CV-5 #530 续 + thinking 5-pattern 第 5 处链 (RT-3 + BPP-2.2 + AL-1b + CV-5 + CV-7). Spec `cv-7-spec.md` (战马E v0 192743e) + Stance `cv-7-stance-checklist.md` + Content-lock `cv-7-content-lock.md`. 拆 PR: 整 milestone 一 PR (`feat/cv-7`). Owner: 战马E 实施 / 飞马 review / 烈马 验收.
 
