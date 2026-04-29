@@ -115,9 +115,9 @@ type UserPermission struct {
 	Scope      string  `gorm:"not null;default:*;size:255" json:"scope"`
 	GrantedBy  *string `gorm:"size:36" json:"granted_by,omitempty"`
 	GrantedAt  int64   `gorm:"not null" json:"granted_at"`
-	// AP-1.1 (v=24): expires_at NULL = 永久; >0 + ≤ now = 已过期
-	// (server 端 RequireAgentStrict403 / HasAgentScope 守 reject).
-	// 蓝图 auth-permissions.md §1.2 字面 "v1 schema 保留, UI 不做".
+	// AP-1.1 (v=24): expires_at is a SCHEMA-only slot per spec §5
+	// (蓝图 auth-permissions.md §1.2 字面 "v1 schema 保留, UI/runtime 不做").
+	// 字段保留以备 v2+ 业务化, server 端不读 (HasCapability 不消费).
 	ExpiresAt *int64 `gorm:"column:expires_at" json:"expires_at,omitempty"`
 }
 

@@ -1,20 +1,21 @@
 // Package api_test — ap_1_2_artifacts_e2e_test.go: AP-1.2 end-to-end
-// pinning agent strict-403 wiring on POST /api/v1/artifacts/{id}/commits.
+// pinning ABAC capability gate on POST /api/v1/artifacts/{id}/commits.
 //
 // 蓝图: docs/blueprint/auth-permissions.md §1.2 三层 scope + §1.4 agent
-// 跨 scope 严格 403. Spec: AP-1 milestone (8/8 Phase 4 entry).
+// 严格. Spec: docs/implementation/modules/ap-1-spec.md (Phase 4 entry 8/8).
 //
 // Pins:
-//   - REG-AP1-101: agent without artifact-scope grant → 403 + body.required_capability
-//   - REG-AP1-102: agent with explicit (artifact.edit_content, artifact:<id>) → 200
-//   - REG-AP1-103: agent with cross-artifact grant (art-other) → 403 on art-target
-//   - REG-AP1-104: human owner without explicit grant still passes via wildcard
+//   - REG-AP1-101: agent without commit_artifact grant → 403 + body BPP routing
+//   - REG-AP1-102: agent with explicit (commit_artifact, artifact:<id>) → 200
+//   - REG-AP1-103: agent with cross-artifact grant → 403 on target
+//   - REG-AP1-104: human owner without explicit grant 仍 200 (wildcard, 立场 ④)
 package api_test
 
 import (
 	"net/http"
 	"testing"
 
+	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 	"borgee-server/internal/testutil"
 )
@@ -69,7 +70,7 @@ func TestAP12_AgentNoGrant_403WithBPPRoutingHints(t *testing.T) {
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("expected 403 (agent no grant), got %d", resp.StatusCode)
 	}
-	if got, _ := parsed["required_capability"].(string); got != "artifact.edit_content" {
+	if got, _ := parsed["required_capability"].(string); got != auth.CommitArtifact {
 		t.Errorf("body.required_capability missing: %v", parsed)
 	}
 	if got, _ := parsed["current_scope"].(string); got != "artifact:"+id {
@@ -91,7 +92,7 @@ func TestAP12_AgentWithExplicitGrant_200(t *testing.T) {
 	id := art["id"].(string)
 
 	if err := s.GrantPermission(&store.UserPermission{
-		UserID: agentID, Permission: "artifact.edit_content", Scope: "artifact:" + id,
+		UserID: agentID, Permission: auth.CommitArtifact, Scope: "artifact:" + id,
 	}); err != nil {
 		t.Fatalf("grant: %v", err)
 	}
@@ -124,7 +125,7 @@ func TestAP12_AgentCrossArtifactGrant_403(t *testing.T) {
 
 	// Grant 限于 other.
 	if err := s.GrantPermission(&store.UserPermission{
-		UserID: agentID, Permission: "artifact.edit_content", Scope: "artifact:" + otherID,
+		UserID: agentID, Permission: auth.CommitArtifact, Scope: "artifact:" + otherID,
 	}); err != nil {
 		t.Fatalf("grant: %v", err)
 	}

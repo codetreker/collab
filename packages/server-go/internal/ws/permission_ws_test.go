@@ -48,8 +48,9 @@ func TestP1WebSocketPermissionChanges(t *testing.T) {
 	}
 
 	resp, data = testutil.JSON(t, http.MethodGet, ts.URL+"/api/v1/channels/"+channelID, memberToken, nil)
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("removed member should not access channel, status %d: %v", resp.StatusCode, data)
+	// AP-1 立场 ① (REG-CHN1-007): removed member → 403 (不再 404).
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("removed member should get 403, status %d: %v", resp.StatusCode, data)
 	}
 }
 

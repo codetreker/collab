@@ -215,8 +215,18 @@ func (h *ChannelHandler) handleGetChannel(w http.ResponseWriter, r *http.Request
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
-	if !h.Store.CanAccessChannel(channelID, user.ID) {
+	// AP-1 立场 ①: 严格 403 — 非 member 也 403 (不再 404 隐藏存在性).
+	// 跟 GitHub repo 私有路径同模式: "暴露存在但拒访问". 触发
+	// REG-CHN1-007 ⏸️→🟢 flip (CHN-1 #286 既有 404 路径承袭, 改一处
+	// status code, e2e 反向断言改 `status === 403`).
+	//
+	// 不存在 → 404 (区分: 真不存在 vs 存在但无权).
+	if _, err := h.Store.GetChannelByID(channelID); err != nil {
 		writeJSONError(w, http.StatusNotFound, "Channel not found")
+		return
+	}
+	if !h.Store.CanAccessChannel(channelID, user.ID) {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 

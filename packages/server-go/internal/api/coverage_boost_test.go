@@ -245,10 +245,10 @@ func TestChannelMemberOperations(t *testing.T) {
 		privID := privCh["id"].(string)
 		memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
-		// Member cannot get private channel they're not in
+		// AP-1 立场 ① (REG-CHN1-007): 非 member GET → 403.
 		resp, _ := testutil.JSON(t, "GET", ts.URL+"/api/v1/channels/"+privID, memberToken, nil)
-		if resp.StatusCode != http.StatusNotFound {
-			t.Fatalf("expected 404, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("expected 403, got %d", resp.StatusCode)
 		}
 
 		// Member cannot list messages in private channel
