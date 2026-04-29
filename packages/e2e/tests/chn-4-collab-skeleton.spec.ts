@@ -12,8 +12,8 @@
 //   ④ DM 永不含 workspace tab (7 源 byte-identical, Phase 3 最稳反约束)
 //   ⑦ G3.4 三签 — 战马 (e2e 真过) + 烈马 (acceptance) + 野马 (双截屏文案)
 //
-// 实现说明: e2e 走真 server-go(4901) + vite(5174) — runtime stub via
-// direct owner commit (CV-4 接管前 walkaround), 不 mock server. CV-4 / 完整
+// 实现说明: e2e 走真 server-go(4901) + vite(5174) —
+// CV-4 runtime stub: direct owner commit (not server mock). CV-4 / 完整
 // iterate / anchor / mention 全流走 spec #374 §1 CHN-4.3 拆段, 本 PR 仅
 // 收 demo 双 tab + URL deep-link + DM 反向断言 + 双截屏闸位.
 import {
