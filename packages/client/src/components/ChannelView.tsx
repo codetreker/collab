@@ -17,13 +17,48 @@ interface Props {
   channelId: string;
 }
 
+// CHN-4 (#374) — URL `?tab=` deep-link 跟 server default_tab="chat" 同源.
+// channel.type IN ('private','public') 才生效; DM 视图永不渲染 tab 切换器
+// (CHN-2 立场 ② 7 源 byte-identical 锁), 故 DM 路径不走此函数.
+//
+// 反约束: 'remote' / 'canvas' 仍是 v0 既有 tab (CHN-1 #288 字面承袭),
+// 但 deep-link 仅锁 chat / workspace 二态 (CHN-4 文案锁 §1 ① + spec
+// brief #375 §0 ② byte-identical) — 其它 tab 走 client state 默认.
+type TabKey = 'chat' | 'workspace' | 'remote' | 'canvas';
+const VALID_DEEPLINK_TABS: ReadonlyArray<TabKey> = ['chat', 'workspace'];
+
+function initialTabFromURL(): TabKey {
+  if (typeof window === 'undefined') return 'chat';
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('tab');
+  if (raw && (VALID_DEEPLINK_TABS as readonly string[]).includes(raw)) {
+    return raw as TabKey;
+  }
+  // server default_tab="chat" 字面 byte-identical (#374 立场 ⑥, content-lock §1 ④).
+  return 'chat';
+}
+
+function syncURLTab(tab: TabKey): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if ((VALID_DEEPLINK_TABS as readonly string[]).includes(tab)) {
+    url.searchParams.set('tab', tab);
+  } else {
+    // remote / canvas 不入 URL — 保持 deep-link 二态锁 (反约束 #374 §0 ②).
+    url.searchParams.delete('tab');
+  }
+  window.history.replaceState(null, '', url.toString());
+}
+
 export default function ChannelView({ channelId }: Props) {
   const { state, actions, sendWsMessage } = useAppContext();
   const connectionState = state.connectionState;
   const [showMembers, setShowMembers] = useState(false);
   const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
   const [joining, setJoining] = useState(false);
-  const [activeTab, setActiveTab] = useState<'chat' | 'workspace' | 'remote' | 'canvas'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'workspace' | 'remote' | 'canvas'>(
+    () => initialTabFromURL(),
+  );
   const keyboardHeight = useVisualViewport();
 
   const channel = state.channels.find(c => c.id === channelId);
@@ -49,6 +84,14 @@ export default function ChannelView({ channelId }: Props) {
   useEffect(() => {
     setShowMembers(false);
   }, [channelId]);
+
+  // CHN-4 deep-link sync — activeTab 变化时把 chat|workspace 写回 URL,
+  // 让用户分享当前 tab 视图 (跟 spec #374 §1 CHN-4.2 + content-lock §1 ①
+  // URL `?tab=` 锁同源). DM 视图无 tab 切换器, isDm 路径下不触发 URL 写.
+  useEffect(() => {
+    if (isDm) return;
+    syncURLTab(activeTab);
+  }, [activeTab, isDm]);
 
   // Load slash commands on mount / channelId change + WS live-reload
   useEffect(() => {
@@ -158,10 +201,34 @@ export default function ChannelView({ channelId }: Props) {
       </div>
       {!isDm && isMember && !isPublicPreview && (
         <div className="channel-view-tabs">
-          <button className={`channel-view-tab${activeTab === 'chat' ? ' active' : ''}`} onClick={() => setActiveTab('chat')}>聊天</button>
-          <button className={`channel-view-tab${activeTab === 'canvas' ? ' active' : ''}`} onClick={() => setActiveTab('canvas')}>Canvas</button>
-          <button className={`channel-view-tab${activeTab === 'workspace' ? ' active' : ''}`} onClick={() => setActiveTab('workspace')}>Workspace</button>
-          <button className={`channel-view-tab${activeTab === 'remote' ? ' active' : ''}`} onClick={() => setActiveTab('remote')}>Remote</button>
+          <button
+            className={`channel-view-tab${activeTab === 'chat' ? ' active' : ''}`}
+            data-tab="chat"
+            onClick={() => setActiveTab('chat')}
+          >
+            聊天
+          </button>
+          <button
+            className={`channel-view-tab${activeTab === 'canvas' ? ' active' : ''}`}
+            data-tab="canvas"
+            onClick={() => setActiveTab('canvas')}
+          >
+            Canvas
+          </button>
+          <button
+            className={`channel-view-tab${activeTab === 'workspace' ? ' active' : ''}`}
+            data-tab="workspace"
+            onClick={() => setActiveTab('workspace')}
+          >
+            工作区
+          </button>
+          <button
+            className={`channel-view-tab${activeTab === 'remote' ? ' active' : ''}`}
+            data-tab="remote"
+            onClick={() => setActiveTab('remote')}
+          >
+            Remote
+          </button>
         </div>
       )}
       {activeTab === 'workspace' && !isDm && isMember && !isPublicPreview ? (
