@@ -435,6 +435,77 @@ export interface Agent {
   state_updated_at?: number;
 }
 
+// AL-4 (#313 v0 / #379 v2) — agent_runtimes registry. Schema source:
+// PR #398 migration v=16 (战马C, in-flight) — `agent_runtimes(id PK,
+// agent_id NOT NULL UNIQUE, endpoint_url, process_kind, status,
+// last_error_reason, last_heartbeat_at, created_at, updated_at)`.
+// Server API: AL-4.2 战马E in-flight — POST /agents/:id/runtime/start
+// + /stop + GET surfaces a single row per agent (蓝图 §2.2 v1 边界
+// "不优化多 runtime 并行" + UNIQUE(agent_id) 字面).
+//
+// AL-4.3 client UI consumes this shape; runtime-not-yet-registered
+// agents → server 404 → UI hides the start/stop card surface entirely
+// (graceful degrade, 反约束 立场 ① "Borgee 不带 runtime" — 没注册的
+// agent 不假装有 runtime).
+
+// AgentRuntimeStatus is the 4-态 process-level enum (v=16 schema
+// CHECK). 反约束 (野马 #321 §2): v0 不开 'starting' / 'stopping' /
+// 'restarting' 中间态 — start/stop 走 同步 API, 直接 UPDATE status.
+export type AgentRuntimeStatus = 'registered' | 'running' | 'stopped' | 'error';
+
+// AgentRuntimeProcessKind — v1 仅 'openclaw' (蓝图 §2.2 边界字面),
+// 'hermes' 占号 v2+ (CHECK 已含, schema 早就支持新值不需 v2 改 CHECK).
+export type AgentRuntimeProcessKind = 'openclaw' | 'hermes';
+
+export interface AgentRuntime {
+  id: string;
+  agent_id: string;
+  endpoint_url: string;
+  process_kind: AgentRuntimeProcessKind;
+  status: AgentRuntimeStatus;
+  last_error_reason: AgentRuntimeReason | null;
+  last_heartbeat_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+// fetchAgentRuntime returns the runtime row for the agent, or null if
+// no runtime is registered (server 404). 反约束 立场 ① "Borgee 不带
+// runtime" — 没注册的 agent 不假装 (graceful degrade UI omit the card).
+//
+// Returns null on 404 specifically (not other errors) so the UI can
+// distinguish "no runtime registered yet" (show Register CTA stub) from
+// transient network failure (show retry).
+export async function fetchAgentRuntime(agentId: string): Promise<AgentRuntime | null> {
+  try {
+    const data = await request<{ runtime: AgentRuntime }>(`/api/v1/agents/${agentId}/runtime`);
+    return data.runtime;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+// startAgentRuntime / stopAgentRuntime — owner-only writes
+// (RequirePermission 'agent.runtime.control', AL-4.2 server). Non-owner
+// → 403; admin → 401 (god-mode 不入写, ADM-0 §1.4 红线). Both endpoints
+// return the updated runtime row (#379 v2 §1 拆段 AL-4.2).
+export async function startAgentRuntime(agentId: string): Promise<AgentRuntime> {
+  const data = await request<{ runtime: AgentRuntime }>(
+    `/api/v1/agents/${agentId}/runtime/start`,
+    { method: 'POST' },
+  );
+  return data.runtime;
+}
+
+export async function stopAgentRuntime(agentId: string): Promise<AgentRuntime> {
+  const data = await request<{ runtime: AgentRuntime }>(
+    `/api/v1/agents/${agentId}/runtime/stop`,
+    { method: 'POST' },
+  );
+  return data.runtime;
+}
+
 export async function fetchAgents(): Promise<Agent[]> {
   const data = await request<{ agents: Agent[] }>('/api/v1/agents');
   return data.agents;

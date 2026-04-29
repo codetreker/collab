@@ -9,11 +9,14 @@ import {
   fetchAgentPermissions,
   updateAgentPermissions,
   addAgentToChannel,
+  fetchAgentRuntime,
   type Agent,
+  type AgentRuntime,
   type PermissionDetail,
 } from '../lib/api';
 import { describeAgentState } from '../lib/agent-state';
 import PresenceDot from './PresenceDot';
+import RuntimeCard from './RuntimeCard';
 import { usePresence } from '../hooks/usePresence';
 
 const KNOWN_PERMISSIONS = [
@@ -116,6 +119,26 @@ function AgentCard({
   const [loadingKey, setLoadingKey] = useState(false);
   const [joinChannelId, setJoinChannelId] = useState('');
 
+  // AL-4.3 (#379 §1 拆段): runtime 卡片状态. fetchAgentRuntime 返回
+  // null 表示该 agent 还没注册 runtime (graceful degrade — 立场 ①
+  // "Borgee 不带 runtime", 不假装有). expanded 时按需拉, 不在 list
+  // 视图浪费 N 次请求.
+  const { state: appState } = useAppContext();
+  const viewerUserID = appState.currentUser?.id ?? null;
+  const [runtime, setRuntime] = useState<AgentRuntime | null>(null);
+  const [runtimeLoaded, setRuntimeLoaded] = useState(false);
+  const loadRuntime = useCallback(async () => {
+    try {
+      const rt = await fetchAgentRuntime(agent.id);
+      setRuntime(rt);
+    } catch {
+      // 静默失败 (沉默胜于假 loading §11; transient error 不阻 expanded 展开).
+      setRuntime(null);
+    } finally {
+      setRuntimeLoaded(true);
+    }
+  }, [agent.id]);
+
   const loadPerms = useCallback(async () => {
     setLoadingPerms(true);
     try {
@@ -127,8 +150,11 @@ function AgentCard({
   }, [agent.id]);
 
   useEffect(() => {
-    if (expanded) loadPerms();
-  }, [expanded, loadPerms]);
+    if (expanded) {
+      loadPerms();
+      loadRuntime();
+    }
+  }, [expanded, loadPerms, loadRuntime]);
 
   const handleShowKey = async () => {
     if (visibleKey) {
@@ -225,6 +251,20 @@ function AgentCard({
               <button className="btn btn-sm" onClick={handleRotateKey}>Rotate API Key</button>
             </div>
           </div>
+
+          {/* AL-4.3 (#379 §1 拆段) — Runtime 卡片. fetchAgentRuntime
+              null → graceful degrade omit (立场 ① "Borgee 不带 runtime");
+              非 owner → owner-only DOM gate 走 RuntimeCard 内部 isOwner
+              判断 (反约束: 非 owner 看到 status badge 但看不到 start/stop
+              btn, 跟 #321 §2 同源). */}
+          {runtimeLoaded && (
+            <RuntimeCard
+              agent={agent}
+              runtime={runtime}
+              viewerUserID={viewerUserID}
+              onRefresh={loadRuntime}
+            />
+          )}
 
           {/* Permissions */}
           <div style={{ marginBottom: 12 }}>
