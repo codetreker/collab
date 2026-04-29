@@ -61,6 +61,7 @@ var All = []Migration{
 	ap21UserPermissionsRevoked,
 	bpp81AdminActionsPluginActions,
 	cv3v2ArtifactThumbnail,
+	al71AdminActionsArchivedAt,
 }
 
 // Default returns an Engine wired to db with All registered.
