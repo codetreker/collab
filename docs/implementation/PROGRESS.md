@@ -21,7 +21,7 @@
 | Phase 0 基建闭环 | ✅ DONE | G0.1+G0.2+G0.3+G0.audit 全过 (G0.4/G0.5 软 gate, 不卡退出) | 起步; 含 INFRA-1a/1b 拆分; **工期 2 周** (战马 R2). 实际 5 PR (#169-#173) 一日完成 |
 | Phase 1 身份闭环 | ✅ DONE | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 + CM-3 全 merged; G1 全签 #210, G1.4 closed by #208 + #210 |
 | Phase 2 协作闭环 ⭐ | ✅ DONE | 4 角色联签 (#271/#272/#273/#279) + 5+1 严格闸 SIGNED + 3 PARTIAL #248 condition + 2 DEFERRED 挂 Phase 4 PR # | closure #284 (建军 2026-04-28); 留账 G2.4 #275 / G2.5 #277 / G2.6 #274+#280; 锚 `docs/qa/phase-2-exit-announcement.md` |
-| Phase 3 第二维度产品 | 🔄 IN PROGRESS | RT-1 ✅ / CHN-1 ✅ / AL-3 ✅ / CV-1 ✅ 三段四件 / BPP-1 ✅ #304; **CV-2/3/4 + CHN-2/3/4 + DM-2 七 milestone 4 件套全闭** (spec brief 7/7 + 文案锁 6/7 + acceptance 7/7 + stance 2/2 借用); 实施进度: CV-2.1+2.2 ✅ #359/#360 / DM-2.1+2.2 ✅ #361/#372 (REG-DM2-001..009 🟢 #383); 待战马起手: CV-2.3/CV-3/CV-4/CHN-2/CHN-3/CHN-4 + DM-2.3 (#388/CV-4.x AL-4 解耦后) | Phase 2 ✅ closed; 锚 acceptance-templates `chn-1.md` / `rt-1.md` / `cv-1.md` / `al-3.md` / `cv-2.md` (#358) / `cv-3.md` (#376) / `cv-4.md` (#384) / `chn-2.md` (#353) / `chn-3.md` (#376) / `chn-4.md` (#381) / `dm-2.md` (#293) |
+| Phase 3 第二维度产品 | 🔄 IN PROGRESS | RT-1 ✅ / CHN-1 ✅ / AL-3 ✅ / CV-1 ✅ 三段四件 / BPP-1 ✅ #304; **CV-2/3/4 + CHN-2/3/4 + DM-2 七 milestone 4 件套全闭** (spec brief 7/7 + 文案锁 6/7 + acceptance 7/7 + stance 2/2 借用); 实施进度: CV-2.1+2.2 ✅ #359/#360 / CV-3.1 ✅ #396 / **DM-2 三段全闭 ✅** #361/#372/#388 (REG-DM2-001..009 🟢 #383); 待战马起手: CV-2.3/CV-3.2-3/CV-4/CHN-2/CHN-3/CHN-4 | Phase 2 ✅ closed; 锚 acceptance-templates `chn-1.md` / `rt-1.md` / `cv-1.md` / `al-3.md` / `cv-2.md` (#358) / `cv-3.md` (#376) / `cv-4.md` (#384) / `chn-2.md` (#353) / `chn-3.md` (#376) / `chn-4.md` (#381) / `dm-2.md` (#293) |
 | Phase 4+ 剩余模块 | TODO | 各模块自身完成判定 + G4.audit | 等 Phase 3 |
 
 ---
@@ -164,12 +164,12 @@
    - [x] PR RT-1.2 client backfill `?since=N` (PR #292 merged)
    - [x] PR RT-1.3 BPP `session.resume` frame (PR #296 merged)
 4. [ ] **CV-2** 锚点对话 — 4 件套 ✅ (spec #356 v3 #368 / 文案锁 #355 / acceptance #358 / stance 借 spec); CV-2.1 ✅ #359 schema v=14 + CV-2.2 ✅ #360 server (4 endpoints + 8+2 PASS); CV-2.3 client SPA 待战马
-5. [ ] **CV-3** D-lite 画布渲染 — 4 件套 ✅ (spec #363 / 文案锁 #370 / acceptance #376 / 借 spec stance); CV-3.1/3.2/3.3 实施待战马A
+5. [ ] **CV-3** D-lite 画布渲染 — 4 件套 ✅ (spec #363+#397 v1 / 文案锁 #370 / acceptance #376 / 借 spec stance); CV-3.1 ✅ #396 schema v=17 (artifacts.kind enum 扩 'code'/'image_link'); CV-3.2/3.3 实施待战马A
 6. [ ] **CHN-2** DM 概念独立 — 4 件套 ✅ (spec #357 / 文案锁 #354+#364 / acceptance #353 / 借 spec stance); CHN-2.1/2.2/2.3 实施待战马
 7. [ ] **CHN-3** 个人分组 reorder + pin — 4 件套 ✅ (spec #371 / 文案锁 待野马 / acceptance #376 / stance #366); CHN-3.1/3.2/3.3 实施待战马B
 8. [ ] **CV-4** artifact iterate 完整流 — 4 件套 ✅ (spec #365 / 文案锁 #380 / acceptance #384 / stance #385); CV-4.1/4.2/4.3 实施待战马A
 9. [ ] **CHN-4** channel 协作场骨架 demo (收尾) — 4 件套 ✅ (spec #374 / 文案锁 #382 / acceptance #381 / stance #378); CHN-4.1/4.2/4.3 实施待战马 (G3.4 三签退出闸: 战马 e2e + 烈马 acceptance + 野马 双 tab 截屏文案锁验)
-10. [ ] **DM-2** mention (从 Phase 4 提前, G3.4 协作场骨架依赖) — 4 件套 ✅ (spec #312/#362/#377 / 文案锁 #314 / acceptance #293 / 借 spec stance); DM-2.1 ✅ #361 + DM-2.2 ✅ #372 (REG-DM2-001..009 🟢 #383); DM-2.3 client SPA 待战马C 续作
+10. [ ] **DM-2** mention (从 Phase 4 提前, G3.4 协作场骨架依赖) — 4 件套 ✅ (spec #312/#362/#377 / 文案锁 #314 / acceptance #293 / 借 spec stance); DM-2.1 ✅ #361 + DM-2.2 ✅ #372 + **DM-2.3 ✅ #388** (76fb0f8, client SPA mention 渲染收口) — DM-2 三段全闭 ⭐ (REG-DM2-001..009 🟢 #383, -010 留 client 翻牌)
 
 **Gates**
 

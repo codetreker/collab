@@ -15,6 +15,8 @@
 | `AgentInvitationPendingFrame` | `agent_invitation_pending` | invitation_id, requester_user_id, agent_id, channel_id, created_at, expires_at | `POST /api/v1/agent_invitations` 写库后, 推 owner 单端 |
 | `AgentInvitationDecidedFrame` | `agent_invitation_decided` | invitation_id, state, decided_at | `PATCH /api/v1/agent_invitations/{id}` 双推 (requester + owner) |
 | `ArtifactUpdatedFrame` (RT-1.1 #269) | `artifact_updated` | type, cursor, artifact_id, version, channel_id, updated_at, kind | CV-1 commit handler 写 artifact 行后, 推 channel 全员; 同 `(artifact_id, version)` 重发 → 同 cursor (idempotent), hub **不**双推 |
+| `AnchorCommentAddedFrame` (CV-2.2 #360) | `anchor_comment_added` | type, cursor, anchor_id, comment_id, artifact_id, artifact_version_id, channel_id, author_id, author_kind, created_at | CV-2.2 anchor comment handler 写 `anchor_comments` 行后, 推 channel 全员; cursor 走 hub.cursors 同 RT-1.1 单调 sequence (反约束: 不另起 anchor channel) |
+| `MentionPushedFrame` (DM-2.2 #372) | `mention_pushed` | type, cursor, message_id, channel_id, sender_id, mention_target_id, body_preview, created_at | DM-2.2 mention dispatch handler `IsOnline(target)==true` → `BroadcastToUser(target_id, frame)` 单推 (反约束: 不抄送 owner — owner 路径走 system DM fallback 不复用此 frame); body_preview 80 rune-safe 截断 (UTF-8 `utf8.RuneCountInString` 不切 CJK 字符, 隐私 §13 红线); cursor 走 hub.cursors 同 RT-1.1/CV-2.2 单调 sequence |
 
 `expires_at = 0` 是 sentinel (client TS `required: number`); `TestAgentInvitationPendingFrame_ZeroExpiresIsSentinel` 锁 wire parity.
 
@@ -25,6 +27,8 @@
 | `Hub.PushAgentInvitationPending(ownerUserID string, frame *AgentInvitationPendingFrame)` | 单推 owner |
 | `Hub.PushAgentInvitationDecided(userIDs []string, frame *AgentInvitationDecidedFrame)` | 多推, POST 路径双推方向断言 `got.UserID != frame.RequesterUserID` |
 | `Hub.PushArtifactUpdated(artifactID string, version int64, channelID string, updatedAt int64, kind string) (cursor int64, sent bool)` | RT-1.1 — 分配单调 cursor (重启不回退, 由 `events.cursor` MAX 种子) + `(artifact_id, version)` dedup; `sent=false` 表示重发, hub 已抑制广播 |
+| `Hub.PushAnchorCommentAdded(...)` (CV-2.2 #360) | 分配单调 cursor + 推 channel 全员; 跟 RT-1.1 共 hub.cursors sequence |
+| `Hub.PushMentionPushed(messageID, channelID, senderID, mentionTargetID, bodyPreview string, createdAt int64) (cursor int64, sent bool)` (DM-2.2 #372) | 分配单调 cursor + `BroadcastToUser(mentionTargetID, frame)` 单推 (反约束: target-only fanout, 不抄 owner); `sent=false` 表示 hub.cursors 未配 (test seam); body_preview 调用方需 `TruncateBodyPreview()` 截断 |
 
 ### 3.1 Cursor 单调契约 (RT-1.1)
 
