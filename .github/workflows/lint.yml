@@ -86,7 +86,12 @@ jobs:
             ["packages/e2e/"]="docs/current/e2e/"
           )
 
-          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          # Use merge-base to compute the true PR diff. Plain BASE_SHA→HEAD_SHA
+          # also includes commits merged into main *after* this PR opened, which
+          # caused false positives (e.g. main merged a server-go PR while this
+          # PR only touches docs/qa/, and current-sync flagged server-go).
+          MERGE_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+          changed=$(git diff --name-only "$MERGE_BASE" "$HEAD_SHA")
           echo "Changed files (raw):"
           echo "$changed"
 
@@ -101,7 +106,10 @@ jobs:
           # If the PR body explicitly opts out with 'N/A' under Current 同步,
           # we still warn but do not fail. The reviewer reads the reason.
           opted_out=0
-          if echo "$BODY" | grep -E 'Current 同步' -A 5 | grep -E '^[[:space:]]*-?[[:space:]]*N/A' >/dev/null; then
+          # Accept both forms:
+          #   ## Current 同步\n- N/A — reason       (H2 + bullet)
+          #   Current 同步: N/A — reason            (4-line bare metadata)
+          if echo "$BODY" | grep -B 1 -A 5 'Current 同步' | grep -F 'N/A' >/dev/null; then
             opted_out=1
           fi
 
