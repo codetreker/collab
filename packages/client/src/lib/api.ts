@@ -1605,3 +1605,64 @@ export async function getChannelPresence(
     `/api/v1/channels/${encodeURIComponent(channelId)}/presence`,
   );
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// CV-6 (#cv-6): artifact full-text search via SQLite FTS5.
+// ──────────────────────────────────────────────────────────────────────
+
+/**
+ * SEARCH_ERR_TOAST — byte-identical 跟 server `internal/api/search.go::
+ * SearchErrCode*` const + `docs/qa/cv-6-content-lock.md` §4 同源.
+ *
+ * 改 = 改三处: server const + 此 map + content-lock §4.
+ */
+export const SEARCH_ERR_TOAST: Record<string, string> = {
+  'search.query_empty':         '请输入搜索词',
+  'search.query_too_long':      '搜索词太长 (最长 256 字符)',
+  'search.channel_not_member':  '无权访问此频道',
+  'search.cross_org_denied':    '跨组织搜索被禁',
+  'search.not_owner':           '需要频道所有者权限',
+};
+
+/** SearchResult — server response row shape. */
+export interface SearchResult {
+  artifact_id: string;
+  title: string;
+  snippet: string;          // server-side `<mark>...</mark>` 字面 byte-identical
+  kind: string;             // 5 enum: markdown / code / image_link / video_link / pdf_link
+  channel_id: string;
+  current_version: number;
+}
+
+/** SearchArtifactsResponse — wire shape from GET /api/v1/artifacts/search. */
+export interface SearchArtifactsResponse {
+  query: string;
+  results: SearchResult[];
+  total: number;
+}
+
+/**
+ * searchArtifacts — calls GET /api/v1/artifacts/search?q=&channel_id=&limit=.
+ * Returns parsed response on 2xx; throws Error with `error_code` substring
+ * for 4xx/5xx so caller can lookup SEARCH_ERR_TOAST.
+ */
+export async function searchArtifacts(
+  query: string,
+  channelID: string,
+  limit?: number,
+): Promise<SearchArtifactsResponse> {
+  const params = new URLSearchParams({ q: query, channel_id: channelID });
+  if (limit !== undefined) params.set('limit', String(limit));
+  const resp = await fetch(`${BASE}/api/v1/artifacts/search?${params.toString()}`, {
+    credentials: 'include',
+  });
+  if (!resp.ok) {
+    let errCode = 'unknown';
+    try {
+      const body = await resp.json();
+      errCode = (body?.error as string) || errCode;
+    } catch { /* ignore */ }
+    throw new Error(errCode);
+  }
+  return (await resp.json()) as SearchArtifactsResponse;
+}

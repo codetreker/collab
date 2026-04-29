@@ -1,16 +1,20 @@
 .PHONY: build test test-race run clean fmt vet coverage coverage-html regression
 
+# CV-6 #cv-6: sqlite_fts5 build tag enables FTS5 virtual tables (full-text
+# search) in mattn/go-sqlite3. Default build does not include FTS5.
+GOTAGS := sqlite_fts5
+
 build:
-	go build -o bin/collab ./cmd/collab
+	go build -tags "$(GOTAGS)" -o bin/collab ./cmd/collab
 
 test:
-	go test ./... -v
+	go test -tags "$(GOTAGS)" ./... -v
 
 test-race:
-	go test ./... -v -race
+	go test -tags "$(GOTAGS)" ./... -v -race
 
 run:
-	go run ./cmd/collab
+	go run -tags "$(GOTAGS)" ./cmd/collab
 
 clean:
 	rm -rf bin/
@@ -19,18 +23,18 @@ fmt:
 	go fmt ./...
 
 vet:
-	go vet ./...
+	go vet -tags "$(GOTAGS)" ./...
 
 coverage:
-	go test ./... -race -coverprofile=coverage.out
+	go test -tags "$(GOTAGS)" ./... -race -coverprofile=coverage.out
 	go tool cover -func=coverage.out | tail -1
 
 coverage-html:
-	go test ./... -coverprofile=coverage.out
+	go test -tags "$(GOTAGS)" ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
 
 # regression — runs every test registered via internal/testutil/regression.
 # Closed milestones add a blank import in regression_suite/suite_test.go so
 # their 4.1 acceptance auto-rolls into this run (闸 5 of README.md).
 regression:
-	go test ./internal/testutil/regression_suite -run TestRegressionSuite -v
+	go test -tags "$(GOTAGS)" ./internal/testutil/regression_suite -run TestRegressionSuite -v

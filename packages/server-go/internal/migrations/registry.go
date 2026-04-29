@@ -64,6 +64,7 @@ var All = []Migration{
 	al71AdminActionsArchivedAt,
 	dm71MessagesEditHistory,
 	hb51AgentStateLogArchivedAt,
+	cv61ArtifactsFTS,
 }
 
 // Default returns an Engine wired to db with All registered.

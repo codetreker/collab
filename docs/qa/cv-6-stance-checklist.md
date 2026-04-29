@@ -24,7 +24,7 @@
 
 **反约束清单**:
 
-- [ ] migration v=32 `cv_6_1_artifacts_fts.go` — `CREATE VIRTUAL TABLE artifacts_fts USING fts5(title, body, content=artifacts, content_rowid=id, tokenize='unicode61 remove_diacritics 2')` contentless 模式
+- [ ] migration v=34 `cv_6_1_artifacts_fts.go` — `CREATE VIRTUAL TABLE artifacts_fts USING fts5(title, body, content=artifacts, content_rowid=id, tokenize='unicode61 remove_diacritics 2')` contentless 模式
 - [ ] 三 trigger byte-identical 命名 `artifacts_ai` (AFTER INSERT) / `artifacts_au` (AFTER UPDATE) / `artifacts_ad` (AFTER DELETE)
 - [ ] initial backfill `INSERT INTO artifacts_fts(rowid, title, body) SELECT id, title, body FROM artifacts WHERE archived_at IS NULL`
 - [ ] 反向 grep `elasticsearch\|opensearch\|typesense\|meilisearch\|sonic\|bleve\|blevesearch` 在 server-go go.mod / go.sum count==0 (除 lock 文件版本号自动撞匹配)

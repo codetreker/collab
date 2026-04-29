@@ -6,11 +6,11 @@
 
 ## 验收清单
 
-### CV-6.1 server schema migration v=32 + endpoint
+### CV-6.1 server schema migration v=34 + endpoint
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 1.1 schema migration v=32 — `CREATE VIRTUAL TABLE artifacts_fts USING fts5(title, body, content=artifacts, content_rowid=id, tokenize='unicode61 remove_diacritics 2')` contentless + 三 trigger `artifacts_ai/au/ad` 自动同步 + initial backfill | unit | 战马C / 烈马 | `internal/migrations/cv_6_1_artifacts_fts_test.go::TestCV61_CreatesFTS5VirtualTable` + `TestCV61_TriggerSyncOnInsert` + `TestCV61_TriggerSyncOnUpdate` + `TestCV61_TriggerSyncOnDelete` + `TestCV61_BackfillExistingRows` + `TestCV61_RegistryHasV32` + `TestCV61_Idempotent` |
+| 1.1 schema migration v=34 — `CREATE VIRTUAL TABLE artifacts_fts USING fts5(title, body, content=artifacts, content_rowid=id, tokenize='unicode61 remove_diacritics 2')` contentless + 三 trigger `artifacts_ai/au/ad` 自动同步 + initial backfill | unit | 战马C / 烈马 | `internal/migrations/cv_6_1_artifacts_fts_test.go::TestCV61_CreatesFTS5VirtualTable` + `TestCV61_TriggerSyncOnInsert` + `TestCV61_TriggerSyncOnUpdate` + `TestCV61_TriggerSyncOnDelete` + `TestCV61_BackfillExistingRows` + `TestCV61_RegistryHasV34` + `TestCV61_Idempotent` |
 | 1.2 GET /api/v1/artifacts/search?q=&channel_id=&limit= happy path — markdown / code 全文搜索, 200 + result list (artifact_id + title + snippet `<mark>` highlight) | unit | 战马C / 烈马 | `internal/api/search_test.go::TestCV62_SearchHappyPath_MarkdownBody` + `TestCV62_SearchHappyPath_CodeTitle` |
 | 1.3 立场 ② owner-only ACL — non-owner / non-member → 403 + `search.channel_not_member`; admin god-mode → 401 (跟 6 处 owner-only ACL 同精神) | unit | 战马C / 烈马 | `TestCV62_NonOwner403` + `TestCV62_Admin401` |
 | 1.4 立场 ⑤ AP-3 cross-org gate — cross-org user → 403 (走 AP-3 HasCapability 自动经); 单测必 cover (AP-3 #521 立场 ① 同源) | unit | 战马C / 烈马 | `TestCV63_CrossOrgDenied` (org-A user search org-B channel → 403) |
