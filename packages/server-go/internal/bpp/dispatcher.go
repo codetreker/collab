@@ -34,9 +34,8 @@
 //     log warn `bpp.semantic_op_unknown` (跟 dm.workspace_not_supported
 //     #407 / iteration.target_not_in_channel #409 / anchor.create_owner_only
 //     #360 错码命名同模式).
-//   - v2+ 列表 ('propose_artifact_change' / 'request_owner_review' /
-//     'request_clarification') 不在 v1 白名单, reject (蓝图 §1.3 v2+
-//     列表字面禁 v1 进).
+//   - v2+ 列表 (蓝图 §1.3 v2+ 协作意图动作) 不在 v1 白名单, reject —
+//     列表字面禁 v1 进.
 package bpp
 
 import (

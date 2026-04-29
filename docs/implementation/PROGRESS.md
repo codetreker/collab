@@ -222,7 +222,7 @@ AP-3 ─┘
 
 ### plugin-protocol (BPP)
 - [ ] **BPP-1** 协议骨架 + 直连 flag + grep no-runtime + thinking subject 反约束 (工期 2 周)
-- [ ] **BPP-2** 抽象语义层 — 4 件套 ✅ (spec `bpp-2-spec.md` 战马E v0 / acceptance `bpp-2.md` 战马E v0 / 文案锁 `bpp-2-content-lock.md` 战马E v0 / stance `bpp-2-stance-checklist.md` 战马E v0); BPP-2.1 dispatch 层 + BPP-2.2 task lifecycle (跟 AL-1b 同期) + BPP-2.3 agent_config_update (跟 AL-2b/BPP-3 同期) — 实施待战马 spawn
+- [x] **BPP-2** 抽象语义层 — 4 件套 ✅ (spec `bpp-2-spec.md` + acceptance `bpp-2.md` + 文案锁 `bpp-2-content-lock.md` + stance `bpp-2-stance-checklist.md` 战马E v0 #460 全 land); 实施 PR #485 `feat/bpp-2` 整三段一次合 (新协议 "一 milestone = 一 worktree = 一 PR" #479): BPP-2.1 dispatch 层 + 7 op 白名单 + ActionHandler interface + BPP-2.2 task lifecycle reverse-channel (TaskStarted/TaskFinished + subject 空 reject + outcome 3 态 + reason AL-1a 6 字典 byte-identical 同源) + BPP-2.3 agent_config_update validation + 6 fields 白名单 + ConfigRevTracker 幂等 reload — 三段四件全闭 ⭐ (REG-BPP2-001..017 全 🟢; 26 单测全绿; 7 反约束 grep count==0; bppEnvelopeWhitelist 9→11 扩 BPP-1 #304 reflect lint 自动覆盖); AL-1b busy/idle source 真接管 + AL-2b/BPP-3 SSOT 推送触发留 BPP-3 起步时同期合
 - [ ] **BPP-3** 配置 SSOT + 热更新 (与 AL-2b 同合)
 - [ ] **BPP-4** 失联与故障状态
 
