@@ -82,10 +82,23 @@ func (s *Server) SetupRoutes() {
 	broadcaster := &hubBroadcastAdapter{s.hub}
 
 	// Messages
+	// DM-2.2 (#312): wire the mention dispatcher. PresenceTracker is the
+	// AL-3 read side (#310 SessionsTracker); ws.Hub satisfies the
+	// MentionFrameBroadcaster interface via PushMentionPushed (#NNN
+	// mention_pushed_frame.go). Nil presence => skip dispatch (legacy
+	// boot path, smoke survives without DM-2 fanout).
+	var mentionDispatcher *api.MentionDispatcher
+	if pt, err := presence.NewSessionsTracker(s.store.DB()); err == nil {
+		mentionDispatcher = api.NewMentionDispatcher(s.store, pt, s.hub)
+	} else {
+		s.logger.Warn("mention dispatcher init skipped — presence tracker unavailable", "err", err)
+	}
+
 	msgHandler := &api.MessageHandler{
-		Store:  s.store,
-		Logger: s.logger,
-		Hub:    broadcaster,
+		Store:    s.store,
+		Logger:   s.logger,
+		Hub:      broadcaster,
+		Mentions: mentionDispatcher,
 	}
 	sendPerm := auth.RequirePermission(s.store, "message.send", func(r *http.Request) string {
 		return "channel:" + r.PathValue("channelId")
