@@ -5,16 +5,11 @@ package bpp
 import (
 	"bytes"
 	"encoding/json"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"reflect"
-	"sort"
-	"strings"
 	"testing"
+
+	"borgee-server/internal/lint/astscan"
 )
 
 // TestBPP4_DeadLetter_LogKeyByteIdentical — content-lock §1.③ 单源锁
@@ -89,52 +84,16 @@ func TestBPP4_DeadLetter_AuditSchema5FieldsByteIdentical(t *testing.T) {
 // `pendingAcks|retryQueue|deadLetterQueue|ackTimeout.*resend|
 // time.*Ticker.*resend|retry.*frame.*backoff` count==0 in
 // internal/bpp/ source.
+//
+// PERF-AST-LINT: refactored from inline ast.Walk to reusable
+// astscan.AssertNoForbiddenIdentifiers helper (飞马 spec, 2026-04-29).
+// 字面承袭 byte-identical: 4 forbidden id 跟 BPP-4 #499 原 inline scan
+// 同源 (BPP-5+/HB-3+ 后续 milestone reuse 同 helper).
 func TestBPP4_NoRetryQueueInBPPPackage(t *testing.T) {
-	forbidden := []string{
-		"pendingAcks",
-		"retryQueue",
-		"deadLetterQueue",
-		"ackTimeout",
-	}
-	dir := "."
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("ReadDir: %v", err)
-	}
-	fset := token.NewFileSet()
-	hits := []string{}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
-			continue
-		}
-		if strings.HasSuffix(e.Name(), "_test.go") {
-			continue // tests are allowed to mention the forbidden tokens
-		}
-		path := filepath.Join(dir, e.Name())
-		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-		if err != nil {
-			t.Fatalf("parse %s: %v", path, err)
-		}
-		// AST scan identifiers (not comments) — comments may discuss the
-		// forbidden tokens for documentation purposes (which is allowed
-		// and required for the反约束 narrative).
-		ast.Inspect(f, func(n ast.Node) bool {
-			ident, ok := n.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			for _, bad := range forbidden {
-				if strings.Contains(ident.Name, bad) {
-					hits = append(hits, path+":"+ident.Name)
-				}
-			}
-			return true
-		})
-	}
-	sort.Strings(hits)
-	if len(hits) > 0 {
-		t.Errorf("BPP-4 stance §3 反约束: forbidden retry-queue identifiers "+
-			"found in internal/bpp/ source (acceptance §4.3 best-effort "+
-			"立场 0 hit 守门): %v", hits)
-	}
+	astscan.AssertNoForbiddenIdentifiers(t, ".", []astscan.ForbiddenIdentifier{
+		{Name: "pendingAcks", Reason: "BPP-4 ack best-effort 不重发 (acceptance §4.3)"},
+		{Name: "retryQueue", Reason: "BPP-4 ack best-effort 不重发 (acceptance §4.3)"},
+		{Name: "deadLetterQueue", Reason: "BPP-4 audit log 不持久 (stance §3)"},
+		{Name: "ackTimeout", Reason: "BPP-4 30s 字面单源在 const, 不在 production identifier"},
+	}, astscan.ScanOpts{})
 }
