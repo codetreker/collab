@@ -71,6 +71,17 @@ const (
 	// 既有 error→online valid edge (无 persisted "connecting" 中间态,
 	// connecting 仅 spec 概念名, 跟 #492 valid edge byte-identical).
 	FrameTypeBPPReconnectHandshake = "reconnect_handshake"
+
+	// BPP-6 plugin cold-start handshake — plugin upstream signals process
+	// restart (state 全丢, 无 cursor) (蓝图 §1.6 进程死亡 vs 网络重连;
+	// cold-start ≠ reconnect — reconnect 持 last_known_cursor 走
+	// ResolveResume 增量恢复 (BPP-5); cold-start 不持 cursor 走 fresh
+	// start — agent.Tracker.Clear + AL-1 #492 single-gate
+	// AppendAgentStateTransition any→online byte-identical, reason 复用
+	// `runtime_crashed` 6-dict 不扩 (#496 SSOT, 锁链第 11 处). 字段集
+	// 跟 ReconnectHandshakeFrame **互斥反断** — cold-start 不含
+	// LastKnownCursor / DisconnectAt / ReconnectAt 字段.
+	FrameTypeBPPColdStartHandshake = "cold_start_handshake"
 )
 
 // Direction is the hard direction lock the lint enforces.
@@ -429,6 +440,47 @@ type ReconnectHandshakeFrame struct {
 func (ReconnectHandshakeFrame) FrameType() string         { return FrameTypeBPPReconnectHandshake }
 func (ReconnectHandshakeFrame) FrameDirection() Direction { return DirectionPluginToServer }
 
+// ColdStartHandshakeFrame — BPP-6 plugin cold-start handshake.
+//
+// Direction lock plugin→server. Sent when a plugin process is RESTARTED
+// (e.g. after SIGKILL/crash) — state is fully lost, no last_known_cursor
+// available. Reverse of BPP-5 ReconnectHandshakeFrame:
+//   - reconnect (BPP-5): socket dropped, plugin process alive, holds cursor
+//   - cold-start (BPP-6): process died, fresh start, no cursor
+//
+// Server handler reaction (cold_start_handler.go):
+//   1. agent.Tracker.Clear(agentID) — drop in-memory state
+//   2. Store.AppendAgentStateTransition(agentID, fromState, online,
+//      runtime_crashed, "") — AL-1 #492 single-gate writes state-log row
+//   3. NO history replay (反向 BPP-5 — cold-start 是 fresh start)
+//
+// 5 字段 byte-identical 跟 spec brief §1 BPP-6.1:
+//   {Type, PluginID, AgentID, RestartAt, RestartReason}
+//
+// 反约束 (跟 spec §0 + stance §1 立场承袭):
+//   - **字段集与 ReconnectHandshakeFrame 互斥** — 不含 LastKnownCursor /
+//     DisconnectAt / ReconnectAt 字段. spec §0.1 立场守门.
+//   - **不另开 channel/sub_protocol** — 单 BPP envelope frame, 跟 BPP-3
+//     dispatcher 复用 (PluginFrameDispatcher 注册).
+//   - **不重放历史 frame** — handler 不调 ResolveResume, 不携 cursor.
+//     spec §0.2 立场守门 (AST scan 守).
+//   - **不另开 plugin_restart_count 列** — restart 计数走 state-log
+//     COUNT(WHERE to_state='online' AND reason='runtime_crashed') 反向
+//     derive. spec §0.3 立场守门.
+//   - reason 复用 `runtime_crashed` 6-dict byte-identical (反映上次
+//     error → 此次复活语义). reasons SSOT #496 不扩第 7 字面.
+//   - 字段顺序锁: type/plugin_id/agent_id/restart_at/restart_reason.
+type ColdStartHandshakeFrame struct {
+	Type          string `json:"type"`
+	PluginID      string `json:"plugin_id"`
+	AgentID       string `json:"agent_id"`
+	RestartAt     int64  `json:"restart_at"`     // Unix ms
+	RestartReason string `json:"restart_reason"` // e.g. "sigkill", "panic", "oom"; opaque to server, audit-only
+}
+
+func (ColdStartHandshakeFrame) FrameType() string         { return FrameTypeBPPColdStartHandshake }
+func (ColdStartHandshakeFrame) FrameDirection() Direction { return DirectionPluginToServer }
+
 // bppEnvelopeWhitelist — single-source-of-truth list of permitted
 // BPP-1 envelope OpNames. The reflection lint asserts every exported
 // frame struct in this file maps to exactly one entry here and
@@ -449,6 +501,7 @@ var bppEnvelopeWhitelist = map[string]Direction{
 	FrameTypeBPPTaskStarted:    DirectionPluginToServer, // BPP-2.2 #485
 	FrameTypeBPPTaskFinished:   DirectionPluginToServer, // BPP-2.2 #485
 	FrameTypeBPPReconnectHandshake: DirectionPluginToServer, // BPP-5
+	FrameTypeBPPColdStartHandshake: DirectionPluginToServer, // BPP-6
 }
 
 // BPPEnvelopeWhitelist exposes the registry to tests in other packages
@@ -481,5 +534,6 @@ func AllBPPEnvelopes() []BPPEnvelope {
 		TaskStartedFrame{},    // BPP-2.2 #485
 		TaskFinishedFrame{},   // BPP-2.2 #485
 		ReconnectHandshakeFrame{}, // BPP-5
+		ColdStartHandshakeFrame{}, // BPP-6
 	}
 }
