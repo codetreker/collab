@@ -215,8 +215,30 @@
 
 ---
 
+## 7.x Phase 3 后扩展旅程 — 协作场闭环 demo (野马, 2026-04-29 v1.1 加)
+
+> **触发**: Phase 3 章程 9 milestone 4 件套全闭后, 业主从 "看到第一个 agent 上线" 升级为 "用 agent 完成一次产品协作". 这是 G3.4 退出公告 demo 故事线 — Canvas Vision 第一刀的用户感知证明。
+
+| 步骤 | 用户动作 | 系统行为 | 文案锁源 | 反约束 |
+|------|---------|---------|---------|-------|
+| 7a | 创新 channel `#prd-v2-spec` (private) | 默认 `default_tab="chat"` 进 chat tab + 双 tab 切换器渲染 ("聊天" / "工作区") | #382 ④ + ① | DM 视图无双 tab (#382 ⑤ 7 源 byte-identical) |
+| 7b | invite agent (`@spec-helper`) | CHN-1 既有路径 + chat tab member 列表显 🤖 角标 (二元锁) | #354 ② + #347 line 251 | agent 不发自我介绍消息 (#11 silent default) |
+| 7c | switch workspace tab + 创 markdown artifact "PRD v2 草稿" | `data-artifact-kind="markdown"` + ArtifactPanel #346 既有 | #370 ① + #382 ③ | workspace tab 不渲染 message (双 tab 不交叉) |
+| 7d | 点 iterate 按钮 🔄 + intent "请帮我补充用户故事章节" | iterate state pending → running ("agent 正在迭代…") | #380 ①②③ | 非 owner DOM omit (defense-in-depth #347 line 254) |
+| 7e | iterate completed → 自动跳新版 v2 + kindBadge 🤖 | system message fanout `{agent_name} 更新 PRD v2 草稿 v2` byte-identical (跟 artifacts.go:591) | #380 ④ + CV-1 #347 | 走 CV-1 既有 commit 路径单源 (#365 立场 ②) |
+| 7f | switch 到 v2, hover 段落 → 💬 "评论此段" → 写 review "agent 你这章逻辑没闭合" | 锚点 thread 创 + header "段落讨论" + placeholder | #355 ①②③ | agent 不能开 thread (反约束三连, server 403) |
+| 7g | agent 回复锚点 → 角标 🤖 + thread 内 reply | 反向断言 cross-anchor agent→agent 403 (蓝图 §1.6 钉死人审) | #355 ④⑤ | agent 仅在 owner 起的 thread 内 reply |
+| 7h | 点 "标为已解决" → thread 折叠 + DOM `data-resolved="true"` | thread 灰底降权但不从 DOM 移除 (review 历史保留) | #355 ⑥ | 已解决 anchor 不删 (跟 CV-1 立场 ③ 同根 — agent 默认无删历史权) |
+| 7i | (并行) chat tab 输入 `@spec-helper 这个有空跟我聊聊` | mention 解析 → MentionPushedFrame 8 字段 byte-identical → target 在线 ≤3s push | #314 ①② + #372 | raw UUID 仅 `data-mention-id` attr 不进文本节点 (隐私 §13) |
+| 7j | (并行) target agent 离线时 mention | 离线 fallback owner DM "{agent_name} 当前离线，#{channel} 中有人 @ 了它…" | #314 ③ + #372 | 发送方 UI **无任何提示** (#314 ④ 永久锁) |
+
+**G3.4 退出闸三签依据**: 7a-j 全流路径 e2e ≤30s 闭环 (CHN-4.3) + 双 tab 截屏 + 多视角截屏 (野马签 byte-identical 验, 路径锁见 `docs/qa/screenshots/README.md`).
+
+---
+
 ## 8. 更新日志
 
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-28 | 野马 | v1 初版, CM-onboarding 实施前置 |
+| 2026-04-29 | 野马 | v1.1 — 加 §7.x Phase 3 协作场闭环 demo 旅程 (7a-j 全流路径), 跟各 milestone 文案锁 byte-identical 同源, 撑 G3.4 退出公告. 不动 §1-§7 (CM-onboarding 立场 v1 锁字面已稳定不漂) |
