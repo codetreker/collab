@@ -219,6 +219,16 @@ func (s *Server) SetupRoutes() {
 	}
 	agentConfigHandler.RegisterRoutes(s.mux, authMw)
 
+	// HB-3.1 host_grants SSOT REST endpoints (蓝图 host-bridge.md §1.3
+	// 情境化授权 4 类). Owner-only ACL (anchor #360 同模式); admin god-mode
+	// 不入 (用户主权, ADM-0 §1.3 红线). audit log 5 字段 byte-identical 跟
+	// HB-1 / HB-2 / BPP-4 dead-letter 跨四 milestone 同源.
+	hostGrantsHandler := &api.HostGrantsHandler{
+		Store:  s.store,
+		Logger: s.logger,
+	}
+	hostGrantsHandler.RegisterRoutes(s.mux, authMw)
+
 	// AL-1.4 agent state log — owner-only GET /api/v1/agents/:id/state-log
 	// (蓝图 §2.3 "故障可解释" — owner 看 agent state 历史轨迹查病因).
 	al14Handler := &api.AL14Handler{Store: s.store, Logger: s.logger}

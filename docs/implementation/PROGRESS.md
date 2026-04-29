@@ -233,7 +233,7 @@ AP-3 ─┘
 ### host-bridge (Borgee Helper)
 - [ ] **HB-1** install-butler (依赖 DL-4)
 - [ ] **HB-2** host-bridge daemon (仅读)
-- [ ] **HB-3** 情境化授权 4 类
+- [x] **HB-3** 情境化授权 4 类 ✅ (PR feat/hb-3 9b97809+95f3dfa+本 commit): 4 件套 docs (spec ≤80 行 / stance 68 行 / acceptance 64 行 / content-lock 53 行) + `internal/migrations/hb_3_1_host_grants.go` v=27 (host_grants 9 列 / grant_type 4-enum CHECK 跟蓝图 §1.3 字面 byte-identical / ttl_kind 2-enum 跟弹窗 UX 双向锁 / forward-only revoke 不真删行) + `internal/api/host_grants.go` POST/GET/DELETE owner-only ACL (anchor #360) + audit log 5 字段 byte-identical 跟 HB-1/HB-2/BPP-4 dead-letter **跨四 milestone 同源** (改 = 改四处单测锁) + `packages/client/src/components/HostGrantsPanel.tsx` 弹窗 DOM 三按钮 byte-identical (data-action="deny|grant_one_shot|grant_always" + data-hb3-button="danger|primary"); **7 migration unit + 8 server REST unit + 5 client vitest 全绿** 含 AST scan `pendingGrants/grantQueue/deadLetterGrants` 0 hit (best-effort 立场代码层守, BPP-4/5 锁链延伸第 3 处) + AST scan user_permissions reference 0 hit (字典分立反约束); 反约束: 撤销 → revoked_at + daemon 不缓存 (HB-4 §1.5 release gate 第 5 行 < 100ms v1 实现) + admin god-mode 不入 grant (用户主权 蓝图 §1.3 字面). HB-3.2 daemon Rust crate 跟 HB-2 同 PR 真接入 (本 PR 仅锁 contract).
 - [ ] **HB-4** ⭐ 信任五支柱可见 + v1 release gate 数字化 6 行指标
 
 ### realtime

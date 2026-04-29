@@ -475,6 +475,24 @@
 | REG-BPP5-008 | bpp-5.md §2 + stance §0 — boot wire-up panic on nil deps (events/scope/owner/clearer 全 4 必填) | `TestBPP5_Handler_PanicsOnNilDeps` (4 sub-test 全 panic) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
 | REG-BPP5-009 | bpp-5.md §4.4 + stance §4 ⑥ — best-effort 立场承袭 BPP-4 §0.3, AST scan reconnect-queue 类标识符 0 hit (锁链延伸 BPP-4 dead_letter_test) | `TestBPP5_NoReconnectQueueInBPPPackage` (AST ident scan, forbidden tokens: pendingReconnects/reconnectQueue/deadLetterReconnect) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
 
+### HB-3 host_grants schema SSOT + 情境化授权 (一 milestone 一 PR ✅, 11 🟢)
+
+> HB-3 范围 = §1 schema migration v=27 (host_grants 9 列 / grant_type 4-enum CHECK / ttl_kind 2-enum CHECK / forward-only revoke) + §2 REST CRUD endpoints (POST/GET/DELETE owner-only ACL anchor #360 同模式) + §3 client SPA HostGrantsPanel (弹窗 DOM 三按钮 byte-identical 跟蓝图 §1.3 字面 + content-lock §1.① data-action ↔ ttl_kind enum 双向锁) + §4 反约束 (字典分立 host vs runtime + AST scan grant-queue 0 hit + admin god-mode 0 hit + audit 5 字段跨四 milestone 同源). audit log 锁链 HB-3 = **第 4 处** (HB-1 install + HB-2 host-IPC + BPP-4 dead-letter + HB-3 grants).
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-HB3-001 | hb-3.md §1.1 + spec §1 HB-3.1 — host_grants 表 9 列 byte-identical | `internal/migrations/hb_3_1_host_grants_test.go::TestHB31_CreatesHostGrantsTable` | 战马A / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-002 | hb-3.md §1.2 + content-lock §1.① — grant_type 4-enum CHECK byte-identical 跟蓝图 §1.3 字面 | `TestHB31_GrantTypeEnumReject` | 战马A / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-003 | hb-3.md §1.2 + content-lock §1.② — ttl_kind 2-enum CHECK byte-identical 跟弹窗 UX 双向锁 | `TestHB31_TtlKindEnumReject` | 战马A / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-004 | hb-3.md stance §2 立场 ② 字典分立 (host vs runtime, 不复用 user_permissions) | `TestHB31_NoDomainBleed` (forbidden columns) + `internal/api/host_grants_test.go::TestHB3_NoUserPermissionsJoin` (AST scan 0 hit) | 战马A / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-005 | hb-3.md §1.3 + stance §1 — REST POST/GET/DELETE owner-only ACL (anchor #360 同模式) | `host_grants_test.go::TestHB3_POST_HappyPath_Filesystem` + `_GET_ListActive` + `_DELETE_*` + `_DELETE_CrossUser403` | 战马A / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-006 | hb-3.md §1.4 + HB-4 §1.5 release gate 第 5 行 — DELETE 撤销 → revoked_at + daemon 不缓存 (v1 实现 < 100ms) | `TestHB3_DELETE_RevokeStampsRevokedAt` | 战马A / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-007 | hb-3.md §1.2 — POST 反约束 4xx (grant_type / ttl_kind / scope) | `TestHB3_POST_GrantTypeEnumReject` + `TestHB3_POST_TtlKindEnumReject` | 战马A / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-008 | hb-3.md §1.5 + stance §3 立场 ③ — audit log 5 字段 (actor/action/target/when/scope) byte-identical 跨四 milestone (HB-1/HB-2/BPP-4/HB-3) 同源 | `TestHB3_AuditLogSchema5FieldsByteIdentical` (AST scan logger.Info 真用 5 个 key) | 战马A / 飞马 / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-009 | hb-3.md §4.4 + stance §0 立场 ⑧ — best-effort 立场承袭 BPP-4/5, AST scan grant-queue 0 hit (锁链延伸第 3 处) | `TestHB3_NoGrantQueueInAPIPackage` (AST forbidden tokens: pendingGrants/grantQueue/deadLetterGrants) | 战马A / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-010 | hb-3.md §3.1 + content-lock §1.① — 弹窗三按钮 DOM byte-identical (data-action + hb3-button + 文字字面) | `packages/client/src/__tests__/HostGrantsPanel.test.tsx` 3 vitest case | 战马A / 野马 / 烈马 | feat/hb-3 | 🟢 active |
+| REG-HB3-011 | hb-3.md §3.1 + content-lock §2 — 同义词反向断言 + onDecide 三值回调 | `HostGrantsPanel.test.tsx` 2 vitest case | 战马A / 野马 / 烈马 | feat/hb-3 | 🟢 active |
+
 ### BPP-3.1 permission_denied frame (server→plugin, 一 milestone 一 PR ✅, 6 🟢)
 
 > BPP-3.1 v1 范围 = 第 13 frame `permission_denied` server→plugin (蓝图 auth-permissions.md §2 不变量 "Permission denied 走 BPP" + §4.1 row 字面). 8 字段 byte-identical 跟 AP-1 #493 abac.go 403 body (跨 PR drift 守, 双向 grep). PushPermissionDenied hub method (跟 PushAgentConfigUpdate 同模式 + cursor 共序). PermissionDeniedPusher interface seam — AP-1 abac.go::HasCapability false 路径 wiring 留 1-line follow-up commit (AP-1 + BPP-3.1 任一 merge 后接).

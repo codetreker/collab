@@ -55,6 +55,7 @@ var All = []Migration{
 	ap11UserPermissionsExpires,
 	al14AgentStateLog,
 	dl41WebPushSubscriptions,
+	hb31HostGrants,
 }
 
 // Default returns an Engine wired to db with All registered.
