@@ -8,12 +8,14 @@ import UserDetailPage from './pages/UserDetailPage';
 import ChannelsPage from './pages/ChannelsPage';
 import InvitesPage from './pages/InvitesPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminAuditLogPage from './pages/AdminAuditLogPage';
 
 const nav = [
   { to: '/admin/dashboard', label: 'Dashboard' },
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/channels', label: 'Channels' },
   { to: '/admin/invites', label: 'Invites' },
+  { to: '/admin/audit-log', label: 'Audit Log' },
   { to: '/admin/settings', label: 'Settings' },
 ];
 
@@ -77,6 +79,7 @@ function AdminLayout() {
           <Route path="users/:id" element={<UserDetailPage />} />
           <Route path="channels" element={<ChannelsPage />} />
           <Route path="invites" element={<InvitesPage />} />
+          <Route path="audit-log" element={<AdminAuditLogPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Routes>

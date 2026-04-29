@@ -153,3 +153,36 @@ export async function createInvite(expiresInHours?: number, note?: string): Prom
 export async function deleteInvite(code: string): Promise<void> {
   await request<{ ok: boolean }>(`/invites/${encodeURIComponent(code)}`, { method: 'DELETE' });
 }
+
+// ADM-2.2 admin-rail audit-log endpoint (#484, blueprint admin-model.md §1.4
+// 立场 ③ admin 互可见 + 三 filter UI 收敛). admin cookie 路径分叉守
+// (REG-ADM0-002 共享底线: user cookie → 401 反向断言).
+//
+// 跨端字面拆死: admin 端走英文 enum action (delete_channel/suspend_user/
+// change_role/reset_password/start_impersonation), 用户端 Settings/AdminActionsList
+// 走中文动词字面 (ACTION_VERBS map). 改 enum = 改 server admin_actions CHECK
+// constraint + admin SPA + user SPA 三处.
+export interface AdminActionRow {
+  id: string;
+  actor_id: string; // admin_view=true 包含 (UUID 字符串)
+  target_user_id: string;
+  action: string;   // 英文 enum (跟 server CHECK constraint byte-identical)
+  metadata: string; // JSON 字符串 (server 不挂 body/content/text/artifact 字段, god-mode 仅元数据)
+  created_at: number; // Unix ms
+}
+
+export interface AuditLogFilters {
+  actor_id?: string;
+  action?: string;
+  target_user_id?: string;
+}
+
+export async function fetchAdminAuditLog(filters: AuditLogFilters = {}): Promise<AdminActionRow[]> {
+  const qs = new URLSearchParams();
+  if (filters.actor_id) qs.set('actor_id', filters.actor_id);
+  if (filters.action) qs.set('action', filters.action);
+  if (filters.target_user_id) qs.set('target_user_id', filters.target_user_id);
+  const path = qs.toString() ? `/audit-log?${qs.toString()}` : '/audit-log';
+  const data = await request<{ actions: AdminActionRow[] }>(path);
+  return data.actions;
+}

@@ -26,8 +26,8 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| admin 写动作 (重置 API key 等) → 业主 system DM 含 `admin_name` 非 raw UUID | `internal/api/admin_audit_test.go::TestAdminWriteEmitsNamedDM` (ADM-0 反查 ③ 共享) | 战马B / 烈马 | ⏸️ deferred — ADM-2 范围 (impersonate + admin 写动作 audit DM 与 24h 红横幅同 PR 落, acceptance-templates/adm-2.md §依赖锚 `ADM-1 (隐私承诺页 PR #228) 已落`); ADM-1 v1 仅承诺页, 不含 server-side admin 写动作; 此行 ADM-2 真实施时翻 |
-| DM body 字面 "你的 API key 被 admin {admin_name} 重置, 请重新生成" | grep snapshot | 战马B / 野马 | ⏸️ deferred — 同上, ADM-2 真实施时翻 (蓝图字面在 admin-model.md §1.4 R3 已锁, ADM-1 范围内仅文案锁就位, server emit 未落) |
+| admin 写动作 (重置 API key 等) → 业主 system DM 含 `admin_name` 非 raw UUID | `internal/api/admin_audit_test.go::TestAdminWriteEmitsNamedDM` (ADM-0 反查 ③ 共享) | 战马B / 烈马 | ✅ #484 ADM-2 — `internal/api/admin.go` 4 admin handler audit hook wired (force_delete_channel / patch disabled / patch password / patch role); `store.EmitAdminActionAudit` composite 走 actor admin.Login 非 raw UUID; `TestADM22_ForceDeleteChannel_WritesAuditAndSystemDM` 反向断言 DM body 含 "admin {login}" 不含 raw actor_id PASS |
+| DM body 字面 "你的 API key 被 admin {admin_name} 重置, 请重新生成" | grep snapshot | 战马B / 野马 | ✅ #484 ADM-2 — `store.RenderAdminActionDMBody` reset_password 模板字面 byte-identical 跟 `docs/qa/adm-2-content-lock.md §1` 同源 ("你的登录密码被 admin {admin_username} 于 {ts} 重置, 请重新生成。详情见设置页"隐私 → 影响记录"。"); `TestRenderAdminActionDMBody_ByteIdentical` PASS |
 
 ### 闸 4 demo (野马签字必备)
 

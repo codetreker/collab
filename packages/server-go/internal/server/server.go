@@ -161,6 +161,12 @@ func (s *Server) SetupRoutes() {
 	// rail isolation + 立场 ⑦ same source).
 	adminRuntimeHandler := &api.AdminRuntimeHandler{Store: s.store, Logger: s.logger}
 	adminRuntimeHandler.RegisterRoutes(s.mux, adminMw)
+	// ADM-2.2 audit log + impersonate grant — wires user-rail (走 authMw,
+	// /api/v1/me/admin-actions + /api/v1/me/impersonation-grant CRUD) +
+	// admin-rail (/admin-api/v1/audit-log) endpoints. 立场 ③+④+⑦.
+	adm2Handler := &api.ADM2Handler{Store: s.store, Logger: s.logger}
+	adm2Handler.RegisterUserRoutes(s.mux, authMw)
+	adm2Handler.RegisterAdminRoutes(s.mux, adminMw)
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).

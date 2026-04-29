@@ -49,6 +49,8 @@ var All = []Migration{
 	cv41ArtifactIterations,
 	chn31UserChannelLayout,
 	al2a1AgentConfigs,
+	adm21AdminActions,
+	adm22ImpersonationGrants,
 	al1b1AgentStatus,
 }
 
