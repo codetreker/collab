@@ -105,10 +105,19 @@ jobs:
         run: |
           set -e
           patterns='al\.release\.gate.*skip|al\.release.*manual.*sign|allow.*bypass.*al|--admin.*merge.*al\.release|al\.release.*human\.review|al\.release.*demo\.signoff'
-          hits=$(grep -rE "$patterns" docs/release/ .github/workflows/ 2>/dev/null | grep -vE '反向 grep|count==0|不允许|MUST NOT|拆死|留账|拒.*跳过' | wc -l)
+          # --exclude self-file 防 yml 内 patterns 字符串定义匹配自己
+          # (跟 HB-4 release-gate.yml 同一 self-grep false positive bug 模式;
+          # HB-4 留 follow-up). docs/release/ md 文件以 反向 grep / count==0 /
+          # 不允许 / 拆死 等元词 grep -v 守.
+          hits=$(grep -rE "$patterns" docs/release/ .github/workflows/ \
+                 --exclude='al-release-gate.yml' --exclude='release-gate.yml' \
+                 2>/dev/null \
+                 | grep -vE '反向 grep|count==0|不允许|MUST NOT|拆死|留账|拒.*跳过' | wc -l)
           if [ "$hits" -gt 0 ]; then
             echo "::error::AL release-gate bypass / sign-off skip patterns found ($hits hits)"
-            grep -rE "$patterns" docs/release/ .github/workflows/ | grep -vE '反向 grep|count==0|不允许|MUST NOT|拆死|留账|拒.*跳过'
+            grep -rE "$patterns" docs/release/ .github/workflows/ \
+                 --exclude='al-release-gate.yml' --exclude='release-gate.yml' \
+                 | grep -vE '反向 grep|count==0|不允许|MUST NOT|拆死|留账|拒.*跳过'
             exit 1
           fi
 
