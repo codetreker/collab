@@ -256,6 +256,28 @@ Agent({ name: "aima", ... })
 - **合成多源诊断**: 烈马 + 野马 + 飞马报告冲突时, 不自己脑补合并 — 戳真因方 (e.g. 让战马 A 反证), 收齐反证再派活。
 - **memory of 决策**: 重要决策 (撤回某条建议 / 接受 dev 反证) 要广播给相关 reviewer, 防止 stale instruction 浮在他们 inbox。
 - **效率最大化授权**: 在不打破章程规则 (4 件套 / 双 review / migration v 号 sequencing 等) 不损质量 (反约束 grep 机器化锚 / byte-identical 对照) 的前提下, 灵活安排. 例如: 多 PR 一波 batch admin merge / review subagent 并行 / acceptance 与 stance 跨界互写 / chore PR 单 reviewer 跳双 review / 大波 LGTM 信号到达后立即派 batch 处理. 不要为流程而流程, 但流程的"为什么"得守住.
+- **Ping/Pong 沉默检测**: 派活给 persistent agent (战马/飞马/野马/烈马等) 后, 如 30min 内无 idle_notification 也无 PR push 也无任何 SendMessage 回报, 启动 ping 协议:
+
+  1. **第一次 ping** (≤30min 沉默): SendMessage 内容仅 "ping. 5min 内回 pong + 当前进度一句话". 期待 5min 内 agent 回 "pong + 进度".
+  2. **第二次 ping** (≤45min 沉默, 第一次没回): SendMessage "再次 ping. 你是否在干活? 还是 inbox 收不到? 5min 内回报或我 shutdown."
+  3. **Kill + 重 spawn** (≤55min 沉默, 第二次也没回): 派 shutdown_request (可能也 silent fail), 然后**直接 spawn 新 subagent 替代**接同样的活. 不依赖老 session 自己关闭.
+
+  **Why**: 实战观察 SendMessage 可能 silent fail (API success 但 inbox 未投递), agent 真在干活 vs 真 stale 无法靠 SendMessage 单一信道判定. ping 是探针, 不响应 = 默认 stale, 不等永久.
+
+  **How to apply**: 30min 沉默是阈值不是死规, 看任务复杂度调 (e.g. e2e 调试 60min 沉默正常, schema migration 30min 沉默异常). 用户拍板可豁免 (e.g. "战马A 在 debug 不要打扰").
+
+  **不适用**: subagent (background task) 本来就不该响应 ping, 它有 task-notification 完成信号. ping 只对 persistent angle 用.
+
+### Kill-respawn 协议 (沉默 agent 处理)
+
+ping 协议 ≥55min 沉默 → kill + 重 spawn:
+
+1. **派 shutdown_request** (best effort, 可能 silent fail) — 给老 session 一个体面退出机会
+2. **Spawn 新 subagent 接活**: Agent({subagent_type: "general-purpose", prompt: "<完整角色 prompt 模板 + 接的 milestone 派活>"}). 不等老 session 死.
+3. **如老 session 突然回应** (用户手动触发或 inbox 延迟到达): 协调让老 session 接其他活 (e.g. CV-3.2 server 而非 CV-2.3), 不强 kill — 弹性优先.
+4. **不强占主 worktree**: 老 session 如还活着可能持有 /workspace/borgee/.worktrees/implement, 新 subagent 用 /tmp/<role>-<topic>-work 临时 clone.
+
+**反 false positive**: 用户告知 "agent 在 debug" / "正常长任务" → 不触发 ping. 用户判断 > 30min 阈值.
 
 ### 反模式
 - ❌ **subagent 同步阻塞**: 派 general-purpose agent 必须 `run_in_background: true`, 否则 teamlead 卡在等结果上, 不能继续协调。背景: subagent 干杂活 (admin merge / lint patch) 跟 teamlead 主线 (协调派活 / 收 LGTM / 合成诊断) **本来就独立**, 没理由阻塞。
