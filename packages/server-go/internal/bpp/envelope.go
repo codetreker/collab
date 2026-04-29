@@ -242,9 +242,10 @@ func (ErrorReportFrame) FrameDirection() Direction { return DirectionPluginToSer
 //
 // Field semantics:
 //   - Type: discriminator 头位 byte-identical 跟 BPP envelope #280
-//   - Cursor: hub.cursors 单调发号 (回送的 cursor 值跟 server 端
-//     AgentConfigUpdateFrame.Cursor byte-identical 配对; client 端按
-//     cursor 配 ack ↔ update)
+//   - Cursor: plugin echo update.Cursor 做配对 (server 端按 cursor
+//     配 ack ↔ AgentConfigUpdateFrame; ack 自身不走 hub.cursors 单调
+//     发号 — ack 是 plugin → server 回执, 跟 update 走的 server →
+//     plugin push cursor 不同根 sequence)
 //   - AgentID: target agent UUID, 跟 update frame byte-identical
 //   - SchemaVersion: plugin 实际 apply 的 schema_version (acceptance §2.3
 //     stale 路径: plugin 收到 < server 当前 → ack 携带 plugin 已知值,
