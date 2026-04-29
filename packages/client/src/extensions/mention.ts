@@ -10,6 +10,14 @@ export interface MentionSuggestionItem {
   role: string;
 }
 
+// MentionListProps — what we hand to MentionList through ReactRenderer.
+// Extends @tiptap/suggestion's SuggestionProps with our channelType so the
+// list can render the CHN-2.3 (#377/#357) DM-only placeholder lock when
+// the candidate set is empty in a DM context.
+export interface MentionListExtraProps {
+  channelType?: 'dm' | 'channel';
+}
+
 const MentionWithMarkdown = Mention.extend({
   addStorage() {
     return {
@@ -27,6 +35,14 @@ const MentionWithMarkdown = Mention.extend({
 export function createMentionExtension(
   getUsersFn: () => ChannelMember[],
   activeRef?: { current: boolean },
+  // CHN-2.3 (#357 §1.2 + #354 §1 ⑤): in DM channels the candidate list
+  // is intrinsically capped at 2 (server returns only the 2 DM members
+  // from GET /channels/:id/members per CHN-1 #286). When the DM user types
+  // a query that matches neither party, MentionList renders the locked
+  // placeholder `"私信仅限两人, 想加人请新建频道"` (#354 §1 ⑤ byte-identical)
+  // instead of collapsing to nothing — surfaces the "DM 永远 2 人 +
+  // 想加人请新建频道" stance to the typing user.
+  getChannelTypeFn?: () => 'dm' | 'channel' | undefined,
 ) {
   return MentionWithMarkdown.configure({
     HTMLAttributes: {
@@ -53,6 +69,15 @@ export function createMentionExtension(
         let component: ReactRenderer<{ onKeyDown: (props: SuggestionKeyDownProps) => boolean }> | null = null;
         let popup: HTMLDivElement | null = null;
 
+        // Augment SuggestionProps with channelType — MentionList knows to
+        // render the DM placeholder lock when items is empty + DM context.
+        const augment = (
+          props: SuggestionProps<MentionSuggestionItem>,
+        ): SuggestionProps<MentionSuggestionItem> & MentionListExtraProps => ({
+          ...props,
+          channelType: getChannelTypeFn?.(),
+        });
+
         return {
           onStart: (props: SuggestionProps<MentionSuggestionItem>) => {
             if (activeRef) activeRef.current = true;
@@ -66,13 +91,13 @@ export function createMentionExtension(
             }
 
             component = new ReactRenderer(MentionList, {
-              props: { ...props },
+              props: augment(props),
               editor: props.editor,
             });
             popup.appendChild(component.element);
           },
           onUpdate: (props: SuggestionProps<MentionSuggestionItem>) => {
-            component?.updateProps(props);
+            component?.updateProps(augment(props));
           },
           onKeyDown: (props: SuggestionKeyDownProps) => {
             if (props.event.key === 'Escape') {
