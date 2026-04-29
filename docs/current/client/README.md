@@ -83,6 +83,12 @@
 - `ReactionBar.tsx`、`SlashCommandPicker.tsx`、`AgentManager.tsx`、`InvitationsInbox.tsx`、`WorkspaceManager.tsx`、`NodeManager.tsx`、`ConnectionStatus.tsx`、`Toast.tsx`、`TypingIndicator.tsx`。
   - `InvitationsInbox.tsx`（CM-4.2）— 业主侧 agent 邀请收件箱：`listAgentInvitations('owner')` 拉列表，pending 行带 同意/拒绝 quick action（PATCH `/api/v1/agent_invitations/{id}` `{state}`），同意成功后 `actions.loadChannels()` 然后 `onJumpToChannel(channel_id)` 切到目标频道；409 → "该邀请已被处理或状态已变更，请刷新"。`Sidebar` 右下 🔔 铃铛每 60s 轮询 owner-role 邀请数（agent 角色跳过），CM-4.3 会替换成 BPP push frame。Bug-029 后渲染 `agent_name` / `channel_name`（前缀 `#`）/ `requester_name`，server-resolved label 缺失则 fallback 到 raw id；raw UUID 始终保留在 `title` hover 上（debug / log 引用）。`AgentInvitation` 类型见 `lib/api.ts`：`agent_name?` / `channel_name?` / `requester_name?` 三字段 optional（向后兼容旧 server）。
 
+### `components/Settings/`
+- 用户设置页，**v1 仅 "隐私" tab**（ADM-1 起步, Phase 4 启动 milestone）。详见 [`ui/settings.md`](ui/settings.md)。
+- `SettingsPage.tsx` — 1 page 骨架, 顶部嵌 ⚙️ 按钮（Sidebar `data-action="open-settings"` → `App.tsx::showSettings` state，跟 `showAgents` 同模式无 react-router）。
+- `PrivacyPromise.tsx` — 三承诺字面 1:1 跟 `admin-model.md §4.1` 同源（drift test CI 拦, vite `?raw` import）+ 八行 ✅/❌ 表格三色锁（allow gray / deny `#d33` 加粗 / impersonate `#d97706` amber）。**默认展开不可折叠**（野马 R3, 反 `<details>` 包裹源码 0 hit）。
+- 路径分叉：跟 `admin/pages/SettingsPage.tsx` 同名共存不混用（ADM-0 红线: cookie 拆 + `/admin-api/*` 独立 route）。
+
 ### `extensions/`
 - `mention.ts` — 包装 TipTap 的 mention 扩展，suggestion 用 `<MentionList/>` 渲染。`MessageInput` 发送前用 `extractMentionIds()` 把 mention node 的 `id` 收集出来传给 server。
 
