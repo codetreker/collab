@@ -595,3 +595,50 @@ func TestAL42_StartTransitionsRunning_FromError(t *testing.T) {
 
 // Compile-time guard: ensures strings import not removed by a stray edit.
 var _ = strings.Contains
+
+// TestAL42_ListAnchorComments_Coverage covers the new handleListComments
+// endpoint introduced via merge-from-main (anchors.go:467, 0% before this).
+// Paired with the CV-4.2 #409 sister patch — same fix lifts AL-4.2 #414
+// past the 85% threshold (CI ci.yml:55 strict `< 85`).
+func TestAL42_ListAnchorComments_Coverage(t *testing.T) {
+	url, ownerTok, st, _ := al42Setup(t)
+	// Need a channel + artifact + anchor + comment to exercise list.
+	chID := cv12General(t, url, ownerTok)
+	_, art := testutil.JSON(t, "POST", url+"/api/v1/channels/"+chID+"/artifacts", ownerTok, map[string]any{
+		"title": "P", "body": "x",
+	})
+	artID := art["id"].(string)
+
+	// 401 anon.
+	resp401, err := http.Get(url + "/api/v1/anchors/x/comments")
+	if err != nil {
+		t.Fatalf("anon: %v", err)
+	}
+	resp401.Body.Close()
+	if resp401.StatusCode != http.StatusUnauthorized {
+		t.Errorf("anon expected 401, got %d", resp401.StatusCode)
+	}
+
+	// 404 missing anchor.
+	resp404, _ := testutil.JSON(t, "GET", url+"/api/v1/anchors/no-such/comments", ownerTok, nil)
+	if resp404.StatusCode != http.StatusNotFound {
+		t.Errorf("missing anchor 404 expected, got %d", resp404.StatusCode)
+	}
+
+	// Happy: create anchor + comment + list.
+	_, anchor := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/anchors", ownerTok, map[string]any{
+		"start_offset": 0, "end_offset": 1,
+	})
+	anchorID := anchor["id"].(string)
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/anchors/"+anchorID+"/comments", ownerTok, map[string]any{
+		"body": "lgtm",
+	})
+	resp, data := testutil.JSON(t, "GET", url+"/api/v1/anchors/"+anchorID+"/comments", ownerTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list comments not 200: got %d", resp.StatusCode)
+	}
+	if rows, ok := data["comments"].([]any); !ok || len(rows) != 1 {
+		t.Errorf("expected 1 comment, got %v", data["comments"])
+	}
+	_ = st
+}
