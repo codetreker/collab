@@ -510,6 +510,25 @@
 | REG-HB4-009 | hb-4.md §2.5 + stance §0 立场 ② — host vs runtime 字典分立 (HB-3 不复用 user_permissions) | `release-gate.yml::dict-isolation` (跑 TestHB3_NoUserPermissionsJoin) | 战马A / 烈马 | feat/hb-4 | 🟢 active |
 | REG-HB4-010 | hb-4.md §1.1 + §1.3 + §1.6 — placeholder 留账 (HB-1/HB-2 Rust crate 真实施 PR 加 startup-benchmark + signature-pass-rate + dogfood-crash-rate 真测) | `release-gate.yml::startup-benchmark` + `signature-pass-rate` + `dogfood-crash-rate` (placeholder + spec contract assertion) | 战马A (HB-1/HB-2 真实施时换真测) | feat/hb-4 | 🟢 active |
 
+### AL-2 wrapper ⭐ agent lifecycle release gate (一 milestone 一 PR ✅ 4.1 / ⏸️ 4.2 野马截屏, 12 🟢)
+
+> AL-2 wrapper 范围 = §1 release-gate.md doc (≥10 硬条件清单 + 5-state graph + reason 字典锁链 ≥10 处) + §2 al-release-gate.yml CI workflow (≥12 step 任一 fail → release block; 真跑 AL-1.4/AL-2a/AL-2b 既有 unit test) + §3 closure (跟 HB-4 #509 release-gate.yml **拆独立 yml** — host 层 vs runtime 层守门拆死). reason 字典锁链 release-time 收口验证 (≥10 处 byte-identical, 不另起第 7 reason).
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-AL2W-001 | al-2-wrapper.md §1.1 + 蓝图 §2.3 — release-gate.md ≥10 硬条件清单, 每项三元组 | `docs/release/agent-lifecycle-release-gate.md` 行数 + numbered table | 战马A / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-002 | al-2-wrapper.md §1.2 + spec §0.3 — 5-state graph reflect lint (validTransitions byte-identical 跟 #492) | `al-release-gate.yml::state-graph-reflect` (跑 TestValidateTransition + TestAppendAgentStateTransition) | 战马A / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-003 | al-2-wrapper.md §1.3 + spec §0.2 — reason 字典锁链 ≥10 处 byte-identical 跨 milestone (#496 SSOT 单源) | `al-release-gate.yml::reason-chain-cross-milestone` (grep `reasons\.(APIKeyInvalid\|...)` ≥6 hit + reasons.go SSOT 文件存在) | 战马A / 飞马 / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-004 | al-2-wrapper.md §1.4 + stance §0 立场 ② — 不另起第 7 reason | `al-release-gate.yml::no-7th-reason` (反向 grep `reason.*7th\|runtime_recovered\|reconnect_success\|new.*reason\.` 0 hit) | 战马A / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-005 | al-2-wrapper.md §1.4 + stance §0 立场 ③ — 不挂 connecting 持久态 (BPP-5 立场承袭确认) | `al-release-gate.yml::no-connecting-persisted` (反向 grep `AgentStateConnecting\|state.*connecting` 在 agent_state_log.go 0 hit) | 战马A / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-006 | al-2-wrapper.md §2.5 — AL-1.4 state log coverage 真测 (5 transition + GET endpoint) | `al-release-gate.yml::al-1-4-state-log-coverage` (跑 TestAL14_*) | 战马A / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-007 | al-2-wrapper.md §2.6 — AL-2a config blob validation 真测 (allowedConfigKeys 7 字段 + 并发 + cross-owner 403) | `al-release-gate.yml::al-2a-config-blob-validation` (跑 TestAL2A2_*) | 战马A / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-008 | al-2-wrapper.md §2.7 — AL-2b BPP frame fanout 真测 (cursor 共序 + idempotency + plugin offline drop) | `al-release-gate.yml::al-2b-bpp-fanout` (跑 TestAL2B2_*) | 战马A / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-009 | al-2-wrapper.md §2.8 + stance §0 立场 ④ — busy/idle BPP source 锁 (presence_sessions 不写 busy 列, AL-1b 立场 ②) | `al-release-gate.yml::busy-idle-bpp-source` (反向 grep `presence_sessions.*UPDATE.*busy` 0 hit) | 战马A / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-010 | al-2-wrapper.md §3.9 + stance §0 立场 ⑤ — AL stack vs HB stack audit 字典分立 (agent_state_log+agent_status vs audit_log 拆死) | `al-release-gate.yml::dict-isolation-al-vs-hb` (反向 grep `agent_state_log.*JOIN.*audit_log` 0 hit) | 战马A / 飞马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-011 | al-2-wrapper.md §3.10 + stance §0 立场 ① — 不允许人工 sign-off 跳过 AL release gate (跟 HB-4 #509 立场 ① byte-identical 同源) | `al-release-gate.yml::no-bypass` (反向 grep `al.release.gate.*skip\|manual.*sign\|allow.*bypass\|--admin.*merge.*al.release\|human.review\|demo.signoff` 0 hit) | 飞马 / 烈马 | feat/al-2-wrapper | 🟢 active |
+| REG-AL2W-012 | al-2-wrapper.md §3.12 + stance §0 立场 ⑦ — AL yml 跟 HB-4 yml 拆独立 (host vs runtime 守门拆死) + admin god-mode 不入 (用户主权) | `al-release-gate.yml::al-vs-hb-yml-isolation` (反向 grep `host_grants\|host_bridge\|install-butler` in al-release-gate.yml 0 hit) + `no-admin-godmode-al` | 飞马 / 烈马 | feat/al-2-wrapper | 🟢 active |
+
 ### BPP-3.1 permission_denied frame (server→plugin, 一 milestone 一 PR ✅, 6 🟢)
 
 > BPP-3.1 v1 范围 = 第 13 frame `permission_denied` server→plugin (蓝图 auth-permissions.md §2 不变量 "Permission denied 走 BPP" + §4.1 row 字面). 8 字段 byte-identical 跟 AP-1 #493 abac.go 403 body (跨 PR drift 守, 双向 grep). PushPermissionDenied hub method (跟 PushAgentConfigUpdate 同模式 + cursor 共序). PermissionDeniedPusher interface seam — AP-1 abac.go::HasCapability false 路径 wiring 留 1-line follow-up commit (AP-1 + BPP-3.1 任一 merge 后接).
