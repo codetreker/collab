@@ -51,9 +51,11 @@
 
 ## 5. 是否 ready 出 Phase 3 退出公告
 
-**⚠️ NOT READY — 主体收尾达 ✅, 但 Phase 3 章程闸 G3.2 + G3.4 + G3.3 野马签字未达**
+**🔄 IN-FLIGHT — 4 件套全闭 ✅, 1.5 milestone 实施全闭 / 6+ 实施待 (v2 update 2026-04-29)**
 
-理由: ① G3.1 / G3.audit 严格 ✅ ② G3.3 ⭐ CV-1 impl/acceptance 全闭, **野马 demo 3 截屏未补** (用户感知签字硬约束) ③ G3.2 锚点对话依赖 CV-2, CV-2 未启动 ④ G3.4 CHN-4 协作场骨架依赖 CHN-2/3 + CV-2, 全部未启动 ⑤ Phase 3 章程 9 milestone 仅 4 闭, 5 待启动 → "条件性全过" 都不够格.
+详见 §5.5 v2 update.
+
+理由 (v0/v1 历史): ① G3.1 / G3.audit 严格 ✅ ② G3.3 ⭐ CV-1 impl/acceptance 全闭, **野马 demo 3 截屏未补** (用户感知签字硬约束) ③ G3.2 锚点对话依赖 CV-2, CV-2 未启动 ④ G3.4 CHN-4 协作场骨架依赖 CHN-2/3 + CV-2, 全部未启动 ⑤ Phase 3 章程 9 milestone 仅 4 闭, 5 待启动 → "条件性全过" 都不够格.
 
 **用户拍板 (2026-04-29): 严守章程** — Phase 3 章程满 9 milestone 才公告退出, 不裁减.
 
@@ -67,10 +69,57 @@
 
 估 4-6 周延续; 退出公告等 6 milestone 全闭 + 野马 G3.3 demo 3 截屏齐再发.
 
-⚠️ **Pre-flip 必检 (退出公告时)**:
-1. **#347 CV-1 acceptance flip** admin merge (a0dffa7 fix 验过, baseline 干净)
-2. **野马 G3.3 demo 3 截屏** (artifact 列表 / 添加新版本 / v1↔v2 切换) 入 `docs/qa/signoffs/`
-3. **e2e flip follow-up** (REG-CV1-017 ⏸️ → 🟢 active, 烈马接) — 不阻塞但建议同 PR 闭
+## 5.5 v2 update (2026-04-29) — 4 件套全闭 + 实施密集期入
+
+### 9 milestone 4 件套全闭状态表 (byte-identical 锁齐)
+
+| # | milestone | spec brief | stance | acceptance | 文案锁 | 实施 |
+|---|---|---|---|---|---|---|
+| 1 | CHN-1 | ✅ | (旧) | ✅ chn-1.md | (旧) | ✅ #276/#286/#288 |
+| 2 | CV-1 ⭐ | ✅ | (旧) | ✅ cv-1.md | ✅ #347 | ✅ #334/#342/#346/#348 |
+| 3 | RT-1 | ✅ | (旧) | ✅ rt-1.md | (无) | ✅ #290/#292/#296 |
+| 4 | AL-3 | ✅ | (旧) | ✅ al-3.md | (旧) | ✅ #310/#317/#324/#327/#336 |
+| 5 | CV-2 | ✅ #356(v3 #368) | (spec 自带) | ✅ #358 | ✅ #355 | ✅ #359/#360 + CV-2.3 待 |
+| 6 | DM-2 | ✅ #312/#362/#377 | (spec 自带) | ✅ #293 | ✅ #314 | ✅ #361/#372 + DM-2.3 待 |
+| 7 | CHN-2 | ✅ #357 | (spec 自带) | ✅ #353 | ✅ #354+#364 | ⏳ 战马A 接 |
+| 8 | CV-3 | ✅ #363 | (spec 自带) | ✅ #376 | ✅ #370 | ⏳ 战马A 接 |
+| 9 | CV-4 | ✅ #365 | (spec 自带) | ✅ #384 待 review | ✅ #380 | ⏳ 战马A 接 |
+| - | CHN-3 (并行) | ✅ #371 | ✅ #366 | ✅ #376 | (待) | ⏳ 战马C 接 |
+| - | CHN-4 (收尾) | ✅ #374 | ✅ #378 | ✅ #381 | ✅ #382 | ⏳ 收尾 |
+
+### Phase 3 章程闸推进状态
+
+| 闸 | 状态 | 阻塞 |
+|---|---|---|
+| G3.1 artifact 创建 + 推送 E2E | ✅ SIGNED | (#348 e2e ≤3s 真 WS push) |
+| G3.2 锚点对话 E2E | ⏳ 阻 CV-2.3 client SPA 实施 (战马A in-flight) |
+| G3.3 用户感知签字 (CV-1 ⭐) | ⏳ 阻野马 demo 3 截屏 (artifact 列表 / 新版本 / v1↔v2) |
+| G3.4 协作场骨架 (CHN-4) E2E + 双 tab 截屏 | ⏳ 阻 CHN-2/3/4 实施 + CV-3/4 实施 + 双截屏归档 |
+| G3.audit v0 代码债 | ✅ SIGNED |
+
+### 实施进度 (1.5 milestone 实施全闭, 6+ 实施待)
+
+**已闭 4 milestone** (CHN-1 / CV-1 / RT-1 / AL-3) + **DM-2.1+2.2** (=1.5 段, REG-DM2-001..009 🟢) + **CV-2.1+2.2** (=0.66 段, anchor schema + server)
+
+**待实施 6 milestone 段**:
+- CV-2.3 client SPA (战马A in-flight, 50min 无回报 — team-lead 已催)
+- DM-2.3 client SPA (战马C 续作, spec #377 merged 89040a1)
+- CV-3.1/3.2/3.3 (战马A 接 CV-2.3 后)
+- CV-4.1/4.2/4.3 (战马A 接 CV-3 后, AL-4 stub fail-closed 接口)
+- CHN-2.1/2.2/2.3 (战马A 接 CV 主线后)
+- CHN-3.1/3.2/3.3 (战马C 接 DM-2.3 后)
+- CHN-4.1/4.2/4.3 (收尾, 战马A 或 C 空闲接)
+- AL-4.1/4.2/4.3 (Phase 4 入口前置, 不阻 Phase 3 退出)
+
+### 留账 PR # 锁
+
+| 留账 | PR # | 状态 |
+|---|---|---|
+| REG-DM2-010 (mention render @{display_name} + 反向 raw UUID) | DM-2.3 实施待 | ⚪ pending |
+| e2e `dm-2-3-mention.spec.ts` | DM-2.3 实施待 | ⚪ pending |
+| 野马 G3.3 demo 3 截屏 (CV-1 用户感知签字) | 待野马起 | ⏳ |
+| 野马 G3.4 双 tab 截屏 (CHN-4 退出闸三签依据) | CHN-4.3 实施 + 野马签 | ⏳ |
+| #347 CV-1 acceptance flip admin merge | (检查现状, 可能已 merged) | ⏳ |
 
 ## 6. Phase 4 entry 前置依赖 (跨 phase 留账)
 
@@ -91,3 +140,4 @@
 |---|---|---|
 | 2026-04-29 | 飞马 | v0 — Phase 3 readiness review (5 节, ⚠️ NOT READY 章程未达 — G3.2/3.3/3.4 + 5 milestone 未启动; 双路径建议) |
 | 2026-04-29 | 飞马 | v1 — §5 用户拍板严守章程, 删裁减选项, 写定下一波启 6 milestone (CV-2 + CHN-2 + CV-3 + CHN-3 + CV-4 + CHN-4); CV-2 + CHN-2 spec brief 同步起草 |
+| 2026-04-29 | 飞马 | v2 — 状态 ⚠️ NOT READY → 🔄 IN-FLIGHT (4 件套全闭 + 1.5 milestone 实施全闭, 6+ 实施待); §5.5 加 9 milestone 4 件套全闭状态表 (spec/stance/acceptance/文案锁 byte-identical 锁齐 PR # 一一锚) + Phase 3 章程闸推进表 (G3.1/G3.audit ✅, G3.2/G3.3/G3.4 待实施) + 实施进度 (DM-2 9/10 active 跟 #383 翻牌一致, CV-2 server 闭 client 待) + 留账 PR # 锁 (REG-DM2-010/e2e dm-2-3-mention/野马 G3.3+G3.4 截屏); v2 反映 Phase 3 章程退出闸进入实施密集期, 4 件套字面锁就位防漂移 |
