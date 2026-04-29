@@ -247,7 +247,11 @@ func (s *Store) ConsumeInviteCode(code string, userID string) error {
 
 func (s *Store) ListUserPermissions(userID string) ([]UserPermission, error) {
 	var perms []UserPermission
-	err := s.db.Where("user_id = ?", userID).Find(&perms).Error
+	// AP-2 #ap-2 立场 ⑥: revoked_at IS NOT NULL 行被排除 (sweeper 软删
+	// 路径; AP-1 SSOT 同精神, 改 = 改此处一处, HasCapability 路径自动
+	// 返 false 对 revoked 行). NULL = active (跟 expires_at NULL = 永久
+	// + org_id NULL = legacy 同精神).
+	err := s.db.Where("user_id = ? AND revoked_at IS NULL", userID).Find(&perms).Error
 	return perms, err
 }
 
