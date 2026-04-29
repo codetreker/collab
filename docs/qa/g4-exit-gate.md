@@ -17,6 +17,11 @@
 | **G4.5** | runtime registry + agent_configs SSOT 全链 E2E (registry → SSOT blob 整体替换 → BPP push → ack) | AL-4 ✅ + AL-2a ✅ + AL-2b ✅ | 待 (端到端 4 段串联) | ⏳ |
 | **G4.audit** (滚动) | Phase 4 跨 milestone 代码债 audit (滚动加 audit row, 跟 G3.audit #448 同模式) | 全 Phase 4 milestone + AP-1 (待启) | 飞马起草 closure announcement | 滚动 |
 
+### G4.audit row — kindBadge 5 源补齐 (post-#485 verify 抓出)
+
+- [ ] **kindBadge helper 5 源补齐** — G3.audit 标"5 源 byte-identical" 但 post-#485 reverse-grep 实为 **2 源** (ArtifactPanel + AnchorThreadPanel), 缺 DM-2 / CV-4 / CHN-4 渲染面复用. G4.audit row, 派战马 (CV-2 / DM-2 / CV-4 / CHN-4 任选) follow-up commit 进下个 milestone PR. 字面: `committer_kind === 'agent' ? '🤖' : '👤'`. 真补后 G4 closure §3 链 1 才闭.
+- [ ] **链 4 rollback owner-only DOM gate regex 对齐** — 代码用 `channel?.created_by` (optional chain), spec regex 用 `channel.created_by`. 无语义 bug 但 reverse-grep 哨兵 miss. 二选一: 改 regex `channel\??\.created_by` 或代码去 `?.`.
+
 **通过判据**: G4.1-G4.5 全 ✅ SIGNED + G4.audit 滚动闭 + AP-1 milestone 完成 + 跨 phase 留账锚 (Phase 5+/6+) 全明示 → Phase 4 closure announcement (跟 G3 closure 同模式无软留账).
 
 ---
