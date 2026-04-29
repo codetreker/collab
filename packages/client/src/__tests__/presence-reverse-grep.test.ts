@@ -1,11 +1,11 @@
 // presence-reverse-grep.test.ts — AL-3.3 (#R3 Phase 2) 反约束 grep 守.
 //
 // 等价于 al-3.md acceptance §5.1 + §3.2 spec lint job 的 client 侧:
-//   - §5.1 busy / idle / StateBusy / StateIdle / 忙 / 空闲 不出现于
-//     **presence 相关源** (PresenceDot.tsx, usePresence.ts, agent-state.ts).
-//     phase 2 仅 online/offline/error, busy/idle 跟 BPP-1 #280 同期.
-//     注: 'idle' 字面在 SendStatus / setStatus 等无关上下文是合法的, 这道
-//     反约束**仅守 presence 相关的文件**, 不是全局禁词.
+//   - §5.1 phase 2 阶段反约束: busy / idle / 忙 / 空闲 不准在 presence
+//     相关源 (因 phase 2 仅承诺 online/offline/error). **AL-1b (Phase 4)
+//     落地后此条解封** — busy/idle 走 AL-1b describeAgentState() 合法
+//     字面, 此 PR 仅守剩余字面 (StateBusy / StateIdle 等 server 侧名称
+//     若误漂入 client 仍反约束).
 //   - §3.2 PresenceDot / usePresence 调用面只允许在 agent 相关 UI — 反查
 //     `import` 语句, 不是字面提及 (允许注释里说 "PresenceDot 在 ... 用").
 //
@@ -47,8 +47,12 @@ const PRESENCE_FILES: string[] = [
 ];
 
 describe('AL-3.3 反约束 grep 守 (al-3.md §5.1 / §3.2)', () => {
-  it('§5.1 presence 相关文件不出现 busy / idle / StateBusy / StateIdle / 忙 / 空闲', () => {
-    const banned = [/\bbusy\b/i, /\bidle\b/i, /StateBusy/, /StateIdle/, /忙/, /空闲/];
+  it('§5.1 presence 相关文件不出现 server-side state name leak (StateBusy / StateIdle); busy/idle 字面 AL-1b Phase 4 已合法解封', () => {
+    // AL-1b Phase 4 解封 busy/idle/忙/空闲 — 这些字面现在是 AL-1b 合法
+    // describeAgentState() output 跟 PresenceDot data-task-state attr 字面.
+    // 仅守 server 侧 Go 状态枚举名 (StateBusy/StateIdle) 误漂入 client —
+    // client 侧字符串字面是 'busy'/'idle' 小写, 跟 server 字面不同.
+    const banned = [/StateBusy/, /StateIdle/];
     const hits: string[] = [];
     for (const f of PRESENCE_FILES) {
       const lines = (fs.readFileSync(f, 'utf8') as string).split('\n');
@@ -64,7 +68,7 @@ describe('AL-3.3 反约束 grep 守 (al-3.md §5.1 / §3.2)', () => {
     }
     if (hits.length > 0) {
       throw new Error(
-        'AL-3.3 §5.1 反约束: presence 相关文件禁出现 busy/idle. 命中:\n' + hits.join('\n'),
+        'AL-3.3 §5.1 反约束: presence 文件禁 leak server-side state enum 名. 命中:\n' + hits.join('\n'),
       );
     }
   });
@@ -118,5 +122,27 @@ describe('AL-3.3 反约束 grep 守 (al-3.md §5.1 / §3.2)', () => {
     // 实现里 .presence-dot 永远跟 .presence-text 或 .sr-only 同 parent.
     expect(src).toContain('presence-text');
     expect(src).toContain('sr-only');
+  });
+
+  // AL-1b (#R3 Phase 4) acceptance §3.4 — busy/idle 文案模糊词反约束.
+  // describeAgentState() 必须用 "在工作" / "空闲", 不准 "活跃" / "running" /
+  // "Standing by" / "等待中" 模糊词. 跟 al-1b-content-lock 同源 (待野马).
+  it('§3.4 (AL-1b) agent-state.ts 不出现 "活跃"/"running"/"standing by"/"等待中" 模糊词', () => {
+    const src = fs.readFileSync(nodePath.join(SRC_ROOT, 'lib', 'agent-state.ts'), 'utf8') as string;
+    const banned = [/活跃/, /\brunning\b/i, /standing\s*by/i, /等待中/];
+    const hits: string[] = [];
+    src.split('\n').forEach((line: string, i: number) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
+      const codePart = line.replace(/\/\/.*$/, '');
+      for (const re of banned) {
+        if (re.test(codePart)) hits.push(`agent-state.ts:${i + 1}: ${line.trim()}`);
+      }
+    });
+    if (hits.length > 0) {
+      throw new Error(
+        'AL-1b §3.4 反约束: busy/idle 文案禁模糊词. 命中:\n' + hits.join('\n'),
+      );
+    }
   });
 });
