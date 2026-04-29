@@ -41,7 +41,7 @@ import (
 	"errors"
 	"fmt"
 
-	agentpkg "borgee-server/internal/agent"
+	"borgee-server/internal/agent/reasons"
 )
 
 // AckErrCode* — error code literals byte-identical 跟 BPP-2.2
@@ -80,18 +80,13 @@ var validAckStatuses = map[string]bool{
 	AgentConfigAckStatusStale:    true,
 }
 
-// validAL1aReasons — 6-字典 byte-identical 跟 internal/agent/state.go
-// Reason* SSOT 同源. 改 = 改 8 处单测锁: AL-1a #249 + AL-3 #305 +
-// CV-4 #380 + AL-2a #454 + AL-1b #458 + AL-4 #387/#461 + BPP-2.2 #485 +
-// AL-2b #481 (此处第 8 处跟链, 不另起字典).
-var validAL1aReasons = map[string]bool{
-	agentpkg.ReasonAPIKeyInvalid:      true,
-	agentpkg.ReasonQuotaExceeded:      true,
-	agentpkg.ReasonNetworkUnreachable: true,
-	agentpkg.ReasonRuntimeCrashed:     true,
-	agentpkg.ReasonRuntimeTimeout:     true,
-	agentpkg.ReasonUnknown:            true,
-}
+// validAL1aReason — REFACTOR-REASONS: SSOT 迁到 internal/agent/reasons.
+// 改字面 = 改 reasons.ALL 一处即 8 处单测同步挂.
+//
+// 历史: 此处原 inline 6 字面 byte-identical 跟 agent/state.go Reason*
+// (#249/#305/#321/#380/#454/#458/#481/#492 八处单测锁链), REFACTOR-REASONS
+// 一 PR dedupe 到 internal/agent/reasons SSOT 包.
+func validAL1aReason(s string) bool { return reasons.IsValid(s) }
 
 // AckSessionContext is the per-plugin-connection context the
 // AckDispatcher passes to the registered handler. Carries the
@@ -181,7 +176,7 @@ func (d *AckDispatcher) Dispatch(frame AgentConfigAckFrame, sess AckSessionConte
 
 	// 2. Reason 字典 (仅 rejected/stale 且 Reason 非空时校验).
 	if frame.Status != AgentConfigAckStatusApplied && frame.Reason != "" {
-		if !validAL1aReasons[frame.Reason] {
+		if !validAL1aReason(frame.Reason) {
 			return fmt.Errorf("%w: reason=%q (AL-1a 6-dict: api_key_invalid/quota_exceeded/network_unreachable/runtime_crashed/runtime_timeout/unknown)",
 				errAckReasonUnknown, frame.Reason)
 		}
