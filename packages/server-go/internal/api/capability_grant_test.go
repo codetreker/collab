@@ -80,8 +80,15 @@ func TestBPP32_RequestGrant_WritesSystemDM(t *testing.T) {
 		QuickAction *string
 	}
 	var rows []row
+	// Filter on quick_action shape — the welcome system message + the
+	// BPP-3.2 grant-DM share (channel_id, sender_id='system', quick_action
+	// NOT NULL). In cov mode both INSERTs land in the same UnixMilli so
+	// ORDER BY created_at DESC ties; race-mode scheduler overhead spreads
+	// them and hides the bug. Match on a key only present in the grant
+	// quick_action JSON (welcome's shape: kind/label/action only).
 	if err := s.DB().Raw(`SELECT content, quick_action FROM messages
-		WHERE channel_id = ? AND sender_id = 'system' AND quick_action IS NOT NULL
+		WHERE channel_id = ? AND sender_id = 'system'
+		  AND quick_action LIKE '%"request_id"%'
 		ORDER BY created_at DESC LIMIT 1`, sysCh.ID).Scan(&rows).Error; err != nil {
 		t.Fatalf("query: %v", err)
 	}
