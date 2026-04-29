@@ -18,9 +18,10 @@ interface Props {
   onInvitationsOpen?: () => void;
   onWorkspacesOpen?: () => void;
   onRemoteNodesOpen?: () => void;
+  onSettingsOpen?: () => void;
 }
 
-export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOpen, onInvitationsOpen, onWorkspacesOpen, onRemoteNodesOpen }: Props) {
+export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOpen, onInvitationsOpen, onWorkspacesOpen, onRemoteNodesOpen, onSettingsOpen }: Props) {
   const { state, actions } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const canCreateChannel = useCan('channel.create');
@@ -350,6 +351,17 @@ export default function Sidebar({ onClose, onChannelSelect, onLogout, onAgentsOp
                 onClick={onRemoteNodesOpen}
               >
                 🖥️
+              </button>
+            )}
+            {state.currentUser.role !== 'agent' && onSettingsOpen && (
+              <button
+                className="icon-btn"
+                title="设置"
+                aria-label="设置"
+                onClick={onSettingsOpen}
+                data-action="open-settings"
+              >
+                ⚙️
               </button>
             )}
           </div>
