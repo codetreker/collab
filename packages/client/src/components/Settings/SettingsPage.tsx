@@ -15,6 +15,14 @@
 //   - 不引入 react-router (跟 App.tsx showAgents/showInvitations 同模式
 //     — App-level state 切视图)
 import PrivacyPromise from './PrivacyPromise';
+import AdminActionsList from './AdminActionsList';
+import ImpersonateGrantSection from './ImpersonateGrantSection';
+import {
+  getMyAdminActions,
+  getMyImpersonateGrant,
+  createMyImpersonateGrant,
+  revokeMyImpersonateGrant,
+} from '../../lib/api';
 
 interface Props {
   onBack: () => void;
@@ -53,7 +61,23 @@ export default function SettingsPage({ onBack }: Props) {
       </nav>
 
       <main className="settings-page-content">
-        {activeTab === 'privacy' && <PrivacyPromise />}
+        {activeTab === 'privacy' && (
+          <>
+            <PrivacyPromise />
+            {/* ADM-2.2 业主授权 24h impersonate (acceptance §4.2.a;
+                立场 ⑦ + content-lock §3) — 跟 PrivacyPromise 同 tab. */}
+            <ImpersonateGrantSection
+              fetchGrant={() => getMyImpersonateGrant().then((r) => r.grant)}
+              createGrant={() => createMyImpersonateGrant().then((r) => r.grant)}
+              revokeGrant={() => revokeMyImpersonateGrant()}
+            />
+            {/* ADM-2.2 影响记录 (acceptance §4.1.c; 立场 ④ 只见自己 +
+                content-lock §4 字面). */}
+            <AdminActionsList
+              fetchActions={() => getMyAdminActions().then((r) => r.actions)}
+            />
+          </>
+        )}
       </main>
     </div>
   );

@@ -137,7 +137,7 @@ importers:
         version: 22.19.17
       openclaw:
         specifier: file:/home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw
-        version: file:../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw
+        version: file:../../../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -1756,8 +1756,8 @@ packages:
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
 
-  openclaw@file:../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw:
-    resolution: {directory: ../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw, type: directory}
+  openclaw@file:../../../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw:
+    resolution: {directory: ../../../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw, type: directory}
     hasBin: true
 
   optionator@0.9.4:
@@ -3738,7 +3738,7 @@ snapshots:
 
   obug@2.1.1: {}
 
-  openclaw@file:../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw: {}
+  openclaw@file:../../../../home/ubuntu/.nvm/versions/node/v24.14.1/lib/node_modules/openclaw: {}
 
   optionator@0.9.4:
     dependencies:
