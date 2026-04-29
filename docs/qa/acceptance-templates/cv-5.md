@@ -1,8 +1,8 @@
-# Acceptance Template — CV-5: artifact comments (canvas vision)
+# Acceptance Template — CV-5: artifact comments (canvas vision) ✅
 
 > 蓝图 `canvas-vision.md` L24 字面 "Linear issue + comment" + DM-2.2 #372 namespace 承袭 + RT-3 #488 cursor 共序 + thinking 5-pattern 第 4 处链 (RT-3/BPP-2.2/AL-1b/CV-5). Spec `cv-5-spec.md` (战马E v0 857170d) + Stance `cv-5-stance-checklist.md` (战马E v0). 不需 content-lock — comment 是用户文本, 视觉栈承袭 CV-2.3 anchor comments. 拆 PR: 整 milestone 一 PR (`spec/cv-5`). Owner: 战马E 实施 / 飞马 review / 烈马 验收.
 
-## 验收清单
+## 验收清单 (✅ 三段全绿)
 
 ### §1 CV-5.1 — server POST /api/v1/artifacts/:id/comments + thinking validator
 
