@@ -3,9 +3,11 @@ import { useAppContext } from '../context/AppContext';
 import MessageItem from './MessageItem';
 import TypingIndicator from './TypingIndicator';
 import { fetchChannelMembers } from '../lib/api';
+import { useMentionPushed } from '../hooks/useWsHubFrames';
 
 import type { Message, PendingMessage } from '../types';
 import type { ChannelMember } from '../lib/api';
+import type { MentionPushedFrame } from '../types/ws-frames';
 
 function toPseudoMessage(p: PendingMessage): Message {
   return {
@@ -58,6 +60,18 @@ export default function MessageList({ channelId, previewMessages }: Props) {
     });
     return () => { cancelled = true; };
   }, [channelId, membersVersion]);
+
+  // DM-2.3 (#377): MentionPushedFrame WS push → refetch channel messages so
+  // the @-mentioned line surfaces ≤3s. Frame is signal-only (立场 ②) — full
+  // body comes from actions.loadMessages, body_preview is privacy-trimmed
+  // to 80 runes server-side (TruncateBodyPreview) and intentionally
+  // discarded here (反约束: 不重解析, 不显 body_preview, 隐私 §13).
+  const onMentionPushed = useCallback((frame: MentionPushedFrame) => {
+    if (frame.channel_id !== channelId) return;
+    if (!state.currentUser || frame.mention_target_id !== state.currentUser.id) return;
+    void actions.loadMessages(channelId);
+  }, [channelId, state.currentUser, actions]);
+  useMentionPushed(onMentionPushed);
 
   const userMap = useMemo(() => {
     const map = new Map<string, string>();

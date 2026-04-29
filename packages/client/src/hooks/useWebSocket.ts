@@ -8,11 +8,13 @@ import {
   dispatchInvitationPending,
   dispatchInvitationDecided,
   dispatchArtifactUpdated,
+  dispatchMentionPushed,
 } from './useWsHubFrames';
 import type {
   AgentInvitationPendingFrame,
   AgentInvitationDecidedFrame,
   ArtifactUpdatedFrame,
+  MentionPushedFrame,
 } from '../types/ws-frames';
 import { markPresence } from './usePresence';
 import type { AgentRuntimeReason, AgentRuntimeState } from '../lib/api';
@@ -456,6 +458,19 @@ export function useWebSocket() {
         // Schema lock: docs/blueprint/realtime.md §2.3 + cursor.go::ArtifactUpdatedFrame
         // (BPP-1 #304 envelope CI lint enforces byte-identical wire shape).
         dispatchArtifactUpdated(data as unknown as ArtifactUpdatedFrame);
+        break;
+      }
+      case 'mention_pushed': {
+        // DM-2.2 (#372): server → client signal that the current user has
+        // been @-mentioned in a message. Envelope is signal-only (立场 ②);
+        // MessageList listens via useMentionPushed and refreshes the
+        // channel via actions.loadMessages. body_preview is server-truncated
+        // to 80 runes — client MUST NOT re-parse it (反约束: 隐私 §13,
+        // full body arrives via the existing message backfill path).
+        // Schema lock: docs/implementation/modules/dm-2.3-spec.md §0 立场
+        // ② + mention_pushed_frame.go::MentionPushedFrame (BPP-1 #304
+        // envelope CI lint enforces byte-identical wire shape).
+        dispatchMentionPushed(data as unknown as MentionPushedFrame);
         break;
       }
       case 'error':
