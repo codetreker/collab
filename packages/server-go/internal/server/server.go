@@ -260,6 +260,12 @@ func (s *Server) SetupRoutes() {
 	// admin god-mode 不挂 ADM-0 §1.3 红线).
 	bpp8Handler := &api.BPP8LifecycleListHandler{Store: s.store, Logger: s.logger}
 	bpp8Handler.RegisterRoutes(s.mux, authMw)
+	// HB-3 v2 heartbeat decay list — owner-only GET
+	// /api/v1/agents/{agentId}/heartbeat-decay (decay 状态从 agent_runtimes.
+	// last_heartbeat_at 反向 derive, 0 schema 改; AL-1a 锁链第 14 处 复用
+	// reasons.NetworkUnreachable; admin god-mode 不挂 ADM-0 §1.3 红线).
+	hb3v2Handler := &api.HB3V2DecayListHandler{Store: s.store, Logger: s.logger}
+	hb3v2Handler.RegisterRoutes(s.mux, authMw)
 
 	// DL-4 web push subscriptions — POST/DELETE /api/v1/push/subscribe.
 	// 蓝图 client-shape.md L22 (Mobile PWA + Web Push VAPID).
