@@ -1331,3 +1331,46 @@ export async function postAgentRecover(req: AL5RecoverPayload): Promise<AL5Recov
   }
   return (await resp.json()) as AL5RecoverResponse;
 }
+
+// DM-4.1 — agent message edit 多端同步.
+// PATCH /api/v1/channels/{channelId}/messages/{messageId}
+//
+// 立场 (跟 dm-4-spec.md §0):
+//   ① 复用 RT-3 既有 fan-out (events INSERT op="edit" + Hub broadcast)
+//   ② edit 是 cursor 子集 (cursor 进展归 useDMSync DM-3 #508)
+//   ③ thinking 5-pattern 反约束延伸第 3 处 (机械修订, 不暴露 reasoning)
+export interface DM4EditResponse {
+  message: {
+    id: string;
+    channel_id: string;
+    sender_id: string;
+    content: string;
+    edited_at?: number | null;
+    [key: string]: unknown;
+  };
+}
+
+export async function patchDMMessage(
+  channelID: string,
+  messageID: string,
+  content: string,
+): Promise<DM4EditResponse> {
+  const resp = await fetch(
+    `${BASE}/api/v1/channels/${encodeURIComponent(channelID)}/messages/${encodeURIComponent(messageID)}`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    },
+  );
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body?.error) detail = body.error;
+    } catch { /* ignore */ }
+    throw new Error(`dm/edit ${detail}`);
+  }
+  return (await resp.json()) as DM4EditResponse;
+}
