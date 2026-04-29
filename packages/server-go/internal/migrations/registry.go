@@ -46,6 +46,7 @@ var All = []Migration{
 	dm21MessageMentions,
 	al41AgentRuntimes,
 	cv31ArtifactKinds,
+	cv41ArtifactIterations,
 }
 
 // Default returns an Engine wired to db with All registered.
