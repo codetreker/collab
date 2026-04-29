@@ -1,4 +1,4 @@
-# Acceptance Template — CV-9: artifact comment notification (mention fan-out) ✅
+# Acceptance Template — CV-9: artifact comment notification (mention fan-out) ✅ closed
 
 > 蓝图 `canvas-vision.md` L24 + DM-2.2 #372 mention router 复用 + thinking 5-pattern 第 7 处链 (RT-3 + BPP-2.2 + AL-1b + CV-5 + CV-7 + CV-8 + CV-9). Spec `cv-9-spec.md` (1e57005) + Stance + Content-lock. **0 server production code + 0 schema 改 + 0 新 endpoint**. 拆 PR: 整 milestone 一 PR (`feat/cv-9`).
 
