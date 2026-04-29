@@ -80,6 +80,77 @@ func TestCreateMessageWithReplyTo(t *testing.T) {
 	}
 }
 
+// TestListChannelMessages_ExcludesSoftDeleted pins the cross-cutting fix
+// that landed with CV-7 (PR #535): ListChannelMessages must filter
+// `deleted_at IS NULL` so soft-deleted messages don't leak through the
+// list endpoint. Before the fix, GET /api/v1/channels/:id/messages
+// would still return rows even after DELETE /api/v1/messages/:id had
+// stamped deleted_at — surfaced by CV-7 e2e §3.3 as a deterministic
+// fail. This regression test ensures any future refactor of the WHERE
+// clause keeps the filter.
+func TestListChannelMessages_ExcludesSoftDeleted(t *testing.T) {
+	s := migratedStore(t)
+	u := createUser(t, s, "softdel", "member")
+	ch := &Channel{Name: "softdel-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
+	if err := s.CreateChannel(ch); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddChannelMember(&ChannelMember{ChannelID: ch.ID, UserID: u.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Seed three messages: keep / delete / keep.
+	keep1, err := s.CreateMessageFull(ch.ID, u.ID, "keep one", "text", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doomed, err := s.CreateMessageFull(ch.ID, u.ID, "to be deleted", "text", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keep2, err := s.CreateMessageFull(ch.ID, u.ID, "keep two", "text", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Soft-delete the middle one.
+	if _, err := s.SoftDeleteMessage(doomed.ID); err != nil {
+		t.Fatalf("soft delete: %v", err)
+	}
+
+	// Sanity: row still in the table (forward-only audit), but list path
+	// must not surface it.
+	var cnt int64
+	if err := s.DB().Raw(`SELECT COUNT(*) FROM messages WHERE id = ?`, doomed.ID).Row().Scan(&cnt); err != nil {
+		t.Fatal(err)
+	}
+	if cnt != 1 {
+		t.Fatalf("forward-only sanity: doomed row missing from table (cnt=%d)", cnt)
+	}
+
+	msgs, _, err := s.ListChannelMessages(ch.ID, nil, nil, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotIDs := make(map[string]bool, len(msgs))
+	for _, m := range msgs {
+		gotIDs[m.ID] = true
+	}
+	if !gotIDs[keep1.ID] {
+		t.Errorf("keep1 missing from list (id=%s)", keep1.ID)
+	}
+	if !gotIDs[keep2.ID] {
+		t.Errorf("keep2 missing from list (id=%s)", keep2.ID)
+	}
+	if gotIDs[doomed.ID] {
+		t.Errorf("BUG REGRESSION: soft-deleted message %s leaked through ListChannelMessages — restore `m.deleted_at IS NULL` filter", doomed.ID)
+	}
+	if got := len(msgs); got != 2 {
+		t.Errorf("expected 2 visible messages, got %d", got)
+	}
+}
+
 func TestListChannelMessagesPagination(t *testing.T) {
 	s := migratedStore(t)
 	u := createUser(t, s, "paginator", "member")
