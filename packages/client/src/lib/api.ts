@@ -1250,3 +1250,46 @@ export async function revokeMyImpersonateGrant(): Promise<void> {
     credentials: 'include',
   });
 }
+
+/**
+ * BPP-3.2.2 — POST /api/v1/me/grants
+ *
+ * Owner one-click capability grant (or reject/snooze) from owner DM
+ * SystemMessageBubble three buttons. Body byte-identical 跟
+ * docs/qa/bpp-3.2-content-lock.md §2 + server side me_grants.go
+ * meGrantsRequest.
+ *
+ * Returns server response body. action='grant' → user_permissions row
+ * landed; action='reject'/'snooze' → audit-only (v1 不持久化 deny list).
+ */
+export interface MeGrantRequest {
+  agent_id: string;
+  capability: string;
+  scope: string;
+  request_id: string;
+  action: 'grant' | 'reject' | 'snooze';
+}
+export interface MeGrantResponse {
+  granted: boolean;
+  action: 'grant' | 'reject' | 'snooze';
+  agent_id?: string;
+  capability?: string;
+  scope?: string;
+}
+export async function postMeGrant(req: MeGrantRequest): Promise<MeGrantResponse> {
+  const resp = await fetch(`${BASE}/api/v1/me/grants`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body?.error_code) detail = body.error_code;
+    } catch { /* ignore */ }
+    throw new Error(`me/grants ${detail}`);
+  }
+  return (await resp.json()) as MeGrantResponse;
+}

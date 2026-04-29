@@ -57,6 +57,13 @@ const (
 	SemanticOpRequestAgentJoin   = "request_agent_join"
 	SemanticOpReadChannelHistory = "read_channel_history"
 	SemanticOpReadArtifact       = "read_artifact"
+	// BPP-3.2.1 — agent 触发 owner DM 走 capability 审批流 (蓝图
+	// auth-permissions.md §1.3 主入口字面). plugin 端 SDK 收 BPP-3.1
+	// permission_denied frame 后, 通过此 op 触发 server 给 owner 写
+	// system DM (复用 DM-2 既有 path, 反约束: 不开新 channel 类型).
+	// 文案锁见 docs/qa/bpp-3.2-content-lock.md §1; quick_action JSON
+	// shape 见 §2 (action ∈ {grant, reject, snooze}).
+	SemanticOpRequestCapabilityGrant = "request_capability_grant"
 )
 
 // ValidSemanticOps is the v1 whitelist set. Membership is the only gate
@@ -66,14 +73,18 @@ const (
 // Order matches the blueprint table (§1.3) for byte-identical review.
 // 反约束: do NOT add v2+ ops here without first updating the blueprint;
 // CI grep 反向断言 count==0 for v2+ literals (acceptance §4 反约束).
+//
+// BPP-3.2.1 (#494 follow-up): 7→8 加 request_capability_grant; 蓝图
+// §1.3 字面承袭 + bpp-3.2-spec.md §1 立场 ① + bpp-3.2-stance §1.
 var ValidSemanticOps = map[string]bool{
-	SemanticOpCreateArtifact:     true,
-	SemanticOpUpdateArtifact:     true,
-	SemanticOpReplyInThread:      true,
-	SemanticOpMentionUser:        true,
-	SemanticOpRequestAgentJoin:   true,
-	SemanticOpReadChannelHistory: true,
-	SemanticOpReadArtifact:       true,
+	SemanticOpCreateArtifact:         true,
+	SemanticOpUpdateArtifact:         true,
+	SemanticOpReplyInThread:          true,
+	SemanticOpMentionUser:            true,
+	SemanticOpRequestAgentJoin:       true,
+	SemanticOpReadChannelHistory:     true,
+	SemanticOpReadArtifact:           true,
+	SemanticOpRequestCapabilityGrant: true,
 }
 
 // DispatchErrCodeOpUnknown is the error code returned when a plugin

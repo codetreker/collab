@@ -5,6 +5,7 @@ import ReactionBar from './ReactionBar';
 import EditEditor from './EditEditor';
 import FileLink from './FileLink';
 import * as api from '../lib/api';
+import SystemMessageBubble, { isBPP32GrantPayload } from './SystemMessageBubble';
 import { useAppContext } from '../context/AppContext';
 import { useLongPress } from '../hooks/useLongPress';
 import CommandResultCard from './CommandResultCard';
@@ -119,38 +120,25 @@ export default function MessageItem({ message, userMap, members, memberMap, curr
   });
 
   if (isSystem) {
-    // CM-onboarding: system messages may carry a quick_action button.
-    // Schema: {"kind":"button","label":string,"action":string}.
-    // v0 only supports kind="button" + action="open_agent_manager"; we dispatch
-    // a window CustomEvent so App.tsx can flip showAgents without wiring a
-    // prop chain through ChannelView → MessageList → MessageItem.
-    let quickAction: { kind?: string; label?: string; action?: string } | null = null;
+    // CM-onboarding + BPP-3.2.2 system DM render path. Delegated to
+    // SystemMessageBubble so it can be unit-tested without an AppContext
+    // provider. Detection: parse quick_action JSON; if shape matches
+    // BPP-3.2 GrantPayload (action ∈ grant/reject/snooze + 4 fields),
+    // render three buttons; else fall back to CM-onboarding single-button.
+    let parsed: unknown = null;
     if (message.quick_action) {
-      try { quickAction = JSON.parse(message.quick_action); } catch { quickAction = null; }
+      try { parsed = JSON.parse(message.quick_action); } catch { parsed = null; }
     }
+    const bpp32 = isBPP32GrantPayload(parsed) ? parsed : null;
+    const fallback = (!bpp32 && parsed && typeof parsed === 'object')
+      ? (parsed as { kind?: string; label?: string; action?: string })
+      : null;
     return (
-      <div className="message-item message-system">
-        <div className="message-system-content">
-          <div
-            className="message-text"
-            dangerouslySetInnerHTML={{ __html: renderedContent! }}
-          />
-          {quickAction && quickAction.kind === 'button' && quickAction.label && quickAction.action && (
-            <button
-              type="button"
-              className="message-system-quick-action"
-              data-action={quickAction.action}
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('borgee:quick-action', {
-                  detail: { action: quickAction!.action },
-                }));
-              }}
-            >
-              {quickAction.label}
-            </button>
-          )}
-        </div>
-      </div>
+      <SystemMessageBubble
+        bodyHTML={renderedContent!}
+        bpp32={bpp32}
+        fallback={fallback}
+      />
     );
   }
 
