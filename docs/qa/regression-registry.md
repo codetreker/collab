@@ -493,6 +493,23 @@
 | REG-HB3-010 | hb-3.md §3.1 + content-lock §1.① — 弹窗三按钮 DOM byte-identical (data-action + hb3-button + 文字字面) | `packages/client/src/__tests__/HostGrantsPanel.test.tsx` 3 vitest case | 战马A / 野马 / 烈马 | feat/hb-3 | 🟢 active |
 | REG-HB3-011 | hb-3.md §3.1 + content-lock §2 — 同义词反向断言 + onDecide 三值回调 | `HostGrantsPanel.test.tsx` 2 vitest case | 战马A / 野马 / 烈马 | feat/hb-3 | 🟢 active |
 
+### HB-4 ⭐ release gate + 信任五支柱可见 (一 milestone 一 PR ✅ 4.1 / ⏸️ 4.2 野马截屏, 10 🟢)
+
+> HB-4 范围 = §1 release-gate.md doc (≥10 硬条件清单 蓝图 §1.5 6 行 byte-identical + 跨 milestone 反约束 4 项) + §2 release-gate.yml CI workflow (≥10 step 任一 fail → release block) + §3 closure (audit schema 第 5 处 byte-identical 跨五 milestone HB-1+HB-2+BPP-4+HB-3+HB-4 单源锁链 收口). drift 防御链至 release 收口.
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-HB4-001 | hb-4.md §1.1 + 蓝图 §1.5 6 行 byte-identical — release-gate.md ≥10 硬条件清单, 每项三元组 (蓝图 § 锚 + CI path + assertion) | `docs/release/host-bridge-release-gate.md` 行数 + numbered table reflect | 战马A / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-002 | hb-4.md §1.2 + spec §0.3 — audit schema 跨五 milestone byte-identical (HB-1+HB-2+BPP-4+HB-3+HB-4 = 5 处单测锁链) | `release-gate.yml::audit-schema-cross-milestone` (grep `"actor".*"action".*"target".*"when".*"scope"` 跨 4 源 ≥1 hit, HB-1/HB-2 待 Rust 真实施补到 5) | 战马A / 飞马 / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-003 | hb-4.md §2.1 + stance §1 立场 ① — release-gate.yml step 数 ≥ 10, 任一 fail → workflow red | yaml step count + dry-run | 战马A / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-004 | hb-4.md §2.3 + stance §0 立场 ⑥ — AST scan 锁链跨三 milestone (BPP-4 dead_letter + BPP-5 reconnect + HB-3 grants forbidden tokens 0 hit) | `release-gate.yml::ast-scan-bpp4` + `ast-scan-bpp5` + `ast-scan-hb3` (跑 TestBPP4_NoRetryQueue + TestBPP5_NoReconnectQueue + TestHB3_NoGrantQueue) | 战马A / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-005 | hb-4.md §1.5 + 蓝图 §1.5 第 5 行 — 撤销 grant → daemon < 100ms 真测 | `release-gate.yml::revoke-latency` (跑 TestHB3_DELETE_RevokeStampsRevokedAt) | 战马A / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-006 | hb-4.md §2.4 + stance §0 立场 ⑤ — 数字常量单源锁 BPP-4 30s heartbeat | `release-gate.yml::numeric-singletons` (grep BPP_HEARTBEAT_TIMEOUT_SECONDS=30 ≥1 hit + 反向 60+ 0 hit) | 战马A / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-007 | hb-4.md §3 + stance §0 立场 ① + ④ — 不允许人工 sign-off 跳过 + 4.1 vs 4.2 拆死 | `release-gate.yml::no-bypass` (grep `release.gate.*skip\|manual.*sign\|allow.*bypass\|--admin.*merge\|human.review\|demo.signoff` 在 docs/release/ count==0) | 飞马 / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-008 | hb-4.md §0 立场 ⑦ — admin god-mode 不入 release gate (用户主权) | `release-gate.yml::no-admin-godmode-release` (grep `admin.*release.gate\|admin.*HB4` 在 internal/api/admin*.go count==0) | 飞马 / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-009 | hb-4.md §2.5 + stance §0 立场 ② — host vs runtime 字典分立 (HB-3 不复用 user_permissions) | `release-gate.yml::dict-isolation` (跑 TestHB3_NoUserPermissionsJoin) | 战马A / 烈马 | feat/hb-4 | 🟢 active |
+| REG-HB4-010 | hb-4.md §1.1 + §1.3 + §1.6 — placeholder 留账 (HB-1/HB-2 Rust crate 真实施 PR 加 startup-benchmark + signature-pass-rate + dogfood-crash-rate 真测) | `release-gate.yml::startup-benchmark` + `signature-pass-rate` + `dogfood-crash-rate` (placeholder + spec contract assertion) | 战马A (HB-1/HB-2 真实施时换真测) | feat/hb-4 | 🟢 active |
+
 ### BPP-3.1 permission_denied frame (server→plugin, 一 milestone 一 PR ✅, 6 🟢)
 
 > BPP-3.1 v1 范围 = 第 13 frame `permission_denied` server→plugin (蓝图 auth-permissions.md §2 不变量 "Permission denied 走 BPP" + §4.1 row 字面). 8 字段 byte-identical 跟 AP-1 #493 abac.go 403 body (跨 PR drift 守, 双向 grep). PushPermissionDenied hub method (跟 PushAgentConfigUpdate 同模式 + cursor 共序). PermissionDeniedPusher interface seam — AP-1 abac.go::HasCapability false 路径 wiring 留 1-line follow-up commit (AP-1 + BPP-3.1 任一 merge 后接).
