@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"borgee-server/internal/admin"
 	"borgee-server/internal/store"
 
 	"golang.org/x/crypto/bcrypt"
@@ -253,6 +254,25 @@ func (h *AdminHandler) handleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		if err := h.Store.UpdateUser(id, updates); err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to update user")
 			return
+		}
+	}
+
+	// ADM-2.2 audit hook (suspend_user / change_role) — fire after successful
+	// UPDATE commit. 立场 ① + ② (蓝图 §1.4 红线 1). password 改 → reset_password
+	// audit (跟 spec §2.1 字面对齐).
+	if a := admin.AdminFromContext(r.Context()); a != nil {
+		if body.Disabled != nil && *body.Disabled {
+			_, _ = h.Store.EmitAdminActionAudit(a.ID, a.Login, id, "suspend_user",
+				`{}`, store.AdminActionDMContext{Reason: "(管理员未提供原因)"})
+		}
+		if body.Role != nil && *body.Role != target.Role {
+			_, _ = h.Store.EmitAdminActionAudit(a.ID, a.Login, id, "change_role",
+				`{"old_role":"`+target.Role+`","new_role":"`+*body.Role+`"}`,
+				store.AdminActionDMContext{OldRole: target.Role, NewRole: *body.Role})
+		}
+		if body.Password != nil {
+			_, _ = h.Store.EmitAdminActionAudit(a.ID, a.Login, id, "reset_password",
+				`{}`, store.AdminActionDMContext{})
 		}
 	}
 
@@ -564,9 +584,23 @@ func (h *AdminHandler) handleForceDeleteChannel(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// ADM-2.2 audit hook: capture channel ownership before delete (for the
+	// system DM target_user_id — channels.created_by is the affected user).
+	// 立场 ① 每写必留痕 + 立场 ② 受影响者必感知 (蓝图 §1.4 红线 1).
+	targetUserID := ch.CreatedBy
+	channelName := ch.Name
+
 	if err := h.Store.ForceDeleteChannel(id); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to delete channel")
 		return
+	}
+
+	// Audit hook fires AFTER successful commit. actor admin from context.
+	if a := admin.AdminFromContext(r.Context()); a != nil {
+		_, _ = h.Store.EmitAdminActionAudit(a.ID, a.Login, targetUserID,
+			"delete_channel",
+			`{"channel_id":"`+id+`","channel_name":"`+channelName+`"}`,
+			store.AdminActionDMContext{ChannelName: "#" + channelName})
 	}
 
 	writeJSONResponse(w, http.StatusOK, map[string]any{"ok": true})

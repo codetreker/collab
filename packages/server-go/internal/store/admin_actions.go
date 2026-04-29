@@ -239,3 +239,51 @@ func (s *Store) ActiveImpersonationGrant(userID string) (*ImpersonationGrant, er
 	}
 	return &g, nil
 }
+
+// EmitAdminActionSystemDM writes the system-DM into the target user's
+// existing #welcome channel (CM-onboarding type='system' channel; created
+// at registration). Body byte-identical 跟 content-lock §1 5 模板; 立场 ②
+// "受影响者必感知 + admin_username 非 raw UUID".
+//
+// Returns nil even when target user has no system channel — system DM is
+// best-effort (acceptance §4.1.b "强制下发不依赖前端订阅" is enforced by the
+// admin_actions audit row, not the DM rendering); the audit row is the
+// 100% guarantee, the DM is the user-visible surface that may degrade
+// gracefully (cf. CM-onboarding welcome system message OK=false branch).
+func (s *Store) EmitAdminActionSystemDM(actorLogin, targetUserID, action string, ctx AdminActionDMContext) error {
+	if actorLogin == "" || targetUserID == "" || action == "" {
+		return errors.New("actor_login, target_user_id, action all required")
+	}
+	body := RenderAdminActionDMBody(actorLogin, action, time.Now(), ctx)
+	if body == "" {
+		return nil // unknown action — silently no-op (CHECK at insert path is the gate)
+	}
+	// Find the target user's #welcome (type='system') channel.
+	var ch Channel
+	err := s.db.Where("created_by = ? AND type = ? AND deleted_at IS NULL", targetUserID, "system").
+		First(&ch).Error
+	if err != nil {
+		// No system channel — degrade gracefully (audit row already written).
+		return nil
+	}
+	now := time.Now().UnixMilli()
+	msgID := uuid.NewString()
+	return s.db.Exec(`
+		INSERT INTO messages (id, channel_id, sender_id, content, content_type, created_at)
+		VALUES (?, ?, 'system', ?, 'text', ?)
+	`, msgID, ch.ID, body, now).Error
+}
+
+// EmitAdminActionAudit is the joint helper: write audit row + emit system DM.
+// Wraps the two store calls; admin handler audit hook 走 single 调用. 立场
+// ① 每写必留痕 + 立场 ② 受影响者必感知 同时兑现.
+func (s *Store) EmitAdminActionAudit(actorID, actorLogin, targetUserID, action, metadata string, ctx AdminActionDMContext) (string, error) {
+	id, err := s.InsertAdminAction(actorID, targetUserID, action, metadata)
+	if err != nil {
+		return "", err
+	}
+	// DM emit is best-effort — failure to render DM does NOT roll back the
+	// audit row (蓝图 §2 "Audit 100% 留痕" 不变量优先).
+	_ = s.EmitAdminActionSystemDM(actorLogin, targetUserID, action, ctx)
+	return id, nil
+}
