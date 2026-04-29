@@ -203,9 +203,10 @@ func (h *ArtifactHandler) canAccessChannel(channelID, userID string) bool {
 // ----- POST /api/v1/channels/{channelId}/artifacts -----
 
 type createArtifactRequest struct {
-	Title string `json:"title"`
-	Body  string `json:"body"`
-	Type  string `json:"type"`
+	Title    string           `json:"title"`
+	Body     string           `json:"body"`
+	Type     string           `json:"type"`
+	Metadata ArtifactMetadata `json:"metadata"`
 }
 
 func (h *ArtifactHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
@@ -244,13 +245,32 @@ func (h *ArtifactHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "title is required")
 		return
 	}
-	// 立场 ④: type defaults to 'markdown'; explicit non-markdown rejected
-	// at HTTP layer for clarity (schema CHECK is the final gate).
+	// CV-3.2 (#363 / #397): kind enum extended to {markdown, code,
+	// image_link} per migration v=17 (cv_3_1_artifact_kinds, #396 merged).
+	// CV-1.2 立场 ④ Markdown ONLY 锁已废 — 旧的 `400 "type must be 'markdown' (v1)"`
+	// 文案此处删 (反向 grep `type must be 'markdown' \(v1\)` count==0,
+	// spec #397 §3 drift 3 字面). 默认值仍 'markdown' 兼容旧 client (CV-1
+	// 既有 POST /artifacts 不带 type 字段的路径走 markdown 默认, 不破).
 	if req.Type == "" {
-		req.Type = ArtifactType
+		req.Type = ArtifactKindMarkdown
 	}
-	if req.Type != ArtifactType {
-		writeJSONError(w, http.StatusBadRequest, "type must be 'markdown' (v1)")
+	if !IsValidArtifactKind(req.Type) {
+		writeJSONError(w, http.StatusBadRequest, "artifact.invalid_kind: type must be one of [markdown code image_link]")
+		return
+	}
+	// CV-3.2 metadata gate (acceptance §1.3 / §1.4 + 文案锁 §1 ②④⑤):
+	//   - kind='code'       MUST carry metadata.language ∈ 11 项白名单 + 'text'
+	//   - kind='image_link' MUST carry metadata.kind ∈ ('image','link')
+	//                       AND metadata.url 是合法 https URL
+	// 反约束 — javascript: / data: / data:image / http: / file: / 任何
+	// 非 https scheme 全 reject (XSS 红线第一道, #370 §1 ④ + spec §3 锚).
+	//
+	// Note: metadata 本 PR **不持久化** (留账 — CV-3.2 schema follow-up
+	// 决定 add metadata column vs body JSON header). 服务端验完后丢弃,
+	// client reload 时按 kind 默认 (code 默认 'text', image_link body
+	// 即 URL). PR body Acceptance 段已明示此留账边界.
+	if err := ValidateArtifactMetadata(req.Type, req.Metadata); err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -262,7 +282,7 @@ func (h *ArtifactHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		if err := tx.Exec(`INSERT INTO artifacts
   (id, channel_id, type, title, body, current_version, created_at)
   VALUES (?, ?, ?, ?, ?, 1, ?)`,
-			id, channelID, ArtifactType, req.Title, req.Body, now,
+			id, channelID, req.Type, req.Title, req.Body, now,
 		).Error; err != nil {
 			return err
 		}
@@ -287,7 +307,7 @@ func (h *ArtifactHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSONResponse(w, http.StatusCreated, h.serializeArtifact(&artifactRow{
-		ID: id, ChannelID: channelID, Type: ArtifactType,
+		ID: id, ChannelID: channelID, Type: req.Type,
 		Title: req.Title, Body: req.Body, CurrentVersion: 1,
 		CreatedAt: now,
 	}, committerKind, user.ID))
