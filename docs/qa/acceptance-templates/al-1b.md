@@ -20,11 +20,11 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 2.1 GET /api/v1/agents/:id/status 5-state 合并优先级 (error > busy > idle > online > offline) | unit | 战马C / 烈马 | _(待填 AL-1b.2)_ |
-| 2.2 BPP `task_started` frame → state=busy + last_task_id + last_task_started_at | unit | 战马C / 烈马 | _(待填 AL-1b.2 + BPP-2)_ |
-| 2.3 BPP `task_finished` frame → state=idle + last_task_finished_at | unit | 战马C / 烈马 | _(待填 AL-1b.2 + BPP-2)_ |
-| 2.4 5min 无 frame → 自动 idle (单 const `IdleThreshold = 5*time.Minute`) | unit | 战马C / 烈马 | _(待填 AL-1b.2)_ |
-| 2.5 PATCH /api/v1/agents/:id/status admin god-mode 拒绝 (立场 ② BPP 单源, 反人工伪造) | unit | 战马C / 烈马 | _(待填 AL-1b.2)_ |
+| 2.1 GET /api/v1/agents/:id/status 5-state 合并优先级 (error > busy > idle > online > offline) | unit | 战马C / 烈马 | `internal/api/al_1b_2_status_test.go::TestAL1B2_GetStatus_NoRowFallsBackToOnlineOffline` (no-row → AL-1a 退化) + `TestAL1B2_GetStatus_BusyFromAgentStatusRow` (busy 优先 online) + `TestAL1B2_GetStatus_IdleFromAgentStatusRow` (idle 优先 online) |
+| 2.2 BPP `task_started` frame → state=busy + last_task_id + last_task_started_at | unit | 战马C / 烈马 | `store/agent_status_queries.go::SetAgentTaskStarted` upsert ON CONFLICT(agent_id) + `TestAL1B2_GetStatus_BusyFromAgentStatusRow` (last_task_id="task-foo" + last_task_started_at byte-identical assert) |
+| 2.3 BPP `task_finished` frame → state=idle + last_task_finished_at | unit | 战马C / 烈马 | `SetAgentTaskFinished` upsert + `TestAL1B2_GetStatus_IdleFromAgentStatusRow` (started → finished pair, last_task_finished_at=t0+30s) |
+| 2.4 5min 无 frame → 自动 idle (单 const `IdleThreshold = 5*time.Minute`) | unit | 战马C / 烈马 | `ReapStaleBusyToIdle` + `TestAL1B2_ReapStaleBusyToIdle` (T+1min 0 行 + T+6min 1 行 reap, IdleThreshold const al_1b_2_status.go:line 单源) |
+| 2.5 PATCH /api/v1/agents/:id/status admin god-mode 拒绝 (立场 ② BPP 单源, 反人工伪造) | unit | 战马C / 烈马 | `TestAL1B2_PatchStatusReturns405` (owner PATCH 405 + Allow: GET 头 + error 含 "BPP-driven" 关键词) + `TestAL1B2_PatchStatusAdminAlsoRejected` (admin PATCH 同 405) |
 
 ### 文案锁 (AL-1b.3 client — 野马 #190 §11 + 烈马判定)
 
@@ -53,3 +53,4 @@
 |---|---|---|
 | 2026-04-28 | 烈马 | v0 — Phase 4 AL-1b 14 验收项 (rt-0.md 同模板) |
 | 2026-04-29 | 战马C | flip §1.1-§1.5 schema 段 5 项 ⚪→✅ (AL-1b.1 v=21 落 — `internal/migrations/al_1b_1_agent_status.go` + 6 TestAL1B1_* 全 PASS); 锚 spec brief `docs/implementation/modules/al-1b-spec.md` (战马C v0 3 立场 + 3 拆段); §2 server / §3 文案 / §4 e2e 留 AL-1b.2 + AL-1b.3 + BPP-2 后填. |
+| 2026-04-29 | 战马C | flip §2.1-§2.5 server 段 5 项 ⚪→✅ (AL-1b.2 落 — `internal/api/al_1b_2_status.go` + `internal/store/agent_status_queries.go` + 8 TestAL1B2_* 全 PASS): GET /api/v1/agents/:id/status 5-state 合并 + SetAgentTaskStarted/Finished BPP-2 stub + ReapStaleBusyToIdle 5min IdleThreshold const + PATCH 405 reject (owner+admin) + NoDomainBleed 反约束响应不泄漏 schema 内列. §3 文案 / §4 e2e 留 AL-1b.3 + BPP-2 真 frame 后填. |
