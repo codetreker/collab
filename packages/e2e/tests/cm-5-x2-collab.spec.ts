@@ -39,8 +39,8 @@ const url: any = nodeRequire('url');
 const HERE = nodePath.dirname(url.fileURLToPath(import.meta.url));
 const SCREENSHOT_DIR = nodePath.join(HERE, '../../../docs/qa/screenshots');
 
-const ADMIN_LOGIN = process.env.E2E_ADMIN_LOGIN ?? 'admin';
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'admin';
+const ADMIN_LOGIN = 'e2e-admin';
+const ADMIN_PASSWORD = 'e2e-admin-pass-12345';
 
 function serverURL(): string {
   return `http://127.0.0.1:${process.env.E2E_SERVER_PORT ?? '4901'}`;
