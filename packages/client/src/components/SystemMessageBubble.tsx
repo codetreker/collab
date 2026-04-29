@@ -1,4 +1,4 @@
-// SystemMessageBubble.tsx — BPP-3.2.2 system DM render path.
+// SystemMessageBubble.tsx — BPP-3.2.2 + AL-5.2 system DM render path.
 //
 // Splits the BPP-3.2 grant flow's three-button render OUT of MessageItem.tsx
 // so it can be unit-tested without an AppContext provider (MessageItem.tsx
@@ -9,11 +9,15 @@
 //   <button data-bpp32-button="danger"  data-action="reject">拒绝</button>
 //   <button data-bpp32-button="ghost"   data-action="snooze">稍后</button>
 //
+// AL-5.2 锚: docs/implementation/modules/al-5-spec.md §1 AL-5.2 —
+//   <button data-al5-button="recover" data-action="recover">重连</button>
+//
 // 反约束: 12 同义词禁词反向 grep (批准/授予/同意/许可 / 驳回/拒接/否决/
-// 不允许 / 稍候/延后/推迟/暂缓/过会儿) — 守 future drift.
+// 不允许 / 稍候/延后/推迟/暂缓/过会儿 + AL-5: 重启/reset/restart/
+// 重新启动) — 守 future drift.
 
 import React from 'react';
-import { postMeGrant } from '../lib/api';
+import { postMeGrant, postAgentRecover } from '../lib/api';
 
 export interface BPP32GrantPayload {
   action: 'grant' | 'reject' | 'snooze';
@@ -23,15 +27,31 @@ export interface BPP32GrantPayload {
   request_id: string;
 }
 
+/**
+ * AL5RecoverPayload — quick_action JSON shape for AL-5 owner recovery.
+ * Server reads last error reason from agent_state_log; client only sends
+ * agent_id + request_id.
+ */
+export interface AL5RecoverPayload {
+  action: 'recover';
+  agent_id: string;
+  reason: string;
+  request_id: string;
+}
+
 export interface SystemMessageBubbleProps {
   /** Pre-rendered HTML body (e.g. markdown rendered upstream). */
   bodyHTML: string;
   /** BPP-3.2 quick_action payload (parsed). null = no buttons. */
   bpp32?: BPP32GrantPayload | null;
+  /** AL-5 recovery quick_action payload (parsed). null = no recover button. */
+  al5?: AL5RecoverPayload | null;
   /** CM-onboarding fallback (parsed). null = no fallback button. */
   fallback?: { kind?: string; label?: string; action?: string } | null;
   /** Test seam — defaults to real postMeGrant API call. */
   onGrant?: (payload: BPP32GrantPayload) => Promise<void>;
+  /** Test seam — defaults to real postAgentRecover API call. */
+  onRecover?: (payload: AL5RecoverPayload) => Promise<void>;
 }
 
 /**
@@ -48,7 +68,20 @@ export function isBPP32GrantPayload(qa: unknown): qa is BPP32GrantPayload {
     && typeof o.request_id === 'string' && o.request_id.length > 0;
 }
 
-const SystemMessageBubble: React.FC<SystemMessageBubbleProps> = ({ bodyHTML, bpp32, fallback, onGrant }) => {
+/**
+ * isAL5RecoverPayload narrows quick_action JSON to AL-5 recovery shape
+ * (action='recover' + agent_id + reason + request_id required).
+ */
+export function isAL5RecoverPayload(qa: unknown): qa is AL5RecoverPayload {
+  if (!qa || typeof qa !== 'object') return false;
+  const o = qa as Record<string, unknown>;
+  return o.action === 'recover'
+    && typeof o.agent_id === 'string' && o.agent_id.length > 0
+    && typeof o.reason === 'string' && o.reason.length > 0
+    && typeof o.request_id === 'string' && o.request_id.length > 0;
+}
+
+const SystemMessageBubble: React.FC<SystemMessageBubbleProps> = ({ bodyHTML, bpp32, al5, fallback, onGrant, onRecover }) => {
   const handleClick = (action: 'grant' | 'reject' | 'snooze') => async () => {
     if (!bpp32) return;
     const payload: BPP32GrantPayload = { ...bpp32, action };
@@ -56,6 +89,14 @@ const SystemMessageBubble: React.FC<SystemMessageBubbleProps> = ({ bodyHTML, bpp
       await onGrant(payload);
     } else {
       await postMeGrant(payload).catch(() => { /* swallow; caller would show toast */ });
+    }
+  };
+  const handleRecover = async () => {
+    if (!al5) return;
+    if (onRecover) {
+      await onRecover(al5);
+    } else {
+      await postAgentRecover(al5).catch(() => { /* swallow; caller would show toast */ });
     }
   };
   return (
@@ -87,7 +128,18 @@ const SystemMessageBubble: React.FC<SystemMessageBubbleProps> = ({ bodyHTML, bpp
             >稍后</button>
           </div>
         )}
-        {!bpp32 && fallback && fallback.kind === 'button' && fallback.label && fallback.action && (
+        {al5 && !bpp32 && (
+          <div className="message-system-al5-recover" data-al5-recover="true">
+            <button
+              type="button"
+              className="message-system-quick-action"
+              data-al5-button="recover"
+              data-action="recover"
+              onClick={handleRecover}
+            >重连</button>
+          </div>
+        )}
+        {!bpp32 && !al5 && fallback && fallback.kind === 'button' && fallback.label && fallback.action && (
           <button
             type="button"
             className="message-system-quick-action"
