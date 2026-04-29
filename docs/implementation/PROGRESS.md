@@ -204,7 +204,7 @@ AP-3 ─┘
 ### agent-lifecycle
 - [ ] **AL-1** 状态四态扩展
   - [x] **AL-1a** online/offline + error 旁路 + 6 reason codes (PR #249, Phase 2 起步, 蓝图 §2.3 R3 锁)
-  - [ ] **AL-1b** busy/idle (Phase 4, 跟 BPP task_started/task_finished frame 同期)
+  - [x] **AL-1b** busy/idle 三段全闭 — spec #453 战马C v0 / acceptance #193 烈马 v0 / 文案锁 al-1b §3 (野马 待) / stance 借 spec; AL-1b.1 ✅ #453 schema v=21 (agent_status table 6 TestAL1B1_* PASS) + AL-1b.2 ✅ #457 server (GET /agents/:id/status 5-state 合并 + PATCH 405 BPP 单源 + 5min IdleThreshold reaper 8 TestAL1B2_* PASS) + AL-1b.3 ✅ #462 client (describeAgentState busy/idle + PresenceDot data-task-state DOM 240/240 vitest PASS); §4.1 e2e 留 BPP-2 真 frame 后填 (store helpers SetAgentTaskStarted/Finished + reaper 已就绪 stub)
 - [ ] **AL-2a** config 表 + update API (并行 CM-*)
 - [ ] **AL-2b** BPP ConfigUpdated frame (与 BPP-3 同 PR)
 - [x] **AL-3** presence 完整版 ✅ (复用 PresenceTracker IsOnline + Sessions 接口, #277 stub → 真实施)

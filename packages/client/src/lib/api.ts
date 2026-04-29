@@ -412,7 +412,9 @@ export async function removeReaction(messageId: string, emoji: string): Promise<
 // AL-1a (#R3 Phase 2) — runtime 三态 + 故障原因码.
 // 文案锁见 packages/client/src/lib/agent-state.ts (野马 #190 §11).
 // state 字段 server 总是 emit (online/offline/error); reason 仅 error 态有.
-export type AgentRuntimeState = 'online' | 'offline' | 'error';
+// AL-1b (#R3 Phase 4) 扩 'busy' / 'idle' — server GET /agents/:id/status 5-state
+// 合并优先级 (error > busy > idle > online > offline), 见 al-1b-spec.md §1.
+export type AgentRuntimeState = 'online' | 'offline' | 'error' | 'busy' | 'idle';
 export type AgentRuntimeReason =
   | 'api_key_invalid'
   | 'quota_exceeded'
@@ -433,6 +435,10 @@ export interface Agent {
   state?: AgentRuntimeState;
   reason?: AgentRuntimeReason;
   state_updated_at?: number;
+  // AL-1b (#R3 Phase 4) — busy/idle 态时 server 填的 task 元数据.
+  last_task_id?: string;
+  last_task_started_at?: number;
+  last_task_finished_at?: number;
 }
 
 // AL-4 (#313 v0 / #379 v2) — agent_runtimes registry. Schema source:

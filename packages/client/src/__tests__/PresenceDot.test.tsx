@@ -91,11 +91,62 @@ describe('PresenceDot DOM 字面锁 (al-3.md §3.1)', () => {
     expect(c.textContent).toContain('在线');
   });
 
-  it('反约束 §5.1: 任意状态的 text 都不准包含 busy/idle/忙/空闲', () => {
+  it('反约束 AL-3 §5.1 (Phase 2 仅 3 态): online/offline/error 状态的 text 不准误漏 busy/idle 字面 (busy/idle 走独立 path AL-1b)', () => {
     for (const state of ['online', 'offline', 'error'] as const) {
       const c = render(<PresenceDot state={state} reason={state === 'error' ? 'unknown' : undefined} />);
       const text = c.textContent ?? '';
+      // AL-1a 三态 不应吐 busy/idle 字面 (busy/idle 由 AL-1b 独立 state 触发).
       expect(text).not.toMatch(/busy|idle|忙|空闲/i);
     }
+  });
+});
+
+describe('PresenceDot — AL-1b (#R3 Phase 4) busy/idle DOM 字面锁', () => {
+  // acceptance al-1b.md §3.1 — busy → data-task-state="busy" + 蓝点 + "在工作".
+  // data-presence 仍是 'online' (busy/idle = 连着), data-task-state 是独立 attr.
+  it('busy → data-task-state="busy" + data-presence="online" + 文本 "在工作" + presence-task-busy class', () => {
+    const c = render(<PresenceDot state="busy" reason={undefined} />);
+    const wrap = c.querySelector('[data-presence]')!;
+    expect(wrap.getAttribute('data-presence')).toBe('online');
+    expect(wrap.getAttribute('data-task-state')).toBe('busy');
+    expect(c.querySelector('.presence-dot.presence-task-busy')).toBeTruthy();
+    expect(c.textContent).toBe('在工作');
+  });
+
+  // acceptance §3.2 — idle → data-task-state="idle" + 灰点 + "空闲".
+  it('idle → data-task-state="idle" + data-presence="online" + 文本 "空闲" + presence-task-idle class', () => {
+    const c = render(<PresenceDot state="idle" reason={undefined} />);
+    const wrap = c.querySelector('[data-presence]')!;
+    expect(wrap.getAttribute('data-presence')).toBe('online');
+    expect(wrap.getAttribute('data-task-state')).toBe('idle');
+    expect(c.querySelector('.presence-dot.presence-task-idle')).toBeTruthy();
+    expect(c.textContent).toBe('空闲');
+  });
+
+  // acceptance §3.3 — AL-1a 三态 data-task-state 应为空 string (DOM 不渲染 attr 或填空).
+  it('AL-1a 三态 (online/offline/error) data-task-state 为空 string (回归不破)', () => {
+    for (const state of ['online', 'offline', 'error'] as const) {
+      const c = render(<PresenceDot state={state} reason={state === 'error' ? 'unknown' : undefined} />);
+      const wrap = c.querySelector('[data-presence]')!;
+      expect(wrap.getAttribute('data-task-state')).toBe('');
+    }
+  });
+
+  // acceptance §3.4 — 文案锁反约束: 不准 "活跃" / "running" / "Standing by" / "等待中" 模糊词.
+  it('反约束 §3.4: busy/idle 文案不准用模糊词 ("活跃"/"running"/"Standing by"/"等待中")', () => {
+    for (const state of ['busy', 'idle'] as const) {
+      const c = render(<PresenceDot state={state} reason={undefined} />);
+      const text = c.textContent ?? '';
+      expect(text).not.toMatch(/活跃|running|standing\s*by|等待中/i);
+    }
+  });
+
+  // 立场 ① 拆三路径 — busy/idle compact mode 同样套 title 文案锁.
+  it('busy compact mode → title="在工作" + sr-only text', () => {
+    const c = render(<PresenceDot state="busy" reason={undefined} compact />);
+    const wrap = c.querySelector('[data-presence]')! as HTMLElement;
+    expect(wrap.getAttribute('title')).toBe('在工作');
+    expect(wrap.getAttribute('data-task-state')).toBe('busy');
+    expect(c.textContent).toContain('在工作');
   });
 });
