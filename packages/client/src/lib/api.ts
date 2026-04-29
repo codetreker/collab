@@ -838,10 +838,19 @@ export async function listCommands(channelId?: string): Promise<CommandsResponse
 // body, no committer). 当 ArtifactUpdated frame 到达 client, 必须再走
 // GET /api/v1/artifacts/:id 拿 body + committer (立场 ⑤ envelope 仅信号).
 
+/**
+ * CV-3.1/3.2 (#396 / #400): artifact kind enum extended from the v1
+ * 'markdown' lock to three kinds. 字面 byte-identical 跟
+ * cv-3-content-lock.md §1 ① + cv_3_2_artifact_validation.go ArtifactKind*
+ * 同源 (反 camelCase `imageLink` / 同义词 `pdf|kanban|mindmap` 漂移).
+ */
+export type ArtifactKind = 'markdown' | 'code' | 'image_link';
+
 export interface Artifact {
   id: string;
   channel_id: string;
-  type: 'markdown';
+  /** CV-3.1: 三态 enum (was 'markdown'-only in CV-1). */
+  type: ArtifactKind;
   title: string;
   body: string;
   current_version: number;
