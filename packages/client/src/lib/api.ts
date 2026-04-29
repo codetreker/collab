@@ -1082,9 +1082,11 @@ export async function getIteration(
  */
 export async function listIterations(
   artifactId: string,
+  opts?: { limit?: number },
 ): Promise<{ iterations: ArtifactIteration[] }> {
+  const qs = opts?.limit && opts.limit > 0 ? `?limit=${encodeURIComponent(opts.limit)}` : '';
   return request<{ iterations: ArtifactIteration[] }>(
-    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/iterations`,
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/iterations${qs}`,
   );
 }
 

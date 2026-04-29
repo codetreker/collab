@@ -48,6 +48,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -343,12 +344,17 @@ func (h *IterationHandler) handleListIterations(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// CV-4 v2 — clamp ?limit query (default 50, max 200, 0/negative → default).
+	// 立场 ① — endpoint shape unchanged from v1; only the optional limit
+	// query is new. cursor reuse goes via existing events sequence.
+	limit := cv4v2ClampLimit(r.URL.Query().Get("limit"))
+
 	var rows []iterationRow
 	if err := h.Store.DB().Raw(`SELECT
   id, artifact_id, requested_by, intent_text, target_agent_id, state,
   created_artifact_version_id, error_reason, created_at, completed_at
 FROM artifact_iterations WHERE artifact_id = ?
-ORDER BY created_at DESC`, art.ID).Scan(&rows).Error; err != nil {
+ORDER BY created_at DESC LIMIT ?`, art.ID, limit).Scan(&rows).Error; err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "list iterations failed")
 		return
 	}
@@ -358,6 +364,32 @@ ORDER BY created_at DESC`, art.ID).Scan(&rows).Error; err != nil {
 	}
 	writeJSONResponse(w, http.StatusOK, map[string]any{"iterations": out})
 }
+
+// cv4v2ClampLimit parses the ?limit query string per CV-4 v2 立场 ①
+// (default 50, max 200, 0/negative/empty → 50). Exposed for unit tests
+// that want to cover the clamp matrix without booting an HTTP server.
+func cv4v2ClampLimit(raw string) int {
+	const (
+		def = 50
+		max = 200
+	)
+	if raw == "" {
+		return def
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return def
+	}
+	if n > max {
+		return max
+	}
+	return n
+}
+
+// ClampCV4V2LimitForTest exposes cv4v2ClampLimit to api_test test files
+// (test-only export, prefixed with ForTest to keep the public API surface
+// clean — same pattern as other ForTest helpers in this package).
+func ClampCV4V2LimitForTest(raw string) int { return cv4v2ClampLimit(raw) }
 
 // serializeIteration emits the API row shape. intent_text is included on
 // the channel-member rail (this handler is gated by canAccessChannel).
