@@ -54,8 +54,17 @@ export function renderMarkdown(text: string, mentionedUserIds?: string[], userMa
   if (userMap) {
     processed = processed.replace(/<@([^>]+)>/g, (_match, userId: string) => {
       const displayName = userMap.get(userId);
-      if (displayName) return `<span class="mention" title="${escapeHtml(userId)}">@${escapeHtml(displayName)}</span>`;
-      return `@${escapeHtml(userId)}`;
+      // DM-2.3 (#377) §0 立场 ②: raw UUID lives in data-mention-id attr only;
+      // text node renders display_name → no UUID leakage in DOM textContent
+      // (反向 grep `[0-9a-f]{8}-[0-9a-f]{4}-...` 0 hit; 反约束 byte-identical
+      // 跟 ADM-0 #211 §1.1 隐私红线同源).
+      const safeId = escapeHtml(userId);
+      if (displayName) return `<span class="mention" data-mention-id="${safeId}">@${escapeHtml(displayName)}</span>`;
+      // Fallback: display_name 未知 (member 列表未加载 / 跨 channel) — 仍走
+      // span+data-mention-id, 文本节点显 @<short-id> (前 8 位) 不显完整
+      // UUID, 隐私红线兜.
+      const shortId = userId.length > 8 ? userId.slice(0, 8) : userId;
+      return `<span class="mention" data-mention-id="${safeId}">@${escapeHtml(shortId)}</span>`;
     });
   }
 
@@ -78,7 +87,7 @@ export function renderMarkdown(text: string, mentionedUserIds?: string[], userMa
       'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
       'span', 'div', 'img',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'src', 'alt', 'title'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'src', 'alt', 'title', 'data-mention-id'],
   });
 
   return clean.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');

@@ -94,3 +94,39 @@ export interface ArtifactUpdatedFrame {
 
 export const ARTIFACT_UPDATED_EVENT = 'borgee:artifact-updated';
 export type ArtifactUpdatedEvent = CustomEvent<ArtifactUpdatedFrame>;
+
+// ─── DM-2.2 MentionPushed frame (#372 envelope) ─────────────
+//
+// Spec: docs/implementation/modules/dm-2.3-spec.md §0 立场 ②③ + 飞马
+// #362 8-field envelope.
+// 锁: server 端 internal/ws/mention_pushed_frame.go::MentionPushedFrame
+// — 8 字段顺序 byte-identical:
+//   {type, cursor, message_id, channel_id, sender_id,
+//    mention_target_id, body_preview, created_at}
+// body_preview is rune-truncated to 80 chars server-side
+// (TruncateBodyPreview); client must NOT re-parse it (反约束: 显示
+// 即真值, 隐私 §13 红线).
+
+/**
+ * `mention_pushed` — server → client push fired when a message body
+ * `@<target_user_id>` token resolves to an online target. Target-only
+ * BroadcastToUser (反约束: 不抄送 owner; offline owner-fallback uses
+ * a system DM, not this envelope). MessageList listens via
+ * useMentionPushed → actions.loadMessages 触发重渲.
+ */
+export interface MentionPushedFrame {
+  type: 'mention_pushed';
+  /** RT-1.1 monotonic server cursor; client must NOT sort by created_at. */
+  cursor: number;
+  message_id: string;
+  channel_id: string;
+  sender_id: string;
+  mention_target_id: string;
+  /** Server-truncated to 80 runes (UTF-8 rune-safe). 立场 ②: 不重解析. */
+  body_preview: string;
+  /** Unix ms — 仅展示, 不可作排序键 (反约束: server cursor 唯一可信序). */
+  created_at: number;
+}
+
+export const MENTION_PUSHED_EVENT = 'borgee:mention-pushed';
+export type MentionPushedEvent = CustomEvent<MentionPushedFrame>;

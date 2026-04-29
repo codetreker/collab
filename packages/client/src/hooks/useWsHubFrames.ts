@@ -27,9 +27,11 @@ import {
   INVITATION_PENDING_EVENT,
   INVITATION_DECIDED_EVENT,
   ARTIFACT_UPDATED_EVENT,
+  MENTION_PUSHED_EVENT,
   type AgentInvitationPendingFrame,
   type AgentInvitationDecidedFrame,
   type ArtifactUpdatedFrame,
+  type MentionPushedFrame,
 } from '../types/ws-frames';
 
 /**
@@ -110,5 +112,33 @@ export function useArtifactUpdated(
     };
     window.addEventListener(ARTIFACT_UPDATED_EVENT, listener);
     return () => window.removeEventListener(ARTIFACT_UPDATED_EVENT, listener);
+  }, [handler]);
+}
+
+// ─── DM-2.2 MentionPushed dispatch (DM-2.3 client) ──────────
+//
+// Same precedent as artifact_updated: useWebSocket.ts decodes the frame
+// then calls dispatchMentionPushed; MessageList listens via
+// useMentionPushed(handler) — handler decides whether to refetch
+// channel messages (cheap + authoritative). 立场 ② envelope is
+// signal-only — client MUST NOT use body_preview as message body
+// (反约束: server has truncated to 80 runes for privacy §13; full body
+// arrives via the existing message backfill path).
+
+export function dispatchMentionPushed(frame: MentionPushedFrame): void {
+  window.dispatchEvent(
+    new CustomEvent(MENTION_PUSHED_EVENT, { detail: frame }),
+  );
+}
+
+export function useMentionPushed(
+  handler: (frame: MentionPushedFrame) => void,
+): void {
+  useEffect(() => {
+    const listener = (e: Event) => {
+      handler((e as CustomEvent<MentionPushedFrame>).detail);
+    };
+    window.addEventListener(MENTION_PUSHED_EVENT, listener);
+    return () => window.removeEventListener(MENTION_PUSHED_EVENT, listener);
   }, [handler]);
 }
