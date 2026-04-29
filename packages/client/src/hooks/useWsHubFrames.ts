@@ -28,10 +28,12 @@ import {
   INVITATION_DECIDED_EVENT,
   ARTIFACT_UPDATED_EVENT,
   MENTION_PUSHED_EVENT,
+  ANCHOR_COMMENT_ADDED_EVENT,
   type AgentInvitationPendingFrame,
   type AgentInvitationDecidedFrame,
   type ArtifactUpdatedFrame,
   type MentionPushedFrame,
+  type AnchorCommentAddedFrame,
 } from '../types/ws-frames';
 
 /**
@@ -140,5 +142,34 @@ export function useMentionPushed(
     };
     window.addEventListener(MENTION_PUSHED_EVENT, listener);
     return () => window.removeEventListener(MENTION_PUSHED_EVENT, listener);
+  }, [handler]);
+}
+
+// ─── CV-2.2 AnchorCommentAdded dispatch (CV-2.3 client) ─────
+//
+// Same precedent as artifact_updated / mention_pushed: useWebSocket.ts
+// decodes the frame then calls dispatchAnchorCommentAdded;
+// AnchorThreadPanel listens via useAnchorCommentAdded(handler) — handler
+// decides whether to refetch the anchor thread via GET
+// /api/v1/artifacts/:id/anchors + comments (cheap + authoritative).
+// 立场 ③ envelope is signal-only — frame carries no body. body arrives
+// via the existing REST pull path (反约束: client must NOT use
+// AnchorCommentAddedFrame to render comment text — it has no `body`).
+
+export function dispatchAnchorCommentAdded(frame: AnchorCommentAddedFrame): void {
+  window.dispatchEvent(
+    new CustomEvent(ANCHOR_COMMENT_ADDED_EVENT, { detail: frame }),
+  );
+}
+
+export function useAnchorCommentAdded(
+  handler: (frame: AnchorCommentAddedFrame) => void,
+): void {
+  useEffect(() => {
+    const listener = (e: Event) => {
+      handler((e as CustomEvent<AnchorCommentAddedFrame>).detail);
+    };
+    window.addEventListener(ANCHOR_COMMENT_ADDED_EVENT, listener);
+    return () => window.removeEventListener(ANCHOR_COMMENT_ADDED_EVENT, listener);
   }, [handler]);
 }

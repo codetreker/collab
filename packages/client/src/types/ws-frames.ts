@@ -130,3 +130,42 @@ export interface MentionPushedFrame {
 
 export const MENTION_PUSHED_EVENT = 'borgee:mention-pushed';
 export type MentionPushedEvent = CustomEvent<MentionPushedFrame>;
+
+// ─── CV-2.2 AnchorCommentAdded frame (#360 envelope) ────────
+//
+// Spec: docs/implementation/modules/cv-2-spec.md §0 立场 ③ + 飞马 v3 字段锁.
+// Server lock: packages/server-go/internal/ws/anchor_comment_frame.go
+//   AnchorCommentAddedFrame — 10 字段 byte-identical:
+//   {type, cursor, anchor_id, comment_id, artifact_id,
+//    artifact_version_id, channel_id, author_id, author_kind, created_at}
+// 注: 第 9 字段 `author_kind` (不是 `kind` / `committer_kind`) — anchor
+// 是评论作者非 commit 提交者; 第 6 字段 `artifact_version_id` 是 schema
+// FK PK 非用户号 `version` (立场 ② 钉死 PK row immutable).
+//
+// Push 仅信号 (立场 ⑤ 同模式): 不带 body, client 收到后必须拉
+// GET /api/v1/artifacts/:id/anchors 才能拿评论列表.
+
+/**
+ * `anchor_comment_added` — server → client push fired after a comment
+ * lands on an active anchor thread (CV-2.2 #360). Reuses RT-1.1 cursor
+ * envelope so reconnect-backfill (RT-1.2) covers it for free.
+ */
+export interface AnchorCommentAddedFrame {
+  type: 'anchor_comment_added';
+  /** RT-1.1 monotonic server cursor; client must NOT sort by created_at. */
+  cursor: number;
+  anchor_id: string;
+  comment_id: number;
+  artifact_id: string;
+  /** Schema FK PK (artifact_versions.id) — not the user-facing `version` int. */
+  artifact_version_id: number;
+  channel_id: string;
+  author_id: string;
+  /** 'human' | 'agent' — naming aligned with anchor_comments.author_kind column. */
+  author_kind: 'human' | 'agent';
+  /** Unix ms — 仅展示, 不可作排序键 (反约束: server cursor 唯一可信序). */
+  created_at: number;
+}
+
+export const ANCHOR_COMMENT_ADDED_EVENT = 'borgee:anchor-comment-added';
+export type AnchorCommentAddedEvent = CustomEvent<AnchorCommentAddedFrame>;
