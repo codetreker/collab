@@ -195,6 +195,14 @@ func (s *Server) SetupRoutes() {
 	al14Handler := &api.AL14Handler{Store: s.store, Logger: s.logger}
 	al14Handler.RegisterRoutes(s.mux, authMw)
 
+	// DL-4 web push subscriptions — POST/DELETE /api/v1/push/subscribe.
+	// 蓝图 client-shape.md L22 (Mobile PWA + Web Push VAPID).
+	pushSubsHandler := &api.PushSubscriptionsHandler{
+		Store:  s.store,
+		Logger: s.logger,
+	}
+	pushSubsHandler.RegisterRoutes(s.mux, authMw)
+
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
 	channelHandler.RegisterRoutes(s.mux, authMw)
