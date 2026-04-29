@@ -12,10 +12,18 @@ import (
 )
 
 // MessageHandler handles message CRUD endpoints.
+//
+// MentionDispatcher (DM-2.2, #312) is optional — nil at boot means
+// mention parser + offline fallback are off (legacy / test paths).
+// When non-nil, handleCreateMessage parses `@<uuid>` tokens, rejects
+// cross-channel targets with 400 mention.target_not_in_channel, persists
+// message_mentions rows (#361), and fans out mention_pushed frames or
+// owner system DM fallback (acceptance §1.1-§2.5).
 type MessageHandler struct {
-	Store  *store.Store
-	Logger *slog.Logger
-	Hub    EventBroadcaster
+	Store      *store.Store
+	Logger     *slog.Logger
+	Hub        EventBroadcaster
+	Mentions   *MentionDispatcher
 }
 
 type EventBroadcaster interface {
@@ -230,11 +238,41 @@ func (h *MessageHandler) handleCreateMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// DM-2.2 mention parser + cross-channel guard.
+	// 立场 ① parse `@<uuid>` token 拆死 raw UUID; 立场 ② cross-channel
+	// reject 400 (mention 仅在 channel 内, 跟 RT-1/CHN-1 留账边界对齐).
+	// Dispatch (online push / offline owner DM fallback) 在 message
+	// 落库后执行 — 失败仅 log 不阻断 message 创建 (best-effort fanout,
+	// 反约束 (§2.4): fallback 走 owner 后台不污染发送方).
+	var parsedMentionTargets []string
+	if h.Mentions != nil {
+		targets, offender, mErr := h.Mentions.MentionTargetsFromBody(channelID, content)
+		if mErr != nil {
+			// ErrMentionTargetNotInChannel → 400 with offender hint.
+			writeJSONError(w, http.StatusBadRequest, "mention.target_not_in_channel: "+offender)
+			return
+		}
+		parsedMentionTargets = targets
+	}
+
 	msg, err := h.Store.CreateMessageFull(channelID, user.ID, content, ct, body.ReplyToID, body.Mentions)
 	if err != nil {
 		h.Logger.Error("failed to create message", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
+	}
+
+	// DM-2.2 persist + dispatch — non-blocking on errors (log + continue).
+	// PersistMentions writes #361 message_mentions rows; Dispatch fans
+	// online targets via PushMentionPushed and offline agents via owner
+	// system DM (#314 §1 ③ byte-identical body).
+	if h.Mentions != nil && len(parsedMentionTargets) > 0 {
+		if pErr := h.Mentions.PersistMentions(msg.ID, parsedMentionTargets); pErr != nil {
+			h.Logger.Error("failed to persist mentions", "error", pErr, "message_id", msg.ID)
+		}
+		if dErr := h.Mentions.Dispatch(msg.ID, channelID, ch.Name, user.ID, content, parsedMentionTargets, msg.CreatedAt); dErr != nil {
+			h.Logger.Error("mention dispatch partial failure", "error", dErr, "message_id", msg.ID)
+		}
 	}
 
 	h.Store.CreateEvent(&store.Event{
