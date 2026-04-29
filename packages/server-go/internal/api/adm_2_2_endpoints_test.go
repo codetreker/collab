@@ -247,3 +247,82 @@ func TestADM22_AdminActions_UserUnauthenticatedReturns401(t *testing.T) {
 		t.Errorf("expected 401, got %d", resp.StatusCode)
 	}
 }
+
+// TestADM22_ImpersonateGrant_UnauthenticatedRejected covers 401 paths for
+// 3 impersonation-grant endpoints.
+func TestADM22_ImpersonateGrant_UnauthenticatedRejected(t *testing.T) {
+	ts, _, _ := testutil.NewTestServer(t)
+
+	resp1, _ := testutil.JSON(t, "GET", ts.URL+"/api/v1/me/impersonation-grant", "", nil)
+	if resp1.StatusCode != http.StatusUnauthorized {
+		t.Errorf("GET unauth expected 401, got %d", resp1.StatusCode)
+	}
+	resp2, _ := testutil.JSON(t, "POST", ts.URL+"/api/v1/me/impersonation-grant", "", nil)
+	if resp2.StatusCode != http.StatusUnauthorized {
+		t.Errorf("POST unauth expected 401, got %d", resp2.StatusCode)
+	}
+	resp3, _ := testutil.JSON(t, "DELETE", ts.URL+"/api/v1/me/impersonation-grant", "", nil)
+	if resp3.StatusCode != http.StatusUnauthorized {
+		t.Errorf("DELETE unauth expected 401, got %d", resp3.StatusCode)
+	}
+}
+
+// TestADM22_AdminAuditLog_LimitParam covers parseLimit branches with valid
+// integer + invalid input + clamp.
+func TestADM22_AdminAuditLog_LimitParam(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	for i := 0; i < 5; i++ {
+		seedADM2(t, s, "admin-A", owner.ID, "delete_channel")
+	}
+	// limit=2 explicit.
+	resp, body := testutil.JSON(t, "GET", ts.URL+"/admin-api/v1/audit-log?limit=2", adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatal(resp.StatusCode)
+	}
+	if len(body["actions"].([]any)) != 2 {
+		t.Errorf("limit=2 expected 2 rows, got %d", len(body["actions"].([]any)))
+	}
+	// limit invalid string → default 100; expect all 5.
+	resp2, body2 := testutil.JSON(t, "GET", ts.URL+"/admin-api/v1/audit-log?limit=abc", adminToken, nil)
+	if resp2.StatusCode != http.StatusOK {
+		t.Fatal(resp2.StatusCode)
+	}
+	if len(body2["actions"].([]any)) != 5 {
+		t.Errorf("limit=abc default expected 5, got %d", len(body2["actions"].([]any)))
+	}
+	// limit > 500 → clamped.
+	resp3, _ := testutil.JSON(t, "GET", ts.URL+"/admin-api/v1/audit-log?limit=999999", adminToken, nil)
+	if resp3.StatusCode != http.StatusOK {
+		t.Errorf("limit=999999 should clamp not error, got %d", resp3.StatusCode)
+	}
+	// limit=0 → default.
+	resp4, _ := testutil.JSON(t, "GET", ts.URL+"/admin-api/v1/audit-log?limit=0", adminToken, nil)
+	if resp4.StatusCode != http.StatusOK {
+		t.Errorf("limit=0 should default not error, got %d", resp4.StatusCode)
+	}
+}
+
+// TestADM22_AdminAuditLog_FilterByActionAndTarget covers ?action=
+// + ?target_user_id= filters together.
+func TestADM22_AdminAuditLog_FilterByActionAndTarget(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	member, _ := s.GetUserByEmail("member@test.com")
+	seedADM2(t, s, "admin-A", owner.ID, "delete_channel")
+	seedADM2(t, s, "admin-A", member.ID, "delete_channel")
+	seedADM2(t, s, "admin-A", owner.ID, "suspend_user")
+
+	resp, body := testutil.JSON(t, "GET",
+		ts.URL+"/admin-api/v1/audit-log?action=delete_channel&target_user_id="+owner.ID,
+		adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatal(resp.StatusCode)
+	}
+	rows := body["actions"].([]any)
+	if len(rows) != 1 {
+		t.Errorf("expected 1 row (delete_channel × owner), got %d", len(rows))
+	}
+}

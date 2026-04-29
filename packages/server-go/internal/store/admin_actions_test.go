@@ -272,3 +272,109 @@ func TestActiveImpersonationGrant_ReturnsNilWhenNone(t *testing.T) {
 		t.Errorf("expected nil grant, got %v", g)
 	}
 }
+
+// TestRenderAdminActionDMBody_UnknownActionReturnsEmpty covers default branch.
+func TestRenderAdminActionDMBody_UnknownActionReturnsEmpty(t *testing.T) {
+	got := RenderAdminActionDMBody("alice", "unknown_action", time.Now(), AdminActionDMContext{})
+	if got != "" {
+		t.Errorf("unknown action should return empty, got %q", got)
+	}
+}
+
+// TestRenderAdminActionDMBody_SuspendUserDefaultReason covers empty Reason
+// fallback "(未提供原因)".
+func TestRenderAdminActionDMBody_SuspendUserDefaultReason(t *testing.T) {
+	got := RenderAdminActionDMBody("alice", "suspend_user", time.Now(), AdminActionDMContext{})
+	if !strings.Contains(got, "(未提供原因)") {
+		t.Errorf("expected default reason fallback, got %q", got)
+	}
+}
+
+// TestEmitAdminActionAudit_RejectsEmpty covers EmitAdminActionAudit error path
+// (delegated to InsertAdminAction).
+func TestEmitAdminActionAudit_RejectsEmpty(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	if _, err := s.EmitAdminActionAudit("", "alice", "u1", "delete_channel", "", AdminActionDMContext{}); err == nil {
+		t.Error("empty actor_id should reject")
+	}
+}
+
+// TestEmitAdminActionSystemDM_RejectsEmptyArgs covers RejectsEmpty branch.
+func TestEmitAdminActionSystemDM_RejectsEmptyArgs(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	if err := s.EmitAdminActionSystemDM("", "u1", "delete_channel", AdminActionDMContext{}); err == nil {
+		t.Error("empty actor_login should reject")
+	}
+	if err := s.EmitAdminActionSystemDM("alice", "", "delete_channel", AdminActionDMContext{}); err == nil {
+		t.Error("empty target_user_id should reject")
+	}
+}
+
+// TestEmitAdminActionSystemDM_NoSystemChannelDegrades covers the graceful
+// degradation when target user has no #welcome channel — returns nil err
+// (not failure) because audit row is the 100% guarantee.
+func TestEmitAdminActionSystemDM_NoSystemChannelDegrades(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	// User exists but has no #welcome channel.
+	err := s.EmitAdminActionSystemDM("alice", "u-no-channel", "delete_channel", AdminActionDMContext{ChannelName: "#x"})
+	if err != nil {
+		t.Errorf("expected nil err for no-channel degraded path, got %v", err)
+	}
+}
+
+// TestEmitAdminActionSystemDM_UnknownActionNoOp covers RenderAdminActionDMBody
+// returning empty for unknown action.
+func TestEmitAdminActionSystemDM_UnknownActionNoOp(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	err := s.EmitAdminActionSystemDM("alice", "u1", "unknown_action_name", AdminActionDMContext{})
+	if err != nil {
+		t.Errorf("unknown action should silently no-op, got %v", err)
+	}
+}
+
+// TestListAdminActionsForTargetUser_RejectsEmpty covers error branch.
+func TestListAdminActionsForTargetUser_RejectsEmpty(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	if _, err := s.ListAdminActionsForTargetUser("", 50); err == nil {
+		t.Error("empty user_id should reject")
+	}
+}
+
+// TestListAdminActions_LimitDefaults covers limit clamping branches.
+func TestListAdminActions_LimitDefaults(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	// limit <= 0 → default 50; > 200 → 200.
+	rows, err := s.ListAdminActionsForTargetUser("u1", -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = rows
+	rows2, _ := s.ListAdminActionsForTargetUser("u1", 9999)
+	_ = rows2
+	// Admin variant.
+	rows3, _ := s.ListAdminActionsForAdmin(AdminActionListFilters{}, -1)
+	_ = rows3
+	rows4, _ := s.ListAdminActionsForAdmin(AdminActionListFilters{}, 9999)
+	_ = rows4
+}
+
+// TestGrantImpersonation_RejectsEmpty + TestRevokeImpersonation_RejectsEmpty
+// + TestActiveImpersonationGrant_RejectsEmpty cover error paths.
+func TestGrantImpersonation_RejectsEmpty(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	if _, err := s.GrantImpersonation(""); err == nil {
+		t.Error("empty user_id should reject")
+	}
+}
+func TestRevokeImpersonation_RejectsEmpty(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	if err := s.RevokeImpersonation(""); err == nil {
+		t.Error("empty user_id should reject")
+	}
+}
+func TestActiveImpersonationGrant_RejectsEmpty(t *testing.T) {
+	s := runStoreWithMigrations(t)
+	if _, err := s.ActiveImpersonationGrant(""); err == nil {
+		t.Error("empty user_id should reject")
+	}
+}

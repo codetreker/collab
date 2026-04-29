@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// runADM22 runs migration v=24 (ADM-2.2 impersonation_grants) on a memory DB.
+// runADM22 runs migration v=23 (ADM-2.2 impersonation_grants) on a memory DB.
 // Logical FK to users; SQLite FK enforcement off, no upstream seed needed.
 func runADM22(t *testing.T, db *gorm.DB) {
 	t.Helper()
@@ -132,7 +132,7 @@ func TestADM22_AcceptsRevokedAtNullable(t *testing.T) {
 	}
 }
 
-// TestADM22_Idempotent pins forward-only safety: re-running v=24 is no-op.
+// TestADM22_Idempotent pins forward-only safety: re-running v=23 is no-op.
 func TestADM22_Idempotent(t *testing.T) {
 	db := openMem(t)
 	runADM22(t, db)

@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// adm22ImpersonationGrants is migration v=24 — Phase 4 / ADM-2.2.
+// adm22ImpersonationGrants is migration v=23 — Phase 4 / ADM-2.2.
 //
 // Blueprint锚: `admin-model.md` §1.4 (L91 "被 impersonate 用户" 行 — 红色横幅 +
 // 24h 倒计时) + §3 (impersonation_grants 数据模型片段, "由 user 创建, admin
@@ -41,16 +41,16 @@ import (
 //     这条记录"); 不挂 `cursor` (跟 al_3_1 / cv_4_1 / chn_3_1 / al_2a_1 /
 //     adm_2_1 同模式 frame 路径不下沉 schema)
 //
-// v=24 sequencing: CV-2.1 v=14 / DM-2.1 v=15 / AL-4.1 v=16 / CV-3.1 v=17 /
+// v=23 sequencing: CV-2.1 v=14 / DM-2.1 v=15 / AL-4.1 v=16 / CV-3.1 v=17 /
 // CV-4.1 v=18 / CHN-3.1 v=19 / AL-2a.1 v=20 (#447) / AL-1b.1 v=21 (#453) /
-// ADM-2.1 v=22 (admin_actions, 本 PR §1) / **ADM-2.2 v=24** (本 migration,
-// 跳 v=23 给可能并行 milestone 占号空间).
+// ADM-2.1 v=22 (admin_actions, 本 PR §1) / **ADM-2.2 v=23** (本 migration,
+// 连续 v=23 给可能并行 milestone 占号空间).
 // registry.go 字面锁.
 //
 // v0 stance: forward-only, no Down(). 表本身 v0 新增, IF NOT EXISTS 守
 // idempotency.
 var adm22ImpersonationGrants = Migration{
-	Version: 24,
+	Version: 23,
 	Name:    "adm_2_2_impersonation_grants",
 	Up: func(tx *gorm.DB) error {
 		if err := tx.Exec(`CREATE TABLE IF NOT EXISTS impersonation_grants (
