@@ -24,16 +24,16 @@
 | 2.1 POST /channels → 仅 creator 一行 channel_member (no auto-fanout) | e2e | 战马A / 烈马 | `internal/api/chn_1_2_test.go::TestCHN12_CreatorOnlyDefaultMember` (#286) |
 | 2.2 跨 org 同名合法 (orgA 的 #general + orgB 的 #general 共存) | e2e | 战马A / 烈马 | `TestCHN12_CrossOrgSameNameOK` (#286) |
 | 2.3 跨 org GET 单 channel ≠ 200 + LIST 不含他 org channel (双轴隔离) | e2e | 烈马 | `TestCHN12_CrossOrgPublicGETIsolation` (#286) |
-| 2.4 archive fanout system DM 文案锁 byte-identical: `channel #{name} 已被 {owner_name} 关闭于 {ts}` | e2e + grep | 战马A / 烈马 | `TestCHN12_ArchiveFanoutSystemDM` (#286) + `grep "已被 .* 关闭于" internal/api/channels.go` count≥1 (line 1073) |
-| 2.5 agent join system message 文案锁 + sender_id='system' + ChannelMember.Silent=true (立场 ⑥ agent=同事不刷屏) | e2e | 战马A / 烈马 | `TestCHN12_AgentJoinSystemMessage` (#286) — 字面 `{agent_name} joined` (channels.go:1029) |
+| 2.4 archive fanout system DM 文案锁 byte-identical: `channel #{name} 已被 {owner_name} 关闭于 {ts}` | e2e + grep | 战马A / 烈马 | `TestCHN12_ArchiveFanoutSystemDM` (#286) + `grep "已被 .* 关闭于" internal/api/channels.go` count≥1 (line 1081) |
+| 2.5 agent join system message 文案锁 + sender_id='system' + ChannelMember.Silent=true (立场 ⑥ agent=同事不刷屏) | e2e | 战马A / 烈马 | `TestCHN12_AgentJoinSystemMessage` (#286) — 字面 `{agent_name} joined` (channels.go:1037) |
 
 ### 用户感知 (CHN-1.3 client SPA — UI 文案锁)
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
 | 4.1 创建频道 dialog: 默认 visibility=public + creator-only (sidebar 渲染 + GET /channels/:id/members length==1) | e2e | 战马A / 烈马 | `packages/e2e/tests/chn-1-3-channel-list.spec.ts::立场 ① create channel via dialog` (#288) |
-| 4.2 silent agent badge: `🔕 silent` 字面渲染 + system message `{agent_name} joined` 可见 + ChannelMember.silent==true (立场 ⑥) | e2e + grep | 战马A / 烈马 | `chn-1-3-channel-list.spec.ts::立场 ② agent silent badge` (#288); `grep -n "🔕 silent" packages/client/src/components/ChannelMembersModal.tsx` count≥1 (line 195 字面 `<span class="user-badge user-badge-silent">🔕 silent</span>`) |
-| 4.3 archive 状态: 频道行 `data-archived="true"` + `.archived-badge` 文本 `已归档` + system DM `channel #{name} 已被 ` 前缀可见 | e2e + grep | 战马A / 烈马 | `chn-1-3-channel-list.spec.ts::立场 ③ archive PATCH` (#288); `grep -n "已归档" packages/client/src/components/SortableChannelItem.tsx` count≥2 (line 59 + 85 字面 `<span class="archived-badge">已归档</span>`) |
+| 4.2 silent agent badge: `🔕 silent` 字面渲染 + system message `{agent_name} joined` 可见 + ChannelMember.silent==true (立场 ⑥) | e2e + grep | 战马A / 烈马 | `chn-1-3-channel-list.spec.ts::立场 ② agent silent badge` (#288); `grep -n "🔕 silent" packages/client/src/components/ChannelMembersModal.tsx` count≥1 (line 205 字面 `<span class="user-badge user-badge-silent">🔕 silent</span>`) |
+| 4.3 archive 状态: 频道行 `data-archived="true"` + `.archived-badge` 文本 `已归档` + system DM `channel #{name} 已被 ` 前缀可见 | e2e + grep | 战马A / 烈马 | `chn-1-3-channel-list.spec.ts::立场 ③ archive PATCH` (#288); `grep -n "已归档" packages/client/src/components/SortableChannelItem.tsx` count≥2 (line 83 + 109 字面 `<span class="archived-badge">已归档</span>`) |
 
 ### 蓝图行为对照 — AP-1 严格 403 留账 (Phase 4 forward-looking)
 
