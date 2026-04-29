@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// adm21AdminActions is migration v=23 — Phase 4 / ADM-2.1.
+// adm21AdminActions is migration v=22 — Phase 4 / ADM-2.1.
 //
 // Blueprint锚: `admin-model.md` §1.4 (L82-105 "谁能看到什么" 四档分层) +
 // §2 不变量 (L109-120 受影响者必感知 + Audit 100% 留痕 + 分层可见).
@@ -62,15 +62,15 @@ import (
 //     'org_id' (受影响者 org 通过 users.org_id 派生, 不冗余存) /
 //     'session_id' (impersonate 走单独 impersonation_grants 表, 不混入此表).
 //
-// v=23 sequencing: CV-2.1 v=14 / DM-2.1 v=15 / AL-4.1 v=16 / CV-3.1 v=17 /
+// v=22 sequencing: CV-2.1 v=14 / DM-2.1 v=15 / AL-4.1 v=16 / CV-3.1 v=17 /
 // CV-4.1 v=18 / CHN-3.1 v=19 / AL-2a.1 v=20 (#447) / AL-1b.1 v=21 (#453) /
-// AL-2b.1 v=22 (reserved) / **ADM-2.1 v=23** (本 migration).
+// AL-2b.1 (BPP frame 无 migration, 不占号) / **ADM-2.1 v=22** (本 migration).
 // registry.go 字面锁.
 //
 // v0 stance: forward-only, no Down(). 表本身 v0 新增, IF NOT EXISTS 守
 // idempotency.
 var adm21AdminActions = Migration{
-	Version: 23,
+	Version: 22,
 	Name:    "adm_2_1_admin_actions",
 	Up: func(tx *gorm.DB) error {
 		if err := tx.Exec(`CREATE TABLE IF NOT EXISTS admin_actions (

@@ -12,7 +12,7 @@
 ## 拆 PR 顺序 (跟 ADM-1 三件套同模式)
 
 - **ADM-2.0** spec + content-lock + stance + acceptance v1 (本 PR, 战马D PM 客串)
-- **ADM-2.1** ✅ #470 schema migration v=23 (admin_actions 6 列 + CHECK 5 action + 双索引 + 7 单测)
+- **ADM-2.1** ✅ #470 schema migration v=22 (admin_actions 6 列 + CHECK 5 action + 双索引 + 7 单测)
 - **ADM-2.2** server: 5 audit hook + 双 GET endpoint + system DM emit + impersonate_grants 表 (待派, 战马B)
 - **ADM-2.3** client + e2e: 业主授权 UI + 红横幅 + audit 列表 + admin SPA audit log 页 + e2e + G4.2 双截屏 (待派)
 - **ADM-2.x** closure: acceptance flip + REG-ADM2-001..007 🟢 + ADM-1 deferred 2 行翻 + PROGRESS [x]

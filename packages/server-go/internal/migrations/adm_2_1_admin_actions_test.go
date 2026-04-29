@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// runADM21 runs migration v=23 ( ADM-2.1) on a memory DB. v=23 is a clean
+// runADM21 runs migration v=22 (ADM-2.1) on a memory DB. v=22 is a clean
 // CREATE — admin_actions logical-FKs into admins / users, but SQLite FK
 // enforcement is off, so we don't seed upstream tables. Tests that exercise
 // real audit REST behaviour live in ADM-2.2 (server path), not here
@@ -209,7 +209,7 @@ func TestADM21_PKEnforcesUniqueRowPerID(t *testing.T) {
 }
 
 // TestADM21_Idempotent pins acceptance forward-only safety: re-running
-// v=23 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
+// v=22 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
 // guards). Same as every migration body in the registry.
 func TestADM21_Idempotent(t *testing.T) {
 	db := openMem(t)
