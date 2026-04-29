@@ -14,11 +14,11 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 1.1 立场 ① 物理拆死 — 无新 schema 改动; 反向 grep `agent_messages\b` / `ai_to_ai_channel` / `agent_only_message` 在 `internal/migrations/` count==0 | CI grep | 战马A / 烈马 | _(待填)_ |
-| 1.2 立场 ② 责任旁路反约束 — `triggered_by_agent_id` / `committed_by_agent` 列在 `cv_1_1_artifacts.go` / `cv_4_1_artifact_iterations.go` count==0 | unit + grep | 战马A / 烈马 | _(待填)_ |
-| 1.3 立场 ③ 新锁表反约束 — `artifact_locks\s+TABLE` / `iteration_priority\s+TABLE` 在 migrations/ count==0; X2 冲突复用 CV-1.2 既有 single-doc lock 30s | grep + unit | 战马A / 烈马 | _(待填)_ |
-| 1.4 立场 ④ mention 旁路反约束 — `agent_to_agent_mention` / `POST /api/v1/agents/:id/notify-agent` 在 internal/ count==0 | CI grep | 飞马 / 烈马 | _(待填)_ |
-| 1.5 文档同步 — `docs/current/server/data-model.md` 加 "agent↔agent 协作 schema 反约束" 段 (跟 chn-2 #353 同模式) | review | 战马A / 烈马 | _(待填)_ |
+| 1.1 立场 ① 物理拆死 — 无新 schema 改动; 反向 grep `agent_messages\b` / `ai_to_ai_channel` / `agent_only_message` 在 `internal/migrations/` count==0 | CI grep | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 1.2 立场 ② 责任旁路反约束 — `triggered_by_agent_id` / `committed_by_agent` 列在 `cv_1_1_artifacts.go` / `cv_4_1_artifact_iterations.go` count==0 | unit + grep | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 1.3 立场 ③ 新锁表反约束 — `artifact_locks\s+TABLE` / `iteration_priority\s+TABLE` 在 migrations/ count==0; X2 冲突复用 CV-1.2 既有 single-doc lock 30s | grep + unit | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 1.4 立场 ④ mention 旁路反约束 — `agent_to_agent_mention` / `POST /api/v1/agents/:id/notify-agent` 在 internal/ count==0 | CI grep | 飞马 / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 1.5 文档同步 — `docs/current/server/data-model.md` 加 "agent↔agent 协作 schema 反约束" 段 (跟 chn-2 #353 同模式) | review | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
 
 ### §2 server (CM-5.2) — 协作路径验证 (复用 path 不开新代码)
 
@@ -26,10 +26,10 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 2.1 agent A → agent B mention 走 DM-2.2 router (#372 既有 path); MentionPushedFrame 8 字段 byte-identical 推 agent B; system DM 到 B's owner (跟人同模式) | unit + e2e | 战马A / 烈马 | _(待填)_ |
-| 2.2 X2 冲突 — agent A `commit?iteration_id=X` + agent B 同 artifact `commit?iteration_id=Y` < 200ms → 第二写者 409 with code `artifact.locked_by_another_iteration` byte-identical (跟 CV-4 #380 ⑦ 同源) | unit | 战马A / 烈马 | _(待填)_ |
-| 2.3 立场 ⑤ — agent iterate 链 owner-first 可见 (`GET /artifacts/:id/iterations` returns 全链, owner_A + owner_B 都能查) | unit + e2e | 战马A / 烈马 | _(待填)_ |
-| 2.4 反约束 — server 不开 `POST /api/v1/agents/:id/notify-agent` 旁路 endpoint (CI grep + 路由表反向断言) | grep | 飞马 / 烈马 | _(待填)_ |
+| 2.1 agent A → agent B mention 走 DM-2.2 router (#372 既有 path); MentionPushedFrame 8 字段 byte-identical 推 agent B; system DM 到 B's owner (跟人同模式) | unit + e2e | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 2.2 X2 冲突 — agent A `commit?iteration_id=X` + agent B 同 artifact `commit?iteration_id=Y` < 200ms → 第二写者 409 with code `artifact.locked_by_another_iteration` byte-identical (跟 CV-4 #380 ⑦ 同源) | unit | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 2.3 立场 ⑤ — agent iterate 链 owner-first 可见 (`GET /artifacts/:id/iterations` returns 全链, owner_A + owner_B 都能查) | unit + e2e | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 2.4 反约束 — server 不开 `POST /api/v1/agents/:id/notify-agent` 旁路 endpoint (CI grep + 路由表反向断言) | grep | 飞马 / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
 
 ### §3 client UI (CM-5.3) — 透明协作可见性 + 文案锁
 
@@ -37,10 +37,10 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 3.1 AgentManager.tsx hover agent 显示 "正在协作: {agentName}" 链路 (反 owner 的 agent 离线/忙碌时不显示协作状态) | vitest + e2e | 战马A / 烈马 | _(待填)_ |
-| 3.2 X2 冲突 toast 文案锁 byte-identical — "正在被 agent {name} 处理" (跟 CV-4 #380 ⑦ + #365 反约束 ② 三源同源 byte-identical) | vitest content-lock | 战马A / 野马 | _(待填)_ |
-| 3.3 e2e 双 agent commit 同 artifact 触发 409 + screenshot 入 `docs/qa/screenshots/cm-5-x2-conflict.png` | e2e + screenshot | 战马A / 烈马 | _(待填)_ |
-| 3.4 反约束 — client 不订阅 agent_only frame (`grep -nE 'agent_only|agent_to_agent' packages/client/src/` count==0) | CI grep | 飞马 / 烈马 | _(待填)_ |
+| 3.1 AgentManager.tsx hover agent 显示 "正在协作: {agentName}" 链路 (反 owner 的 agent 离线/忙碌时不显示协作状态) | vitest + e2e | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 3.2 X2 冲突 toast 文案锁 byte-identical — "正在被 agent {name} 处理" (跟 CV-4 #380 ⑦ + #365 反约束 ② 三源同源 byte-identical) | vitest content-lock | 战马A / 野马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 3.3 e2e 双 agent commit 同 artifact 触发 409 + screenshot 入 `docs/qa/screenshots/cm-5-x2-conflict.png` | e2e + screenshot | 战马A / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
+| 3.4 反约束 — client 不订阅 agent_only frame (`grep -nE 'agent_only|agent_to_agent' packages/client/src/` count==0) | CI grep | 飞马 / 烈马 | ✅ 三段全闭 #463 + #473 + #476 (CM-5.3 stacked) — 详见 REG-CM5-001..005 |
 
 ### §4 反约束 grep 黑名单 (跟野马 #366 7 行黑名单同模式)
 
