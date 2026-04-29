@@ -37,13 +37,17 @@ import (
 // TestBPPEnvelopeFrameWhitelist pins invariant ④. The lint walks every
 // envelope returned by AllBPPEnvelopes(), maps it to its FrameType(),
 // then asserts the whitelist exactly covers that set.
+//
+// AL-2b (#452) extended data plane to 4 frames (added agent_config_ack)
+// → total 10 envelopes (6 control + 4 data). 跟 acceptance §1.2 字面
+// byte-identical — direction lock plugin→server.
 func TestBPPEnvelopeFrameWhitelist(t *testing.T) {
 	envs := bpp.AllBPPEnvelopes()
-	if got, want := len(envs), 9; got != want {
-		t.Fatalf("BPP-1 envelope count: got %d, want %d (control 6 + data 3)", got, want)
+	if got, want := len(envs), 10; got != want {
+		t.Fatalf("BPP-1 envelope count: got %d, want %d (control 6 + data 4 incl AL-2b agent_config_ack)", got, want)
 	}
 	wl := bpp.BPPEnvelopeWhitelist()
-	if got, want := len(wl), 9; got != want {
+	if got, want := len(wl), 10; got != want {
 		t.Fatalf("whitelist size: got %d, want %d", got, want)
 	}
 	seen := map[string]struct{}{}
@@ -93,8 +97,8 @@ func TestBPPEnvelopeDirectionLock(t *testing.T) {
 	if ctrl != 6 {
 		t.Errorf("control-plane envelope count: got %d, want 6 (§2.1)", ctrl)
 	}
-	if data != 3 {
-		t.Errorf("data-plane envelope count: got %d, want 3 (§2.2)", data)
+	if data != 4 {
+		t.Errorf("data-plane envelope count: got %d, want 4 (§2.2 + AL-2b agent_config_ack)", data)
 	}
 }
 

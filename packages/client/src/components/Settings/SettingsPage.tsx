@@ -1,19 +1,21 @@
-// SettingsPage — ADM-1 用户设置页骨架 (Phase 4 启动 milestone).
+// SettingsPage — ADM-1 用户设置页骨架 (Phase 4 启动 milestone) + ADM-2 扩展.
 //
-// Blueprint: docs/blueprint/admin-model.md §4.1
-// Spec: docs/qa/adm-1-implementation-spec.md §1 (1 page + privacy tab 顶部嵌)
-// Acceptance: docs/qa/acceptance-templates/adm-1.md §2 (DOM/视觉锁)
+// Blueprint: docs/blueprint/admin-model.md §4.1 + §1.4 (ADM-2 audit + impersonate)
+// Spec: docs/qa/adm-1-implementation-spec.md §1 + docs/implementation/modules/adm-2-spec.md §2
+// Acceptance: docs/qa/acceptance-templates/adm-1.md §2 + adm-2.md §4.1.c+§4.2.a
 //
 // 立场反查:
 //   - v1 仅一个 tab "隐私" 默认展开 (反 details-element 包裹, acceptance §2.3)
 //   - 后续 tab (账号 / 通知) 留 placeholder 但不入 v1
 //   - 跟 admin SPA SettingsPage (packages/client/src/admin/pages/) 路径分叉
 //     (ADM-0 红线: admin/user 路径不混用, spec §1 第 ② 项注释字面)
+//   - ADM-2 子段: PrivacyPromise (ADM-1) + ImpersonateGrantSection (ADM-2 业主授权
+//     §4.2.a) + AdminActionsList (ADM-2 影响记录 §4.1.c) 同 tab 三段
 //
 // 反约束:
 //   - URL `?tab=privacy` deep-link (默认 'privacy', 唯一支持的 tab)
-//   - 不引入 react-router (跟 App.tsx showAgents/showInvitations 同模式
-//     — App-level state 切视图)
+//   - 不引入 react-router (跟 App.tsx showAgents/showInvitations 同模式 — App-level
+//     state 切视图)
 import PrivacyPromise from './PrivacyPromise';
 import AdminActionsList from './AdminActionsList';
 import ImpersonateGrantSection from './ImpersonateGrantSection';
@@ -64,8 +66,8 @@ export default function SettingsPage({ onBack }: Props) {
         {activeTab === 'privacy' && (
           <>
             <PrivacyPromise />
-            {/* ADM-2.2 业主授权 24h impersonate (acceptance §4.2.a;
-                立场 ⑦ + content-lock §3) — 跟 PrivacyPromise 同 tab. */}
+            {/* ADM-2.2 业主授权 24h impersonate (acceptance §4.2.a; 立场 ⑦ +
+                content-lock §3) — 跟 PrivacyPromise 同 tab. */}
             <ImpersonateGrantSection
               fetchGrant={() => getMyImpersonateGrant().then((r) => r.grant)}
               createGrant={() => createMyImpersonateGrant().then((r) => r.grant)}

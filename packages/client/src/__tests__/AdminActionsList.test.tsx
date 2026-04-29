@@ -89,8 +89,8 @@ describe('AdminActionsList — ADM-2 影响记录 (acceptance §行为不变量 
             action: 'delete_channel',
             metadata: '{}',
             created_at: 1700000000000,
-            // @ts-expect-error — server 不返 actor_id 给 user-rail, 此测试断
-            // 言即使填了客户端也不渲染.
+            // @ts-ignore — server 不返 actor_id 给 user-rail, 此测试断
+            // 言即使填了客户端也不渲染. (用 ts-ignore 不 expect-error 因 actor_id 字段无类型存在)
             actor_id: 'admin-uuid-leak',
           },
         ]}

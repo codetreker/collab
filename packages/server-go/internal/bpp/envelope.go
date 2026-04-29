@@ -44,9 +44,10 @@ const (
 	FrameTypeBPPInboundMessage         = "inbound_message"
 
 	// Data plane (Plugin → Server) — §2.2.
-	FrameTypeBPPHeartbeat      = "heartbeat"
-	FrameTypeBPPSemanticAction = "semantic_action"
-	FrameTypeBPPErrorReport    = "error_report"
+	FrameTypeBPPHeartbeat       = "heartbeat"
+	FrameTypeBPPSemanticAction  = "semantic_action"
+	FrameTypeBPPErrorReport     = "error_report"
+	FrameTypeBPPAgentConfigAck  = "agent_config_ack" // AL-2b #452 §1.2 ack 路径
 )
 
 // Direction is the hard direction lock the lint enforces.
@@ -112,13 +113,44 @@ func (RuntimeSchemaAdvertiseFrame) FrameType() string {
 }
 func (RuntimeSchemaAdvertiseFrame) FrameDirection() Direction { return DirectionServerToPlugin }
 
-// AgentConfigUpdateFrame — server pushes a config delta (§1.5). Plugin
-// MUST reload idempotently; same payload pushed twice is a no-op.
+// AgentConfigUpdateFrame — server pushes a config delta (§1.5).
+//
+// AL-2b (#460 BPP-2 base + AL-2b acceptance #452 §1.1) extended this from
+// the BPP-1 4-field stub (Type / AgentID / ConfigRev / Payload) to the
+// 7-field byte-identical envelope per acceptance §1.1:
+//
+//   {Type, Cursor, AgentID, SchemaVersion, Blob, IdempotencyKey, CreatedAt}
+//
+// Field order is the contract. Do NOT reorder without updating
+// schema_equivalence_test.go + acceptance al-2b.md §1.1 simultaneously.
+//
+// Field semantics:
+//   - Type: discriminator 头位, byte-identical 跟 BPP-1 envelope (#280)
+//   - Cursor: hub.cursors atomic int64 单调发号, 跟 RT-1 #290 + CV-2.2
+//     #360 + DM-2.2 #372 + CV-4.2 #416 + AL-2b 5 source frame 共一根
+//     sequence (RT-1 spec §1.1, 反约束: 不另起 plugin-only 通道; 立场
+//     "不另起 channel" 跟 acceptance §2.1 字面同源)
+//   - AgentID: target agent UUID
+//   - SchemaVersion: 单调跟 agent_configs.schema_version (AL-2a v=20 #447)
+//     字面 byte-identical; plugin 收到 < 当前 server 值 → ack `status=stale`
+//     (acceptance §2.3)
+//   - Blob: 序列化后的 SSOT 字段 (name/avatar/prompt/model/能力开关/启用
+//     状态/memory_ref); 反约束 不含 api_key/temperature/token_limit/
+//     retry_policy runtime-only 字段 (acceptance §3.2 + AL-2a #447 SSOT)
+//   - IdempotencyKey: server 生成的稳定 key, 同 key 重发 plugin reload
+//     仅触发 1 次 (acceptance §2.2 + 蓝图 §1.5 字面 "幂等 reload")
+//   - CreatedAt: Unix ms 语义戳 (反约束: 不用作排序源, cursor 才是; 跟
+//     IterationStateChangedFrame.CompletedAt 同语义模式)
+//
+// Plugin MUST reload idempotently; same payload pushed twice is a no-op.
 type AgentConfigUpdateFrame struct {
-	Type      string `json:"type"`
-	AgentID   string `json:"agent_id"`
-	ConfigRev int64  `json:"config_rev"`
-	Payload   string `json:"payload"` // JSON-encoded delta; opaque
+	Type           string `json:"type"`
+	Cursor         int64  `json:"cursor"`
+	AgentID        string `json:"agent_id"`
+	SchemaVersion  int64  `json:"schema_version"`
+	Blob           string `json:"blob"` // JSON-encoded SSOT delta; opaque on the wire
+	IdempotencyKey string `json:"idempotency_key"`
+	CreatedAt      int64  `json:"created_at"` // Unix ms; semantic only — cursor IS the order
 }
 
 func (AgentConfigUpdateFrame) FrameType() string         { return FrameTypeBPPAgentConfigUpdate }
@@ -199,6 +231,62 @@ type ErrorReportFrame struct {
 func (ErrorReportFrame) FrameType() string         { return FrameTypeBPPErrorReport }
 func (ErrorReportFrame) FrameDirection() Direction { return DirectionPluginToServer }
 
+// AgentConfigAckFrame — plugin acknowledges receipt + apply outcome of an
+// AgentConfigUpdateFrame (AL-2b acceptance #452 §1.2 + 蓝图 §1.5 幂等
+// reload). Direction is hard-locked plugin→server (反向断言:
+// DirectionServerToPlugin 不在此 frame, 跟 BPP-1 #304 direction 锁同模式).
+//
+// 7 字段 byte-identical 跟 acceptance §1.2:
+//
+//   {Type, Cursor, AgentID, SchemaVersion, Status, Reason, AppliedAt}
+//
+// Field semantics:
+//   - Type: discriminator 头位 byte-identical 跟 BPP envelope #280
+//   - Cursor: plugin echo update.Cursor 做配对 (server 端按 cursor
+//     配 ack ↔ AgentConfigUpdateFrame; ack 自身不走 hub.cursors 单调
+//     发号 — ack 是 plugin → server 回执, 跟 update 走的 server →
+//     plugin push cursor 不同根 sequence)
+//   - AgentID: target agent UUID, 跟 update frame byte-identical
+//   - SchemaVersion: plugin 实际 apply 的 schema_version (acceptance §2.3
+//     stale 路径: plugin 收到 < server 当前 → ack 携带 plugin 已知值,
+//     server 据此判 stale 触发 plugin 主动拉)
+//   - Status: 'applied' | 'rejected' | 'stale' (acceptance §1.2 CHECK
+//     enum byte-identical; 反约束 reject 'unknown' 等枚举外值, server 端
+//     校验 fail-closed)
+//   - Reason: stale/rejected 时填 (跟 AL-1a #249 6 reason 枚举 byte-
+//     identical 同源 — api_key_invalid/quota_exceeded/network_unreachable/
+//     runtime_crashed/runtime_timeout/unknown); applied 态时空 string
+//     (反约束: 不挂 omitempty, 跟 IterationStateChangedFrame.ErrorReason
+//     同模式 — 始终序列化)
+//   - AppliedAt: Unix ms plugin 实际 reload 完成戳 (acceptance §2.2 幂等
+//     reload — applied 态填真值, stale/rejected 填 0)
+//
+// 反约束 (acceptance §3.2 + §4.2):
+//   - 不挂 cursor 之外的排序字段 — sort.AgentConfigAck.time / timestamp
+//     反向 grep 0 hit (跟 RT-1 立场反约束同源, cursor 唯一可信序)
+//   - 不下发 admin god-mode (admin 不入业务路径, ADM-0 §1.3 红线 + 反向
+//     grep `admin.*AgentConfig.*ack` 0 hit)
+type AgentConfigAckFrame struct {
+	Type          string `json:"type"`
+	Cursor        int64  `json:"cursor"`
+	AgentID       string `json:"agent_id"`
+	SchemaVersion int64  `json:"schema_version"`
+	Status        string `json:"status"` // 'applied'|'rejected'|'stale'
+	Reason        string `json:"reason"`
+	AppliedAt     int64  `json:"applied_at"` // Unix ms; 0 when stale/rejected
+}
+
+func (AgentConfigAckFrame) FrameType() string         { return FrameTypeBPPAgentConfigAck }
+func (AgentConfigAckFrame) FrameDirection() Direction { return DirectionPluginToServer }
+
+// AgentConfigAck status enum byte-identical 跟 acceptance §1.2 CHECK
+// + server-side fail-closed 校验 (枚举外值 reject).
+const (
+	AgentConfigAckStatusApplied  = "applied"
+	AgentConfigAckStatusRejected = "rejected"
+	AgentConfigAckStatusStale    = "stale"
+)
+
 // bppEnvelopeWhitelist — single-source-of-truth list of permitted
 // BPP-1 envelope OpNames. The reflection lint asserts every exported
 // frame struct in this file maps to exactly one entry here and
@@ -214,6 +302,7 @@ var bppEnvelopeWhitelist = map[string]Direction{
 	FrameTypeBPPHeartbeat:              DirectionPluginToServer,
 	FrameTypeBPPSemanticAction:         DirectionPluginToServer,
 	FrameTypeBPPErrorReport:            DirectionPluginToServer,
+	FrameTypeBPPAgentConfigAck:         DirectionPluginToServer, // AL-2b #452
 }
 
 // BPPEnvelopeWhitelist exposes the registry to tests in other packages
@@ -241,5 +330,6 @@ func AllBPPEnvelopes() []BPPEnvelope {
 		HeartbeatFrame{},
 		SemanticActionFrame{},
 		ErrorReportFrame{},
+		AgentConfigAckFrame{}, // AL-2b #452 §1.2
 	}
 }
