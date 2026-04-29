@@ -106,9 +106,14 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubsc
   // Avoid double-subscribe — return existing subscription if present.
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {
+    // TS strict: applicationServerKey expects BufferSource | string | null.
+    // urlBase64ToUint8Array returns Uint8Array<ArrayBufferLike>; cast .buffer
+    // to ArrayBuffer (the underlying buffer is always ArrayBuffer in browser
+    // context, never SharedArrayBuffer for VAPID keys).
+    const vapidKey = urlBase64ToUint8Array(vapidPublicKey).buffer as ArrayBuffer;
     sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      applicationServerKey: vapidKey,
     });
   }
 
