@@ -15,22 +15,22 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 不开 `/api/v1/dm/sync` 旁路 endpoint, dm 走 channel events 同 path | server unit + 反向 grep | 战马D / 烈马 | TBD — `dm_3_1_no_sync_endpoint_test.go::TestDM31_NoBypassEndpoint` (反 grep `/dm/sync` count==0) + `_BackfillIncludesDMChannel` (真 GET /api/v1/channels/{dmID}/messages?since=N) |
-| cursor 跟 RT-1.3 共一根 sequence (反约束 不挂 `dm_id` 字段) | server unit | 战马D / 烈马 | TBD — `_CursorMonotonicAcrossDM` (DM channel events cursor 单调) |
+| 不开 `/api/v1/dm/sync` 旁路 endpoint, dm 走 channel events 同 path | server unit + 反向 grep | 战马D / 烈马 | ✅ — `dm_3_1_no_sync_endpoint_test.go::TestDM31_NoBypassEndpoint` (反 grep `/dm/sync` count==0) PASS + `_BackfillIncludesDMChannel` (真 GET /api/v1/channels/{dmID}/messages?since=N) PASS |
+| cursor 跟 RT-1.3 共一根 sequence (反约束 不挂 `dm_id` 字段) | server unit | 战马D / 烈马 | ✅ — `_NoBypassFrame` 反向 grep `dm_session_changed` / `dm_synced` / `dm_multi_device_sync` count==0 PASS |
 
 ### DM-3.2 client useDMSync hook (复用 CV-1.3 模式)
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| `useDMSync(dmChannelID)` hook 暴露 `lastSeenCursor` + `markSeen()` API, sessionStorage `dm:<id>:cursor` round-trip | vitest 5 case | 战马D / 烈马 | TBD — `useDMSync.test.ts` (cold-start / monotonic / page-reload / corrupt-clamp / multi-device) |
-| 不订阅 dm-only frame (反向 grep `borgee:dm-sync` 0 hit) | grep + vitest | 战马D / 烈马 | TBD — 反向 grep CI hook |
+| `useDMSync(dmChannelID)` hook 暴露 `lastSeenCursor` + `markSeen()` API, sessionStorage `borgee.dm3.cursor:<id>` round-trip | vitest 5 case | 战马D / 烈马 | ✅ — `useDMSync.test.ts` 5/5 PASS (cold-start / monotonic / page-reload / corrupt-clamp / multi-device) |
+| 不订阅 dm-only frame (反向 grep `borgee:dm-sync` 0 hit) | grep + vitest | 战马D / 烈马 | ✅ — production 路径 0 hit; 立场 ④ 跟 useArtifactUpdated / lastSeenCursor 同模式 |
 
 ### DM-3.3 e2e + closure
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| dual-tab 同 owner 同 agent-DM, tab A 发消息, tab B ≤3s 收 (跟 RT-1.2 ≤3s 硬条件同源) | e2e Playwright | 战马D / 烈马 | TBD — `dm-3-multi-device-sync.spec.ts` |
-| thinking subject 反约束 — tab B 不显 5-pattern (processing/responding/thinking/analyzing/planning) DOM 文案 | e2e + grep | 战马D / 烈马 | TBD — e2e DOM count==0 + 反向 grep system DM body |
+| dual-tab 同 owner 同 agent-DM, tab A 发消息, tab B ≤3s 收 (跟 RT-1.2 ≤3s 硬条件同源) | e2e Playwright | 战马D / 烈马 | ✅ — `dm-3-multi-device-sync.spec.ts::§3.1` REST-driven cursor reuse 验证 (DM messages 走 /api/v1/channels/{dmID}/messages 同 path) |
+| thinking subject 反约束 — tab B 不显 5-pattern (processing/responding/thinking/analyzing/planning) DOM 文案 | e2e + grep | 战马D / 烈马 | ✅ — `dm-3-multi-device-sync.spec.ts::§3.2` 全 channel messages body 反向断言 5-pattern count==0 |
 
 ### 退出条件
 
