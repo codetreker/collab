@@ -119,6 +119,12 @@ type UserPermission struct {
 	// (蓝图 auth-permissions.md §1.2 字面 "v1 schema 保留, UI/runtime 不做").
 	// 字段保留以备 v2+ 业务化, server 端不读 (HasCapability 不消费).
 	ExpiresAt *int64 `gorm:"column:expires_at" json:"expires_at,omitempty"`
+	// AP-2 #ap-2 (v=30): revoked_at is the soft-delete sentinel — sweeper
+	// goroutine writes this when expires_at < now (forward-only audit, 跟
+	// AL-1 #492 state_log + ADM-2.1 #484 admin_actions forward-only 同精神,
+	// row 不真删). NULL = active. ListUserPermissions 排除 NOT NULL 行
+	// (改 = 改 queries.go WHERE 一处, AP-1 SSOT 同精神).
+	RevokedAt *int64 `gorm:"column:revoked_at" json:"revoked_at,omitempty"`
 }
 
 type InviteCode struct {
