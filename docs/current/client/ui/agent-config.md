@@ -1,8 +1,8 @@
-# Agent Config Panel (AL-2a.3 client SPA, PR #447)
+# Agent Config Panel (AL-2a.3 client SPA, PR #447 + #480 mount)
 
-> 蓝图: `agent-lifecycle.md §2.1` (用户完全自主决定 agent 的 name/prompt/能力/model) + `plugin-protocol.md §1.4` (Borgee=SSOT 字段划界) + §1.5 (热更新分级 — AL-2a 不含 BPP frame, 走轮询 reload, BPP frame `agent_config_update` 留 AL-2b + BPP-3 同合)
+> 蓝图: `agent-lifecycle.md §2.1` (用户完全自主决定 agent 的 name/prompt/能力/model) + `plugin-protocol.md §1.4` (Borgee=SSOT 字段划界) + §1.5 (热更新分级 — server PATCH 后经 BPP frame `agent_config_update` 推送给 plugin 端 reload, 走 AL-2b #481 wire; client 端不订阅 ws — 走 PATCH/GET 同步)
 > Server 锚: `docs/current/server/README.md §Agent config SSOT (AL-2a.2)` + `docs/current/server/data-model.md::agent_configs` (v=20)
-> Component: `packages/client/src/components/AgentConfigPanel.tsx`
+> Component: `packages/client/src/components/AgentConfigPanel.tsx` (form, #447) + mount in `AgentManager.tsx` expanded section (#480, between RuntimeCard 和 Permissions, 标题 "Config (SSOT)")
 > API: `packages/client/src/lib/api.ts::fetchAgentConfig` + `updateAgentConfig`
 > Tests: `packages/client/src/__tests__/al-2a-content-lock.test.ts` (8 cases)
 
