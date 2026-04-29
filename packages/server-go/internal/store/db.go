@@ -23,6 +23,8 @@ func Open(dsn string) (*Store, error) {
 		return nil, err
 	}
 	if dsn == ":memory:" {
+		// :memory: requires single conn — sqlite creates a fresh DB per
+		// connection, so a pool of >1 conn would see N independent DBs.
 		sqlDB.SetMaxOpenConns(1)
 	}
 
