@@ -30,16 +30,16 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 3.1 `describeAgentState(busy)` → "在工作" tone='ok'; 反 "活跃" / "running" 模糊 | vitest (agent-state.test.ts 扩 it) | 野马 / 烈马 | _(待填 AL-1b.3)_ |
-| 3.2 `describeAgentState(idle)` → "空闲" tone='muted'; 反 "等待中" / "Standing by" | vitest | 野马 / 烈马 | _(待填 AL-1b.3)_ |
-| 3.3 AL-1a 三态文案不变 ("在线" / "已离线" / "故障 (xxx)"): REG-AL1A-005 不破 | vitest 回归 | 烈马 | _(待填 AL-1b.3)_ |
-| 3.4 `grep -nE "活跃\|standing by\|running" packages/client/src/lib/agent-state.ts` count==0 | CI grep | 烈马 | _(待填 AL-1b.3)_ |
+| 3.1 `describeAgentState(busy)` → "在工作" tone='ok'; 反 "活跃" / "running" 模糊 | vitest (agent-state.test.ts 扩 it) | 野马 / 烈马 | `packages/client/src/__tests__/agent-state.test.ts::busy → 在工作 tone=ok` (acceptance §3.1, byte-identical) + `PresenceDot.test.tsx::busy → data-task-state="busy" + 文本 "在工作"` |
+| 3.2 `describeAgentState(idle)` → "空闲" tone='muted'; 反 "等待中" / "Standing by" | vitest | 野马 / 烈马 | `agent-state.test.ts::idle → 空闲 tone=muted` + `PresenceDot.test.tsx::idle → data-task-state="idle" + 文本 "空闲"` |
+| 3.3 AL-1a 三态文案不变 ("在线" / "已离线" / "故障 (xxx)"): REG-AL1A-005 不破 | vitest 回归 | 烈马 | `agent-state.test.ts::AL-1a 三态文案不变 (REG-AL1A-005 回归不破)` + `PresenceDot.test.tsx::AL-1a 三态 data-task-state 为空 string (回归不破)` |
+| 3.4 反约束 grep — `lib/agent-state.ts` 不准出现 "活跃" / "running" / "Standing by" / "等待中" 模糊词 | CI grep (vitest 跑) | 烈马 | `presence-reverse-grep.test.ts::§3.4 (AL-1b) agent-state.ts 不出现 "活跃"/"running"/"standing by"/"等待中" 模糊词` (跑过当前 source 0 hit) + `PresenceDot.test.tsx::反约束 §3.4: busy/idle 文案不准用模糊词` 双层闸 |
 
 ### e2e (Playwright)
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 4.1 发任务 → "在工作" ≤ 1s; 结束 → "空闲" ≤ 1s + 5min → "在线" | E2E stopwatch + faked clock | 烈马 / 野马 | _(待填 AL-1b.3 + BPP-2)_ |
+| 4.1 发任务 → "在工作" ≤ 1s; 结束 → "空闲" ≤ 1s + 5min → "在线" | E2E stopwatch + faked clock | 烈马 / 野马 | _(待 BPP-2 真 frame 落 — store helpers `SetAgentTaskStarted/Finished` + reaper 已就绪, 接 BPP frame dispatcher 即可切真路径; e2e 截屏路径 `g3.x-al-1b-{busy,idle}.png` 命名固化 待 follow-up)_ |
 
 ## 退出条件
 
@@ -54,3 +54,4 @@
 | 2026-04-28 | 烈马 | v0 — Phase 4 AL-1b 14 验收项 (rt-0.md 同模板) |
 | 2026-04-29 | 战马C | flip §1.1-§1.5 schema 段 5 项 ⚪→✅ (AL-1b.1 v=21 落 — `internal/migrations/al_1b_1_agent_status.go` + 6 TestAL1B1_* 全 PASS); 锚 spec brief `docs/implementation/modules/al-1b-spec.md` (战马C v0 3 立场 + 3 拆段); §2 server / §3 文案 / §4 e2e 留 AL-1b.2 + AL-1b.3 + BPP-2 后填. |
 | 2026-04-29 | 战马C | flip §2.1-§2.5 server 段 5 项 ⚪→✅ (AL-1b.2 落 — `internal/api/al_1b_2_status.go` + `internal/store/agent_status_queries.go` + 8 TestAL1B2_* 全 PASS): GET /api/v1/agents/:id/status 5-state 合并 + SetAgentTaskStarted/Finished BPP-2 stub + ReapStaleBusyToIdle 5min IdleThreshold const + PATCH 405 reject (owner+admin) + NoDomainBleed 反约束响应不泄漏 schema 内列. §3 文案 / §4 e2e 留 AL-1b.3 + BPP-2 真 frame 后填. |
+| 2026-04-29 | 战马C | flip §3.1-§3.4 client 文案段 4 项 ⚪→✅ (AL-1b.3 client SPA dot UI 落): `lib/api.ts` AgentRuntimeState 扩 'busy'\|'idle' + Agent interface 加 last_task_* 三字段; `lib/agent-state.ts` describeAgentState() 加 busy → "在工作" tone='ok' + idle → "空闲" tone='muted' 两 case (AL-1a 三态不动 REG-AL1A-005 回归不破); `components/PresenceDot.tsx` DOM 加 data-task-state 槽位 (busy/idle 时填字面, 其他态填空 string) + presence-task-busy/idle CSS class + data-presence 仍为 'online' (busy/idle = 连着, 跟 AL-3 hub 同步 online 语义); 反约束 4 锚: agent-state.ts 不出现 "活跃"/"running"/"Standing by"/"等待中" 模糊词 (presence-reverse-grep.test.ts §3.4 强守 0 hit) + PresenceDot.test.tsx 反约束 §3.4 双层闸 + AL-1a 三态文案不变回归 + 立场 ① 拆三路径 (busy/idle 不带 reason — 不染 error case). 测试: `agent-state.test.ts` 扩 4 it (busy / idle / 三态回归 / busy-idle 不带 reason); `PresenceDot.test.tsx` 扩 5 it (busy DOM / idle DOM / 三态回归 data-task-state="" / 反约束模糊词 / busy compact); 全套 vitest 240/240 PASS. §4 e2e 1 项留 BPP-2 真 frame 后填 (store helpers + reaper 已就绪, 接 BPP frame dispatcher 即可切真路径). 14/14 验收项里 13 闭 (§4.1 ⏸️ pending BPP-2). |
