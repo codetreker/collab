@@ -8,6 +8,13 @@
 // task-level (busy) 正交 — 反向 grep `presence_sessions.*busy|
 // presence.*task_id` count==0 (acceptance §4.2).
 //
+// AL-1b client busy/idle UI: 服务端派生 (option a) — server 在收到
+// task_started/finished frame 后, 直接复用既有 RT-* AgentRosterUpdated /
+// presence push 通道把派生 state 推给 client; 不另起独立的
+// AgentTaskStateChangedFrame (frame 数量少一个 不冗余, busy/idle 是
+// task lifecycle 的算法结果不是独立信号). 因此 bppEnvelopeWhitelist
+// 留 11 frame 不动, 5-frame 共序锁字段数各 frame 自报 (各自 _test 已锁).
+//
 // Blueprint锚: docs/blueprint/plugin-protocol.md §1.6 (失联与故障状态 +
 // "工作中状态需要 plugin 主动心跳上报 — 缺心跳按未知") + §2.2 (data
 // plane Plugin → Borgee). agent-lifecycle.md §2.3 字面: "busy / idle
