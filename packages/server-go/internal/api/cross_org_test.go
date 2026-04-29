@@ -21,6 +21,7 @@ import (
 
 // TestCrossOrgRead403 — PUT/DELETE on a foreign-org message both return 403.
 func TestCrossOrgRead403(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	generalID := testutil.GetGeneralChannelID(t, ts.URL, ownerToken)
@@ -54,6 +55,7 @@ func TestCrossOrgRead403(t *testing.T) {
 // TestCrossOrgChannel403 — GET on a foreign-org channel returns 403, not 404,
 // and the body must not leak raw org_id (sanitizer reverse).
 func TestCrossOrgChannel403(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -76,6 +78,7 @@ func TestCrossOrgChannel403(t *testing.T) {
 
 // TestCrossOrgFile403 — GET on a foreign-org workspace_files row returns 403.
 func TestCrossOrgFile403(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	generalID := testutil.GetGeneralChannelID(t, ts.URL, ownerToken)

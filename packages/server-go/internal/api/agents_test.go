@@ -9,6 +9,7 @@ import (
 )
 
 func TestAgentsCRUD(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -167,6 +168,7 @@ func TestAgentsCRUD(t *testing.T) {
 }
 
 func TestChannelGroupsCRUD(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -251,6 +253,7 @@ func TestChannelGroupsCRUD(t *testing.T) {
 }
 
 func TestChannelAdvanced(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -437,6 +440,7 @@ func TestChannelAdvanced(t *testing.T) {
 }
 
 func TestUsersEndpoints(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -503,6 +507,7 @@ func TestUsersEndpoints(t *testing.T) {
 }
 
 func TestMessageAdvanced(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -629,6 +634,7 @@ func TestMessageAdvanced(t *testing.T) {
 }
 
 func TestReactionsAdvanced(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")

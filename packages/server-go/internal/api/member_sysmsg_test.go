@@ -9,6 +9,7 @@ import (
 )
 
 func TestP2MemberChangeSystemMessages(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")

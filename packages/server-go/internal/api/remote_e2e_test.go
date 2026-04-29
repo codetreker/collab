@@ -9,6 +9,7 @@ import (
 )
 
 func TestP1RemoteNodeBasics(t *testing.T) {
+	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	channelID := testutil.GetGeneralChannelID(t, ts.URL, token)

@@ -56,6 +56,7 @@ func cv42Setup(t *testing.T) (url string, ownerTok string, s *store.Store, chID 
 // god-mode does not enter this rail (ADM-0 §1.3, anchors / artifacts 同
 // rail 隔离).
 func TestCV42_IterateOwnerOnly(t *testing.T) {
+	t.Parallel()
 	url, _, s, chID, artID, agentID := cv42Setup(t)
 
 	// Seed second human (non-owner) channel member.
@@ -86,6 +87,7 @@ func TestCV42_IterateOwnerOnly(t *testing.T) {
 // transitions pending→failed atomically with error_reason byte-identical
 // 'runtime_not_registered' (AL-1a #249 6 reason 同源 不另起字典).
 func TestCV42_AL4StubFailClosed_RuntimeNotRegistered(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, _, artID, agentID := cv42Setup(t)
 
 	resp, data := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", ownerTok, map[string]any{
@@ -111,6 +113,7 @@ func TestCV42_AL4StubFailClosed_RuntimeNotRegistered(t *testing.T) {
 // the seam is here so AL-4 follow-up does NOT need to re-thread the
 // switch).
 func TestCV42_AL4Live_StateRunning(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, s, _, artID, agentID := cv42Setup(t)
 	// Seed agent_runtimes with status='running'.
 	if err := s.DB().Exec(`INSERT INTO agent_runtimes
@@ -136,6 +139,7 @@ func TestCV42_AL4Live_StateRunning(t *testing.T) {
 // target_agent_id 不是 channel member → 400 byte-identical error code
 // 'iteration.target_not_in_channel'.
 func TestCV42_TargetAgentMustBeChannelMember(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, s, _, artID, _ := cv42Setup(t)
 
 	// Seed an unrelated agent NOT in the channel.
@@ -164,6 +168,7 @@ func TestCV42_TargetAgentMustBeChannelMember(t *testing.T) {
 // running→completed atomically + writes created_artifact_version_id.
 // 反约束: 不开 /iterations/:id/commit 旁路 (verified by CI grep §4.1).
 func TestCV42_CommitWithIterationIDAtomicUpdate(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, s, _, artID, agentID := cv42Setup(t)
 	// Seed running runtime so iterate produces state=running.
 	if err := s.DB().Exec(`INSERT INTO agent_runtimes
@@ -224,6 +229,7 @@ FROM artifact_iterations WHERE id = ?`, iterationID).Scan(&row).Error; err != ni
 // reject (CompleteIterationOnCommit 的 WHERE state='running' clause 是
 // 唯一闸位).
 func TestCV42_StateMachine_RejectsCommitOnFailedIteration(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, _, artID, agentID := cv42Setup(t)
 	// No runtime seeded → iterate fails immediately (state='failed').
 	_, itData := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", ownerTok, map[string]any{
@@ -252,6 +258,7 @@ func TestCV42_StateMachine_RejectsCommitOnFailedIteration(t *testing.T) {
 // behaviour exactly (反约束 旧路径不破). No iteration row is created or
 // touched. 跟 cv_1_2_artifacts_test.go::TestCV12_CommitArtifact 同模式.
 func TestCV42_CommitWithoutIterationID_LegacyPathUnchanged(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, s, _, artID, _ := cv42Setup(t)
 	resp, _ := testutil.JSON(t, "POST",
 		url+"/api/v1/artifacts/"+artID+"/commits",
@@ -277,6 +284,7 @@ func TestCV42_CommitWithoutIterationID_LegacyPathUnchanged(t *testing.T) {
 // 不入 acceptance §2.7 反断 是 admin*.go 责任, 此 endpoint 在
 // channel-member rail intent_text 必须返).
 func TestCV42_ListIterationsHistory(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, _, artID, agentID := cv42Setup(t)
 	for i := 0; i < 2; i++ {
 		_, _ = testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", ownerTok, map[string]any{
@@ -304,6 +312,7 @@ func TestCV42_ListIterationsHistory(t *testing.T) {
 // Each branch is independently asserted — handler short-circuits before
 // the AL-4 stub fork, so a single setup suffices.
 func TestCV42_Iterate_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, s, _, artID, agentID := cv42Setup(t)
 
 	// 401 — no auth (anonymous).
@@ -367,6 +376,7 @@ func TestCV42_Iterate_ErrorPaths(t *testing.T) {
 // TestCV42_ListIterations_NotFoundOrCrossChannel covers the 401/404 branches
 // of GET /iterations (anonymous + artifact not found).
 func TestCV42_ListIterations_NotFoundOrCrossChannel(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, _, _, _ := cv42Setup(t)
 
 	// 401 — anonymous.
@@ -392,6 +402,7 @@ func TestCV42_ListIterations_NotFoundOrCrossChannel(t *testing.T) {
 // covers the *non-owner channel-member* 403 path; this extra case exercises
 // the full owner-check branch with explicit channel-member precondition.
 func TestCV42_Iterate_NonOwner_403(t *testing.T) {
+	t.Parallel()
 	url, _, s, chID, artID, agentID := cv42Setup(t)
 	// Add second human channel member (non-owner).
 	hash := mustHash(t, "password123")
@@ -418,6 +429,7 @@ func TestCV42_Iterate_NonOwner_403(t *testing.T) {
 // non-existent row (or wrong artifact). The atomic UPDATE WHERE clause
 // finds no row → state machine reject → 409.
 func TestCV42_CommitWithIterationID_NotFound(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, _, artID, _ := cv42Setup(t)
 	resp, _ := testutil.JSON(t, "POST",
 		url+"/api/v1/artifacts/"+artID+"/commits?iteration_id=does-not-exist",
@@ -433,6 +445,7 @@ func TestCV42_CommitWithIterationID_NotFound(t *testing.T) {
 // TestCV42_IsIterationStateMachineReject — direct unit test for the
 // errors.Is sentinel helper (acceptance §2.3 同源).
 func TestCV42_IsIterationStateMachineReject(t *testing.T) {
+	t.Parallel()
 	if api.IsIterationStateMachineReject(nil) {
 		t.Error("nil should not match reject sentinel")
 	}
@@ -447,6 +460,7 @@ func TestCV42_IsIterationStateMachineReject(t *testing.T) {
 // endpoint introduced via merge-from-main. Boosts coverage past 85%
 // threshold without breaking CV-2.2 invariants.
 func TestCV42_ListAnchorComments_Coverage(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, _, artID, _ := cv42Setup(t)
 
 	// 401 anon.
@@ -488,6 +502,7 @@ func TestCV42_ListAnchorComments_Coverage(t *testing.T) {
 // exercises a branch the happy-path test in TestCV42_ListIterationsHistory
 // doesn't reach.
 func TestCV42_HandleListIterations_NonMember404(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, _, artID, _ := cv42Setup(t)
 	// Iterate once so the artifact has history.
 	_, _ = testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", ownerTok, map[string]any{

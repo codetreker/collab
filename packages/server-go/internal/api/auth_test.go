@@ -64,6 +64,7 @@ func createTestUser(t *testing.T, s *store.Store, email, password, role string) 
 }
 
 func TestLoginSuccess(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := setupTest(t)
 	createTestUser(t, s, "user@test.com", "password123", "member")
 
@@ -97,6 +98,7 @@ func TestLoginSuccess(t *testing.T) {
 }
 
 func TestLoginWrongPassword(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := setupTest(t)
 	createTestUser(t, s, "user@test.com", "password123", "member")
 
@@ -113,6 +115,7 @@ func TestLoginWrongPassword(t *testing.T) {
 }
 
 func TestLoginMissingFields(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := setupTest(t)
 
 	body, _ := json.Marshal(map[string]string{"email": "user@test.com"})
@@ -128,6 +131,7 @@ func TestLoginMissingFields(t *testing.T) {
 }
 
 func TestRegisterSuccess(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := setupTest(t)
 
 	systemUser := createTestUser(t, s, "system@test.com", "password123", "member")
@@ -207,6 +211,7 @@ func TestRegisterSuccess(t *testing.T) {
 }
 
 func TestRegisterDuplicateEmail(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := setupTest(t)
 	user := createTestUser(t, s, "dup@test.com", "password123", "member")
 
@@ -231,6 +236,7 @@ func TestRegisterDuplicateEmail(t *testing.T) {
 }
 
 func TestRegisterInvalidInvite(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := setupTest(t)
 
 	body, _ := json.Marshal(map[string]string{
@@ -251,6 +257,7 @@ func TestRegisterInvalidInvite(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := setupTest(t)
 
 	resp, err := http.Post(ts.URL+"/api/v1/auth/logout", "application/json", nil)
@@ -272,6 +279,7 @@ func TestLogout(t *testing.T) {
 }
 
 func TestGetMeAuthenticated(t *testing.T) {
+	t.Parallel()
 	ts, s, cfg := setupTest(t)
 	user := createTestUser(t, s, "me@test.com", "password123", "member")
 
@@ -316,6 +324,7 @@ func TestGetMeAuthenticated(t *testing.T) {
 }
 
 func TestGetMeUnauthenticated(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := setupTest(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/users/me")

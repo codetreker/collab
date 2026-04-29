@@ -48,6 +48,7 @@ func al1b2Setup(t *testing.T) (url string, ownerTok string, s *store.Store, agen
 // 走 AL-1a online/offline 退化 (Snapshot 默认 offline). 立场 ① 拆三路径
 // — busy/idle 须显式 row, 不假装.
 func TestAL1B2_GetStatus_NoRowFallsBackToOnlineOffline(t *testing.T) {
+	t.Parallel()
 	url, tok, _, agentID := al1b2Setup(t)
 
 	resp, data := testutil.JSON(t, http.MethodGet, url+"/api/v1/agents/"+agentID+"/status", tok, nil)
@@ -70,6 +71,7 @@ func TestAL1B2_GetStatus_NoRowFallsBackToOnlineOffline(t *testing.T) {
 // + §2.2: BPP `task_started` frame 触发 SetAgentTaskStarted → state='busy'
 // + last_task_id + last_task_started_at; GET /status 返 byte-identical.
 func TestAL1B2_GetStatus_BusyFromAgentStatusRow(t *testing.T) {
+	t.Parallel()
 	url, tok, st, agentID := al1b2Setup(t)
 
 	now := time.Unix(1700000000, 0)
@@ -100,6 +102,7 @@ func TestAL1B2_GetStatus_BusyFromAgentStatusRow(t *testing.T) {
 // TestAL1B2_GetStatus_IdleFromAgentStatusRow pins acceptance §2.3 — BPP
 // `task_finished` frame → state='idle' + last_task_finished_at 填.
 func TestAL1B2_GetStatus_IdleFromAgentStatusRow(t *testing.T) {
+	t.Parallel()
 	url, tok, st, agentID := al1b2Setup(t)
 
 	now := time.Unix(1700000000, 0)
@@ -128,6 +131,7 @@ func TestAL1B2_GetStatus_IdleFromAgentStatusRow(t *testing.T) {
 // — PATCH /status 405 reject for owner. Admin god-mode 同样 reject 跟
 // AL-4.2 admin god-mode 反约束同源 (ADM-0 ⑦ red-line).
 func TestAL1B2_PatchStatusReturns405(t *testing.T) {
+	t.Parallel()
 	url, tok, _, agentID := al1b2Setup(t)
 
 	resp, data := testutil.JSON(t, http.MethodPatch, url+"/api/v1/agents/"+agentID+"/status", tok, map[string]any{
@@ -148,6 +152,7 @@ func TestAL1B2_PatchStatusReturns405(t *testing.T) {
 // TestAL1B2_PatchStatusAdminAlsoRejected pins acceptance §2.5 — admin
 // god-mode 也不允许改 busy/idle (跟 AL-4.2 admin god-mode 反约束同源).
 func TestAL1B2_PatchStatusAdminAlsoRejected(t *testing.T) {
+	t.Parallel()
 	url, _, _, agentID := al1b2Setup(t)
 	adminTok := testutil.LoginAs(t, url, "admin@test.com", "password123")
 
@@ -162,6 +167,7 @@ func TestAL1B2_PatchStatusAdminAlsoRejected(t *testing.T) {
 // TestAL1B2_GetStatus_NotFound pins handler defense — non-existent
 // agentID returns 404. 跟 GET /agents/{id} 既有 404 同源.
 func TestAL1B2_GetStatus_NotFound(t *testing.T) {
+	t.Parallel()
 	url, tok, _, _ := al1b2Setup(t)
 
 	resp, _ := testutil.JSON(t, http.MethodGet, url+"/api/v1/agents/nonexistent/status", tok, nil)
@@ -174,6 +180,7 @@ func TestAL1B2_GetStatus_NotFound(t *testing.T) {
 // idle. ReapStaleBusyToIdle UPDATE WHERE last_task_started_at < cutoff.
 // IdleThreshold const single-source-of-truth.
 func TestAL1B2_ReapStaleBusyToIdle(t *testing.T) {
+	t.Parallel()
 	_, _, st, agentID := al1b2Setup(t)
 
 	// busy frame at T=0
@@ -219,6 +226,7 @@ func TestAL1B2_ReapStaleBusyToIdle(t *testing.T) {
 // is_online / endpoint_url / process_kind / last_error_reason raw 文本).
 // 跟 al_4_2 admin god-mode reason raw 反约束同源.
 func TestAL1B2_NoDomainBleed_Response(t *testing.T) {
+	t.Parallel()
 	url, tok, st, agentID := al1b2Setup(t)
 	now := time.Unix(1700000000, 0)
 	_ = st.SetAgentTaskStarted(agentID, "task-bleed", now)

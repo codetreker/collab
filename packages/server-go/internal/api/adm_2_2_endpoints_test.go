@@ -32,6 +32,7 @@ func seedADM2(t *testing.T, s *store.Store, actorID, targetUserID, action string
 // TestADM22_GetMyAdminActions_ScopedToTargetUser pins acceptance 4.1.c — user
 // 调 GET /me/admin-actions 只见自己 (target_user_id == current).
 func TestADM22_GetMyAdminActions_ScopedToTargetUser(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -71,6 +72,7 @@ func TestADM22_GetMyAdminActions_ScopedToTargetUser(t *testing.T) {
 // TestADM22_GetMyAdminActions_IgnoresTargetUserIDInjection pins acceptance
 // §行为不变量 4.1.c 反向: ?target_user_id=other 参数被忽略, 只见自己.
 func TestADM22_GetMyAdminActions_IgnoresTargetUserIDInjection(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	member, _ := s.GetUserByEmail("member@test.com")
@@ -95,6 +97,7 @@ func TestADM22_GetMyAdminActions_IgnoresTargetUserIDInjection(t *testing.T) {
 // TestADM22_GetAdminAuditLog_FullVisibility pins acceptance 4.1.d — admin
 // /admin-api/v1/audit-log 互可见 (所有 admin 行).
 func TestADM22_GetAdminAuditLog_FullVisibility(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
@@ -123,6 +126,7 @@ func TestADM22_GetAdminAuditLog_FullVisibility(t *testing.T) {
 // TestADM22_GetAdminAuditLog_FilterByActor pins ?actor_id=foo filter
 // (admin SPA UI 收敛, 不影响立场 ③ 互可见默认).
 func TestADM22_GetAdminAuditLog_FilterByActor(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -143,6 +147,7 @@ func TestADM22_GetAdminAuditLog_FilterByActor(t *testing.T) {
 // TestADM22_AdminAuditLog_UserCookieRejected pins REG-ADM0-002 共享底线 +
 // 立场 ⑥ admin/user 二轨拆死: user cookie 调 /admin-api/v1/audit-log → 401.
 func TestADM22_AdminAuditLog_UserCookieRejected(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	userToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -156,6 +161,7 @@ func TestADM22_AdminAuditLog_UserCookieRejected(t *testing.T) {
 // §4.2.a — 无 grant GET 返 200 + grant=null (client BannerImpersonate 走此
 // 决定不渲染红横幅).
 func TestADM22_GetMyImpersonateGrant_NoneReturnsNullGrant(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -171,6 +177,7 @@ func TestADM22_GetMyImpersonateGrant_NoneReturnsNullGrant(t *testing.T) {
 // TestADM22_PostImpersonateGrant_24hExpiry pins acceptance §4.2.a — POST 创
 // 24h grant, expires_at - granted_at = 24h ms.
 func TestADM22_PostImpersonateGrant_24hExpiry(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -193,6 +200,7 @@ func TestADM22_PostImpersonateGrant_24hExpiry(t *testing.T) {
 // TestADM22_PostImpersonateGrant_RejectsActiveDuplicate pins 立场 ⑦ 业主
 // cooldown — 24h 期内 grant 已存在 → 409 grant_already_active.
 func TestADM22_PostImpersonateGrant_RejectsActiveDuplicate(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -209,6 +217,7 @@ func TestADM22_PostImpersonateGrant_RejectsActiveDuplicate(t *testing.T) {
 // TestADM22_DeleteImpersonateGrant_RevokesActiveGrant pins acceptance §4.2.a
 // 业主撤销路径.
 func TestADM22_DeleteImpersonateGrant_RevokesActiveGrant(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -240,6 +249,7 @@ func TestADM22_DeleteImpersonateGrant_RevokesActiveGrant(t *testing.T) {
 // TestADM22_AdminActions_UserUnauthenticatedReturns401 pins user-rail auth
 // gate — 无 cookie GET 返 401.
 func TestADM22_AdminActions_UserUnauthenticatedReturns401(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp, _ := testutil.JSON(t, "GET", ts.URL+"/api/v1/me/admin-actions", "", nil)
@@ -251,6 +261,7 @@ func TestADM22_AdminActions_UserUnauthenticatedReturns401(t *testing.T) {
 // TestADM22_ImpersonateGrant_UnauthenticatedRejected covers 401 paths for
 // 3 impersonation-grant endpoints.
 func TestADM22_ImpersonateGrant_UnauthenticatedRejected(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp1, _ := testutil.JSON(t, "GET", ts.URL+"/api/v1/me/impersonation-grant", "", nil)
@@ -270,6 +281,7 @@ func TestADM22_ImpersonateGrant_UnauthenticatedRejected(t *testing.T) {
 // TestADM22_AdminAuditLog_LimitParam covers parseLimit branches with valid
 // integer + invalid input + clamp.
 func TestADM22_AdminAuditLog_LimitParam(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -307,6 +319,7 @@ func TestADM22_AdminAuditLog_LimitParam(t *testing.T) {
 // TestADM22_AdminAuditLog_FilterByActionAndTarget covers ?action=
 // + ?target_user_id= filters together.
 func TestADM22_AdminAuditLog_FilterByActionAndTarget(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	owner, _ := s.GetUserByEmail("owner@test.com")

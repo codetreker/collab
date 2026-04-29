@@ -90,6 +90,7 @@ func cv12General(t *testing.T, ts string, ownerToken string) string {
 // member can create an artifact and the response carries the contract
 // fields (id / channel_id / type='markdown' / version=1).
 func TestCV12_CreateArtifactInChannel(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, tok)
@@ -118,6 +119,7 @@ func TestCV12_CreateArtifactInChannel(t *testing.T) {
 // TestCV12_RejectsNonMarkdownType pins 立场 ④ at HTTP layer (schema
 // CHECK is the final gate, but we should fail-fast at 400 not 500).
 func TestCV12_RejectsNonMarkdownType(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, tok)
@@ -136,6 +138,7 @@ func TestCV12_RejectsNonMarkdownType(t *testing.T) {
 // fresh private channel owned by member; admin (also member-rail) is
 // not added → POST should 403.
 func TestCV12_CrossChannel403(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	memberTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 	adminTok := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
@@ -163,6 +166,7 @@ func TestCV12_CrossChannel403(t *testing.T) {
 // TestCV12_CommitBumpsVersion pins 立场 ③: commit creates a new
 // artifact_versions row with version=N+1 + bumps artifacts.current_version.
 func TestCV12_CommitBumpsVersion(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, tok)
@@ -204,6 +208,7 @@ func TestCV12_CommitBumpsVersion(t *testing.T) {
 // (a stale client trying to commit on top of an already-bumped head
 // gets 409 + reload hint).
 func TestCV12_CommitVersionMismatch409(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, tok)
@@ -235,6 +240,7 @@ func TestCV12_CommitVersionMismatch409(t *testing.T) {
 // We construct a standalone ArtifactHandler against a fresh test server's
 // store so we can drive the clock without spinning real time forward.
 func TestCV12_LockTTL30sBoundary(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	owner := mustUser(t, s, "owner@test.com")
@@ -280,6 +286,7 @@ func TestCV12_LockTTL30sBoundary(t *testing.T) {
 //   - 锁持有=别人 → 409 (covered by lock test, not duplicated here)
 //   - owner success → new version with rolled_back_from_version stamped
 func TestCV12_RollbackOwnerOnly(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -332,6 +339,7 @@ func TestCV12_RollbackOwnerOnly(t *testing.T) {
 // 反约束: rollback inserts a new row, never deletes intermediate
 // versions (立场 ③ + ⑦).
 func TestCV12_RollbackProducesNewVersionNotDelete(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, tok)
@@ -356,6 +364,7 @@ func TestCV12_RollbackProducesNewVersionNotDelete(t *testing.T) {
 // Reverse assertion: for a human committer, NO such system message is
 // emitted (silent for humans, only agents fanout).
 func TestCV12_AgentCommitSystemMessage(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, ownerTok)
@@ -416,6 +425,7 @@ func TestCV12_AgentCommitSystemMessage(t *testing.T) {
 // committer doesn't fanout (silence by default, only agent commits
 // trigger the system message).
 func TestCV12_HumanCommitNoSystemMessage(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, tok)
@@ -437,6 +447,7 @@ func TestCV12_HumanCommitNoSystemMessage(t *testing.T) {
 // production hub by constructing a standalone handler with a recording
 // pusher and driving the same store.
 func TestCV12_PushFrameOnCreateAndCommit(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	owner := mustUser(t, s, "owner@test.com")
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

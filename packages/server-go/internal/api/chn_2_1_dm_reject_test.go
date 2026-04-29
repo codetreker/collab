@@ -39,6 +39,7 @@ func helperFindUserID(t *testing.T, s *store.Store, email string) string {
 }
 
 func TestCHN21DMArtifactReject(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberID := helperFindUserID(t, s, "member@test.com")
@@ -85,6 +86,7 @@ func TestCHN21DMArtifactReject(t *testing.T) {
 // channel tests — duplicate here as CHN-2.1 stance lock so 重构 误删
 // 守门时 grep 锚明确归属 CHN-2.1.
 func TestCHN21DMAddMemberReject(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberID := helperFindUserID(t, s, "member@test.com")

@@ -12,6 +12,7 @@ import (
 // TestAL14_GetStateLog_OwnerSeesAgentHistory pins acceptance §read path —
 // owner GET returns DESC ts ordered transitions for own agent.
 func TestAL14_GetStateLog_OwnerSeesAgentHistory(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -69,6 +70,7 @@ func TestAL14_GetStateLog_OwnerSeesAgentHistory(t *testing.T) {
 // TestAL14_GetStateLog_NonOwnerRejected pins 立场 ① owner-only ACL — non-owner
 // → 403.
 func TestAL14_GetStateLog_NonOwnerRejected(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -92,6 +94,7 @@ func TestAL14_GetStateLog_NonOwnerRejected(t *testing.T) {
 
 // TestAL14_GetStateLog_UnauthenticatedReturns401 pins user-rail auth gate.
 func TestAL14_GetStateLog_UnauthenticatedReturns401(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp, _ := testutil.JSON(t, "GET",
@@ -103,6 +106,7 @@ func TestAL14_GetStateLog_UnauthenticatedReturns401(t *testing.T) {
 
 // TestAL14_GetStateLog_AgentNotFound pins 404 path.
 func TestAL14_GetStateLog_AgentNotFound(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -117,6 +121,7 @@ func TestAL14_GetStateLog_AgentNotFound(t *testing.T) {
 // on a non-agent user (e.g., another human) → 404 (we treat as not-found
 // rather than leak that the id is a user).
 func TestAL14_GetStateLog_NonAgentRejected(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	member, _ := s.GetUserByEmail("member@test.com")

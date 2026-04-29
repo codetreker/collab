@@ -9,6 +9,7 @@ import (
 )
 
 func TestPollWithEvents(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 

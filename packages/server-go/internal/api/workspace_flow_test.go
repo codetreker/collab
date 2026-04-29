@@ -9,6 +9,7 @@ import (
 )
 
 func TestP1WorkspaceFullFlow(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	channelID := testutil.GetGeneralChannelID(t, ts.URL, token)

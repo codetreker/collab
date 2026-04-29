@@ -53,6 +53,7 @@ func authHashHelper(t *testing.T) (string, error) {
 // REG-AP1-101 — agent without artifact-scope grant → 403 + body has
 // required_capability + current_scope keys.
 func TestAP12_AgentNoGrant_403WithBPPRoutingHints(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, ownerTok)
@@ -80,6 +81,7 @@ func TestAP12_AgentNoGrant_403WithBPPRoutingHints(t *testing.T) {
 
 // REG-AP1-102 — agent with explicit grant for THIS artifact → 200.
 func TestAP12_AgentWithExplicitGrant_200(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, ownerTok)
@@ -108,6 +110,7 @@ func TestAP12_AgentWithExplicitGrant_200(t *testing.T) {
 // REG-AP1-103 — agent with grant for art-other 仍 403 on art-target
 // (cross-artifact strict立场 §1.4).
 func TestAP12_AgentCrossArtifactGrant_403(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, ownerTok)
@@ -142,6 +145,7 @@ func TestAP12_AgentCrossArtifactGrant_403(t *testing.T) {
 // REG-AP1-104 — human owner without explicit per-artifact grant still
 // passes via wildcard (*,*) — 立场 ④ 区分 agent/human.
 func TestAP12_HumanWildcardStillWorks_200(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, ownerTok)

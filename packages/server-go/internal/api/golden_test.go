@@ -11,6 +11,7 @@ import (
 )
 
 func TestAPIGoldenCompatResponses(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	loginResp, loginBody := loginJSON(t, ts.URL, "owner@test.com", "password123")

@@ -63,6 +63,7 @@ func seedAgentInOrg(t *testing.T, s *store.Store, displayName, email, orgID, own
 
 // TestCHN12_CreatorOnlyDefaultMember locks 立场 ①.
 func TestCHN12_CreatorOnlyDefaultMember(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
@@ -81,6 +82,7 @@ func TestCHN12_CreatorOnlyDefaultMember(t *testing.T) {
 
 // TestCHN12_CrossOrgSameNameOK locks 立场 ② — per-org name uniqueness.
 func TestCHN12_CrossOrgSameNameOK(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -105,6 +107,7 @@ func TestCHN12_CrossOrgSameNameOK(t *testing.T) {
 
 // TestCHN12_CrossOrgPublicGETIsolation locks 立场 ③.
 func TestCHN12_CrossOrgPublicGETIsolation(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chA := testutil.CreateChannel(t, ts.URL, ownerToken, "orga-public-iso", "public")
@@ -135,6 +138,7 @@ func TestCHN12_CrossOrgPublicGETIsolation(t *testing.T) {
 
 // TestCHN12_NonOwnerPATCH403 locks 立场 ④.
 func TestCHN12_NonOwnerPATCH403(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -157,6 +161,7 @@ func TestCHN12_NonOwnerPATCH403(t *testing.T) {
 
 // TestCHN12_ArchiveFanoutSystemDM locks 立场 ⑤.
 func TestCHN12_ArchiveFanoutSystemDM(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -201,6 +206,7 @@ func TestCHN12_ArchiveFanoutSystemDM(t *testing.T) {
 // TestCHN12_AgentJoinSystemMessage locks 立场 ⑥ — agent-add → silent member +
 // system message text-lock "{agent_name} joined".
 func TestCHN12_AgentJoinSystemMessage(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	owner, err := s.GetUserByEmail("owner@test.com")

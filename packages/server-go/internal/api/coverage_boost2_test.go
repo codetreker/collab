@@ -61,6 +61,7 @@ func openSSE(t *testing.T, req *http.Request) *http.Response {
 }
 
 func TestSSEStream(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	users, _ := s.ListUsers()
@@ -144,6 +145,7 @@ func TestSSEStream(t *testing.T) {
 }
 
 func TestMemberNonAdminEndpoints(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 
@@ -166,6 +168,7 @@ func TestMemberNonAdminEndpoints(t *testing.T) {
 }
 
 func TestSearchInPrivateChannel(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -189,6 +192,7 @@ func TestSearchInPrivateChannel(t *testing.T) {
 }
 
 func TestChannelReorderWithGroup(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -209,6 +213,7 @@ func TestChannelReorderWithGroup(t *testing.T) {
 }
 
 func TestGroupNameTooLong(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -223,6 +228,7 @@ func TestGroupNameTooLong(t *testing.T) {
 }
 
 func TestAdminChannelsDMCreation(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -254,6 +260,7 @@ func TestAdminChannelsDMCreation(t *testing.T) {
 }
 
 func TestCreateChannelWithMemberIDs(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -277,6 +284,7 @@ func TestCreateChannelWithMemberIDs(t *testing.T) {
 }
 
 func TestCreateChannelWithTopic(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -292,6 +300,7 @@ func TestCreateChannelWithTopic(t *testing.T) {
 }
 
 func TestMessageEditNotFound(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -304,6 +313,7 @@ func TestMessageEditNotFound(t *testing.T) {
 }
 
 func TestWorkspaceNonMember(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -318,6 +328,7 @@ func TestWorkspaceNonMember(t *testing.T) {
 }
 
 func TestMessageCommandContentType(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -342,6 +353,7 @@ func TestMessageCommandContentType(t *testing.T) {
 }
 
 func TestAdminUpdateUserNotFound(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
@@ -352,6 +364,7 @@ func TestAdminUpdateUserNotFound(t *testing.T) {
 }
 
 func TestMessageWithExplicitMentionIDs(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -390,6 +403,7 @@ func TestMessageWithExplicitMentionIDs(t *testing.T) {
 }
 
 func TestRemoteNodeNotFoundScenarios(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 

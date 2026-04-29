@@ -10,6 +10,7 @@ import (
 )
 
 func TestAPIKeyAuth(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
@@ -57,6 +58,7 @@ func TestAPIKeyAuth(t *testing.T) {
 }
 
 func TestAuthRegisterValidation(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	users, _ := s.ListUsers()
@@ -107,6 +109,7 @@ func TestAuthRegisterValidation(t *testing.T) {
 }
 
 func TestDisabledUserCantLogin(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
@@ -132,6 +135,7 @@ func TestDisabledUserCantLogin(t *testing.T) {
 }
 
 func TestWorkspaceUpdate(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -172,6 +176,7 @@ func TestWorkspaceUpdate(t *testing.T) {
 }
 
 func TestChannelMemberOperations(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -260,6 +265,7 @@ func TestChannelMemberOperations(t *testing.T) {
 }
 
 func TestMessageInPrivateChannel(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -283,6 +289,7 @@ func TestMessageInPrivateChannel(t *testing.T) {
 }
 
 func TestTopicValidation(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -310,6 +317,7 @@ func TestTopicValidation(t *testing.T) {
 }
 
 func TestChannelCreationValidation(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -333,6 +341,7 @@ func TestChannelCreationValidation(t *testing.T) {
 }
 
 func TestInvalidContentType(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 

@@ -8,6 +8,7 @@ import (
 )
 
 func TestReactionsCRUD(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 

@@ -24,6 +24,7 @@ func getOwnerAndMemberIDs(t *testing.T, s *store.Store) (string, string) {
 }
 
 func TestAdminListUsers(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -70,6 +71,7 @@ func TestAdminListUsers(t *testing.T) {
 }
 
 func TestAdminCreateUser(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -125,6 +127,7 @@ func TestAdminCreateUser(t *testing.T) {
 }
 
 func TestAdminUpdateUser(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	_, memberID := getOwnerAndMemberIDs(t, s)
@@ -181,6 +184,7 @@ func TestAdminUpdateUser(t *testing.T) {
 }
 
 func TestAdminDeleteUser(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
@@ -209,6 +213,7 @@ func TestAdminDeleteUser(t *testing.T) {
 }
 
 func TestAdminAPIKey(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	_, memberID := getOwnerAndMemberIDs(t, s)
@@ -239,6 +244,7 @@ func TestAdminAPIKey(t *testing.T) {
 }
 
 func TestAdminStatsAndUserAgents(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -309,6 +315,7 @@ func TestAdminStatsAndUserAgents(t *testing.T) {
 }
 
 func TestAdminPermissions(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	_, memberID := getOwnerAndMemberIDs(t, s)
@@ -362,6 +369,7 @@ func TestAdminPermissions(t *testing.T) {
 }
 
 func TestAdminInvites(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 
@@ -415,6 +423,7 @@ func TestAdminInvites(t *testing.T) {
 }
 
 func TestAdminChannels(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
