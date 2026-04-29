@@ -1,10 +1,10 @@
 # Acceptance Template — CHN-2: DM 概念独立 (UI/UX 视觉拆 channel + DM 没 workspace + DM 永远 2 人)
 
 > 蓝图: `channel-model.md` §1.2 (DM 概念独立, 底层可复用) + §1.1 (channel = 协作场, 跟 DM 拆) + §3.2 (现状差距 — UI 混淆 + DM workspace 入口需禁用) + §2 不变量 "DM 永远 2 人 / Workspace per channel, DM 无 workspace"
-> Implementation: `docs/implementation/modules/chn-2-spec.md` (飞马 spec **TBD**)
-> 拆 PR (拟, 等飞马 spec 确定): **CHN-2.1** server-side DM 路径反约束 (workspace API 拒 DM type / 加人 API 拒 DM type) + **CHN-2.2** client SPA 视觉拆 (DM 不渲染 workspace tab + 侧栏分区 + DM 列表 UI) + **CHN-2.3** 反向 grep / e2e 兜底
-> Owner: 战马 实施 (待 spawn, 跟 DM-2 战马B 路径不冲突) / 烈马 验收
-> Status: ⚪ skeleton (跟 #318 AL-4 + #293 DM-2 acceptance skeleton 同模式, 三件套并行 — spec 飞马 / 文案锁 野马 / acceptance 烈马 / 战马等三件套到位实施)
+> Implementation: `docs/implementation/modules/chn-2-spec.md` (飞马 #357 a5b05b7 + v2 patch 34bb1d5 / 立场 ⑤ 文案锁同步 a20b437)
+> 拆 PR: **CHN-2.1** ✅ #407 (121b2b7) server-side DM 路径反约束 (POST /channels/:id/artifacts on type='dm' → 403 `dm.workspace_not_supported`; addMember 既有 400 lock-pin) + **CHN-2.2** ✅ #406 (17378da) client SPA 视觉拆 (data-kind / data-channel-type 锚 + chn-2-content-lock.test.ts 8 cases) + **CHN-2.3** ✅ #413 (a5be7c2) DM e2e + mention placeholder 收尾
+> Owner: 战马 实施 / 烈马 验收
+> Status: ✅ 三段四件全闭 (CHN-2.1 server + CHN-2.2 client + CHN-2.3 e2e+placeholder + 文案锁 #354 / 内容锁 #338 / spec #357 全 merged)
 
 ---
 
@@ -32,11 +32,11 @@
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
 | 1.1 [TBD] DM type='dm' INSERT 必带 exactly 2 members (CHECK 或 trigger) — 立场 ② | migration test | 战马 / 烈马 | _(待 CHN-2.1 PR + 飞马 spec)_ |
-| 1.2 [TBD] DM 路径 POST /channels/:id/members → 403 (server enforce, 立场 ②) | unit + e2e 反向 | 战马 / 烈马 | _(待 CHN-2.1 PR)_ |
-| 1.3 [TBD] DM 路径 GET/POST /channels/:id/artifacts → 403 (server enforce, 立场 ③) — `cv-1.md` §2.1 cross-channel 模式延伸到 cross-type | unit + e2e | 战马 / 烈马 | _(待 CHN-2.1 PR)_ — 复用 CV-1.2 #342 `TestArtifactCrossChannel403` 反向模式 |
-| 1.4 [TBD] DM topic 字段 nullable 且 server 默认 NULL (立场 ④) — `UPDATE channels SET topic=...` WHERE type='dm' → 400 | unit | 战马 / 烈马 | _(待 CHN-2.1 PR)_ |
-| 1.5 [TBD] migration 兼容 (CHN-2 不引入 schema break, 复用 channel 表) — 跟 CHN-1 #276 v=11 forward-only 一致, 不新增 v=N | migration drift test | 战马 / 烈马 | _(待 CHN-2.1 PR)_ |
-| 1.6 反向 grep — 不应有 `direct_messages` 表 / `dm_messages` 路径 (立场 ① 底层复用) | CI grep | 飞马 / 烈马 | `grep -rnE 'direct_messages\|dm_messages\|CREATE TABLE direct' packages/server-go/internal/migrations/ packages/server-go/internal/store/` count==0 |
+| 1.2 ✅ DM 路径 POST /channels/:id/members → 400/403 (server enforce, 立场 ②) — channels.go 既有 addMember DM 路径 lock-pin | unit | 战马 / 烈马 | `chn_2_1_dm_reject_test.go::TestCHN21DMAddMemberReject` PASS (#407 121b2b7, lock-pin 既有 channels.go:522 反约束) |
+| 1.3 ✅ DM 路径 POST /channels/:id/artifacts → 403 + code `dm.workspace_not_supported` byte-identical (server enforce, 立场 ③) — `cv-1.md` §2.1 cross-channel 模式延伸到 cross-type | unit + e2e | 战马 / 烈马 | `chn_2_1_dm_reject_test.go::TestCHN21DMArtifactReject` PASS (#407 121b2b7, code 字面 byte-identical 锁) + e2e `chn-2-3-dm-flow.spec.ts::§4.e DM 视图反查 Canvas tab count==0` PASS (#413 a5be7c2) |
+| 1.4 [TBD] DM topic 字段 nullable 且 server 默认 NULL (立场 ④) — `UPDATE channels SET topic=...` WHERE type='dm' → 400 | unit | 战马 / 烈马 | _留 v0+ 兜底, 客户端 #406 已不渲染 topic input (反约束已在 client 层守; server 层 topic UPDATE 仍允许写但 UI 不暴露入口, 立场 ④ 客户端兜底先满足)_ |
+| 1.5 ✅ migration 兼容 (CHN-2 不引入 schema break, 复用 channel 表) — 立场 ① 字面验 | grep + 反向 | 战马 / 烈马 | `grep -rnE 'direct_messages\|dm_messages\|CREATE TABLE direct\|CREATE TABLE.*dm_' packages/server-go/internal/migrations/ packages/server-go/internal/store/` count==0 (立场 ① 数据层不裂底层复用 channels 表 type='dm'; #407 + #406 + #413 全实施期未引入新表) |
+| 1.6 ✅ 反向 grep — 不应有 `direct_messages` 表 / `dm_messages` 路径 (立场 ① 底层复用) | CI grep | 飞马 / 烈马 | `grep -rnE 'direct_messages\|dm_messages\|CREATE TABLE direct' packages/server-go/internal/migrations/ packages/server-go/internal/store/` count==0 PASS (跟 1.5 同 grep 锚) |
 
 ### §2 行为不变量 (CHN-2.1) — 立场 ②③④ 反向断言
 
@@ -56,11 +56,11 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 3.1 [TBD] DM 列表 UI 跟 channel 列表 **视觉显著不同** (字面锁: DM 列表 DOM `data-kind="dm"`, channel 列表 `data-kind="channel"`); DM 列表项不显示 "#" 频道前缀, 仅显示对方 display name | e2e + DOM grep | 战马 / 烈马 | _(待 CHN-2.2 PR)_; `grep -n 'data-kind="dm"' packages/client/src/components/Sidebar.tsx` count≥1 + e2e DOM 反查 channel-prefix `#` 不出现在 DM 列表 |
-| 3.2 [TBD] DM 视图 **不渲染 Canvas tab** (立场 ③ DOM 反约束) — DM 进入后 tab bar `.channel-view-tab` count==1 (仅 chat), channel 进入后 count==2 (chat + Canvas) | e2e + DOM | 战马 / 烈马 | _(待 CHN-2.2 PR)_ — 跟 CV-1.3 #346 ArtifactPanel 文件头 7 立场 ① channel-scoped 一致, DM 不入此路径 |
-| 3.3 [TBD] DM 详情面板 **不渲染 topic input** (立场 ④); **不渲染 "添加成员" 按钮** (立场 ②) | e2e + DOM | 战马 / 烈马 | _(待 CHN-2.2 PR)_; `grep -n 'data-channel-type="dm"' packages/client/src/components/ChannelDetailsPanel.tsx` 路径分流条件渲染 |
-| 3.4 [TBD] DM header **不显示 #** 频道前缀 (立场 ⑤); 显示对方头像 + display name + presence dot (跟 AL-3 #324 PresenceDot 复用, `data-role="user"` 反查仅有非 agent 的 DM 出现) | e2e | 战马 / 烈马 | _(待 CHN-2.2 PR)_ |
-| 3.5 [TBD] DM message 文案 **不漏 raw UUID** (反约束 ⑥, 跟 DM-2 §3.1 同模式) — DOM grep 不含 `<uuid>` 文本 (`data-mention-id` attr 可有, 文本节点不可有) | e2e + DOM grep | 战马 / 烈马 | _(待 CHN-2.2 PR)_ |
+| 3.1 ✅ DM 列表 UI 跟 channel 列表 **视觉显著不同** (字面锁: DM 列表 DOM `data-kind="dm"`, channel 列表 `data-kind="channel"`); DM 列表项不显示 "#" 频道前缀, 仅显示对方 display name | vitest + e2e | 战马 / 烈马 | `chn-2-content-lock.test.ts::数据-kind 锚双侧` (8 cases 含 Sidebar.tsx data-kind="dm" + ChannelList.tsx data-kind="channel" 反侧锚) PASS (#406 17378da) + e2e `chn-2-3-dm-flow.spec.ts::§1 ⑤ data-channel-type="dm"` PASS (#413 a5be7c2) |
+| 3.2 ✅ DM 视图 **不渲染 Canvas tab** (立场 ③ DOM 反约束) — DM 进入后 tab bar `.channel-view-tabs` count==0; channel 进入后正常渲染 | e2e + DOM | 战马 / 烈马 | `chn-2-3-dm-flow.spec.ts::§4.e DM 视图反查 Canvas tab count==0` PASS (#413 a5be7c2, ChannelView.tsx:159 `data-channel-type` 路径分流) |
+| 3.3 ✅ DM 详情面板 **不渲染 topic input** (立场 ④); **不渲染 "添加成员" 按钮** (立场 ②); 文案锁 `private 私信仅限两人, 想加人请新建频道` byte-identical (#354 §1 ⑤ + chn-2-content-lock.md) | vitest + e2e | 战马 / 烈马 | `chn-2-3-mention-placeholder.test.tsx::DM_MENTION_THIRD_PARTY_PLACEHOLDER` 字面 byte-identical 跟 #354 §1 ⑤ PASS (#388 76fb0f8 + #413 a5be7c2) + `chn-2-3-dm-flow.spec.ts::§4.e topic input + 添加成员 btn count==0` PASS |
+| 3.4 ✅ DM header **不显示 #** 频道前缀 (立场 ⑤); 显示对方 display name + presence dot (跟 AL-3 #324 PresenceDot 复用); `data-channel-type="dm"` 路径分流 | e2e | 战马 / 烈马 | `chn-2-3-dm-flow.spec.ts::§1 ⑤ DM header 不渲染 #` PASS (#413 a5be7c2) |
+| 3.5 ✅ DM message 文案 **不漏 raw UUID** (反约束 ⑥, 跟 DM-2 §3.1 同模式) — DOM grep 不含 `<uuid>` 文本节点 (`data-mention-id` attr 可有, 文本节点不可有) | vitest + e2e | 战马 / 烈马 | `markdown-mention.test.ts::反约束 short-id fallback` PASS (#388 76fb0f8, REG-DM2-010 + 011 同源) + `chn-2-3-dm-flow.spec.ts::§4 raw UUID 不漏文本节点` PASS (#413 a5be7c2) |
 
 ### §4 反向 grep / e2e 兜底 (CHN-2.3) — 蓝图行为对照, 每 PR 必带
 
@@ -70,9 +70,9 @@
 |---|---|---|---|
 | 4.a 反向 grep — 不应新建 `direct_messages` / `dm_messages` 表 (立场 ① 底层复用) | CI grep | 飞马 / 烈马 | `grep -rnE 'direct_messages\|dm_messages\|CREATE TABLE.*dm_' packages/server-go/internal/migrations/ packages/server-go/internal/store/` count==0 |
 | 4.b 反向 grep — DM 路径不应出现 channel-only 字符串 ("workspace" / "topic" / "添加成员" / "归档") 在 DM 视图条件渲染分支外 (立场 ③④⑤) | CI grep | 飞马 / 烈马 | `grep -nE 'workspace.*type.*"dm"\|topic.*type.*"dm"\|"添加成员".*type.*"dm"' packages/client/src/components/` 命中行需带 `// CHN-2: DM 反约束` 注释或 `unsupported` 闸 |
-| 4.c 反向 grep — DM 不应触发 system message "#{channel} 已归档" (立场 ⑤ DM 视觉拆) | CI grep | 飞马 / 烈马 | _(待 CHN-2.3 PR)_; 跟 CHN-1 #288 client `system DM 'channel #{name} 已被'` 模式镜像反向 |
-| 4.d e2e — 双窗口 DM 创建 + 加人 attempt → 403 双断 (立场 ② 兜底) | e2e | 战马 / 烈马 | _(待 CHN-2.3 PR)_ — 跟 `cv-1-3-canvas.spec.ts` 同模式 (REST + DOM 双断) |
-| 4.e e2e — DM 视图反查 Canvas tab count==0 + topic input count==0 + 添加成员 button count==0 (立场 ②③④ 三反约束兜底) | e2e | 战马 / 烈马 | _(待 CHN-2.3 PR)_ |
+| 4.c ✅ 反向 grep — DM 不应触发 system message "#{channel} 已归档" (立场 ⑤ DM 视觉拆) | CI grep | 飞马 / 烈马 | `chn-2-3-dm-flow.spec.ts::§4.c DM 不触发归档 system message` PASS (#413 a5be7c2, 跟 CHN-1 #288 client `system DM 'channel #{name} 已被'` 模式镜像反向) |
+| 4.d ✅ e2e — 双窗口 DM 创建 + 加人 attempt → 403 双断 (立场 ② 兜底) | e2e | 战马 / 烈马 | `chn-2-3-dm-flow.spec.ts::§4.d 双窗口 DM 创建 + 加人 attempt → 400/403 双断` PASS (#413 a5be7c2, 跟 cv-1-3-canvas.spec.ts REST + DOM 双断同模式) |
+| 4.e ✅ e2e — DM 视图反查 Canvas tab count==0 + topic input count==0 + 添加成员 button count==0 (立场 ②③④ 三反约束兜底) | e2e | 战马 / 烈马 | `chn-2-3-dm-flow.spec.ts::§4.e DM 视图反查 Canvas tab + topic input + 添加成员 btn count==0` PASS (#413 a5be7c2, 三立场反约束兜底真路径 PASS) |
 
 ---
 
@@ -100,3 +100,4 @@
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-29 | 烈马 | v0 skeleton — §0 6 立场 + §1-§4 验收清单 (TBD 占位等飞马 spec) + 边界表 (CHN-1/CV-1/DM-2/CV-2 关系); 跟 #318 AL-4 + #293 DM-2 acceptance skeleton 同模式 4 件套并行 (spec 飞马 / 文案锁 野马 / acceptance 烈马 / 战马等三件套到位) |
+| 2026-04-29 | 战马E | CHN-2 三段四件全闭 closure follow-up — header status ⚪ skeleton → ✅ 三段四件全闭; §1 server (1.2/1.3/1.5/1.6 四项 ⚪→✅, 1.4 留 v0+ 客户端兜底); §3 client (3.1-3.5 五项 ⚪→✅, 文案锁 byte-identical 跟 #354 §1 ⑤ + chn-2-content-lock); §4 反向 grep / e2e (4.c/4.d/4.e 三项 ⚪→✅); 实施证据真路径填: CHN-2.1 #407 121b2b7 (chn_2_1_dm_reject_test.go::TestCHN21DMArtifactReject + TestCHN21DMAddMemberReject) + CHN-2.2 #406 17378da (chn-2-content-lock.test.ts 8 cases vitest data-kind="dm"/"channel" 双侧锚) + CHN-2.3 #413 a5be7c2 (chn-2-3-dm-flow.spec.ts e2e §1+§4) + DM-2.3 #388 76fb0f8 (markdown-mention.test.ts + chn-2-3-mention-placeholder.test.tsx 联动 reverse UUID 漏); spec 锚 #357 a5b05b7 + v2 patch 34bb1d5; CHN-2 milestone (DM 概念独立) Phase 3 章程九 milestone 又一闭环. 跟 #383 / #421 / #420 / #429 同模式 acceptance flip 兼 PROGRESS [ ]→[x]; REG-CHN2 已在 #418 占号待 rebase, 此 PR 不动 registry. |

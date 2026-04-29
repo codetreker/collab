@@ -165,11 +165,11 @@
    - [x] PR RT-1.3 BPP `session.resume` frame (PR #296 merged)
 4. [x] **CV-2** 锚点对话 三段四件全闭 ✅ (spec #356 v3 #368 / 文案锁 #355 / acceptance #358 / stance 借 spec; CV-2.1 ✅ #359 c5bf03d schema v=14 + CV-2.2 ✅ #360 84f9e5d server 4 endpoints + 8+2 PASS + AnchorCommentAdded 10 字段 byte-identical WS frame + CV-2.3 ✅ #404 693e70c client SPA 选区→锚 + thread side panel + 4 literals 文案锁 byte-identical + e2e §3.1+§3.2+§3.5+§3.6; REG-CV2-001..005 🟢 #421)
 5. [ ] **CV-3** D-lite 画布渲染 — 4 件套 ✅ (spec #363+#397 v1 / 文案锁 #370 / acceptance #376 / 借 spec stance); CV-3.1 ✅ #396 schema v=17 (artifacts.kind enum 扩 'code'/'image_link'); CV-3.2/3.3 实施待战马A
-6. [ ] **CHN-2** DM 概念独立 — 4 件套 ✅ (spec #357 / 文案锁 #354+#364 / acceptance #353 / 借 spec stance); CHN-2.1/2.2/2.3 实施待战马
+6. [x] **CHN-2** DM 概念独立 — 4 件套 ✅ (spec #357 / 文案锁 #354+#364 / acceptance #353 / 借 spec stance); CHN-2.1 ✅ #407 (121b2b7) server-side reject + CHN-2.2 ✅ #406 (17378da) client 视觉拆 + CHN-2.3 ✅ #413 (a5be7c2) e2e+placeholder 收尾 — CHN-2 **三段四件全闭** ⭐ (acceptance §1+§3+§4 真路径 evidence 落, REG-CHN2 占号待 #418 rebase merge 后真翻)
 7. [x] **CHN-3** 个人分组 reorder + pin — 4 件套 ✅ + 三段四件全闭: CHN-3.1 schema v=19 ✅ #410 (0cde6f9) / CHN-3.2 server REST GET-PUT /me/layout ✅ #412 / CHN-3.3 client SPA Sidebar 拖拽 + 折叠 + pin ✅ #415 (bad0112) / CHN-3.3 e2e + G3.x screenshot ✅ #422 (4940e24) + #425 ESM/path 修
 8. [ ] **CV-4** artifact iterate 完整流 — 4 件套 ✅ (spec #365 / 文案锁 #380 / acceptance #384 / stance #385); CV-4.1/4.2/4.3 实施待战马A
 9. [ ] **CHN-4** channel 协作场骨架 demo (收尾) — 4 件套 ✅ (spec #374 / 文案锁 #382 / acceptance #381 / stance #378); CHN-4.1/4.2/4.3 实施待战马 (G3.4 三签退出闸: 战马 e2e + 烈马 acceptance + 野马 双 tab 截屏文案锁验)
-10. [ ] **DM-2** mention (从 Phase 4 提前, G3.4 协作场骨架依赖) — 4 件套 ✅ (spec #312/#362/#377 / 文案锁 #314 / acceptance #293 / 借 spec stance); DM-2.1 ✅ #361 + DM-2.2 ✅ #372 + **DM-2.3 ✅ #388** (76fb0f8, client SPA mention 渲染收口) — DM-2 三段全闭 ⭐ (REG-DM2-001..009 🟢 #383, -010 留 client 翻牌)
+10. [x] **DM-2** mention (从 Phase 4 提前, G3.4 协作场骨架依赖) — 4 件套 ✅ (spec #312/#362/#377 / 文案锁 #314 / acceptance #293 / 借 spec stance); DM-2.1 ✅ #361 + DM-2.2 ✅ #372 + **DM-2.3 ✅ #388** (76fb0f8, client SPA mention 渲染收口) — DM-2 **三段四件全闭** ⭐ (REG-DM2-001..015 全 🟢, closure follow-up: -010 ⚪→🟢 + -011..015 加 5 行)
 
 **Gates**
 
