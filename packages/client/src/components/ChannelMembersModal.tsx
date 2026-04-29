@@ -198,7 +198,23 @@ export default function ChannelMembersModal({ channelId, onClose }: { channelId:
               {members.map(m => (
                 <div key={m.user_id} className="member-row" data-role={m.role === 'agent' ? 'agent' : 'user'}>
                   <div className="user-avatar-small">{m.display_name[0]?.toUpperCase()}</div>
-                  <span className="member-name">{m.display_name}</span>
+                  <span
+                    className="member-name"
+                    {...(m.role === 'agent'
+                      ? {
+                          // CM-5.3 client SPA: agent collab hover link.
+                          // 立场 ⑤ owner-first 透明协作 — agent 跟人 path
+                          // 同源, hover 显示 "正在协作" 提示给 owner 视角
+                          // 看见 agent 工作链路. 反约束: 不订阅 push frame
+                          // (走 channel members 既有 lookup), 不引 ai_only
+                          // visibility scope (蓝图 §185 透明协作字面承袭).
+                          'data-cm5-collab-link': '',
+                          title: `${m.display_name} 正在协作`,
+                        }
+                      : {})}
+                  >
+                    {m.display_name}
+                  </span>
                   {m.role === 'agent' && <span className="user-badge">Bot</span>}
                   {m.role === 'agent' && <MemberPresence agentID={m.user_id} />}
                   {m.role === 'agent' && m.silent && (

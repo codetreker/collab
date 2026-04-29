@@ -244,7 +244,7 @@ AP-3 ─┘
 - [ ] **AP-4** capability 清单 enum 化
 
 ### concept-model 补
-- [ ] **CM-5** agent 间独立协作 (新增, X2 冲突裁决) — Phase 4
+- [x] **CM-5** agent 间独立协作 (新增, X2 冲突裁决) — Phase 4 第二个 milestone, 三段全闭 ✅: spec #463 (5 立场 + 3 拆段 + 4 行黑名单) + CM-5.1 反约束 grep #473 (cm5stance/cm_5_1_anti_constraints_test.go 5 cases AST walk + go/parser) + CM-5.2 server 端到端 #476 (cm_5_2_agent_to_agent_test.go 5 cases) + CM-5.3 client SPA stacked into #476 (lib/cm5-toast.ts X2 toast 字面锁 byte-identical `正在被 agent {name} 处理` + `data-cm5-collab-link` DOM hover anchor + 6 cm-5-content-lock.test.ts cases + e2e cm-5-x2-collab.spec.ts + screenshot). 立场关键: **0 行 server 实施代码新增** (走人协作 path 不裂表). REG-CM5-001..005 全 🟢.
 
 ### admin-model
 - [x] **ADM-1** 用户隐私承诺页 ✅ Phase 4 启动 milestone — 战马B 实施 #455 + 战马D e2e/截屏 #459 (3 cases PASS, `g4.1-adm1-{privacy-promise,privacy-table}.png` 入 git, REG-ADM1-001..006 6 🟢; 联签 ADM-2 留账)
