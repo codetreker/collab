@@ -109,6 +109,17 @@ func HandlePlugin(hub *Hub) http.HandlerFunc {
 				go pc.handleAPIResponse(msg.ID, msg.Data)
 			case "response":
 				pc.resolveRequest(msg.ID, 200, msg.Data)
+				// AL-2b ack ingress — `agent_config_ack` BPP frame routing
+				// deferred to BPP-3 plugin 真实施 PR. Reason: this read loop
+				// uses a generic `{type, id, data}` envelope (api_request/
+				// api_response RPC), distinct from BPP-1 envelope frames
+				// ({type, ...payload-direct-fields}). Routing BPP frames here
+				// requires a unified frame dispatcher boundary — that's
+				// BPP-3 plugin connection lifecycle territory, not AL-2b's
+				// 1-frame add. AL-2b ships frame schema (#472 / 351f18e) +
+				// hub push (35667d9) + ack dispatcher (7b98e4c) + api fanout
+				// (351f18e); ingress wire follows in BPP-3 along with
+				// generic BPP frame dispatch.
 			}
 		}
 	}
