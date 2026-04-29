@@ -61,6 +61,10 @@ For ⭐ standout milestones, BOTH 4.1 (single-form acceptance) AND 4.2
 
 ## Stage
 
-<!-- v0 (allows breaking change) or v1 (forward-only). Today: v0. -->
+<!--
+v0 (allows breaking change) or v1 (forward-only). Today: v0.
+Suffix allowed: v0.1, v1.0, v0 patch, v1.x — anything starting with
+v0/v1 + word boundary passes the lint regex.
+-->
 
 Stage: v0
