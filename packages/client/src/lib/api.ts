@@ -435,6 +435,77 @@ export interface Agent {
   state_updated_at?: number;
 }
 
+// AL-4 (#313 v0 / #379 v2) — agent_runtimes registry. Schema source:
+// PR #398 migration v=16 (战马C, in-flight) — `agent_runtimes(id PK,
+// agent_id NOT NULL UNIQUE, endpoint_url, process_kind, status,
+// last_error_reason, last_heartbeat_at, created_at, updated_at)`.
+// Server API: AL-4.2 战马E in-flight — POST /agents/:id/runtime/start
+// + /stop + GET surfaces a single row per agent (蓝图 §2.2 v1 边界
+// "不优化多 runtime 并行" + UNIQUE(agent_id) 字面).
+//
+// AL-4.3 client UI consumes this shape; runtime-not-yet-registered
+// agents → server 404 → UI hides the start/stop card surface entirely
+// (graceful degrade, 反约束 立场 ① "Borgee 不带 runtime" — 没注册的
+// agent 不假装有 runtime).
+
+// AgentRuntimeStatus is the 4-态 process-level enum (v=16 schema
+// CHECK). 反约束 (野马 #321 §2): v0 不开 'starting' / 'stopping' /
+// 'restarting' 中间态 — start/stop 走 同步 API, 直接 UPDATE status.
+export type AgentRuntimeStatus = 'registered' | 'running' | 'stopped' | 'error';
+
+// AgentRuntimeProcessKind — v1 仅 'openclaw' (蓝图 §2.2 边界字面),
+// 'hermes' 占号 v2+ (CHECK 已含, schema 早就支持新值不需 v2 改 CHECK).
+export type AgentRuntimeProcessKind = 'openclaw' | 'hermes';
+
+export interface AgentRuntime {
+  id: string;
+  agent_id: string;
+  endpoint_url: string;
+  process_kind: AgentRuntimeProcessKind;
+  status: AgentRuntimeStatus;
+  last_error_reason: AgentRuntimeReason | null;
+  last_heartbeat_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+// fetchAgentRuntime returns the runtime row for the agent, or null if
+// no runtime is registered (server 404). 反约束 立场 ① "Borgee 不带
+// runtime" — 没注册的 agent 不假装 (graceful degrade UI omit the card).
+//
+// Returns null on 404 specifically (not other errors) so the UI can
+// distinguish "no runtime registered yet" (show Register CTA stub) from
+// transient network failure (show retry).
+export async function fetchAgentRuntime(agentId: string): Promise<AgentRuntime | null> {
+  try {
+    const data = await request<{ runtime: AgentRuntime }>(`/api/v1/agents/${agentId}/runtime`);
+    return data.runtime;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+// startAgentRuntime / stopAgentRuntime — owner-only writes
+// (RequirePermission 'agent.runtime.control', AL-4.2 server). Non-owner
+// → 403; admin → 401 (god-mode 不入写, ADM-0 §1.4 红线). Both endpoints
+// return the updated runtime row (#379 v2 §1 拆段 AL-4.2).
+export async function startAgentRuntime(agentId: string): Promise<AgentRuntime> {
+  const data = await request<{ runtime: AgentRuntime }>(
+    `/api/v1/agents/${agentId}/runtime/start`,
+    { method: 'POST' },
+  );
+  return data.runtime;
+}
+
+export async function stopAgentRuntime(agentId: string): Promise<AgentRuntime> {
+  const data = await request<{ runtime: AgentRuntime }>(
+    `/api/v1/agents/${agentId}/runtime/stop`,
+    { method: 'POST' },
+  );
+  return data.runtime;
+}
+
 export async function fetchAgents(): Promise<Agent[]> {
   const data = await request<{ agents: Agent[] }>('/api/v1/agents');
   return data.agents;
@@ -767,10 +838,19 @@ export async function listCommands(channelId?: string): Promise<CommandsResponse
 // body, no committer). 当 ArtifactUpdated frame 到达 client, 必须再走
 // GET /api/v1/artifacts/:id 拿 body + committer (立场 ⑤ envelope 仅信号).
 
+/**
+ * CV-3.1/3.2 (#396 / #400): artifact kind enum extended from the v1
+ * 'markdown' lock to three kinds. 字面 byte-identical 跟
+ * cv-3-content-lock.md §1 ① + cv_3_2_artifact_validation.go ArtifactKind*
+ * 同源 (反 camelCase `imageLink` / 同义词 `pdf|kanban|mindmap` 漂移).
+ */
+export type ArtifactKind = 'markdown' | 'code' | 'image_link';
+
 export interface Artifact {
   id: string;
   channel_id: string;
-  type: 'markdown';
+  /** CV-3.1: 三态 enum (was 'markdown'-only in CV-1). */
+  type: ArtifactKind;
   title: string;
   body: string;
   current_version: number;
@@ -868,6 +948,94 @@ export async function rollbackArtifact(
   );
 }
 
+// ─── Iterations (CV-4.2 server #409 / CV-4.3 client) ─────────
+//
+// Spec: docs/implementation/modules/cv-4-spec.md §0 立场 ②
+// (owner triggers iterate, agent commit goes through CV-1's existing
+// /commits endpoint with ?iteration_id query). 文案锁:
+// docs/qa/cv-4-content-lock.md §1 ③ (state 4 态 byte-identical).
+// Stance: docs/qa/cv-4-stance-checklist.md §1 ①-⑦.
+//
+// Push frame: IterationStateChangedFrame 9 字段 byte-identical 跟
+// server-go iteration_state_frame.go 同源 (BPP-1 #304 envelope CI lint).
+
+export type IterationState = 'pending' | 'running' | 'completed' | 'failed';
+
+/**
+ * artifact_iterations row (server CV-4.1 schema #405 + CV-4.2 #409).
+ *
+ * 字段顺序锁: id / artifact_id / requested_by / intent_text /
+ * target_agent_id / state / created_artifact_version_id NULL /
+ * error_reason NULL / created_at / completed_at NULL.
+ *
+ * 立场 ⑦ admin god-mode 字段白名单不含 intent_text — 但 owner 拉自己
+ * 触发的 iteration 时返完整 row (intent_text 是 owner 自己输入).
+ */
+export interface ArtifactIteration {
+  id: string;
+  artifact_id: string;
+  requested_by: string;
+  intent_text: string;
+  target_agent_id: string;
+  state: IterationState;
+  /** AL-1a 6 reason 之一; state='failed' 时非空, 走 REASON_LABELS 渲染. */
+  error_reason?: AgentRuntimeReason | null;
+  /** state='completed' 时非空; FK PK 非用户号 version. */
+  created_artifact_version_id?: number | null;
+  created_at: number;
+  completed_at?: number | null;
+}
+
+export interface CreateIterationResponse {
+  iteration: ArtifactIteration;
+}
+
+/**
+ * Trigger iterate — owner-only (server enforces; client also gates DOM
+ * via CV-1 #347 line 254 同模式 owner-only DOM omit defense-in-depth).
+ *
+ * 反约束: 不开 `/iterations/:id/commit` 旁路 endpoint — agent commit
+ * 走 CV-1 既有 `POST /artifacts/:id/commits` 加 query `?iteration_id=`
+ * (cv-4-stance §1 ② CV-1 commit 单源).
+ */
+export async function createIteration(
+  artifactId: string,
+  payload: { intent_text: string; target_agent_id: string },
+): Promise<CreateIterationResponse> {
+  return request<CreateIterationResponse>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/iterate`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/**
+ * GET single iteration body — 立场 ⑤ envelope-signal-only 后 pull 路径.
+ * Push frame 仅信号, intent_text 不在 frame (admin 字段白名单反断同源).
+ */
+export async function getIteration(
+  artifactId: string,
+  iterationId: string,
+): Promise<ArtifactIteration> {
+  return request<ArtifactIteration>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/iterations/${encodeURIComponent(iterationId)}`,
+  );
+}
+
+/**
+ * GET iteration list — artifact panel "迭代历史" 折叠区
+ * (cv-4-content-lock §1 ⑥ 头 5 条 + intent_text 头 40 字截断).
+ */
+export async function listIterations(
+  artifactId: string,
+): Promise<{ iterations: ArtifactIteration[] }> {
+  return request<{ iterations: ArtifactIteration[] }>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/iterations`,
+  );
+}
+
 // ─── Anchors (CV-2.2 server / CV-2.3 client) ───────────────
 //
 // Spec: docs/implementation/modules/cv-2-spec.md §0 (3 立场) + §1
@@ -951,4 +1119,40 @@ export async function resolveAnchor(anchorId: string): Promise<{ id: string; res
     `/api/v1/anchors/${encodeURIComponent(anchorId)}/resolve`,
     { method: 'POST' },
   );
+}
+
+// ─── CHN-3.2 user_channel_layout (CHN-3.3 client) ──────────
+//
+// Spec: docs/implementation/modules/chn-3-spec.md §1 CHN-3.2 段 + §0
+// 立场 ② 个人偏好两维 collapsed + position. Server: api/layout.go
+// (#412, stacked off CHN-3.1 schema #410 v=19).
+//
+// 立场 ④ 反约束 错码 byte-identical: server PUT 对 DM channel_id 返
+// 400 with code `layout.dm_not_grouped` (5 源 #357/#353/#366/#402/
+// #412); client 走 GET pull, PUT batch upsert, 不挂 push frame
+// (立场 ⑥ ordering client 端事).
+
+export interface LayoutRow {
+  channel_id: string;
+  collapsed: number; // 0 | 1 (BOOL); position is REAL.
+  position: number;
+  created_at?: number;
+  updated_at?: number;
+}
+
+/** GET /me/layout — 本人 layout list (position ASC ordering). */
+export async function getMyLayout(): Promise<{ layout: LayoutRow[] }> {
+  return request<{ layout: LayoutRow[] }>(`/api/v1/me/layout`);
+}
+
+/**
+ * PUT /me/layout — batch upsert (collapsed + position 两维, server 跑
+ * ON CONFLICT (user_id, channel_id) DO UPDATE atomic). 反约束: DM
+ * channel_id → 400 `layout.dm_not_grouped` (server 兜底).
+ */
+export async function putMyLayout(layout: LayoutRow[]): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/v1/me/layout`, {
+    method: 'PUT',
+    body: JSON.stringify({ layout }),
+  });
 }

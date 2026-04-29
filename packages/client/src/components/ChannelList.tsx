@@ -17,6 +17,8 @@ import {
 } from "@dnd-kit/sortable";
 import SortableChannelItem, { ChannelItemStatic } from "./SortableChannelItem";
 import ChannelGroupComponent from "./ChannelGroupComponent";
+import ChannelContextMenu from "./ChannelContextMenu";
+import { useUserLayout } from "../hooks/useUserLayout";
 import { useAppContext } from "../context/AppContext";
 import * as api from "../lib/api";
 import type { Channel } from "../types";
@@ -47,6 +49,9 @@ interface Props {
 export default function ChannelList({ channels, currentChannelId, onSelectChannel }: Props) {
   const { state, dispatch } = useAppContext();
   const currentUser = state.currentUser;
+  // CHN-3.3 personal layout (拖拽 reorder + pin via position MIN-1.0).
+  const { pinChannel, unpinChannel, isPinned } = useUserLayout();
+  const [pinMenu, setPinMenu] = useState<{ x: number; y: number; channelId: string } | null>(null);
   const channelGroups = state.groups;
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsedGroups);
@@ -93,8 +98,14 @@ export default function ChannelList({ channels, currentChannelId, onSelectChanne
     return { ungroupedChannels: ungrouped, groupedChannels: grouped };
   }, [memberChannels]);
 
+  // CHN-3.3 — personal layout position overrides author-side sort:
+  // pinned (position < 0) bubbles to top, then fall through to author
+  // ordering (chs.position localeCompare). 立场 ⑥ ordering client 端事.
   const sortChannels = (chs: Channel[]) => {
     return [...chs].sort((a, b) => {
+      const ap = (state.currentUser && isPinned(a.id)) ? -1 : 0;
+      const bp = (state.currentUser && isPinned(b.id)) ? -1 : 0;
+      if (ap !== bp) return ap - bp; // pinned ahead
       if (a.position && b.position) return a.position.localeCompare(b.position);
       if (a.position && !b.position) return -1;
       if (!a.position && b.position) return 1;
@@ -104,7 +115,7 @@ export default function ChannelList({ channels, currentChannelId, onSelectChanne
     });
   };
 
-  const sortedUngrouped = useMemo(() => sortChannels(ungroupedChannels), [ungroupedChannels]);
+  const sortedUngrouped = useMemo(() => sortChannels(ungroupedChannels), [ungroupedChannels, isPinned, state.currentUser]);
 
   const sortedGroups = useMemo(() => {
     return [...channelGroups].sort((a, b) => a.position.localeCompare(b.position));
@@ -244,6 +255,11 @@ export default function ChannelList({ channels, currentChannelId, onSelectChanne
                 isOwner={currentUser ? channel.created_by === currentUser.id : false}
                 onClick={() => onSelectChannel(channel.id)}
                 groupId={null}
+                pinned={isPinned(channel.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setPinMenu({ x: e.clientX, y: e.clientY, channelId: channel.id });
+                }}
               />
             ))}
           </SortableContext>
@@ -281,6 +297,20 @@ export default function ChannelList({ channels, currentChannelId, onSelectChanne
 
       {channels.length === 0 && (
         <div className="sidebar-empty">暂无频道</div>
+      )}
+      {/* CHN-3.3 right-click pin/unpin menu (DM rows are mounted via
+          MergedDmList in Sidebar.tsx, not this list, so DM 反约束 自然
+          满足 — 5 源 byte-identical: chn-3-content-lock §1 ⑤ + #366 ④ +
+          #364 + #371 ② + #376 §3.4 + #382 ⑤). */}
+      {pinMenu && (
+        <ChannelContextMenu
+          x={pinMenu.x}
+          y={pinMenu.y}
+          pinned={isPinned(pinMenu.channelId)}
+          onPin={() => pinChannel(pinMenu.channelId)}
+          onUnpin={() => unpinChannel(pinMenu.channelId)}
+          onClose={() => setPinMenu(null)}
+        />
       )}
     </div>
   );

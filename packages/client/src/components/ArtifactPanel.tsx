@@ -24,14 +24,17 @@
 //   - 不用 client timestamp 排序 (列表按 version asc, RT-1 ① 反约束)
 //   - rollback 不是 PATCH body 字段 (调 rollbackArtifact action endpoint)
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from './Toast';
 import { useArtifactUpdated, useAnchorCommentAdded } from '../hooks/useWsHubFrames';
 import { renderMarkdown } from '../lib/markdown';
+import CodeRenderer from './CodeRenderer';
+import ImageLinkRenderer from './ImageLinkRenderer';
 import {
   ApiError,
   type Artifact,
+  type ArtifactKind,
   type ArtifactVersion,
   type AnchorThread,
   commitArtifact,
@@ -43,6 +46,8 @@ import {
   rollbackArtifact,
 } from '../lib/api';
 import AnchorThreadPanel from './AnchorThreadPanel';
+import IteratePanel from './IteratePanel';
+import DiffView, { parseDiffParam, formatDiffParam } from './DiffView';
 
 interface Props {
   channelId: string;
@@ -80,6 +85,56 @@ export default function ArtifactPanel({ channelId }: Props) {
   const [anchors, setAnchors] = useState<AnchorThread[]>([]);
   const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+
+  // CV-4.3 diff view state — "对比" tab + URL `?diff=v3..v2` deep-link
+  // (content-lock §1 ⑤ + spec #365 §0 立场 ③).
+  // diffPair 是当前活跃的 N..M 对比; null = 不在 diff 模式.
+  // 立场 ③ — client jsdiff, 不裂 server diff.
+  const [diffPair, setDiffPair] = useState<{ newV: number; oldV: number } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const raw = new URLSearchParams(window.location.search).get('diff');
+    return parseDiffParam(raw);
+  });
+
+  // syncDiffURL — 把 diffPair 写回 URL (replaceState, 不污染 history).
+  const syncDiffURL = useCallback((pair: { newV: number; oldV: number } | null) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (pair) {
+      url.searchParams.set('diff', formatDiffParam(pair.newV, pair.oldV));
+    } else {
+      url.searchParams.delete('diff');
+    }
+    window.history.replaceState(null, '', url.toString());
+  }, []);
+
+  // 立场 ③ deep-link: 当用户进入 panel 时若 URL `?diff=` 已存在, 取其
+  // pair 渲染 diff view. 切换 channel 时清掉 diffPair (相当于 reset).
+  useEffect(() => {
+    setDiffPair(null);
+  }, [channelId]);
+
+  // diffBodies — diff 模式下解出 (newBody, oldBody) 从 versions 列表.
+  // versions 已按 version asc 排序 (CV-1 立场 ③), 找用户号 v=N 的 row.
+  // hooks-rules — useMemo 必须永远调用 (即使 diffPair 为 null, 列表位置稳定).
+  const diffBodies = useMemo(() => {
+    if (!diffPair) return null;
+    const newRow = versions.find((v) => v.version === diffPair.newV);
+    const oldRow = versions.find((v) => v.version === diffPair.oldV);
+    if (!newRow || !oldRow) return null;
+    return { newBody: newRow.body, oldBody: oldRow.body };
+  }, [diffPair, versions]);
+
+  const handleEnterDiff = useCallback((newV: number, oldV: number) => {
+    const pair = { newV, oldV };
+    setDiffPair(pair);
+    syncDiffURL(pair);
+  }, [syncDiffURL]);
+
+  const handleExitDiff = useCallback(() => {
+    setDiffPair(null);
+    syncDiffURL(null);
+  }, [syncDiffURL]);
 
   // Reload artifact + version list. Triggered by initial mount,
   // channel switch, and WS artifact_updated push (立场 ⑤ pull-after-signal).
@@ -300,16 +355,47 @@ export default function ArtifactPanel({ channelId }: Props) {
   }
 
   return (
-    <div className="artifact-panel">
+    <div className="artifact-panel" data-artifact-kind={normalizeKind(artifact.type)}>
       <div className="artifact-header">
         <div className="artifact-title-row">
           <h3 className="artifact-title">{artifact.title}</h3>
           <span className="artifact-version-tag">v{artifact.current_version}</span>
         </div>
         {!editing && (
-          <button className="btn btn-sm" disabled={busy} onClick={handleStartEdit}>
-            编辑
-          </button>
+          <>
+            <button className="btn btn-sm" disabled={busy} onClick={handleStartEdit}>
+              编辑
+            </button>
+            {/* CV-4.3 — "对比" tab byte-identical (content-lock §1 ⑤ 单字).
+                versions ≥ 2 才显示 (无前一版本无可对比).
+                文案锁: "对比" 单字, 反同义词漂移
+                (acceptance §3.5 + #380 ⑤). */}
+            {versions.length >= 2 && !diffPair && (
+              <button
+                className="btn btn-sm artifact-diff-btn"
+                disabled={busy}
+                onClick={() => {
+                  // 默认 N..(N-1) 对比 (跟 CV-1 #347 line 254 rollback 相邻
+                  // 模式同精神 — 最新两版).
+                  const sorted = [...versions].sort((a, b) => b.version - a.version);
+                  if (sorted.length >= 2) {
+                    handleEnterDiff(sorted[0]!.version, sorted[1]!.version);
+                  }
+                }}
+              >
+                对比
+              </button>
+            )}
+            {diffPair && (
+              <button
+                className="btn btn-sm artifact-diff-exit-btn"
+                disabled={busy}
+                onClick={handleExitDiff}
+              >
+                返回
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -333,15 +419,29 @@ export default function ArtifactPanel({ channelId }: Props) {
             </div>
             {errMsg && <p className="artifact-err">{errMsg}</p>}
           </div>
-        ) : (
-          <div
-            className="artifact-rendered markdown-content"
-            // 立场 ④ Markdown ONLY — renderMarkdown() 走 marked + DOMPurify,
-            // 不接受 HTML 直插.
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(artifact.body) }}
-            onMouseUp={handleSelection}
-            onKeyUp={handleSelection}
+        ) : diffPair && diffBodies ? (
+          // CV-4.3 立场 ③ — client jsdiff 行级 (反 server diff). v0 仅
+          // markdown kind 走 diffLines; image_link 走前后缩略图 fallback;
+          // code v0 也走 diffLines (CV-3 spec §0 ① 字面: code 是 markdown
+          // kind 同源 textual body, jsdiff 适用).
+          <DiffView
+            newBody={diffBodies.newBody}
+            newVersion={diffPair.newV}
+            oldBody={diffBodies.oldBody}
+            oldVersion={diffPair.oldV}
+            kind="markdown"
           />
+        ) : (
+          // CV-3.3 kind switch + CV-2.3 选区监听共存: ArtifactBody 内
+          // 三分支都在外层 div 上落 className "artifact-rendered" (anchor
+          // selection 依赖该 selector 定位 markdown body), 选区 handler
+          // 包在外层 wrapper 上 — 仅 markdown 分支会触发有意义选区
+          // (立场 ④ markdown 才走 dangerouslySetInnerHTML, code/image
+          // 是 React 节点, sel.toString() 仍可工作但 anchor 入口语义
+          // 主要服务于 markdown 文档协作).
+          <div onMouseUp={handleSelection} onKeyUp={handleSelection}>
+            <ArtifactBody artifact={artifact} />
+          </div>
         )}
         {/* CV-2.3 立场 ① 选区 → 锚点 entry: 仅 human 看到 💬 入口
             (DOM 反约束 — agent 视角 isHuman=false count==0). 文案锁
@@ -459,6 +559,88 @@ export default function ArtifactPanel({ channelId }: Props) {
           })}
         </ul>
       </aside>
+
+      {/* CV-4.3 — iterate UI (#409 server / #405 schema).
+          立场 ⑥ owner-only DOM omit (defense-in-depth, 跟 line ~441
+          showRollbackBtn 同模式). non-markdown artifact 不渲染 — iterate
+          UI 仅在 markdown kind 上 (CV-2 §4 反约束承袭, code/image_link
+          iterate v0 走 spec brief #365 §2 协调待 CV-3 协同). */}
+      {isOwner && artifact.type === 'markdown' && (
+        <IteratePanel
+          artifactId={artifact.id}
+          channelId={channelId}
+          isOwner={isOwner}
+          onIterationCompleted={() => {
+            // commit 走 CV-1 既有路径 — ArtifactUpdated frame 已触发 reload;
+            // 此回调让 panel 跳到新版本视图 (current_version 已 reload 更新).
+            void reload(artifact.id);
+          }}
+        />
+      )}
     </div>
   );
+}
+
+/**
+ * normalizeKind — 三 enum 收口 (markdown / code / image_link). 旧/未来
+ * kind (v2+ 蓝图 §2 不做清单留账) 走 fallback path 在 ArtifactBody 里
+ * 渲染 `<div class="artifact-kind-unsupported">` 兜底文案.
+ *
+ * 三 enum byte-identical 跟 cv-3-content-lock.md §1 ① +
+ * cv_3_2_artifact_validation.go ArtifactKind* 同源.
+ */
+export function normalizeKind(raw: string | undefined): ArtifactKind | string {
+  if (raw === 'markdown' || raw === 'code' || raw === 'image_link') {
+    return raw;
+  }
+  return raw ?? 'markdown';
+}
+
+/**
+ * ArtifactBody — kind switch 三分支 (CV-3.3 §2.1 acceptance).
+ * Switch 顺序 markdown → code → image_link byte-identical 跟
+ * content-lock §1 ① 同源.
+ *
+ * 反约束: 不渲染 raw HTML (XSS 红线 §2.8) — markdown 路径走
+ * renderMarkdown() (marked + DOMPurify), 其它两 kind 走 React 节点.
+ */
+function ArtifactBody({ artifact }: { artifact: Artifact }) {
+  const kind = normalizeKind(artifact.type);
+  switch (kind) {
+    case 'markdown':
+      return (
+        <div
+          data-artifact-kind="markdown"
+          className="artifact-rendered markdown-content"
+          // 立场 ④ Markdown ONLY — renderMarkdown() 走 marked + DOMPurify,
+          // 不接受 HTML 直插. 仅 markdown 分支保留 dangerouslySetInnerHTML.
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(artifact.body) }}
+        />
+      );
+    case 'code':
+      // language 在当前 PR 协议: server validation 已收 metadata.language
+      // 但不持久化 (CV-3.2 留账); client 默认走 'text' fallback,
+      // mention preview 路径有显式 language 时按值走.
+      return (
+        <div data-artifact-kind="code" className="artifact-rendered">
+          <CodeRenderer body={artifact.body} />
+        </div>
+      );
+    case 'image_link':
+      // body = https URL (server ValidateImageLinkURL 已闸).
+      // sub-kind 默认 image; v0 不暴露 link 切换 (留 metadata 持久化后).
+      return (
+        <div data-artifact-kind="image_link" className="artifact-rendered">
+          <ImageLinkRenderer body={artifact.body} title={artifact.title} subKind="image" />
+        </div>
+      );
+    default:
+      // 立场 ⑦ — 兜底文案 (content-lock §1 ⑦ byte-identical).
+      // 不 throw, 不 fallback markdown — 优雅降级展示原 kind 字串.
+      return (
+        <div className="artifact-kind-unsupported">
+          此 artifact 类型 ({kind}) 暂不支持渲染
+        </div>
+      );
+  }
 }

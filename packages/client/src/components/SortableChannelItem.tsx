@@ -9,9 +9,13 @@ interface Props {
   isOwner: boolean;
   onClick: () => void;
   groupId?: string | null;
+  /** CHN-3.3 — personal pin context menu trigger (DM rows must not pass this). */
+  onContextMenu?: (e: React.MouseEvent) => void;
+  /** CHN-3.3 — personal pinned indicator (pin = position < 0 单调小数). */
+  pinned?: boolean;
 }
 
-export default function SortableChannelItem({ channel, active, isOwner, onClick, groupId }: Props) {
+export default function SortableChannelItem({ channel, active, isOwner, onClick, groupId, onContextMenu, pinned }: Props) {
   const {
     attributes,
     listeners,
@@ -42,20 +46,40 @@ export default function SortableChannelItem({ channel, active, isOwner, onClick,
     <button
       ref={setNodeRef}
       style={style}
-      className={`channel-item ${active ? "channel-item-active" : ""} ${!isMember ? "channel-item-preview" : ""} ${isArchived ? "channel-item-archived" : ""} ${isDragging ? "channel-item-dragging" : ""}`}
+      className={`channel-item ${active ? "channel-item-active" : ""} ${!isMember ? "channel-item-preview" : ""} ${isArchived ? "channel-item-archived" : ""} ${isDragging ? "channel-item-dragging" : ""} ${pinned ? "channel-item-pinned" : ""}`}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       data-archived={isArchived ? "true" : undefined}
+      data-pinned={pinned ? "true" : undefined}
     >
       {isOver && !isDragging && (
         <span className="drop-indicator" />
       )}
-      {isOwner && !isArchived && (
-        <span className="drag-handle" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
-          ≡
-        </span>
+      {/* CHN-3.3 personal sortable handle (byte-identical 跟 chn-3-content-lock.md
+          §1 ① 字面锁 + #371 spec §1 CHN-3.3 同源).
+          DOM 锁: <button class="sortable-handle" data-sortable-handle=""
+                    aria-label="拖拽调整顺序">⋮⋮</button>.
+          反约束: DM 行不渲染 (Sidebar.tsx DMItem 绕过此组件; 此 component
+          只服务 channel rows). isOwner 走作者侧 ≡ handle (CHN-1 #288); 非
+          owner 也可 reorder 自己侧栏 (CHN-3 立场 ① 物理拆死作者侧 vs 个人) —
+          但 dnd-kit useSortable 的 ordering 影响只在本人 SPA 内, 写 PUT
+          /me/layout (CHN-3.2). */}
+      {!isArchived && (
+        <button
+          type="button"
+          className="sortable-handle"
+          data-sortable-handle=""
+          aria-label="拖拽调整顺序"
+          {...attributes}
+          {...listeners}
+          onClick={e => e.stopPropagation()}
+        >
+          ⋮⋮
+        </button>
       )}
       <span className="channel-hash">{isArchived ? "📦" : isPrivate ? "🔒" : "#"}</span>
       <span className="channel-name">{channel.name}</span>
+      {pinned && <span className="channel-pinned-indicator" title="已置顶">📌</span>}
       {isArchived && <span className="archived-badge" title="已归档">已归档</span>}
       {!isMember && !isPrivate && !isArchived && (
         <span className="preview-badge">预览</span>
