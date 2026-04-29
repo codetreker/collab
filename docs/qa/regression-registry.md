@@ -459,6 +459,22 @@
 | REG-BPP4-008 | bpp-4.md §4.3 + stance §3 — 反向断言 retry-queue 类标识符 0 hit (best-effort 立场, 防偷偷下沉 v2 retry); AST scan internal/bpp/ 非 _test.go 源 | `TestBPP4_NoRetryQueueInBPPPackage` (AST ident scan, forbidden tokens: pendingAcks/retryQueue/deadLetterQueue/ackTimeout) | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
 | REG-BPP4-009 | bpp-4.md §2.3 + stance §3 + 立场 ⑥ — bpp envelope 不动 (whitelist 数量不变, BPP-4 仅复用 HeartbeatFrame 做触发源, 不开 cancel/abort frame) | `frame_schemas_test.go::TestBPPEnvelopeFrameWhitelist` whitelist count 不变 (BPP-1 #304 reflect lint 自动覆盖) | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
 
+### BPP-5 plugin reconnect handshake + cursor resume 协议化 (一 milestone 一 PR ✅, 9 🟢)
+
+> BPP-5 范围 = §1 frame schema (envelope 13→14, ReconnectHandshakeFrame 6 字段 byte-identical, direction lock plugin→server) + §2 server handler (BPP-3 #489 PluginFrameDispatcher 复用, 调 RT-1.3 #296 ResolveResume incremental mode 真复用不另起 sequence, agent.Tracker.Clear 触发 AL-1 5-state error→online 反向 valid edge) + §3 反约束 (cursor 倒退 trust-but-log + AST scan reconnect-* 0 hit + AL-1a 6-dict 不扩第 7 reason). reason 字典锁链 BPP-5 = **第 10 处** (BPP-2.2 #485 第 7 + AL-2b #481 第 8 + BPP-4 #499 第 9 + BPP-5 第 10).
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-BPP5-001 | bpp-5.md §1.1 + spec §1 BPP-5.1 — ReconnectHandshakeFrame 6 字段 byte-identical 顺序锁 (`type/plugin_id/agent_id/last_known_cursor/disconnect_at/reconnect_at`) | `internal/bpp/reconnect_handler_test.go::TestBPP5_ReconnectHandshakeFrame_FieldOrder` | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+| REG-BPP5-002 | bpp-5.md §1.2 + stance §1 立场 ① — direction lock plugin→server (server 永不发) | `TestBPP5_ReconnectHandshake_DirectionLock` + `frame_schemas_test.go::TestBPPEnvelopeDirectionLock` (data 6→7) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+| REG-BPP5-003 | bpp-5.md §1.3 — envelope whitelist 13→14 reflect 自动覆盖 + connect ≠ reconnect 字段集不交反断 | `frame_schemas_test.go::TestBPPEnvelopeFrameWhitelist` count 14 + `TestBPP5_ConnectFrame_NoReconnectFields` (反射断 ConnectFrame 不含 reconnect-only 字段) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+| REG-BPP5-004 | bpp-5.md §2.1 + stance §2 立场 ② — handler 真调 ResolveResume(Mode=incremental, Since=LastKnownCursor) 复用 RT-1.3 不另起 sequence | `reconnect_handler_test.go::TestBPP5_Handler_CallsResolveResumeIncremental` (mock EventLister 验证 Since + ChannelIDs) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+| REG-BPP5-005 | bpp-5.md §2.3 + stance §3 立场 ③ — agent.Tracker.Clear 真接管 (AL-1 5-state error→online 反向 valid edge), connecting 中间态 reason-less | `TestBPP5_Handler_ClearsAgentError` (verify Clear(agentID) 真调) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+| REG-BPP5-006 | bpp-5.md §2.4 + stance §4 ⑦ — cross-owner reject (跟 BPP-3 / BPP-4 ACL 同模式) | `TestBPP5_Handler_CrossOwnerReject` (sentinel `errReconnectCrossOwnerReject` + log warn key) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+| REG-BPP5-007 | bpp-5.md §2.5 + spec §2 留账 — cursor 倒退 trust-but-log (warn `bpp.reconnect_cursor_regression` 不 reject; 严格 reject 留 v2) | `TestBPP5_Handler_CursorRegression_TrustButLog` (frame.LastKnownCursor > server.high_water → warn 但 Clear 仍调) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+| REG-BPP5-008 | bpp-5.md §2 + stance §0 — boot wire-up panic on nil deps (events/scope/owner/clearer 全 4 必填) | `TestBPP5_Handler_PanicsOnNilDeps` (4 sub-test 全 panic) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+| REG-BPP5-009 | bpp-5.md §4.4 + stance §4 ⑥ — best-effort 立场承袭 BPP-4 §0.3, AST scan reconnect-queue 类标识符 0 hit (锁链延伸 BPP-4 dead_letter_test) | `TestBPP5_NoReconnectQueueInBPPPackage` (AST ident scan, forbidden tokens: pendingReconnects/reconnectQueue/deadLetterReconnect) | 战马A / 烈马 | feat/bpp-5 | 🟢 active |
+
 ### BPP-3.1 permission_denied frame (server→plugin, 一 milestone 一 PR ✅, 6 🟢)
 
 > BPP-3.1 v1 范围 = 第 13 frame `permission_denied` server→plugin (蓝图 auth-permissions.md §2 不变量 "Permission denied 走 BPP" + §4.1 row 字面). 8 字段 byte-identical 跟 AP-1 #493 abac.go 403 body (跨 PR drift 守, 双向 grep). PushPermissionDenied hub method (跟 PushAgentConfigUpdate 同模式 + cursor 共序). PermissionDeniedPusher interface seam — AP-1 abac.go::HasCapability false 路径 wiring 留 1-line follow-up commit (AP-1 + BPP-3.1 任一 merge 后接).
