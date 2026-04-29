@@ -2,7 +2,7 @@
 
 > **状态**: v0 (野马, 2026-04-29)
 > **目的**: AL-2a 实施 PR 直接吃此表为 acceptance; 飞马 spec brief / 烈马 acceptance template `al-2a.md` 7 项 / 战马A 实施 review 拿此表反查立场漂移. 一句话立场 + §X.Y 锚 + 反约束 (X 是, Y 不是) + v0/v1.
-> **关联**: 蓝图 `plugin-protocol.md` §1.4 (Borgee SSOT 字段划界 — 用户做选择 vs 系统调优) + §1.5 (热更新分级); 蓝图 `agent-lifecycle.md` §2.1 (用户完全自主决定 agent 的 name/prompt/能力/model); R3 决议 AL-2 拆 a/b (AL-2a 落 SSOT 表 + REST update, AL-2b 切 BPP `agent_config_update` frame); 烈马 acceptance #al-2a.md 7 项 (REG-AL2A-001..007 占号); 野马 #al-2a-content-lock.md 7 处字面锁; AL-1a #249 6 reason codes byte-identical (跨 milestone reason 六处单测锁源).
+> **关联**: 蓝图 `plugin-protocol.md` §1.4 (Borgee SSOT 字段划界 — 用户做选择 vs 系统调优) + §1.5 (热更新分级); 蓝图 `agent-lifecycle.md` §2.1 (用户完全自主决定 agent 的 name/prompt/能力/model); R3 决议 AL-2 拆 a/b (AL-2a 落 SSOT 表 + REST update, AL-2b 切 BPP `agent_config_update` frame); 烈马 acceptance #al-2a.md 7 项 (REG-AL2A-001..007 占号); 野马 #al-2a-content-lock.md 7 处字面锁; AL-1a #249 6 reason codes byte-identical (跨 milestone reason 八处单测锁源).
 > **依赖**: 无 (AL-2a 是独立 milestone, 蓝图 §1.4 字面对应); 跟 BPP-1 #304 envelope 无 frame 冲突 (AL-2a 走 REST 不裂 frame); 跟 AL-1a #249 / AL-3 #310 / AL-4 #379 reason byte-identical 同源.
 > **#338 cross-grep 反模式遵守**: AL-2a 是新表新功能 (agent_configs), 既有 lib/agent-state.ts REASON_LABELS (#249) 字面已稳定, 立场跟既有 byte-identical 引用不臆想新词。
 
@@ -71,7 +71,7 @@ grep -rnE "['\"]\\{agent_name\\} 已更新设置['\"]|agent.*config.*system.*mes
 
 - AL-2a schema PR (新 v=N): 立场 ①②③ — `agent_configs` 表 4 列 (`agent_id PK / schema_version int / blob JSON / updated_at`) + 反向断言无 runtime-only 字段 + 反 multi-row config_key 模式
 - AL-2a server PR: 立场 ①③④⑤⑥⑦ — `PATCH /config` owner-only `RequirePermission('agent.config.update')` ≥1 hit + 整 blob 替换 atomic + schema_version server 单调发号 + admin god-mode 字段白名单不返 blob + AL-2b BPP frame 不裂 + 反向断言无 system message broadcast
-- AL-2a entry 闸: 立场 ①-⑦ 全锚 + §2 黑名单 grep 全 0 (除标 ≥1) + 跨 milestone byte-identical (reason 六处单测锁 AL-1a #249 + AL-3 #305 + CV-4 #380 + AL-4 #387/#461 + AL-1b #458 + 野马 #al-2a-content-lock) + RT-1 4 frame + BPP-1 9 frame 锁守 + AL-2b 留账锁
+- AL-2a entry 闸: 立场 ①-⑦ 全锚 + §2 黑名单 grep 全 0 (除标 ≥1) + 跨 milestone byte-identical (reason 八处单测锁 AL-1a #249 + AL-3 #305 + CV-4 #380 + AL-4 #387/#461 + AL-1b #458 + 野马 #al-2a-content-lock + AL-2b #481 frame + ack handler 第 7+8 处) + RT-1 4 frame + BPP-1 9 frame 锁守 + AL-2b 留账锁
 
 ---
 

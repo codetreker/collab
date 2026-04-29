@@ -17,6 +17,7 @@ import {
 import { describeAgentState } from '../lib/agent-state';
 import PresenceDot from './PresenceDot';
 import RuntimeCard from './RuntimeCard';
+import { AgentConfigPanel } from './AgentConfigPanel';
 import { usePresence } from '../hooks/usePresence';
 
 const KNOWN_PERMISSIONS = [
@@ -265,6 +266,16 @@ function AgentCard({
               onRefresh={loadRuntime}
             />
           )}
+
+          {/* AL-2a.3 (#447 + #480 mount) — agent config SSOT editor (name /
+              avatar / prompt / model / capabilities / enabled / memory_ref).
+              蓝图 §1.4 SSOT 字段划界, server-side allowedConfigKeys whitelist
+              fail-closed; 反约束 立场 ⑤ runtime-only 字段 (api_key /
+              temperature / token_limit / retry_policy) 此 form 不渲染. */}
+          <div style={{ marginBottom: 12 }}>
+            <strong>Config (SSOT)</strong>
+            <AgentConfigPanel agentId={agent.id} />
+          </div>
 
           {/* Permissions */}
           <div style={{ marginBottom: 12 }}>
