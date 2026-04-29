@@ -15,7 +15,8 @@
 // 跨端字面拆死 (反约束 立场):
 //   - 此 page 走英文 enum action 字面 (delete_channel/suspend_user/...).
 //   - 用户端 Settings/AdminActionsList 走中文动词字面 (ACTION_VERBS map
-//     `delete_channel: '删除了你的 channel'`).
+//     在用户 SPA 内, admin SPA 不引用 — 跨端字面拆死, 反查见
+//     adm-2-admin-spa-cross-end.test.ts).
 //   - 改 enum = 改 server CHECK constraint + 此 admin SPA + 用户端 SPA 三处.
 //   - 反约束: admin 不渲染中文动词 (admin SPA 读英文 enum 直查; 中文动词是
 //     用户视角).
