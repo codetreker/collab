@@ -11,6 +11,7 @@ import {
   dispatchMentionPushed,
   dispatchAnchorCommentAdded,
   dispatchIterationStateChanged,
+  dispatchArtifactCommentAdded,
 } from './useWsHubFrames';
 import type {
   AgentInvitationPendingFrame,
@@ -19,6 +20,7 @@ import type {
   MentionPushedFrame,
   AnchorCommentAddedFrame,
   IterationStateChangedFrame,
+  ArtifactCommentAddedFrame,
 } from '../types/ws-frames';
 import { markPresence } from './usePresence';
 import type { AgentRuntimeReason, AgentRuntimeState } from '../lib/api';
@@ -499,6 +501,19 @@ export function useWebSocket() {
         // + iteration_state_frame.go::IterationStateChangedFrame (9 字段
         // byte-identical, BPP-1 #304 envelope CI lint).
         dispatchIterationStateChanged(data as unknown as IterationStateChangedFrame);
+        break;
+      }
+      case 'artifact_comment_added': {
+        // CV-5: server → client signal that a comment landed on an
+        // artifact's `artifact:<id>` namespace channel. Envelope is
+        // signal-only (立场 ② 同模式) — body_preview is server-truncated
+        // to 80 runes (隐私 §13); ArtifactComments listens via
+        // useArtifactCommentAdded and refetches GET
+        // /api/v1/artifacts/:id/comments for full body.
+        // Schema lock: docs/implementation/modules/cv-5-spec.md §0 立场 ②
+        // + artifact_comment_added_frame.go::ArtifactCommentAddedFrame
+        // (9 字段 byte-identical, RT-3 cursor 共序锚).
+        dispatchArtifactCommentAdded(data as unknown as ArtifactCommentAddedFrame);
         break;
       }
       case 'error':

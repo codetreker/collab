@@ -30,12 +30,14 @@ import {
   MENTION_PUSHED_EVENT,
   ANCHOR_COMMENT_ADDED_EVENT,
   ITERATION_STATE_CHANGED_EVENT,
+  ARTIFACT_COMMENT_ADDED_EVENT,
   type AgentInvitationPendingFrame,
   type AgentInvitationDecidedFrame,
   type ArtifactUpdatedFrame,
   type MentionPushedFrame,
   type AnchorCommentAddedFrame,
   type IterationStateChangedFrame,
+  type ArtifactCommentAddedFrame,
 } from '../types/ws-frames';
 
 /**
@@ -203,5 +205,37 @@ export function useIterationStateChanged(
     };
     window.addEventListener(ITERATION_STATE_CHANGED_EVENT, listener);
     return () => window.removeEventListener(ITERATION_STATE_CHANGED_EVENT, listener);
+  }, [handler]);
+}
+
+// ─── CV-5 ArtifactCommentAdded dispatch ─────────────────────
+//
+// Same precedent as anchor_comment_added / iteration_state_changed:
+// useWebSocket.ts decodes the frame then calls
+// dispatchArtifactCommentAdded; ArtifactComments listens via
+// useArtifactCommentAdded(handler) and refetches via GET
+// /api/v1/artifacts/:id/comments (cheap + authoritative).
+//
+// 立场 ② envelope is signal-only — full body arrives via REST
+// pull (channel-member ACL). body_preview 80 rune (隐私 §13)
+// is for badge/toast preview only, NOT the rendered comment text.
+
+export function dispatchArtifactCommentAdded(
+  frame: ArtifactCommentAddedFrame,
+): void {
+  window.dispatchEvent(
+    new CustomEvent(ARTIFACT_COMMENT_ADDED_EVENT, { detail: frame }),
+  );
+}
+
+export function useArtifactCommentAdded(
+  handler: (frame: ArtifactCommentAddedFrame) => void,
+): void {
+  useEffect(() => {
+    const listener = (e: Event) => {
+      handler((e as CustomEvent<ArtifactCommentAddedFrame>).detail);
+    };
+    window.addEventListener(ARTIFACT_COMMENT_ADDED_EVENT, listener);
+    return () => window.removeEventListener(ARTIFACT_COMMENT_ADDED_EVENT, listener);
   }, [handler]);
 }
