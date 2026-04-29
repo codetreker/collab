@@ -19,6 +19,7 @@ package api_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"borgee-server/internal/api"
@@ -295,5 +296,149 @@ func TestCV42_ListIterationsHistory(t *testing.T) {
 	row0 := rows[0].(map[string]any)
 	if row0["intent_text"] != "iter" {
 		t.Errorf("intent_text not returned on member rail: %v", row0["intent_text"])
+	}
+}
+
+// TestCV42_Iterate_ErrorPaths covers the 400/401/403/404 negative branches
+// of POST /iterate so coverage stays above 85% threshold (CI ci.yml:55).
+// Each branch is independently asserted — handler short-circuits before
+// the AL-4 stub fork, so a single setup suffices.
+func TestCV42_Iterate_ErrorPaths(t *testing.T) {
+	url, ownerTok, s, _, artID, agentID := cv42Setup(t)
+
+	// 401 — no auth (anonymous).
+	resp401, err := http.Post(url+"/api/v1/artifacts/"+artID+"/iterate", "application/json",
+		strings.NewReader(`{"intent_text":"x","target_agent_id":"`+agentID+`"}`))
+	if err != nil {
+		t.Fatalf("anon req: %v", err)
+	}
+	resp401.Body.Close()
+	if resp401.StatusCode != http.StatusUnauthorized {
+		t.Errorf("anon 401 expected, got %d", resp401.StatusCode)
+	}
+
+	// 404 — artifact not found.
+	resp404, _ := testutil.JSON(t, "POST", url+"/api/v1/artifacts/no-such/iterate", ownerTok, map[string]any{
+		"intent_text": "x", "target_agent_id": agentID,
+	})
+	if resp404.StatusCode != http.StatusNotFound {
+		t.Errorf("missing artifact 404 expected, got %d", resp404.StatusCode)
+	}
+
+	// 400 — empty intent_text.
+	resp400a, _ := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", ownerTok, map[string]any{
+		"intent_text": "   ", "target_agent_id": agentID,
+	})
+	if resp400a.StatusCode != http.StatusBadRequest {
+		t.Errorf("empty intent_text 400 expected, got %d", resp400a.StatusCode)
+	}
+
+	// 400 — empty target_agent_id.
+	resp400b, _ := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", ownerTok, map[string]any{
+		"intent_text": "x", "target_agent_id": "",
+	})
+	if resp400b.StatusCode != http.StatusBadRequest {
+		t.Errorf("empty target 400 expected, got %d", resp400b.StatusCode)
+	}
+
+	// 400 — target is human (role!='agent').
+	hash := mustHash(t, "password123")
+	em := "humantarget@test.com"
+	human := &store.User{DisplayName: "Human", Role: "user", Email: &em, PasswordHash: hash}
+	if err := s.CreateUser(human); err != nil {
+		t.Fatalf("create human: %v", err)
+	}
+	_ = s.UpdateUser(human.ID, map[string]any{"org_id": mustOrgID(t, s, "owner@test.com")})
+	_ = s.GrantDefaultPermissions(human.ID, "member")
+	// Lookup channel id (general) to add member.
+	chID := cv12General(t, url, ownerTok)
+	_ = s.AddChannelMember(&store.ChannelMember{ChannelID: chID, UserID: human.ID})
+	respHuman, dataHuman := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", ownerTok, map[string]any{
+		"intent_text": "x", "target_agent_id": human.ID,
+	})
+	if respHuman.StatusCode != http.StatusBadRequest {
+		t.Errorf("human target 400 expected, got %d", respHuman.StatusCode)
+	}
+	if dataHuman["code"] != api.IterationErrCodeTargetNotInChannel {
+		t.Errorf("human target error code byte-identical lock failed: got %v", dataHuman["code"])
+	}
+}
+
+// TestCV42_ListIterations_NotFoundOrCrossChannel covers the 401/404 branches
+// of GET /iterations (anonymous + artifact not found).
+func TestCV42_ListIterations_NotFoundOrCrossChannel(t *testing.T) {
+	url, ownerTok, _, _, _, _ := cv42Setup(t)
+
+	// 401 — anonymous.
+	resp401, err := http.Get(url + "/api/v1/artifacts/x/iterations")
+	if err != nil {
+		t.Fatalf("anon req: %v", err)
+	}
+	resp401.Body.Close()
+	if resp401.StatusCode != http.StatusUnauthorized {
+		t.Errorf("anon 401 expected, got %d", resp401.StatusCode)
+	}
+
+	// 404 — missing artifact id.
+	resp, _ := testutil.JSON(t, "GET", url+"/api/v1/artifacts/no-such/iterations", ownerTok, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("missing artifact 404 expected, got %d", resp.StatusCode)
+	}
+}
+
+// TestCV42_Iterate_NonOwner_403 — 立场 ⑥ owner-only (acceptance §2.1) — a
+// channel member who is not the owner gets 403 (handler runs after
+// canAccessChannel passes). Different from TestCV42_IterateOwnerOnly which
+// covers the *non-owner channel-member* 403 path; this extra case exercises
+// the full owner-check branch with explicit channel-member precondition.
+func TestCV42_Iterate_NonOwner_403(t *testing.T) {
+	url, _, s, chID, artID, agentID := cv42Setup(t)
+	// Add second human channel member (non-owner).
+	hash := mustHash(t, "password123")
+	em := "nonowner@test.com"
+	mem := &store.User{DisplayName: "Mem", Role: "user", Email: &em, PasswordHash: hash}
+	if err := s.CreateUser(mem); err != nil {
+		t.Fatalf("create mem: %v", err)
+	}
+	_ = s.UpdateUser(mem.ID, map[string]any{"org_id": mustOrgID(t, s, "owner@test.com")})
+	_ = s.GrantDefaultPermissions(mem.ID, "member")
+	_ = s.AddChannelMember(&store.ChannelMember{ChannelID: chID, UserID: mem.ID})
+	memTok := testutil.LoginAs(t, url, em, "password123")
+
+	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", memTok, map[string]any{
+		"intent_text": "x", "target_agent_id": agentID,
+	})
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("non-owner channel member 403 expected, got %d", resp.StatusCode)
+	}
+}
+
+// TestCV42_CommitWithIterationID_NotFound exercises the
+// CompleteIterationOnCommit reject path when iteration_id references a
+// non-existent row (or wrong artifact). The atomic UPDATE WHERE clause
+// finds no row → state machine reject → 409.
+func TestCV42_CommitWithIterationID_NotFound(t *testing.T) {
+	url, ownerTok, _, _, artID, _ := cv42Setup(t)
+	resp, _ := testutil.JSON(t, "POST",
+		url+"/api/v1/artifacts/"+artID+"/commits?iteration_id=does-not-exist",
+		ownerTok, map[string]any{
+			"expected_version": float64(1),
+			"body":             "v2",
+		})
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("nonexistent iteration_id 409 expected, got %d", resp.StatusCode)
+	}
+}
+
+// TestCV42_IsIterationStateMachineReject — direct unit test for the
+// errors.Is sentinel helper (acceptance §2.3 同源).
+func TestCV42_IsIterationStateMachineReject(t *testing.T) {
+	if api.IsIterationStateMachineReject(nil) {
+		t.Error("nil should not match reject sentinel")
+	}
+	// CompleteIterationOnCommit with empty id returns nil (early return —
+	// query path not exercised, exercises the empty-id branch).
+	if err := api.CompleteIterationOnCommit(nil, "", "", 0, 0); err != nil {
+		t.Errorf("empty iteration_id should be nil-op, got %v", err)
 	}
 }
