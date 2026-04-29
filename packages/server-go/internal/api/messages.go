@@ -214,8 +214,8 @@ func (h *MessageHandler) handleCreateMessage(w http.ResponseWriter, r *http.Requ
 	if ct == "" {
 		ct = "text"
 	}
-	if ct != "text" && ct != "image" && ct != "command" {
-		writeJSONError(w, http.StatusBadRequest, "content_type must be 'text', 'image', or 'command'")
+	if ct != "text" && ct != "image" && ct != "command" && ct != "artifact_comment" {
+		writeJSONError(w, http.StatusBadRequest, "content_type must be 'text', 'image', 'command', or 'artifact_comment'")
 		return
 	}
 
