@@ -9,12 +9,14 @@ import {
   dispatchInvitationDecided,
   dispatchArtifactUpdated,
   dispatchMentionPushed,
+  dispatchAnchorCommentAdded,
 } from './useWsHubFrames';
 import type {
   AgentInvitationPendingFrame,
   AgentInvitationDecidedFrame,
   ArtifactUpdatedFrame,
   MentionPushedFrame,
+  AnchorCommentAddedFrame,
 } from '../types/ws-frames';
 import { markPresence } from './usePresence';
 import type { AgentRuntimeReason, AgentRuntimeState } from '../lib/api';
@@ -471,6 +473,18 @@ export function useWebSocket() {
         // ② + mention_pushed_frame.go::MentionPushedFrame (BPP-1 #304
         // envelope CI lint enforces byte-identical wire shape).
         dispatchMentionPushed(data as unknown as MentionPushedFrame);
+        break;
+      }
+      case 'anchor_comment_added': {
+        // CV-2.2 (#360): server → client signal that a comment landed
+        // on an anchor thread. Envelope is signal-only (立场 ③ 同 ⑤
+        // 模式 — frame 无 body); AnchorThreadPanel listens via
+        // useAnchorCommentAdded and refetches anchors via
+        // GET /api/v1/artifacts/:id/anchors + GET /anchors/:id/comments.
+        // Schema lock: docs/implementation/modules/cv-2-spec.md §0 立场 ③
+        // + anchor_comment_frame.go::AnchorCommentAddedFrame (10 字段
+        // byte-identical, BPP-1 #304 envelope CI lint).
+        dispatchAnchorCommentAdded(data as unknown as AnchorCommentAddedFrame);
         break;
       }
       case 'error':

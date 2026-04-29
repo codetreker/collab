@@ -129,7 +129,7 @@ export default function ChannelView({ channelId }: Props) {
   };
 
   return (
-    <div className="channel-view" style={keyboardHeight > 0 ? { height: `calc(100% - ${keyboardHeight}px)` } : undefined}>
+    <div className="channel-view" data-channel-type={isDm ? 'dm' : 'channel'} style={keyboardHeight > 0 ? { height: `calc(100% - ${keyboardHeight}px)` } : undefined}>
       <div className="channel-header">
         <div className="channel-header-info">
           <h2 className="channel-title">{headerTitle}</h2>

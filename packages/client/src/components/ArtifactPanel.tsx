@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from './Toast';
-import { useArtifactUpdated } from '../hooks/useWsHubFrames';
+import { useArtifactUpdated, useAnchorCommentAdded } from '../hooks/useWsHubFrames';
 import { renderMarkdown } from '../lib/markdown';
 import CodeRenderer from './CodeRenderer';
 import ImageLinkRenderer from './ImageLinkRenderer';
@@ -36,12 +36,16 @@ import {
   type Artifact,
   type ArtifactKind,
   type ArtifactVersion,
+  type AnchorThread,
   commitArtifact,
   createArtifact,
+  createAnchor,
   getArtifact,
+  listAnchors,
   listArtifactVersions,
   rollbackArtifact,
 } from '../lib/api';
+import AnchorThreadPanel from './AnchorThreadPanel';
 
 interface Props {
   channelId: string;
@@ -51,13 +55,22 @@ interface Props {
 // 路径 409 都走这条; 其它 409 (e.g. 锁持有=别人) 也复用同文案保持一致.
 const CONFLICT_TOAST = '内容已更新, 请刷新查看';
 
+// CV-2.3 anchor entry tooltip — byte-identical 跟 docs/qa/cv-2-content-lock.md
+// 字面表 ① ("评论此段"). 不准 "Comment" / "添加评论" / "回复" / "讨论".
+const ANCHOR_ENTRY_TOOLTIP = '评论此段';
+
 export default function ArtifactPanel({ channelId }: Props) {
   const { state } = useAppContext();
   const { showToast } = useToast();
   const currentUser = state.currentUser;
   const channel = state.channels.find((c) => c.id === channelId);
-  // 立场 ⑦: rollback owner = channel.created_by (channel-model §1.4).
+  // 立场 ⑦ rollback owner = channel.created_by (channel-model §1.4).
+  // 立场 ① CV-2 anchor entry: 仅 human (role !== 'agent') 看到 💬 入口.
+  // (反约束: agent 视角 DOM 不渲染 ① hover 入口, byte-identical 跟
+  // CV-1 立场 ⑦ rollback owner-only DOM omit 同模式 — 服务端 403
+  // anchor.create_owner_only 兜底.)
   const isOwner = !!currentUser && channel?.created_by === currentUser.id;
+  const isHuman = !!currentUser && currentUser.role !== 'agent';
 
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [versions, setVersions] = useState<ArtifactVersion[]>([]);
@@ -65,6 +78,11 @@ export default function ArtifactPanel({ channelId }: Props) {
   const [editBody, setEditBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+
+  // CV-2.3 anchor state — 选区 → 锚点 entry + side thread panel.
+  const [anchors, setAnchors] = useState<AnchorThread[]>([]);
+  const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
 
   // Reload artifact + version list. Triggered by initial mount,
   // channel switch, and WS artifact_updated push (立场 ⑤ pull-after-signal).
@@ -87,6 +105,21 @@ export default function ArtifactPanel({ channelId }: Props) {
     [],
   );
 
+  // CV-2.3 reload anchors after WS push or local create. List endpoint
+  // is channel-member ACL'd (立场 ⑦); on 403 we silently empty (agent
+  // view 反约束 DOM 不渲染入口, list 路径仍可读 thread).
+  const reloadAnchors = useCallback(
+    async (artifactId: string) => {
+      try {
+        const { anchors } = await listAnchors(artifactId);
+        setAnchors(anchors);
+      } catch {
+        setAnchors([]);
+      }
+    },
+    [],
+  );
+
   // Reset on channel switch + try to find the channel's existing artifact.
   // CV-1.3 v1: one artifact per channel surface — listing API is out of
   // scope for this PR, so we lazy-create on first interaction. Until the
@@ -97,7 +130,17 @@ export default function ArtifactPanel({ channelId }: Props) {
     setEditing(false);
     setEditBody('');
     setErrMsg(null);
+    setAnchors([]);
+    setActiveAnchorId(null);
+    setSelection(null);
   }, [channelId]);
+
+  // Reload anchors when artifact lands.
+  useEffect(() => {
+    if (artifact?.id) {
+      void reloadAnchors(artifact.id);
+    }
+  }, [artifact?.id, reloadAnchors]);
 
   // 立场 ⑤ — WS push: re-fetch on signal frame for our artifact.
   // The handler closes over the latest artifact.id via useCallback +
@@ -111,6 +154,44 @@ export default function ArtifactPanel({ channelId }: Props) {
     [channelId, artifact, reload],
   );
   useArtifactUpdated(onArtifactUpdated);
+
+  // CV-2.3 立场 ③: anchor_comment_added envelope is signal-only; on
+  // any landing comment for this artifact, refresh the anchor list so
+  // resolved/added counts stay live across tabs.
+  const onAnchorCommentAdded = useCallback(
+    (frame: { artifact_id: string }) => {
+      if (!artifact || frame.artifact_id !== artifact.id) return;
+      void reloadAnchors(artifact.id);
+    },
+    [artifact, reloadAnchors],
+  );
+  useAnchorCommentAdded(onAnchorCommentAdded);
+
+  // 选区 → 锚点 entry: capture text selection inside the rendered
+  // markdown surface. We map DOM selection back to body offsets via
+  // textContent of `.artifact-rendered` (the rendered DOM has identical
+  // visible text to artifact.body absent inline images, which CV-1
+  // markdown-only 立场 ④ guarantees).
+  const handleSelection = useCallback(() => {
+    if (!artifact || editing) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+      setSelection(null);
+      return;
+    }
+    const root = document.querySelector('.artifact-rendered');
+    if (!root) return;
+    const range = sel.getRangeAt(0);
+    if (!root.contains(range.commonAncestorContainer)) return;
+    const text = sel.toString();
+    if (!text) return;
+    // Locate the substring in artifact.body. Falls back to first occurrence;
+    // 立场 ② anchor pin is by start/end + version, so first-occurrence in
+    // current body is OK — the version_id pin freezes review context.
+    const start = artifact.body.indexOf(text);
+    if (start < 0) return;
+    setSelection({ start, end: start + text.length });
+  }, [artifact, editing]);
 
   const handleCreate = async () => {
     const title = window.prompt('Artifact 标题:', '未命名 artifact');
@@ -134,6 +215,30 @@ export default function ArtifactPanel({ channelId }: Props) {
     setEditBody(artifact.body);
     setEditing(true);
     setErrMsg(null);
+  };
+
+  // CV-2.3 立场 ① human-only entry: server enforces 403 too. Click
+  // commits the current selection as an anchor anchored to the head
+  // version (立场 ② version pin = head at create time).
+  const handleCreateAnchor = async () => {
+    if (!artifact || !selection || !isHuman) return;
+    setBusy(true);
+    setErrMsg(null);
+    try {
+      const created = await createAnchor(artifact.id, {
+        version: artifact.current_version,
+        start_offset: selection.start,
+        end_offset: selection.end,
+      });
+      setSelection(null);
+      window.getSelection()?.removeAllRanges();
+      await reloadAnchors(artifact.id);
+      setActiveAnchorId(created.id);
+    } catch (err) {
+      setErrMsg(err instanceof Error ? err.message : '创建锚点失败');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -232,10 +337,99 @@ export default function ArtifactPanel({ channelId }: Props) {
             {errMsg && <p className="artifact-err">{errMsg}</p>}
           </div>
         ) : (
-          <ArtifactBody artifact={artifact} />
+          // CV-3.3 kind switch + CV-2.3 选区监听共存: ArtifactBody 内
+          // 三分支都在外层 div 上落 className "artifact-rendered" (anchor
+          // selection 依赖该 selector 定位 markdown body), 选区 handler
+          // 包在外层 wrapper 上 — 仅 markdown 分支会触发有意义选区
+          // (立场 ④ markdown 才走 dangerouslySetInnerHTML, code/image
+          // 是 React 节点, sel.toString() 仍可工作但 anchor 入口语义
+          // 主要服务于 markdown 文档协作).
+          <div onMouseUp={handleSelection} onKeyUp={handleSelection}>
+            <ArtifactBody artifact={artifact} />
+          </div>
+        )}
+        {/* CV-2.3 立场 ① 选区 → 锚点 entry: 仅 human 看到 💬 入口
+            (DOM 反约束 — agent 视角 isHuman=false count==0). 文案锁
+            byte-identical 跟 cv-2-content-lock.md ① 字面表 (icon 💬 +
+            tooltip "评论此段"). */}
+        {!editing && isHuman && selection && (
+          <button
+            className="anchor-comment-btn"
+            data-anchor-id="entry"
+            title={ANCHOR_ENTRY_TOOLTIP}
+            disabled={busy}
+            onClick={handleCreateAnchor}
+          >
+            💬
+          </button>
         )}
         {errMsg && !editing && <p className="artifact-err">{errMsg}</p>}
       </div>
+
+      {/* CV-2.3 anchor side panel — list active threads, click → open. */}
+      {anchors.length > 0 && (
+        <aside className="artifact-anchors">
+          <h4>锚点 ({anchors.length})</h4>
+          <ul className="artifact-anchor-list">
+            {anchors.map((a) => {
+              // anchor.artifact_version_id is FK PK; we map to user-facing
+              // version int by scanning versions list (created on the same
+              // artifact; PK strictly increases with version int).
+              const av = versions.find(
+                (v) => v.created_at <= a.created_at && v.version <= artifact.current_version,
+              );
+              const anchorVersionInt = av?.version ?? artifact.current_version;
+              const isStale = anchorVersionInt < artifact.current_version;
+              const isResolved = a.resolved_at != null;
+              return (
+                <li
+                  key={a.id}
+                  className={`artifact-anchor-row${isResolved ? ' resolved' : ''}`}
+                  data-anchor-id={a.id}
+                  {...(isStale ? { 'data-anchor-stale': 'true' } : {})}
+                  onClick={() => setActiveAnchorId(a.id)}
+                >
+                  <span className="artifact-anchor-range">
+                    [{a.start_offset}-{a.end_offset}]
+                  </span>
+                  {isStale && (
+                    <span className="anchor-stale-label" data-anchor-stale="true">
+                      锚点指向 v{anchorVersionInt}, 文档已更新到 v{artifact.current_version}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </aside>
+      )}
+
+      {activeAnchorId &&
+        (() => {
+          const active = anchors.find((a) => a.id === activeAnchorId);
+          if (!active) return null;
+          const av = versions.find(
+            (v) => v.created_at <= active.created_at && v.version <= artifact.current_version,
+          );
+          const anchorVersionInt = av?.version ?? artifact.current_version;
+          // 立场 ⑦: resolve = anchor creator OR channel owner. Server
+          // enforces; we just gate the UI button.
+          const canResolve =
+            !!currentUser &&
+            (active.created_by === currentUser.id || isOwner);
+          return (
+            <AnchorThreadPanel
+              anchor={active}
+              anchorVersion={anchorVersionInt}
+              headVersion={artifact.current_version}
+              canResolve={canResolve}
+              onClose={() => setActiveAnchorId(null)}
+              onResolved={() => {
+                void reloadAnchors(artifact.id);
+              }}
+            />
+          );
+        })()}
 
       <aside className="artifact-versions">
         <h4>版本</h4>
