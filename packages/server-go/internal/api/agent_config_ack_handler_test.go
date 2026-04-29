@@ -146,3 +146,63 @@ func TestBPP3_OwnerResolver_AgentWithNilOwner(t *testing.T) {
 		t.Errorf("expected error for agent with nil OwnerID, got nil")
 	}
 }
+
+// TestBPP4_AckDispatcher_FullFlow_CrossOwnerReject — end-to-end
+// dispatcher integration: AgentOwnerResolver + AgentConfigAckHandlerImpl
+// + bpp.AckDispatcher. Exercises Dispatch → resolver.OwnerOf happy →
+// cross-owner mismatch → errAckCrossOwnerReject. Coverage value:
+// covers more bpp.AckDispatcher.Dispatch branches under realistic store.
+func TestBPP4_AckDispatcher_FullFlow_CrossOwnerReject(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	agent := testutil.CreateAgent(t, ts.URL, token, "BPP4-CrossOwner")
+	agentID := agent["id"].(string)
+
+	resolver := &api.AgentOwnerResolver{Store: s}
+	handler := &api.AgentConfigAckHandlerImpl{Store: s, Logger: nil}
+	dispatcher := bpp.NewAckDispatcher(handler, resolver)
+
+	err := dispatcher.Dispatch(bpp.AgentConfigAckFrame{
+		Type:          bpp.FrameTypeBPPAgentConfigAck,
+		AgentID:       agentID,
+		SchemaVersion: 1,
+		Status:        bpp.AgentConfigAckStatusApplied,
+	}, bpp.AckSessionContext{OwnerUserID: "different-owner-uuid"})
+	if err == nil {
+		t.Fatalf("expected cross-owner reject error, got nil")
+	}
+	if !bpp.IsAckCrossOwnerReject(err) {
+		t.Errorf("expected errAckCrossOwnerReject, got %v", err)
+	}
+}
+
+// TestBPP4_AckDispatcher_FullFlow_HappyPath — owner matches, applied
+// status, handler logs (covers full happy path through resolver +
+// handler in one shot).
+func TestBPP4_AckDispatcher_FullFlow_HappyPath(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	agent := testutil.CreateAgent(t, ts.URL, token, "BPP4-Happy")
+	agentID := agent["id"].(string)
+
+	owner, _ := s.GetUserByEmail("owner@test.com")
+
+	var buf bytes.Buffer
+	resolver := &api.AgentOwnerResolver{Store: s}
+	handler := &api.AgentConfigAckHandlerImpl{Store: s, Logger: bppNewSlog(&buf)}
+	dispatcher := bpp.NewAckDispatcher(handler, resolver)
+
+	err := dispatcher.Dispatch(bpp.AgentConfigAckFrame{
+		Type:          bpp.FrameTypeBPPAgentConfigAck,
+		AgentID:       agentID,
+		SchemaVersion: 7,
+		Status:        bpp.AgentConfigAckStatusApplied,
+		AppliedAt:     1700000000000,
+	}, bpp.AckSessionContext{OwnerUserID: owner.ID})
+	if err != nil {
+		t.Errorf("expected nil err on happy path, got %v", err)
+	}
+	if !strings.Contains(buf.String(), "bpp.agent_config_ack_applied") {
+		t.Errorf("missing handler log: %q", buf.String())
+	}
+}

@@ -24,6 +24,14 @@ type PluginConn struct {
 	done    chan struct{}
 	alive   bool
 
+	// lastSeenAt: BPP-4.1 watchdog liveness — updated on every inbound
+	// frame (ping/pong/api_request/api_response/response/BPP frame).
+	// hub.SnapshotPluginLastSeen() reads this for the bpp watchdog.
+	// Mutex-protected because the watchdog ticker reads concurrently
+	// with the read loop's writes.
+	lastSeenMu sync.Mutex
+	lastSeenAt time.Time
+
 	pendingMu sync.Mutex
 	pending   map[string]chan PluginResponse
 }
@@ -61,14 +69,15 @@ func HandlePlugin(hub *Hub) http.HandlerFunc {
 		}
 
 		pc := &PluginConn{
-			hub:     hub,
-			conn:    conn,
-			agentID: user.ID,
-			apiKey:  apiKey,
-			send:    make(chan []byte, sendBufSize),
-			done:    make(chan struct{}),
-			alive:   true,
-			pending: make(map[string]chan PluginResponse),
+			hub:        hub,
+			conn:       conn,
+			agentID:    user.ID,
+			apiKey:     apiKey,
+			send:       make(chan []byte, sendBufSize),
+			done:       make(chan struct{}),
+			alive:      true,
+			lastSeenAt: time.Now(),
+			pending:    make(map[string]chan PluginResponse),
 		}
 
 		hub.RegisterPlugin(user.ID, pc)
@@ -97,6 +106,7 @@ func HandlePlugin(hub *Hub) http.HandlerFunc {
 			}
 
 			pc.alive = true
+			pc.touchLastSeen()
 
 			switch msg.Type {
 			case "ping":
@@ -141,6 +151,23 @@ func HandlePlugin(hub *Hub) http.HandlerFunc {
 			}
 		}
 	}
+}
+
+// touchLastSeen marks the connection alive at time.Now() for the BPP-4
+// watchdog (hub.SnapshotPluginLastSeen consumer). Mutex-guarded for
+// concurrent watchdog reads.
+func (pc *PluginConn) touchLastSeen() {
+	pc.lastSeenMu.Lock()
+	pc.lastSeenAt = time.Now()
+	pc.lastSeenMu.Unlock()
+}
+
+// LastSeen returns the last inbound-frame timestamp under lock.
+// Exported for hub.SnapshotPluginLastSeen consumption only.
+func (pc *PluginConn) LastSeen() time.Time {
+	pc.lastSeenMu.Lock()
+	defer pc.lastSeenMu.Unlock()
+	return pc.lastSeenAt
 }
 
 func (pc *PluginConn) handleAPIResponse(id string, data json.RawMessage) {

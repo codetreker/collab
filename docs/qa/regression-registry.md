@@ -443,6 +443,22 @@
 | REG-AL2A-007 | al-2a-content-lock — client SPA AgentConfigPanel SSOT form 编辑 7 字段 byte-identical (跟 server allowedConfigKeys 同源: name/avatar/prompt/model/capabilities/enabled/memory_ref) + 失败 toast `agent 配置保存失败, 请重试` byte-identical (跟 server const agentConfigSaveErrorMsg 同源) + data-agent-config-* DOM attr 锁 + 反约束 runtime-only 字段不渲染 form (UI + server 双层 fail-closed) + 不订阅 ws push (蓝图 §1.5 走轮询 reload, BPP frame 留 AL-2b) | `packages/client/src/__tests__/al-2a-content-lock.test.ts` 8 cases (① toast 字面 + ② allowedConfigKeys 7 字段 + ③ data-agent-config-field 二态 + ④ DOM root+version+save action + ⑤ API endpoint path 跟 server 同源 + 反约束 runtime-only 不渲染 + 反约束 不订阅 push frame + 反约束 toast 同义词漂移 0 hit) PASS (#447 8110797) | 战马A / 野马 / 烈马 | #447 (8110797) | 🟢 active |
 ### BPP-2 协议抽象语义层 (4 件套 v0 #460 land + PR #485 整 milestone 一 PR — BPP-2.1 dispatch + BPP-2.2 task lifecycle + BPP-2.3 agent_config_update 三段一次合, 17 🟢)
 
+### BPP-4 失联检测 (heartbeat watchdog 30s + dead-letter audit log, 一 milestone 一 PR ✅, 9 🟢)
+
+> BPP-4 范围 = §1 watchdog (30s 阈值锁 + 状态翻转 AL-1b error/network_unreachable 复用 AL-1a 6-dict 第 9 处) + §2 dead-letter audit log (server→plugin push 失败 log warn 不入持久队列, RT-1.3 cursor replay 兜底, 5 字段 schema byte-identical 跟 HB-1/HB-2 audit 三处同源) + §3 反约束 (cancel/abort 0 hit + heartbeat 60+ 0 hit + pendingAcks/retryQueue 0 hit + admin god-mode 0 hit + 7th reason 0 hit). 不开新 BPP envelope frame (whitelist 不变, 复用 HeartbeatFrame 做触发源).
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-BPP4-001 | bpp-4.md §1.1 + content-lock §1.① + 蓝图 BPP-4 module acceptance "kill plugin → 30s" — 单源阈值锁 BPP_HEARTBEAT_TIMEOUT_SECONDS == 30 | `internal/bpp/heartbeat_watchdog_test.go::TestBPP4_Watchdog_ThresholdConstant` | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+| REG-BPP4-002 | bpp-4.md §1.2 + stance §1 立场 ① — watchdog 触发路径 = AgentErrorSink.SetError, 不下 cancel/abort frame; reason byte-identical 跟 AL-1a 6-dict (BPP-4 = 第 9 处) | `TestBPP4_Watchdog_TriggersErrorOn30sTimeout` (fake clock 31s → SetError + reason==network_unreachable) | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+| REG-BPP4-003 | bpp-4.md §1.3 — 重连 (lastSeenAt 刷新) → markedErr 清, 下次 disconnect 重新 flip | `TestBPP4_Watchdog_ReconnectClearsMarked` | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+| REG-BPP4-004 | bpp-4.md §1 + 多 plugin 隔离 — 多 agent 一个 stale 不影响 fresh | `TestBPP4_Watchdog_MultiPluginIsolated` + `TestBPP4_Watchdog_NotSpammyOnRepeatedScan` (markedErr 防重复) | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+| REG-BPP4-005 | bpp-4.md §1.4 + content-lock §1.③ — log key `bpp.heartbeat_timeout` byte-identical + audit fields | `TestBPP4_Watchdog_LogKeyOnTimeout` | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+| REG-BPP4-006 | bpp-4.md §2.1 + content-lock §1.③ — dead-letter log key `bpp.frame_dropped_plugin_offline` byte-identical (改 = 改三处单测锁) | `dead_letter_test.go::TestBPP4_DeadLetter_LogKeyByteIdentical` | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+| REG-BPP4-007 | bpp-4.md §2.2 + stance §3 — DeadLetterAuditEntry 5 字段 (actor/action/target/when/scope) byte-identical 跟 HB-1/HB-2 audit 三处同源 | `TestBPP4_DeadLetter_AuditSchema5FieldsByteIdentical` (reflect 字段名 + JSON tag 锁) | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+| REG-BPP4-008 | bpp-4.md §4.3 + stance §3 — 反向断言 retry-queue 类标识符 0 hit (best-effort 立场, 防偷偷下沉 v2 retry); AST scan internal/bpp/ 非 _test.go 源 | `TestBPP4_NoRetryQueueInBPPPackage` (AST ident scan, forbidden tokens: pendingAcks/retryQueue/deadLetterQueue/ackTimeout) | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+| REG-BPP4-009 | bpp-4.md §2.3 + stance §3 + 立场 ⑥ — bpp envelope 不动 (whitelist 数量不变, BPP-4 仅复用 HeartbeatFrame 做触发源, 不开 cancel/abort frame) | `frame_schemas_test.go::TestBPPEnvelopeFrameWhitelist` whitelist count 不变 (BPP-1 #304 reflect lint 自动覆盖) | 战马A / 烈马 | feat/bpp-4 | 🟢 active |
+
 ### BPP-3.1 permission_denied frame (server→plugin, 一 milestone 一 PR ✅, 6 🟢)
 
 > BPP-3.1 v1 范围 = 第 13 frame `permission_denied` server→plugin (蓝图 auth-permissions.md §2 不变量 "Permission denied 走 BPP" + §4.1 row 字面). 8 字段 byte-identical 跟 AP-1 #493 abac.go 403 body (跨 PR drift 守, 双向 grep). PushPermissionDenied hub method (跟 PushAgentConfigUpdate 同模式 + cursor 共序). PermissionDeniedPusher interface seam — AP-1 abac.go::HasCapability false 路径 wiring 留 1-line follow-up commit (AP-1 + BPP-3.1 任一 merge 后接).

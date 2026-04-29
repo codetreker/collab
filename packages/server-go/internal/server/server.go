@@ -73,8 +73,15 @@ func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	pfd.Register(bpp.FrameTypeBPPAgentConfigAck, bpp.NewAckFrameAdapter(ackDispatcher))
 	hub.SetPluginFrameRouter(&pluginFrameRouterAdapter{pfd: pfd})
 
+	// BPP-4.1 heartbeat watchdog: 30s plugin liveness threshold, flips
+	// stale agents to error/network_unreachable via agent.Tracker
+	// (AL-1a 6-dict 第 9 处单测锁链承袭). Boot-only wire-up; nil-safe in
+	// tests via separate (NewTestServer doesn't invoke this path).
+	watchdog := bpp.NewHeartbeatWatchdog(&hubLivenessAdapter{hub}, srv.agentTracker, logger)
+
 	ctx := context.Background()
 	go hub.StartHeartbeat(ctx)
+	go watchdog.Run(ctx)
 
 	return srv
 }
@@ -500,4 +507,16 @@ type pluginFrameRouterAdapter struct {
 
 func (a *pluginFrameRouterAdapter) Route(raw []byte, sess ws.PluginSessionContext) (bool, error) {
 	return a.pfd.Route(raw, bpp.PluginSessionContext{OwnerUserID: sess.OwnerUserID})
+}
+
+// hubLivenessAdapter wires *ws.Hub.SnapshotPluginLastSeen into the
+// bpp.PluginLivenessSource interface (跟 pluginFrameRouterAdapter 同模式
+// — internal/ws 不 import internal/bpp; 接口名差异 SnapshotPluginLastSeen
+// vs SnapshotLastSeen 用 adapter 桥).
+type hubLivenessAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubLivenessAdapter) SnapshotLastSeen() map[string]time.Time {
+	return a.hub.SnapshotPluginLastSeen()
 }

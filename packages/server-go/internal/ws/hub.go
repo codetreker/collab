@@ -427,6 +427,22 @@ func (h *Hub) UnregisterPlugin(agentID string) {
 	delete(h.plugins, agentID)
 }
 
+// SnapshotPluginLastSeen returns a copy of the (agent_id → lastSeenAt)
+// map for the BPP-4 watchdog (bpp.PluginLivenessSource interface).
+// Returns an empty map when no plugins are registered.
+//
+// Stable copy under hub.mu read lock; safe for concurrent watchdog
+// ticker invocations.
+func (h *Hub) SnapshotPluginLastSeen() map[string]time.Time {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	out := make(map[string]time.Time, len(h.plugins))
+	for agentID, pc := range h.plugins {
+		out[agentID] = pc.LastSeen()
+	}
+	return out
+}
+
 func (h *Hub) GetPlugin(agentID string) *PluginConn {
 	h.mu.RLock()
 	defer h.mu.RUnlock()

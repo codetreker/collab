@@ -40,6 +40,9 @@
 package ws
 
 import (
+	"strconv"
+	"time"
+
 	"borgee-server/internal/bpp"
 )
 
@@ -96,6 +99,20 @@ func (h *Hub) PushAgentConfigUpdate(
 	if pc == nil {
 		// Plugin offline — frame dropped. Per 蓝图 §1.5 字面 "runtime 不
 		// 缓存", reconnect time triggers GET /agents/:id/config pull.
+		//
+		// BPP-4.2 dead-letter audit log: log warn `bpp.frame_dropped_plugin_offline`
+		// with 5-field schema byte-identical 跟 HB-1/HB-2 audit (acceptance
+		// §2.2 + content-lock §1.③). 反约束: **不**入持久队列, 不挂 timer
+		// 重发 — RT-1.3 #296 cursor replay 兜底 (plugin 重连后主动拉缺失
+		// frame). Acceptance §4.3 反向 grep `pendingAcks|retryQueue|
+		// deadLetterQueue` 0 hit 守门.
+		bpp.LogFrameDroppedPluginOffline(h.logger, bpp.DeadLetterAuditEntry{
+			Actor:  "server",
+			Action: "frame_drop",
+			Target: agentID,
+			When:   createdAt,
+			Scope:  bpp.FrameTypeBPPAgentConfigUpdate + ":cursor=" + strconv.FormatInt(cur, 10),
+		})
 		return cur, false
 	}
 
@@ -115,11 +132,12 @@ func (h *Hub) PushAgentConfigUpdate(
 // tests don't false-positive.
 func NewTestPluginConn(agentID string) *PluginConn {
 	return &PluginConn{
-		agentID: agentID,
-		send:    make(chan []byte, sendBufSize),
-		done:    make(chan struct{}),
-		alive:   true,
-		pending: make(map[string]chan PluginResponse),
+		agentID:    agentID,
+		send:       make(chan []byte, sendBufSize),
+		done:       make(chan struct{}),
+		alive:      true,
+		lastSeenAt: time.Now(),
+		pending:    make(map[string]chan PluginResponse),
 	}
 }
 
