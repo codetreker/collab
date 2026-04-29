@@ -178,11 +178,15 @@ func (s *Server) SetupRoutes() {
 	// CV-1.2 artifacts (canvas-vision §0; channel-scoped artifact CRUD +
 	// commit + rollback + WS push). Pusher routes to ws.Hub which owns
 	// the RT-1.1 ArtifactUpdated frame envelope (#290 byte-identical).
+	// IterationPusher (CV-4.2 立场 ② commit 单源) routes the
+	// running→completed transition push when commit carries
+	// `?iteration_id=` query.
 	artifactHandler := &api.ArtifactHandler{
-		Store:  s.store,
-		Logger: s.logger,
-		Hub:    broadcaster,
-		Pusher: &hubArtifactAdapter{s.hub},
+		Store:           s.store,
+		Logger:          s.logger,
+		Hub:             broadcaster,
+		Pusher:          &hubArtifactAdapter{s.hub},
+		IterationPusher: &hubIterationAdapter{s.hub},
 	}
 	artifactHandler.RegisterRoutes(s.mux, authMw)
 
@@ -196,6 +200,17 @@ func (s *Server) SetupRoutes() {
 		Pusher: &hubAnchorAdapter{s.hub},
 	}
 	anchorHandler.RegisterRoutes(s.mux, authMw)
+
+	// CV-4.2 iterations (canvas-vision §1.4 + §1.5; owner-only iterate
+	// orchestration + state machine + WS push). Pusher routes to ws.Hub
+	// which owns the IterationStateChanged frame envelope (9 字段
+	// byte-identical 跟 spec #365 字面).
+	iterationHandler := &api.IterationHandler{
+		Store:  s.store,
+		Logger: s.logger,
+		Pusher: &hubIterationAdapter{s.hub},
+	}
+	iterationHandler.RegisterRoutes(s.mux, authMw)
 
 	// WebSocket endpoints
 	s.mux.HandleFunc("/ws", ws.HandleClient(s.hub))
@@ -362,6 +377,26 @@ func (a *hubAnchorAdapter) PushAnchorCommentAdded(
 	createdAt int64,
 ) (cursor int64, sent bool) {
 	return a.hub.PushAnchorCommentAdded(anchorID, commentID, artifactID, artifactVersionID, channelID, authorID, authorKind, createdAt)
+}
+
+// hubIterationAdapter exposes ws.Hub.PushIterationStateChanged through the
+// api.IterationStatePusher interface so internal/api stays free of the
+// internal/ws import (mirrors hubAnchorAdapter pattern). CV-4.2 立场 ②
+// commit 单源 — same hub instance routes commit → completed push.
+type hubIterationAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubIterationAdapter) PushIterationStateChanged(
+	iterationID string,
+	artifactID string,
+	channelID string,
+	state string,
+	errorReason string,
+	createdArtifactVersionID int64,
+	completedAt int64,
+) (cursor int64, sent bool) {
+	return a.hub.PushIterationStateChanged(iterationID, artifactID, channelID, state, errorReason, createdArtifactVersionID, completedAt)
 }
 
 type hubPluginAdapter struct {
