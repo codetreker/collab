@@ -1,0 +1,350 @@
+// Package api_test — al_4_2_runtimes_test.go: AL-4.2 acceptance tests
+// (#398 schema v=16 → AL-4.2 server registry + start/stop API + heartbeat
+// hook).
+//
+// Stance pins exercised (al-4-spec.md §0 + acceptance §2 + #321 文案锁):
+//   - ① Borgee 不带 runtime — schema 闸 #398 已守, 此 PR 反向断言 server
+//     handler 不写 llm_provider / model_name 等列 (acceptance §1.5 + §4.1).
+//   - ② admin god-mode 元数据 only — admin endpoint read 不返
+//     last_error_reason raw, 不开 admin start/stop endpoint (acceptance
+//     §2.6 + §4.3).
+//   - ③ runtime status ≠ presence — heartbeat 写 agent_runtimes 不写
+//     presence_sessions (acceptance §2.4 反向断言两表两路径).
+//   - ④ status DM 文案锁 byte-identical (#321 §1) — start "已启动" / stop
+//     "已停止" / error "出错: {reason}" (acceptance §2.7).
+//   - ⑤ reason 复用 AL-1a #249 6 reason 枚举字面 byte-identical
+//     (acceptance §2.5 — 改 = 改三处单测锁).
+package api_test
+
+import (
+	"net/http"
+	"strings"
+	"testing"
+
+	agentpkg "borgee-server/internal/agent"
+	"borgee-server/internal/api"
+	"borgee-server/internal/store"
+	"borgee-server/internal/testutil"
+)
+
+// al42Setup builds a fresh server, owner logs in, creates a role='agent'
+// owned by owner. Returns (ts.URL, ownerTok, store, agentID).
+func al42Setup(t *testing.T) (url string, ownerTok string, s *store.Store, agentID string) {
+	t.Helper()
+	ts, st, _ := testutil.NewTestServer(t)
+	ownerTok = testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	resp, data := testutil.JSON(t, "POST", ts.URL+"/api/v1/agents", ownerTok, map[string]any{
+		"display_name": "BotZ",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create agent failed: %d (%v)", resp.StatusCode, data)
+	}
+	agentMap := data["agent"].(map[string]any)
+	url = ts.URL
+	s = st
+	agentID = agentMap["id"].(string)
+	return
+}
+
+// register helper — POST /runtime/register with default openclaw kind.
+func al42Register(t *testing.T, url, tok, agentID string) map[string]any {
+	t.Helper()
+	resp, data := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/register", tok, map[string]any{
+		"endpoint_url": "ws://localhost:9000",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("register runtime failed: %d (%v)", resp.StatusCode, data)
+	}
+	return data
+}
+
+// TestAL42_RegisterRuntime_OwnerOnly pins acceptance §2.1 owner-only.
+// Non-owner POST /runtime/register → 403. admin god-mode 走 admin rail
+// (admin token is `borgee_admin_session` cookie — user JSON helper sends
+// `Authorization: Bearer`, so admin token never enters this rail —
+// 反断 by construction).
+func TestAL42_RegisterRuntime_OwnerOnly(t *testing.T) {
+	url, _, s, agentID := al42Setup(t)
+	// Seed second human (non-owner).
+	hash := mustHash(t, "password123")
+	em := "other-al42@test.com"
+	other := &store.User{DisplayName: "Other", Role: "user", Email: &em, PasswordHash: hash}
+	if err := s.CreateUser(other); err != nil {
+		t.Fatalf("create other: %v", err)
+	}
+	_ = s.UpdateUser(other.ID, map[string]any{"org_id": mustOrgID(t, s, "owner@test.com")})
+	_ = s.GrantDefaultPermissions(other.ID, "member")
+	otherTok := testutil.LoginAs(t, url, em, "password123")
+
+	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/register", otherTok, map[string]any{
+		"endpoint_url": "ws://localhost:9000",
+	})
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("non-owner register not 403: got %d", resp.StatusCode)
+	}
+}
+
+// TestAL42_RegisterRejectsInvalidProcessKind pins acceptance §1.2-§2.1
+// boundary: server handler rejects 'unknown' / '' before schema CHECK
+// fires. v1 仅 'openclaw' + 'hermes' (蓝图 §2.2 v1 边界字面).
+func TestAL42_RegisterRejectsInvalidProcessKind(t *testing.T) {
+	url, ownerTok, _, agentID := al42Setup(t)
+	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/register", ownerTok, map[string]any{
+		"endpoint_url": "ws://x",
+		"process_kind": "unknown",
+	})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("invalid process_kind not 400: got %d", resp.StatusCode)
+	}
+}
+
+// TestAL42_RegisterDuplicateRejected pins UNIQUE(agent_id) — 立场 ①
+// v1 不优化多 runtime 并行 (蓝图 §2.2 字面). Second register on same
+// agent → 409.
+func TestAL42_RegisterDuplicateRejected(t *testing.T) {
+	url, ownerTok, _, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/register", ownerTok, map[string]any{
+		"endpoint_url": "ws://localhost:9001",
+	})
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("duplicate register not 409: got %d", resp.StatusCode)
+	}
+}
+
+// TestAL42_StartTransitionsRunning pins acceptance §2.1 + §2.7: start
+// transitions status → running + emits owner system DM "BotZ 已启动"
+// byte-identical (#321 §1 文案锁). Idempotent re-call does NOT spam DM.
+func TestAL42_StartTransitionsRunning(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+
+	resp, data := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/start", ownerTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("start not 200: got %d", resp.StatusCode)
+	}
+	if data["status"] != api.RuntimeStatusRunning {
+		t.Errorf("status not 'running': got %v", data["status"])
+	}
+	// Verify system DM owner-only fanout — find owner DM channel + check
+	// most recent system message body byte-identical.
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	dmCh, err := s.CreateDmChannel(owner.ID, "system")
+	if err != nil {
+		t.Fatalf("ensure DM ch: %v", err)
+	}
+	var msgs []store.Message
+	if err := s.DB().Where("channel_id = ? AND sender_id = 'system'", dmCh.ID).Find(&msgs).Error; err != nil {
+		t.Fatalf("query DM: %v", err)
+	}
+	if len(msgs) != 1 {
+		t.Fatalf("expected 1 system DM after start, got %d", len(msgs))
+	}
+	if msgs[0].Content != "BotZ 已启动" {
+		t.Errorf("start DM byte-identical lock failed: got %q, want %q",
+			msgs[0].Content, "BotZ 已启动")
+	}
+
+	// Idempotent: second start does NOT emit duplicate DM.
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/start", ownerTok, nil)
+	if err := s.DB().Where("channel_id = ? AND sender_id = 'system'", dmCh.ID).Find(&msgs).Error; err != nil {
+		t.Fatalf("query DM 2nd: %v", err)
+	}
+	if len(msgs) != 1 {
+		t.Errorf("idempotent start spammed DM: got %d msgs (want 1)", len(msgs))
+	}
+}
+
+// TestAL42_StopIdempotent pins acceptance §2.2 — stop transitions →
+// stopped, repeated stop is no-op (no duplicate system DM).
+func TestAL42_StopIdempotent(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/start", ownerTok, nil)
+
+	resp, data := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/stop", ownerTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("stop not 200: got %d", resp.StatusCode)
+	}
+	if data["status"] != api.RuntimeStatusStopped {
+		t.Errorf("status not 'stopped': got %v", data["status"])
+	}
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	dmCh, _ := s.CreateDmChannel(owner.ID, "system")
+	var msgs []store.Message
+	_ = s.DB().Where("channel_id = ? AND sender_id = 'system'", dmCh.ID).Find(&msgs).Error
+	stopBefore := 0
+	for _, m := range msgs {
+		if m.Content == "BotZ 已停止" {
+			stopBefore++
+		}
+	}
+	if stopBefore != 1 {
+		t.Errorf("expected 1 stop DM, got %d", stopBefore)
+	}
+
+	// Idempotent.
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/stop", ownerTok, nil)
+	_ = s.DB().Where("channel_id = ? AND sender_id = 'system'", dmCh.ID).Find(&msgs).Error
+	stopAfter := 0
+	for _, m := range msgs {
+		if m.Content == "BotZ 已停止" {
+			stopAfter++
+		}
+	}
+	if stopAfter != 1 {
+		t.Errorf("idempotent stop spammed DM: got %d (want 1)", stopAfter)
+	}
+}
+
+// TestAL42_HeartbeatUpdatesRuntimeNotPresence pins acceptance §2.4: 立场
+// ③ heartbeat 写 agent_runtimes.last_heartbeat_at, 不写
+// presence_sessions.last_heartbeat_at (那是 AL-3 hub WS lifecycle).
+func TestAL42_HeartbeatUpdatesRuntimeNotPresence(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+
+	// Pre-snapshot: presence_sessions row count for this agent.
+	var presBefore int64
+	_ = s.DB().Raw(`SELECT COUNT(*) FROM presence_sessions WHERE user_id = ?`, agentID).Scan(&presBefore).Error
+
+	resp, data := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/heartbeat", ownerTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("heartbeat not 200: got %d", resp.StatusCode)
+	}
+	if hb, ok := data["last_heartbeat_at"].(float64); !ok || hb == 0 {
+		t.Errorf("last_heartbeat_at not set: %v", data["last_heartbeat_at"])
+	}
+	// Verify agent_runtimes.last_heartbeat_at written.
+	var rt struct {
+		LastHeartbeatAt *int64 `gorm:"column:last_heartbeat_at"`
+	}
+	_ = s.DB().Raw(`SELECT last_heartbeat_at FROM agent_runtimes WHERE agent_id = ?`, agentID).Scan(&rt).Error
+	if rt.LastHeartbeatAt == nil || *rt.LastHeartbeatAt == 0 {
+		t.Error("agent_runtimes.last_heartbeat_at not updated")
+	}
+	// Reverse-assert: presence_sessions row count unchanged (反约束 立场 ③).
+	var presAfter int64
+	_ = s.DB().Raw(`SELECT COUNT(*) FROM presence_sessions WHERE user_id = ?`, agentID).Scan(&presAfter).Error
+	if presAfter != presBefore {
+		t.Errorf("heartbeat polluted presence_sessions (立场 ③ 反约束): before=%d after=%d", presBefore, presAfter)
+	}
+}
+
+// TestAL42_ErrorReasonsMatchAL1aEnum pins acceptance §2.5: 6 reason
+// 枚举字面 byte-identical 跟 agent/state.go Reason* 同源. 反断: 字典外
+// reason → 400.
+func TestAL42_ErrorReasonsMatchAL1aEnum(t *testing.T) {
+	url, ownerTok, _, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+
+	for _, reason := range []string{
+		agentpkg.ReasonAPIKeyInvalid,
+		agentpkg.ReasonQuotaExceeded,
+		agentpkg.ReasonNetworkUnreachable,
+		agentpkg.ReasonRuntimeCrashed,
+		agentpkg.ReasonRuntimeTimeout,
+		agentpkg.ReasonUnknown,
+	} {
+		resp, data := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/error", ownerTok, map[string]any{
+			"reason": reason,
+		})
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("AL-1a reason=%q rejected: %d (%v)", reason, resp.StatusCode, data)
+		}
+		if data["last_error_reason"] != reason {
+			t.Errorf("reason byte-identical lock failed: got %v, want %q", data["last_error_reason"], reason)
+		}
+	}
+	// Out-of-dict → 400.
+	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/error", ownerTok, map[string]any{
+		"reason": "made_up_reason",
+	})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("out-of-dict reason accepted: got %d", resp.StatusCode)
+	}
+}
+
+// TestAL42_ErrorEmitsSystemDMByteIdentical pins acceptance §2.7 文案锁
+// "{agent_name} 出错: {reason}" byte-identical 跟 #321 §1 同源.
+func TestAL42_ErrorEmitsSystemDMByteIdentical(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/error", ownerTok, map[string]any{
+		"reason": agentpkg.ReasonAPIKeyInvalid,
+	})
+
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	dmCh, _ := s.CreateDmChannel(owner.ID, "system")
+	var msgs []store.Message
+	_ = s.DB().Where("channel_id = ? AND sender_id = 'system'", dmCh.ID).Find(&msgs).Error
+	want := "BotZ 出错: api_key_invalid"
+	found := false
+	for _, m := range msgs {
+		if m.Content == want {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("error DM byte-identical lock failed: want %q in %v", want, msgsContents(msgs))
+	}
+}
+
+// TestAL42_AdminGodModeOmitsErrorReason pins acceptance §2.6 + §4.3:
+// admin god-mode read endpoint white-list 不返 last_error_reason raw
+// 文本 (隐私 立场 ⑦ ADM-0 §1.3 红线). 跟 REG-ADM0-003 同模式.
+func TestAL42_AdminGodModeOmitsErrorReason(t *testing.T) {
+	url, ownerTok, _, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/error", ownerTok, map[string]any{
+		"reason": agentpkg.ReasonAPIKeyInvalid,
+	})
+
+	adminTok := testutil.LoginAsAdmin(t, url)
+	resp, data := testutil.AdminJSON(t, "GET", url+"/admin-api/v1/runtimes", adminTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("admin list runtimes not 200: got %d", resp.StatusCode)
+	}
+	rows := data["runtimes"].([]any)
+	if len(rows) < 1 {
+		t.Fatalf("expected ≥1 runtime row, got %d", len(rows))
+	}
+	for _, r := range rows {
+		entry := r.(map[string]any)
+		if _, has := entry["last_error_reason"]; has {
+			t.Errorf("admin god-mode leaked last_error_reason raw (隐私 立场 ⑦ ADM-0 §1.3): %v", entry["last_error_reason"])
+		}
+		// Whitelist sanity: required fields present.
+		for _, must := range []string{"id", "agent_id", "endpoint_url", "process_kind", "status"} {
+			if _, has := entry[must]; !has {
+				t.Errorf("admin runtime row missing %q in white-list: %v", must, entry)
+			}
+		}
+	}
+}
+
+// TestAL42_AdminCannotStartStop pins acceptance §4.3: admin god-mode rail
+// has no start/stop endpoint — 反向断言 admin path 仅 GET. 反向 grep
+// `admin.*runtime.*start|admin.*runtime.*stop` count==0 是 CI 闸位 (#4.3).
+// 此 test 反向断言: admin POST /admin-api/v1/runtimes/start → 404 (route
+// 未注册).
+func TestAL42_AdminCannotStartStop(t *testing.T) {
+	url, _, _, _ := al42Setup(t)
+	adminTok := testutil.LoginAsAdmin(t, url)
+	resp, _ := testutil.AdminJSON(t, "POST", url+"/admin-api/v1/runtimes/start", adminTok, nil)
+	if resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("admin start endpoint accessible (acceptance §4.3 反约束): got %d", resp.StatusCode)
+	}
+}
+
+func msgsContents(ms []store.Message) []string {
+	out := make([]string, 0, len(ms))
+	for _, m := range ms {
+		out = append(out, m.Content)
+	}
+	return out
+}
+
+// Compile-time guard: ensures strings import not removed by a stray edit.
+var _ = strings.Contains

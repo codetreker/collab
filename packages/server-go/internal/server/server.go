@@ -138,6 +138,11 @@ func (s *Server) SetupRoutes() {
 	adminMw := admin.RequireAdmin(s.store.DB(), nil)
 	adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
 	adminHandler.RegisterRoutes(s.mux, adminMw)
+	// AL-4.2 admin god-mode metadata read for agent_runtimes (acceptance
+	// §2.6 — read-only white-list, last_error_reason omitted; ADM-0 §1.3
+	// rail isolation + 立场 ⑦ same source).
+	adminRuntimeHandler := &api.AdminRuntimeHandler{Store: s.store, Logger: s.logger}
+	adminRuntimeHandler.RegisterRoutes(s.mux, adminMw)
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
@@ -146,6 +151,13 @@ func (s *Server) SetupRoutes() {
 	agentStateAdapter := &agentRuntimeAdapter{hub: s.hub, tracker: s.agentTracker}
 	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}, State: agentStateAdapter}
 	agentHandler.RegisterRoutes(s.mux, authMw)
+
+	// AL-4.2 runtime registry user-rail (acceptance §2.1-§2.5 + §2.7) —
+	// owner-only via inline OwnerID check (跟 agents.go handleDeleteAgent /
+	// handleRotateAPIKey 同模式). admin god-mode 不入此 rail (admin path
+	// 只 read 元数据 via AdminRuntimeHandler above).
+	runtimeHandler := &api.RuntimeHandler{Store: s.store, Logger: s.logger}
+	runtimeHandler.RegisterRoutes(s.mux, authMw)
 
 	// Agent invitations (CM-4.1 + RT-0 #40 push wiring)
 	agentInvitationHandler := &api.AgentInvitationHandler{Store: s.store, Logger: s.logger, Hub: s.hub}
