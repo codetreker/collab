@@ -135,8 +135,8 @@ test.describe('CHN-4 follow-up — 反约束兜底 + 跨 org 隔离', () => {
     await page.goto(`${clientURL()}/`);
     await expect(page.locator('.sidebar-title')).toBeVisible();
 
-    // wait for sidebar to render DM list (CHN-2.2 #406 既有路径).
-    await page.waitForTimeout(500);
+    // CHN-4 wrapper: 删 waitForTimeout(500) 死等 → 用 Playwright auto-retry
+    // (sidebar 渲染 DM list 后 .sortable-handle count==0, 5s retry 替死等).
 
     // 反向断言: DM 行 sidebar 不挂 drag handle (SortableChannelItem 不服务 DM).
     // CHN-3.3 SortableChannelItem.tsx 字面: 仅 channel rows 渲染 .sortable-handle.
@@ -188,9 +188,12 @@ test.describe('CHN-4 follow-up — 反约束兜底 + 跨 org 隔离', () => {
     const page = await ctx.newPage();
     await page.goto(`${clientURL()}/`);
     await expect(page.locator('.sidebar-title')).toBeVisible();
-    await page.waitForTimeout(500);
-    const visible = await page.locator('.channel-name', { hasText: chName }).count();
-    expect(visible, `userB sidebar 不应见 ${chName}`).toBe(0);
+    // CHN-4 wrapper: 删 waitForTimeout — Playwright toHaveCount auto-retry 5s
+    // 替死等. 跟 RT-1.2 latency CI 时序敏感修法同精神.
+    await expect(
+      page.locator('.channel-name', { hasText: chName }),
+      `userB sidebar 不应见 ${chName}`,
+    ).toHaveCount(0);
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, 'g3.x-chn4-followup-cross-org-isolation.png'),
       fullPage: false,

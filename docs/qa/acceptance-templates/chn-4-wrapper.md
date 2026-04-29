@@ -14,21 +14,21 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| `packages/e2e/fixtures/chn-4-fixtures.ts` 存在 + REST-driven seed (auth + DM + workspace channel) | exists + import | 战马D / 烈马 | TBD — fixture file + spec import |
-| `chn-4-collab-skeleton.spec.ts` 内 `waitForTimeout` count==0 + Playwright auto-retry (`toHaveCount` / `toBeVisible`) | 反 grep + e2e | 战马D / 烈马 | TBD — `chn-4-collab-skeleton.spec.ts` 重写 + 反 grep PASS |
+| `packages/e2e/fixtures/chn-4-fixtures.ts` 存在 + REST-driven seed (auth + DM + workspace channel) | exists + import | 战马D / 烈马 | ✅ — `chn-4-fixtures.ts` 86 行 + `seedCHN4Fixtures()` exported (owner register + agent + DM + public channel REST 单 entry) |
+| `chn-4-collab-skeleton.spec.ts` + `chn-4-followup.spec.ts` 内 `waitForTimeout` count==0 + Playwright auto-retry (`toHaveCount` / `toBeVisible`) | 反 grep + e2e | 战马D / 烈马 | ✅ — 3 处 `waitForTimeout(500)` 全删, 改 `expect(...).toHaveCount(0)` Playwright 默认 5s retry 替代; 反 grep 0 hit (除注释) |
 
 ### CHN-4.2 server-side 反约束 grep audit (PERF-AST-LINT #506 复用)
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| `internal/api/chn_4_grep_audit_test.go` 用 `astscan.AssertNoForbiddenIdentifiers` 验 7 源 byte-identical 锁不破 | server unit | 战马D / 烈马 | TBD — astscan helper 复用 + 7 源 forbidden id 反向断言 PASS |
+| `internal/api/chn_4_grep_audit_test.go` 验 7 源 byte-identical 锁不破 | server unit | 战马D / 烈马 | ✅ — `TestCHN4_DMViewHasNoWorkspaceTab` (4 forbidden id 反向断言) + `TestCHN4_NoDMSyncBypassEndpoint` (3 forbidden path 反向断言) PASS. Note: #506 astscan helper 合入后 follow-up 改调 helper (REG-CHN4-004) |
 
 ### CHN-4.3 closure
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| DM 视图无 workspace tab assertion ≥3s retry 不死等 | e2e | 战马D / 烈马 | TBD — `[data-tab="workspace"]` toHaveCount(0) Playwright 默认 5s retry |
-| server production 0 行变更 (git diff 验) | grep | 战马D / 烈马 | TBD — `git diff` 仅 _test.go / fixtures 命中 |
+| DM 视图无 workspace tab assertion ≥3s retry 不死等 | e2e | 战马D / 烈马 | ✅ — `[data-tab="workspace"]` toHaveCount(0) Playwright 默认 5s retry; `[data-tab="canvas"]` 同模式 |
+| server production 0 行变更 (git diff 验) | grep | 战马D / 烈马 | ✅ — git diff 仅命中 _test.go (chn_4_grep_audit_test.go) + e2e + fixtures, production *.go 0 行 |
 
 ### 退出条件
 

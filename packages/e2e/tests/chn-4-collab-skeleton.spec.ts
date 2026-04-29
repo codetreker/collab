@@ -184,12 +184,15 @@ test.describe('CHN-4 协作场骨架 — acceptance §1 §4 §5 §6', () => {
 
     // 立场 ④ — DM 视图 DOM `[data-tab="workspace"]` count==0
     // (7 源 byte-identical 跟 #354 ④ + #353 §3.1 + #357 ② + #364 + #371 + #374 + 本 stance).
+    // 立场 ④ — DM 视图 DOM `[data-tab="workspace"]` count==0
+    // (7 源 byte-identical 跟 #354 ④ + #353 §3.1 + #357 ② + #364 + #371 + #374 + 本 stance).
     //
-    // Flake fix (#490 follow-up): 之前 `await page.waitForTimeout(500)` 死等
-    // 500ms 让 DM 视图稳定, CI 慢机器不够时间 → assertion fail. 改用
+    // Flake fix (#505 / CHN-4 wrapper #510): 之前 `await page.waitForTimeout(500)`
+    // 死等 500ms 让 DM 视图稳定, CI 慢机器不够时间 → assertion fail. 改用
     // Playwright `expect.toHaveCount(0, {timeout})` 内置 retry — 反复 poll
     // 直到 count==0 或超时 (跟 toHaveText / toBeVisible 同 retry 模式),
     // 不再需要 waitForTimeout 死等. 协议: 等 DOM 状态而非时钟.
+    // 跟 RT-1.2 #292 latency CI 时序敏感修法同精神.
     await expect(
       page.locator('button[data-tab="workspace"]'),
       'DM 视图永不含 workspace tab'
@@ -197,7 +200,10 @@ test.describe('CHN-4 协作场骨架 — acceptance §1 §4 §5 §6', () => {
 
     // 反向断言 — 无 anchor / iterate / artifact 入口
     // (跟 stance ④ "DM 是 1v1 私聊不是协作场" 同源).
-    expect(await page.locator('button[data-tab="canvas"]').count(), 'DM 视图无 canvas tab').toBe(0);
+    await expect(
+      page.locator('button[data-tab="canvas"]'),
+      'DM 视图无 canvas tab',
+    ).toHaveCount(0);
   });
 
   test('§6 G3.4 退出闸双截屏归档 — chat + workspace 各 1', async ({ browser }) => {
