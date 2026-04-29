@@ -82,8 +82,10 @@ Request/response JSON line, daemon 处理完单 request 即退.
 
 ### 3.2 DL-4 manifest endpoint contract (server → install-butler)
 
-> **TBD by DL-4** — locked here to prevent drift. install-butler reads
-> this shape. DL-4 PR must implement byte-identical.
+> **TBD by DL-4 follow-up** — locked here to prevent drift. install-butler
+> reads this shape. **不要** 跟 DL-4 PWA endpoint `GET /api/v1/manifest/
+> plugins` 混 (两个 endpoint, 两个范围, 安全模型不同). 详 cross-PR drift
+> 锚: [`dl-4-hb-1-drift-anchor.md`](dl-4-hb-1-drift-anchor.md).
 
 ```json
 GET /api/v1/plugin-manifest
