@@ -596,6 +596,35 @@ func TestAL42_StartTransitionsRunning_FromError(t *testing.T) {
 // Compile-time guard: ensures strings import not removed by a stray edit.
 var _ = strings.Contains
 
+// TestAL42_StartFromStopped_TransitionsAndDM — buffer test (commit 705c2bf
+// followup): exercises start path from 'stopped' source state (not just
+// 'registered'). Adds coverage on handleStart's source-state != 'running'
+// emit-DM branch from a third starting state, plus the UPDATE clearing
+// last_error_reason path.
+func TestAL42_StartFromStopped_TransitionsAndDM(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+	// → running → stopped → running (sequence).
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/start", ownerTok, nil)
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/stop", ownerTok, nil)
+	resp, data := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/start", ownerTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("start from stopped not 200: got %d", resp.StatusCode)
+	}
+	if data["status"] != api.RuntimeStatusRunning {
+		t.Errorf("status not running: %v", data["status"])
+	}
+	// 2 start DMs total (initial + restart).
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	dmCh, _ := s.CreateDmChannel(owner.ID, "system")
+	var msgs []store.Message
+	_ = s.DB().Where("channel_id = ? AND sender_id = 'system' AND content = ?",
+		dmCh.ID, "BotZ 已启动").Find(&msgs).Error
+	if len(msgs) != 2 {
+		t.Errorf("expected 2 start DMs (initial + restart), got %d", len(msgs))
+	}
+}
+
 // TestAL42_ListAnchorComments_Coverage covers the new handleListComments
 // endpoint introduced via merge-from-main (anchors.go:467, 0% before this).
 // Paired with the CV-4.2 #409 sister patch — same fix lifts AL-4.2 #414
