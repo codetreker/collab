@@ -48,6 +48,7 @@ var All = []Migration{
 	cv31ArtifactKinds,
 	cv41ArtifactIterations,
 	chn31UserChannelLayout,
+	al1b1AgentStatus,
 }
 
 // Default returns an Engine wired to db with All registered.
