@@ -173,6 +173,17 @@ func (s *Server) SetupRoutes() {
 	}
 	artifactHandler.RegisterRoutes(s.mux, authMw)
 
+	// CV-2.2 anchor comments (canvas-vision §1.6; per-version anchor threads
+	// + WS push). Pusher routes to ws.Hub which owns the AnchorCommentAdded
+	// frame envelope (10 fields, byte-identical 跟 spec v2 字面).
+	anchorHandler := &api.AnchorHandler{
+		Store:  s.store,
+		Logger: s.logger,
+		Hub:    broadcaster,
+		Pusher: &hubAnchorAdapter{s.hub},
+	}
+	anchorHandler.RegisterRoutes(s.mux, authMw)
+
 	// WebSocket endpoints
 	s.mux.HandleFunc("/ws", ws.HandleClient(s.hub))
 	s.mux.HandleFunc("/ws/plugin", ws.HandlePlugin(s.hub))
@@ -318,6 +329,26 @@ type hubArtifactAdapter struct {
 
 func (a *hubArtifactAdapter) PushArtifactUpdated(artifactID string, version int64, channelID string, updatedAt int64, kind string) (cursor int64, sent bool) {
 	return a.hub.PushArtifactUpdated(artifactID, version, channelID, updatedAt, kind)
+}
+
+// hubAnchorAdapter exposes ws.Hub.PushAnchorCommentAdded through the
+// api.AnchorCommentPusher interface so internal/api stays free of the
+// internal/ws import (mirrors hubArtifactAdapter pattern).
+type hubAnchorAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubAnchorAdapter) PushAnchorCommentAdded(
+	anchorID string,
+	commentID int64,
+	artifactID string,
+	artifactVersionID int64,
+	channelID string,
+	authorID string,
+	authorKind string,
+	createdAt int64,
+) (cursor int64, sent bool) {
+	return a.hub.PushAnchorCommentAdded(anchorID, commentID, artifactID, artifactVersionID, channelID, authorID, authorKind, createdAt)
 }
 
 type hubPluginAdapter struct {
