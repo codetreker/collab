@@ -503,3 +503,63 @@ func TestCV42_HandleListIterations_NonMember404(t *testing.T) {
 		t.Errorf("anon expected 401, got %d", resp401.StatusCode)
 	}
 }
+
+// TestCV42_IterateMalformedBody covers the readJSON 400 branch on the
+// iterate endpoint (raw http with cookie auth — testutil.JSON pre-marshals
+// JSON so we can't pass syntactically broken JSON through it). Lifts
+// handleIterate's request-parsing branch.
+func TestCV42_IterateMalformedBody(t *testing.T) {
+	url, ownerTok, _, _, artID, _ := cv42Setup(t)
+	req, _ := http.NewRequest("POST", url+"/api/v1/artifacts/"+artID+"/iterate",
+		strings.NewReader("{not json"))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: ownerTok})
+	req.Header.Set("Authorization", "Bearer "+ownerTok)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("malformed: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("malformed JSON 400 expected, got %d", resp.StatusCode)
+	}
+}
+
+// TestCV42_StateMachine_RejectOnNonexistentArtifact covers
+// CompleteIterationOnCommit's "wrong artifact_id" branch — when the
+// iteration row exists for one artifact but commit references another,
+// the WHERE artifact_id=? + state='running' clause finds 0 rows → reject
+// 409 (acceptance §2.3 反断 — 不让客户端跨 artifact iterate).
+func TestCV42_StateMachine_RejectOnWrongArtifact(t *testing.T) {
+	url, ownerTok, s, chID, artID, agentID := cv42Setup(t)
+	// Register runtime so iterate produces state=running.
+	if err := s.DB().Exec(`INSERT INTO agent_runtimes
+  (id, agent_id, endpoint_url, process_kind, status, created_at, updated_at)
+  VALUES (?, ?, 'ws://test', 'openclaw', 'running', 1700000000000, 1700000000000)`,
+		"rt-cv42-wa", agentID).Error; err != nil {
+		t.Fatalf("seed runtime: %v", err)
+	}
+	// Iterate on artifact A (artID).
+	_, itData := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/iterate", ownerTok, map[string]any{
+		"intent_text": "x", "target_agent_id": agentID,
+	})
+	iterationID := itData["id"].(string)
+
+	// Create artifact B in same channel.
+	_, artB := testutil.JSON(t, "POST", url+"/api/v1/channels/"+chID+"/artifacts", ownerTok, map[string]any{
+		"title": "B", "body": "y",
+	})
+	artBID := artB["id"].(string)
+
+	// Commit on artifact B referencing iteration_id of artifact A — should
+	// 409 because WHERE artifact_id=B + state='running' finds 0 rows.
+	resp, _ := testutil.JSON(t, "POST",
+		url+"/api/v1/artifacts/"+artBID+"/commits?iteration_id="+iterationID,
+		ownerTok, map[string]any{
+			"expected_version": float64(1),
+			"body":             "should not land",
+		})
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("cross-artifact iteration_id 409 expected, got %d", resp.StatusCode)
+	}
+}
