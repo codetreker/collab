@@ -57,6 +57,7 @@ var All = []Migration{
 	dl41WebPushSubscriptions,
 	hb31HostGrants,
 	cv2v2MediaPreview,
+	ap31UserPermissionsOrg,
 	ap21UserPermissionsRevoked,
 }
 
