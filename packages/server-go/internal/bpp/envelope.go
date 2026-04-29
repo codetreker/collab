@@ -42,6 +42,11 @@ const (
 	FrameTypeBPPAgentConfigUpdate      = "agent_config_update"
 	FrameTypeBPPAgentToggle            = "agent_toggle" // disable/enable: one frame, action field
 	FrameTypeBPPInboundMessage         = "inbound_message"
+	// BPP-3.1 permission_denied — server 通知 plugin authz 失败
+	// (蓝图 auth-permissions.md §2 不变量 + §4.1 row 字面). Server-rail
+	// only; plugin 永不发. payload 字段 byte-identical 跟 AP-1 abac.go
+	// 403 body (跨 PR drift 守 — 改 = 改三处).
+	FrameTypeBPPPermissionDenied = "permission_denied"
 
 	// Data plane (Plugin → Server) — §2.2.
 	// Data plane (Plugin → Server) — §2.2.
@@ -191,6 +196,53 @@ type InboundMessageFrame struct {
 
 func (InboundMessageFrame) FrameType() string         { return FrameTypeBPPInboundMessage }
 func (InboundMessageFrame) FrameDirection() Direction { return DirectionServerToPlugin }
+
+// PermissionDeniedFrame — BPP-3.1 server 通知 plugin authz 失败 (蓝图
+// auth-permissions.md §2 不变量字面 "Permission denied 走 BPP — 不靠
+// HTTP 错误码, 由协议层路由到 owner DM" + §4.1 row 字面 frame 字段:
+// `attempted_action`, `required_capability`, `current_scope`, `reason`).
+//
+// 8 字段 byte-identical 跟 spec bpp-3.1 §1 立场 ③:
+//
+//   {Type, Cursor, AgentID, RequestID, AttemptedAction, RequiredCapability, CurrentScope, DeniedAt}
+//
+// Field semantics:
+//   - Type: discriminator 头位 byte-identical 跟 BPP envelope (#280)
+//   - Cursor: hub.cursors 单调发号, 跟 RT-1/CV-2/DM-2/CV-4/AL-2b 共一根
+//     sequence (反约束: 不另起 plugin-only 推送通道)
+//   - AgentID: target agent UUID (deny 路径 plugin 端按 agent 分流)
+//   - RequestID: AP-1 调用方生成的 trace UUID, plugin 按此 key 关联
+//     owner DM 推审批通知 + retry 流 (BPP-3.2 follow-up)
+//   - AttemptedAction: ∈ BPP-2.1 7 op 白名单 (`SemanticOp*` const) 或
+//     REST endpoint 名 (e.g. "POST /artifacts/:id/commits"); 反约束:
+//     'list_users' 等 v2+ 枚举外值 reject
+//   - RequiredCapability: byte-identical 跟 AP-1 abac.go 403 body 字段
+//     (e.g. "commit_artifact" 跟 AP-1 capabilities.go const 同源 — drift =
+//     双向 grep CI lint red)
+//   - CurrentScope: byte-identical 跟 AP-1 abac.go 403 body 字段
+//     (e.g. "artifact:art-1" 跟 AP-1 ArtifactScopeStr 同源)
+//   - DeniedAt: Unix ms 语义戳 (反约束: 不用作排序源, cursor 才是; 跟
+//     IterationStateChangedFrame.CompletedAt 同语义模式)
+//
+// 反约束 (spec bpp-3.1 §2):
+//   - direction = server→plugin hard-locked; plugin 永不发
+//     (bppEnvelopeWhitelist + reflect lint 双闸守)
+//   - admin god-mode 不消费此 frame (admin 走 /admin-api/* 不入业务路径,
+//     ADM-0 §1.3 红线)
+//   - HTTP 403 是 fallback, BPP frame 是 primary (蓝图 §2 不变量字面)
+type PermissionDeniedFrame struct {
+	Type               string `json:"type"`
+	Cursor             int64  `json:"cursor"`
+	AgentID            string `json:"agent_id"`
+	RequestID          string `json:"request_id"`
+	AttemptedAction    string `json:"attempted_action"`
+	RequiredCapability string `json:"required_capability"`
+	CurrentScope       string `json:"current_scope"`
+	DeniedAt           int64  `json:"denied_at"` // Unix ms; semantic only — cursor IS the order
+}
+
+func (PermissionDeniedFrame) FrameType() string         { return FrameTypeBPPPermissionDenied }
+func (PermissionDeniedFrame) FrameDirection() Direction { return DirectionServerToPlugin }
 
 // ----- Data plane (Plugin → Server) — 3 envelopes -----
 
@@ -345,6 +397,7 @@ var bppEnvelopeWhitelist = map[string]Direction{
 	FrameTypeBPPAgentConfigUpdate:      DirectionServerToPlugin,
 	FrameTypeBPPAgentToggle:            DirectionServerToPlugin,
 	FrameTypeBPPInboundMessage:         DirectionServerToPlugin,
+	FrameTypeBPPPermissionDenied:       DirectionServerToPlugin, // BPP-3.1
 	FrameTypeBPPHeartbeat:              DirectionPluginToServer,
 	FrameTypeBPPSemanticAction:         DirectionPluginToServer,
 	FrameTypeBPPErrorReport:            DirectionPluginToServer,
@@ -375,6 +428,7 @@ func AllBPPEnvelopes() []BPPEnvelope {
 		AgentConfigUpdateFrame{},
 		AgentToggleFrame{},
 		InboundMessageFrame{},
+		PermissionDeniedFrame{}, // BPP-3.1
 		HeartbeatFrame{},
 		SemanticActionFrame{},
 		ErrorReportFrame{},
