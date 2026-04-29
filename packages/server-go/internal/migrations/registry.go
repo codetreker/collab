@@ -52,6 +52,7 @@ var All = []Migration{
 	adm21AdminActions,
 	adm22ImpersonationGrants,
 	al1b1AgentStatus,
+	al14AgentStateLog,
 }
 
 // Default returns an Engine wired to db with All registered.

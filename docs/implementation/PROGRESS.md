@@ -206,9 +206,10 @@ AP-3 ─┘
 ```
 
 ### agent-lifecycle
-- [ ] **AL-1** 状态四态扩展
+- [x] **AL-1** 状态四态扩展 ✅ Phase 4 wrapper milestone — 战马D 实施 (一 milestone 一 PR 整闭): schema agent_state_log v=25 + state machine validator (5-state graph + 6 reason 第 8 处单测锁链 byte-identical 跟 AL-1a 同源) + AppendAgentStateTransition single-gate helper (立场 ② state machine 单源) + GET /api/v1/agents/:id/state-log owner-only endpoint + 20 unit tests + 11 acceptance items 全 ✅; AL-1a (#249 三态+6 reason) ✅ + AL-1b (#453/#457/#462 5-state busy/idle) ✅ + BPP-2.2 (#485 task lifecycle frame) ✅ 前置就位; ⏸️ follow-up: dispatcher wire (BPP-2.2 frame → audit 自动写) + presence wire + client UI + e2e
   - [x] **AL-1a** online/offline + error 旁路 + 6 reason codes (PR #249, Phase 2 起步, 蓝图 §2.3 R3 锁)
   - [x] **AL-1b** busy/idle 三段全闭 ✅ (#453 schema v=21 + #457 server 5-state 合并 GET + BPP 单源 PATCH 405 + #462 client SPA PresenceDot 5-state describeAgentState, 跟 BPP-2 #460 同期 stub — task_started/task_finished frame 真接管 BPP-2.2 落地后切)
+  - [x] **AL-1.4 wrapper** state machine validator + agent_state_log v=25 + GET /api/v1/agents/:id/state-log owner-only — 本 PR 整闭 ✅
 - [x] **AL-2a** config 表 + update API ✅ 三段全闭 (PR #480 merged 7a0c69b): schema v=20 #447 (agent_configs PK 单 agent_id + blob TEXT JSON SSOT) + 4 件套 #264 acceptance / #454 stance+content-lock + AL-2a.2 server PATCH /api/v1/agents/:id/config + AgentConfigPusher interface (nil-safe, 跟 AL-2b 跨 milestone 依赖 schema 锁) + AL-2a.3 client AgentConfigPanel mount + REG-AL2A-001..007 7🟢 + 八处单测锁 sync (#481 ack 加入 7+8); production wiring `Pusher: s.hub` 在 #481 AL-2b merge 时自然落
 - [x] **AL-2b** BPP agent_config 双向 frame ✅ 五段全闭 (PR #481 merged 225e739): frame schema 7+7 字段 byte-identical (status CHECK 三态 + direction lock) + hub.PushAgentConfigUpdate (server→plugin) + ack dispatcher (interface seam + 4-step validation + reason 第 8 处链) + api PATCH fanout (idempotency_key deterministic) + spec sync byte-identical; plugin read loop ack ingress ⏸️ deferred → BPP-3 (调研结论: plugin.go RPC envelope vs BPP frame 不同 wire, 需 BPP-3 plugin connection lifecycle 建统一 dispatcher 边界)
 - [x] **AL-3** presence 完整版 ✅ (复用 PresenceTracker IsOnline + Sessions 接口, #277 stub → 真实施)

@@ -7,7 +7,7 @@ import (
 )
 
 // runStoreWithMigrations bootstraps a store + applies all migrations (incl
-// v=22 admin_actions + v=24 impersonation_grants).
+// v=22 admin_actions + v=23 impersonation_grants).
 func runStoreWithMigrations(t *testing.T) *Store {
 	t.Helper()
 	s := testStore(t)
