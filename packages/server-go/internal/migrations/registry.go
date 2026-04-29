@@ -44,6 +44,7 @@ var All = []Migration{
 	cv11Artifacts,
 	cv21AnchorComments,
 	dm21MessageMentions,
+	cv31ArtifactKinds,
 }
 
 // Default returns an Engine wired to db with All registered.
