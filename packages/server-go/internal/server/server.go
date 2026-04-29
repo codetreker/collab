@@ -152,6 +152,11 @@ func (s *Server) SetupRoutes() {
 	}
 	agentConfigHandler.RegisterRoutes(s.mux, authMw)
 
+	// AL-1.4 agent state log — owner-only GET /api/v1/agents/:id/state-log
+	// (蓝图 §2.3 "故障可解释" — owner 看 agent state 历史轨迹查病因).
+	al14Handler := &api.AL14Handler{Store: s.store, Logger: s.logger}
+	al14Handler.RegisterRoutes(s.mux, authMw)
+
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
 	channelHandler.RegisterRoutes(s.mux, authMw)
