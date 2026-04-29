@@ -3,6 +3,7 @@ package api_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"borgee-server/internal/testutil"
 )
@@ -30,9 +31,17 @@ func TestP1SSEReconnectBackfill(t *testing.T) {
 	readSSEUntilDataContains(t, reconnected, "second missed event")
 }
 
+// readSSEUntilDataContains reads up to 8 non-heartbeat events with an
+// overall 5s deadline. Race+CI loops 20 iterations were over-budget when
+// the heartbeat handler interleaved spurious events; bound the loop +
+// fail fast keeps the e2e test under the 30s race-job budget.
 func readSSEUntilDataContains(t *testing.T, c *testutil.SSEClient, content string) testutil.SSEEvent {
 	t.Helper()
-	for i := 0; i < 20; i++ {
+	deadline := time.Now().Add(5 * time.Second)
+	for i := 0; i < 8; i++ {
+		if time.Now().After(deadline) {
+			t.Fatalf("SSE read deadline (5s) exceeded waiting for %q", content)
+		}
 		event := c.ReadEvent(t)
 		if event.Event == "heartbeat" {
 			continue
@@ -41,6 +50,6 @@ func readSSEUntilDataContains(t *testing.T, c *testutil.SSEClient, content strin
 			return event
 		}
 	}
-	t.Fatalf("did not receive SSE event containing %q", content)
+	t.Fatalf("did not receive SSE event containing %q after 8 iterations", content)
 	return testutil.SSEEvent{}
 }
