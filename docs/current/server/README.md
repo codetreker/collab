@@ -178,6 +178,10 @@ http.Server.Serve       # 0.0.0.0:4900
 ### Agents
 `POST/GET/DELETE /api/v1/agents`、`POST /api/v1/agents/{id}/rotate-api-key`、`GET/PUT /api/v1/agents/{id}/permissions`、`GET /api/v1/agents/{id}/files`（通过 plugin WS 反向代理列文件）。
 
+### Agent config SSOT (AL-2a.2, 本 PR)
+`GET /api/v1/agents/{id}/config` — owner-only 拉本人 agent 的配置 SSOT (`{schema_version, blob, updated_at}`); 无 row 时返 `{schema_version: 0, blob: {}}`。
+`PATCH /api/v1/agents/{id}/config` body `{blob: {...}}` — owner-only blob 整体替换 + `schema_version` 严格递增 (并发 N 写 = N 次 monotonic UPSERT, 末次胜出, 无丢失). 蓝图 §1.4 SSOT 立场: blob 仅含 Borgee 管字段白名单 (`name` / `avatar` / `prompt` / `model` / `capabilities` / `enabled` / `memory_ref`); runtime-only 字段 (`api_key` / `temperature` / `token_limit` / `retry_policy`) **fail-closed reject** with code `agent_config.runtime_field_rejected` (acceptance §4.1.c reflect scan 同源)。蓝图 §1.5 BPP frame `agent_config_update` **不在** AL-2a 范围 (留 AL-2b + BPP-3 同合, AL-2a 走轮询 reload — 本 handler 无 hub.Broadcast)。Handler `internal/api/agent_config.go`; admin god-mode 不挂 `/admin-api/v1/agents/{id}/config` (ADM-0 §1.3 红线 + AL-3 #303 ⑦ 同模式)。
+
 ### Agent invitations (CM-4.1)
 `POST /api/v1/agent_invitations` — channel 成员发起邀请，body `{channel_id, agent_id, expires_at?}`。Handler 显式 `state = "pending"`（不依赖 GORM default）；agent 已在 channel → 409。
 `GET /api/v1/agent_invitations[?role=owner|requester]` — `owner`（默认）= 列出本人所拥有 agent 的待办；`requester` = 列出本人创建的；admin 在 owner 模式下看全量。

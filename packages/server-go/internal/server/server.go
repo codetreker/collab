@@ -123,6 +123,13 @@ func (s *Server) SetupRoutes() {
 	layoutHandler := &api.LayoutHandler{Store: s.store, Logger: s.logger}
 	layoutHandler.RegisterRoutes(s.mux, authMw)
 
+	// AL-2a.2 agent_configs — SSOT REST endpoints (owner-only, fail-closed
+	// runtime-field reject, acceptance #264 §4.1.a-d). 蓝图 §1.4 字段划界 +
+	// §1.5 BPP frame `agent_config_update` 留 AL-2b + BPP-3 同合 — AL-2a
+	// 走轮询 reload (本 handler 无 hub.Broadcast).
+	agentConfigHandler := &api.AgentConfigHandler{Store: s.store, Logger: s.logger}
+	agentConfigHandler.RegisterRoutes(s.mux, authMw)
+
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
 	channelHandler.RegisterRoutes(s.mux, authMw)
