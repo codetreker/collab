@@ -106,6 +106,58 @@ description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。
 7. **blueprintflow:teamlead-slow-cron-checkin** — 2-4h cron, 偏差 audit
 8. **blueprintflow:phase-exit-gate** — Phase 收尾联签 + closure announcement
 
+## tmux 起团窗格排版
+
+用 tmux 起团时, 窗格排版要合理化 — 不能全堆一行扁条, 一眼看不出谁在干什么。
+
+### 推荐布局 (6 角色团 + Teamlead)
+
+```
+┌─────────────────┬────────────┬────────────┐
+│                 │  飞马      │  野马      │
+│   Teamlead      ├────────────┼────────────┤
+│   (顶部宽窗)    │  战马A     │  战马B/C   │
+│                 ├────────────┼────────────┤
+│                 │  烈马      │  斑马/矮马 │
+└─────────────────┴────────────┴────────────┘
+```
+
+- **Teamlead 占左半屏整列** (协调主线, 视野最大)
+- **6 角色右侧 2x3 网格** (每格高度均等, 名字一眼看见)
+- 按需 spawn 的斑马/矮马跟战马C 共用底格 (lazy spawn)
+
+### 起团命令骨架
+
+```bash
+SESSION=blueprintflow
+tmux new-session -d -s $SESSION -x 220 -y 60   # 大画布
+# 左半屏 Teamlead
+tmux send-keys -t $SESSION:0 'claude' Enter
+# 右半屏切 2x3
+tmux split-window -h -p 60 -t $SESSION:0
+tmux split-window -v -p 66 -t $SESSION:0.1
+tmux split-window -v -p 50 -t $SESSION:0.2
+tmux split-window -h -t $SESSION:0.1
+tmux split-window -h -t $SESSION:0.3
+tmux split-window -h -t $SESSION:0.5
+for p in 1 2 3 4 5 6; do
+  tmux send-keys -t $SESSION:0.$p 'claude' Enter
+done
+# pane 命名 (status line 显示)
+tmux set-option -t $SESSION pane-border-status top
+tmux select-pane -t $SESSION:0.0 -T 'teamlead'
+tmux select-pane -t $SESSION:0.1 -T 'feima'
+# ... feima/yema/zhanma-a/zhanma-c/liema 等
+tmux attach -t $SESSION
+```
+
+### 窗格反模式
+
+- ❌ 全部左右切 (7 列扁条, 内容看不全)
+- ❌ Teamlead 跟角色混排 (协调主线被淹没)
+- ❌ pane 不命名 (status line 全 `bash`, 找不到谁是谁)
+- ❌ 一个会话开一个窗口 (跨窗口切换慢, 一屏看不到全貌)
+
 ## 关键协议
 
 - **Worktree 隔离**: 主 worktree 给战马 in-flight (一次只一个), 其他用 `/tmp/<name>-<topic>` 临时 clone
