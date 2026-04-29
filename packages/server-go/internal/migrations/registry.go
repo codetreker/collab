@@ -50,6 +50,7 @@ var All = []Migration{
 	chn31UserChannelLayout,
 	al2a1AgentConfigs,
 	adm21AdminActions,
+	adm22ImpersonationGrants,
 }
 
 // Default returns an Engine wired to db with All registered.
