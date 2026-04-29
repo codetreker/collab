@@ -12,7 +12,7 @@
 | ② | task lifecycle 上行帧是 busy/idle 唯一 source | plugin-protocol.md §1.6 + agent-lifecycle.md §2.3 | `agent.state.SetBusy` 仅由 BPP-2.2 task_started 触发, presence_sessions 不写 busy 列 |
 | ③ | 配置热更新单源 server→plugin | plugin-protocol.md §1.5 + §1.4 表 | `internal/bpp/agent_config_update_frame.go::ValidFields` 6 项白名单, runtime 调优字段不入 frame |
 | ④ (边界) | BPP envelope CI lint 复用 | bpp-1.md §1.1 + plugin-protocol.md §2 | bppEnvelopeWhitelist 9→13 扩, reflect schema lock 自动覆盖 |
-| ⑤ (边界) | reason 字典承袭 AL-1a 6 项 | concept-model.md §1.6 | `internal/agent/state.go::Reason*` source-of-truth, 改 = 改四处单测锁 |
+| ⑤ (边界) | reason 字典承袭 AL-1a 6 项 | concept-model.md §1.6 | `internal/agent/state.go::Reason*` source-of-truth, 改 = 改六处单测锁 (AL-1a #249 + AL-3 #305 + CV-4 #380 + AL-2a #454 + AL-1b #458 + AL-4 #387/#461) |
 | ⑥ (边界) | 不开 raw REST `api_request` 旁路 | plugin-protocol.md §1.3 协议红线 | envelope.go 不加 api_request 字段 / type |
 | ⑦ (边界) | 不写跨 runtime / cross-plugin 协作 | plugin-protocol.md §4 | spec §4 + acceptance §4 反约束兜底 |
 
@@ -73,10 +73,10 @@
 - `frame_schemas_test.go::TestBPPEnvelopeFrameWhitelist` reflect schema lock 自动覆盖 — 加 frame 不加 whitelist = CI 红
 - 反约束: 不裂新 namespace `type:.*"bpp_v2"` (反向 grep count==0)
 
-### ⑤ reason 字典承袭 AL-1a #249 6 项 (改 = 改四处单测锁)
+### ⑤ reason 字典承袭 AL-1a #249 6 项 (改 = 改六处单测锁)
 
 - task_finished failed 时 reason ∈ AL-1a 6 项 byte-identical
-- 改 reason 字典 = 改四处: AL-1a `agent/state.go::Reason*` (#249) + AL-3 #305 presence error 旁路 + AL-4 #321 runtime status DM + BPP-2.2 task_finished
+- 改 reason 字典 = 改六处: AL-1a `agent/state.go::Reason*` (#249) + AL-3 #305 presence error 旁路 + CV-4 #380 ③ + AL-2a #454 ④ + AL-1b #458 ⑤ + AL-4 #387/#461 (BPP-2.2 task_finished 是第七处, 跟跨 milestone 链同源)
 - `internal/agent/state.go::Reason*` 是 source-of-truth, 其他文件引用此包不另起字典
 
 ### ⑥ 不开 raw REST api_request 旁路 (BPP-1 envelope 不裂)
@@ -113,3 +113,4 @@ BPP-2.3 PR review (同期 AL-2b/BPP-3):
 | 日期 | 作者 | 变化 |
 |------|------|------|
 | 2026-04-29 | 战马E (PM 客串) | v0 — Phase 4 plugin-protocol 主线起步 BPP-2 stance checklist 4 件套并行 (跟 #387 AL-4 / #385 CV-4 stance checklist 同模式); §0 3 立场 + 4 边界立场总表 + §1-§3 三立场反约束清单 (8 + 9 + 8 = 25 反约束 checkbox) + §4 4 边界立场承袭表 + §5 sign-off 三段流程 (飞马/野马/烈马 三角色 review 各自责任锚); 跟 spec / acceptance / content-lock 三件套字面 byte-identical 同源, 改 = 改四处. |
+| 2026-04-29 | 野马 | v0.x patch — cross-milestone reason count audit (跟 #467 同模式 follow-up): "四处单测锁" → "六处单测锁" (AL-1a #249 + AL-3 #305 + CV-4 #380 + AL-2a #454 + AL-1b #458 + AL-4 #387/#461); BPP-2.2 task_finished 是第七处. 跟 #339/#393/#387/#461 follow-up patch 同模式, 历史干净 |
