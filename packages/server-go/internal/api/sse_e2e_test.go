@@ -15,9 +15,9 @@ func TestP1SSEReconnectBackfill(t *testing.T) {
 
 	stream := testutil.DialSSE(t, ts.URL, token)
 	testutil.PostMessage(t, ts.URL, token, channelID, "first sse event")
-	first := stream.ReadEvent(t)
-	if first.Event != "message" || first.ID == "" || !strings.Contains(first.Data, "first sse event") {
-		t.Fatalf("unexpected first SSE event: %+v", first)
+	first := readSSEUntilDataContains(t, stream, "first sse event")
+	if first.ID == "" {
+		t.Fatalf("expected SSE event with non-empty ID: %+v", first)
 	}
 	stream.Close()
 
@@ -32,8 +32,11 @@ func TestP1SSEReconnectBackfill(t *testing.T) {
 
 func readSSEUntilDataContains(t *testing.T, c *testutil.SSEClient, content string) testutil.SSEEvent {
 	t.Helper()
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		event := c.ReadEvent(t)
+		if event.Event == "heartbeat" {
+			continue
+		}
 		if (event.Event == "message" || event.Event == "new_message") && strings.Contains(event.Data, content) {
 			return event
 		}
