@@ -95,14 +95,21 @@ type ArtifactPusher interface {
 
 // ArtifactHandler exposes the CV-1.2 HTTP surface. Hub may be nil in
 // unit tests that don't assert push behaviour; nil-safe at call sites.
+//
+// IterationPusher is the CV-4.2 seam — when a commit carries
+// `?iteration_id=<uuid>` (立场 ② commit 单源) we transition the
+// iteration row from running→completed and emit IterationStateChanged.
+// Optional: nil disables the iteration completion path (legacy commit
+// behavior is unchanged, acceptance §2.2 反断).
 type ArtifactHandler struct {
-	Store    *store.Store
-	Logger   *slog.Logger
-	Hub      EventBroadcaster
-	Pusher   ArtifactPusher
-	Now      func() time.Time
-	NewID    func() string
-	clockFn  func() time.Time
+	Store           *store.Store
+	Logger          *slog.Logger
+	Hub             EventBroadcaster
+	Pusher          ArtifactPusher
+	IterationPusher IterationStatePusher
+	Now             func() time.Time
+	NewID           func() string
+	clockFn         func() time.Time
 }
 
 func (h *ArtifactHandler) now() time.Time {
@@ -472,6 +479,42 @@ func (h *ArtifactHandler) handleCommit(w http.ResponseWriter, r *http.Request) {
 	// Push WS frame (RT-1.1 envelope, kind=commit).
 	if h.Pusher != nil {
 		h.Pusher.PushArtifactUpdated(id, newVersion, art.ChannelID, nowMs, FrameKindCommit)
+	}
+
+	// CV-4.2 立场 ② commit 单源: when ?iteration_id=<uuid> present, atomic
+	// UPDATE iteration row running→completed + push IterationStateChanged.
+	// State machine reject (source state not 'running') → 409 conflict
+	// (acceptance §2.3 反断 — completed→running / failed→pending 等回退
+	// 全 reject). 反约束: 不开旁路 commit endpoint
+	// (acceptance §4.1 字面). The version row + artifact row are already
+	// committed; iteration UPDATE is a separate atomic stmt — if it
+	// rejects we still surface 409 so client knows the iteration is stale.
+	iterationID := r.URL.Query().Get("iteration_id")
+	if iterationID != "" {
+		// Need the artifact_versions.id PK (autoincrement) for
+		// created_artifact_version_id. Lookup by (artifact_id, version).
+		var versionPKRow struct {
+			ID int64 `gorm:"column:id"`
+		}
+		_ = h.Store.DB().Raw(`SELECT id FROM artifact_versions
+WHERE artifact_id = ? AND version = ?`, id, newVersion).Scan(&versionPKRow).Error
+		ierr := CompleteIterationOnCommit(h.Store, iterationID, id,
+			versionPKRow.ID, nowMs)
+		if IsIterationStateMachineReject(ierr) {
+			writeJSONError(w, http.StatusConflict, "iteration state changed; reload")
+			return
+		}
+		if ierr != nil {
+			writeJSONError(w, http.StatusInternalServerError, "iteration completion failed")
+			return
+		}
+		// Look up channel_id for push (we already have art.ChannelID).
+		if h.IterationPusher != nil {
+			h.IterationPusher.PushIterationStateChanged(
+				iterationID, id, art.ChannelID,
+				IterationStateCompleted, "",
+				versionPKRow.ID, nowMs)
+		}
 	}
 
 	// 立场 ⑥: agent commit fanout system message. Format byte-identical:
