@@ -2,6 +2,12 @@
 // task_started / task_finished plugin-upstream frame validation +
 // AL-1b busy/idle state-machine source.
 //
+// busy 状态由 task_started/finished frame 单源驱动, 不开 PATCH
+// /api/v1/agents/:id/state — 跟 AL-1b #482 BPP single source 立场同源
+// (蓝图 §2.3 R3). online = session-level 走 WS conn lifecycle, 跟
+// task-level (busy) 正交 — 反向 grep `presence_sessions.*busy|
+// presence.*task_id` count==0 (acceptance §4.2).
+//
 // Blueprint锚: docs/blueprint/plugin-protocol.md §1.6 (失联与故障状态 +
 // "工作中状态需要 plugin 主动心跳上报 — 缺心跳按未知") + §2.2 (data
 // plane Plugin → Borgee). agent-lifecycle.md §2.3 字面: "busy / idle
@@ -61,7 +67,10 @@ var validTaskOutcomes = map[string]bool{
 
 // validTaskReasons is the 6-字典 byte-identical 跟 agent/state.go
 // Reason* 同源 — source-of-truth lives in internal/agent. Drift here
-// breaks REG-AL1a-* + REG-AL3-* + REG-AL4-* + REG-BPP2-* 单测锁四处+.
+// breaks REG-AL1a-* + REG-AL3-* + REG-CV4-* + REG-AL2a-* + REG-AL1b-*
+// + REG-AL4-* + REG-BPP2-* 单测锁七处+ (改 = 改七处: AL-1a #249 +
+// AL-3 #305 + CV-4 #380 + AL-2a #454 + AL-1b #458 + AL-4 #387/#461,
+// BPP-2.2 是第七处跟链, 不另起字典).
 var validTaskReasons = map[string]bool{
 	agentpkg.ReasonAPIKeyInvalid:      true,
 	agentpkg.ReasonQuotaExceeded:      true,

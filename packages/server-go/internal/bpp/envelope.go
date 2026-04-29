@@ -51,7 +51,9 @@ const (
 	FrameTypeBPPAgentConfigAck = "agent_config_ack" // AL-2b #481 §1.2 ack 路径
 	// BPP-2.2 task lifecycle reverse-channel — plugin upstream signals
 	// agent busy/idle (蓝图 §1.6 + agent-lifecycle §2.3 字面: source 必须
-	// plugin 上行 frame, 不准 stub).
+	// plugin 上行 frame, 不准 stub). 跟 AL-1b #482 BPP single source
+	// 立场同源 (蓝图 §2.3 R3). online = session-level 走 WS conn
+	// lifecycle, 跟 task-level (busy) 正交.
 	FrameTypeBPPTaskStarted  = "task_started"
 	FrameTypeBPPTaskFinished = "task_finished"
 )
