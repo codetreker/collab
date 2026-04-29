@@ -43,7 +43,7 @@ description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。
 
 不适合:
 - 单 agent / 小任务 (overhead 太重)
-- 纯 bug fix (走 PR review + admin merge 即可)
+- 纯 bug fix (走 PR review + 标准 squash merge 即可, 永远不 admin/ruleset bypass)
 - 已有产品的运维 / oncall
 
 ## 4 层结构
@@ -95,7 +95,7 @@ description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。
 **目标**: 每 milestone 落 4 件套 → 拆段实施 ≤3 PR → 全 merged 闭环
 
 4. **blueprintflow:milestone-fourpiece** — 4 件套并行 (spec / stance / acceptance / content-lock)
-5. **blueprintflow:pr-review-flow** — PR open 后双 review + admin merge + follow-up 翻牌
+5. **blueprintflow:pr-review-flow** — PR open 后双 review + 标准 squash merge (永远不 admin/ruleset bypass)
 
 产出: milestone 全 merged + acceptance template ⚪→🟢 翻牌 + REG-* 寄存
 
@@ -162,7 +162,7 @@ tmux attach -t $SESSION
 
 - **Worktree 协议**: 战马 worktree 在 repo 根 `.worktrees/<milestone>`, 不再 `/tmp/`. 一 milestone 一 worktree 一 branch (`feat/<milestone>`).
 - **一 milestone 一 PR**: 4 件套 + 三段实施 + e2e + docs/current sync + REG flip + acceptance ⚪→✅ + PROGRESS [x] **全在同一 PR**, 不拆多 PR. 不开 closure follow-up.
-- **PR 合并不 admin bypass**: CI 必须真过, flaky 真修不 bypass (含 PR template lint 误报 / e2e flaky / coverage 卡线 — 都修不绕)
+- **PR 合并永远不 admin bypass / 不 ruleset disable** (硬红线, 见 pr-review-flow): CI 必须真过, flaky 真修不绕 (含 PR template lint 误报 / e2e flaky / coverage 卡线 — 都修不绕)
 - **PR template 顶部 4 行裸 metadata**: `Blueprint: §X.Y` / `Touches:` / `Current 同步:` / `Stage: v0|v1` (或 h2 章节式)
 - **Migration v 号串行发号** (如适用): 分配前先 grep 确认
 - **规则 6 (current 同步)**: 代码改 → docs/current 必同步, PR 级 lint 强制
@@ -174,7 +174,7 @@ tmux attach -t $SESSION
 - ❌ 跳过 4 件套直接实施 (立场漂移无法抓)
 - ❌ 一个角色多 milestone 并行 (worktree 冲突)
 - ❌ 把 audit 当推进 (audit + 派活才是)
-- ❌ ruleset 兜底跑 e2e 真 fail PR (掩盖 bug)
+- ❌ **任何形式的 admin merge / ruleset disable / bypass required CI** (永久禁, 不接受 "临时" / "兜底" 借口)
 - ❌ idle 不派活 (cron 必须 ACT)
 
 ## 起步
