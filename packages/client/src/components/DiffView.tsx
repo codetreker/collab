@@ -83,6 +83,15 @@ export function formatDiffParam(newV: number, oldV: number): string {
 }
 
 export default function DiffView({ newBody, newVersion, oldBody, oldVersion, kind = 'markdown' }: Props) {
+  // React hooks rules: 所有 hook 必须在 early return 之前调用 (kind 切换不
+  // 能改变 hook 调用顺序). 即使 image_link 路径不用 rows, useMemo 也仍
+  // 在 hooks 列表中 — 用 `useMemo(() => kind==='image_link' ? [] : ...)` 把
+  // 计算条件化, 列表位置稳定.
+  const rows = useMemo(
+    () => (kind === 'image_link' ? [] : computeDiffRows(oldBody, newBody)),
+    [oldBody, newBody, kind],
+  );
+
   // image_link kind 走 fallback — jsdiff 不适用 binary URL.
   if (kind === 'image_link') {
     return (
@@ -105,8 +114,6 @@ export default function DiffView({ newBody, newVersion, oldBody, oldVersion, kin
       </div>
     );
   }
-
-  const rows = useMemo(() => computeDiffRows(oldBody, newBody), [oldBody, newBody]);
 
   return (
     <div className="diff-view" data-diff-kind={kind}>

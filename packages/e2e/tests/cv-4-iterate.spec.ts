@@ -116,6 +116,9 @@ async function createMarkdownArtifact(
   title: string,
   body: string,
 ): Promise<string> {
+  // Kept for future REST-side use (e.g. multi-user setup); current e2e
+  // path走 createArtifactViaUI 因为 ArtifactPanel v1 没有 list endpoint
+  // (CV-1.3 spec §3 字面, 仅渲染 user UI session 创的 artifact).
   const r = await user.ctx.post(`/api/v1/channels/${channelId}/artifacts`, {
     data: { type: 'markdown', title, body },
   });
@@ -132,6 +135,26 @@ async function gotoCanvas(page: Page, channelName: string): Promise<void> {
   await expect(page.locator('.artifact-panel')).toBeVisible();
 }
 
+/** Drive the empty-state create button — UI path 默认 type='markdown'. */
+async function createArtifactViaUI(page: Page, title: string): Promise<string> {
+  page.once('dialog', async (d) => {
+    await d.accept(title);
+  });
+  const respPromise = page.waitForResponse(
+    (r) =>
+      r.request().method() === 'POST' &&
+      r.url().includes('/artifacts') &&
+      !r.url().includes('/commits') &&
+      !r.url().includes('/rollback') &&
+      !r.url().includes('/versions'),
+  );
+  await page.locator('.artifact-empty button.btn-primary').click();
+  const resp = await respPromise;
+  const j = (await resp.json()) as { id: string };
+  await expect(page.locator('.artifact-version-tag')).toHaveText('v1', { timeout: 5_000 });
+  return j.id;
+}
+
 test.describe('CV-4.3 client iterate UI — acceptance §3 §4', () => {
   test('§3.1 §3.2 — iterate panel owner-only + intent placeholder + agent picker label', async ({ browser }) => {
     const serverPort = process.env.E2E_SERVER_PORT ?? '4901';
@@ -142,13 +165,17 @@ test.describe('CV-4.3 client iterate UI — acceptance §3 §4', () => {
 
     const stamp = Date.now();
     const chName = `cv43-${stamp}`;
-    const chId = await createChannel(owner, chName);
-    await createMarkdownArtifact(owner, chId, 'CV-4 demo', '# v1 body\n');
+    await createChannel(owner, chName);
 
     const ctx = await browser.newContext();
     await attachToken(ctx, owner.token);
     const page = await ctx.newPage();
     await gotoCanvas(page, chName);
+
+    // ArtifactPanel v1 仅渲染 user UI session 创的 artifact (CV-1.3 spec §3
+    // 字面无 list endpoint). 走 UI 创建 path → markdown artifact + IteratePanel
+    // 装配 (artifact.type === 'markdown' 才显示, ArtifactPanel.tsx 立场 ⑥).
+    await createArtifactViaUI(page, 'CV-4 iterate demo');
 
     // 立场 ⑥ — owner 视角 iterate panel 渲染.
     await expect(page.locator('.iterate-panel[data-section="iterate"]')).toBeVisible();
@@ -166,39 +193,19 @@ test.describe('CV-4.3 client iterate UI — acceptance §3 §4', () => {
     await expect(trigger).toHaveAttribute('aria-label', '请求 agent 迭代');
     await expect(trigger).toHaveText('🔄');
 
-    // §4 G3.4 demo 截屏 — iterate-pending state (form 空表单状态, server #409 merge 后切真 pending).
+    // §4 G3.4 demo 截屏 — iterate-pending baseline (server #409 merge 后切真 pending state).
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, 'g3.4-cv4-iterate-pending.png'),
       fullPage: false,
     });
   });
 
-  test('§3.3 — state 4 态 inline DOM via mock', async ({ browser }) => {
-    const serverPort = process.env.E2E_SERVER_PORT ?? '4901';
-    const serverURL = `http://127.0.0.1:${serverPort}`;
-    const adminCtx = await adminLogin(serverURL);
-    const inv = await mintInvite(adminCtx, 'cv43-33');
-    const owner = await registerUser(serverURL, inv, 'o33');
-
-    const stamp = Date.now();
-    const chName = `cv43-state-${stamp}`;
-    const chId = await createChannel(owner, chName);
-    await createMarkdownArtifact(owner, chId, 'state demo', '# v1\n');
-
-    const ctx = await browser.newContext();
-    await attachToken(ctx, owner.token);
-    const page = await ctx.newPage();
-    await gotoCanvas(page, chName);
-
-    // server #409 待 merge — listIterations 走 404 静默路径,
-    // active iteration badge 不渲染. 这里仅反向断言 panel 不 throw.
-    await expect(page.locator('.iterate-panel')).toBeVisible();
-
-    // §4 G3.4 demo 截屏 — running state placeholder (server 真 running 时切真).
-    await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, 'g3.4-cv4-iterate-running.png'),
-      fullPage: false,
-    });
+  test.fixme('§3.3 — state 4 态 inline DOM (待 server #409 merge 真路径)', async () => {
+    // server CV-4.2 #409 待 merge — listIterations endpoint 落地后 4 态
+    // inline DOM (data-iteration-state byte-identical) 才能真触发.
+    // 当前 PR 的 stateLabel 4 态 byte-identical 已被 vitest 全闭锁
+    // (IteratePanel.test.tsx::stateLabel + 6 reason 三处单测锁 REASON_LABELS),
+    // e2e 待 server merge 后 unfixme.
   });
 
   test('§3.4 — iteration completed kindBadge 🤖 byte-identical 跟 #347 同源', async ({ browser }) => {
@@ -210,52 +217,81 @@ test.describe('CV-4.3 client iterate UI — acceptance §3 §4', () => {
 
     const stamp = Date.now();
     const chName = `cv43-completed-${stamp}`;
-    const chId = await createChannel(owner, chName);
-    await createMarkdownArtifact(owner, chId, 'completed demo', '# v1\n');
+    await createChannel(owner, chName);
 
     const ctx = await browser.newContext();
     await attachToken(ctx, owner.token);
     const page = await ctx.newPage();
     await gotoCanvas(page, chName);
 
-    // CV-1 既有 kindBadge 二元锁 (跟 #347 line 251 byte-identical) — owner 自己提交
-    // 显示 👤 (人); agent commit 显示 🤖. 此处 owner 创 → version row 必为 👤.
+    await createArtifactViaUI(page, 'completed demo');
+
+    // CV-1 既有 kindBadge 二元锁 (跟 #347 line 251 byte-identical) — owner
+    // 自己 UI 创建 → version row 必为 👤 (人). 这层锁是 5 处 byte-identical
+    // 单测锁源头之一 (CV-1 #347 + CV-2 #355 + DM-2 #314 + CV-4 #380 + 本).
     const versionKind = page.locator('.artifact-version-kind').first();
     await expect(versionKind).toHaveText('👤');
-
-    // §4 G3.4 demo 截屏 — completed state placeholder.
-    await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, 'g3.4-cv4-iterate-completed.png'),
-      fullPage: false,
-    });
   });
 
-  test('§3.5 — diff view 文案 + jsdiff 蓝绿 + ARIA + 反向断言无 server diff', async ({ browser }) => {
-    // diff view UI 走 client jsdiff (立场 ③), 此 e2e 反向断言 server 不算
-    // diff (无 /api/v1/diff endpoint) — 走单元测覆盖, 截屏走 placeholder.
+  test('§3.5 — DiffView "对比" tab + jsdiff data-diff-line + ?diff=v2..v1 deep-link + server diff endpoint 反向断言 404', async ({ browser }) => {
+    // 立场 ③ — server 端 /api/v1/diff endpoint 不存在 (client jsdiff only).
     const serverPort = process.env.E2E_SERVER_PORT ?? '4901';
     const serverURL = `http://127.0.0.1:${serverPort}`;
     const adminCtx = await adminLogin(serverURL);
     const inv = await mintInvite(adminCtx, 'cv43-35');
     const owner = await registerUser(serverURL, inv, 'o35');
 
-    // 反向断言: server 端 /api/v1/diff endpoint 不存在 (404).
     const r = await owner.ctx.get('/api/v1/diff');
     expect(r.status(), 'server diff endpoint must not exist (立场 ③)').toBe(404);
 
-    // §4 G3.4 demo 截屏 — failed state placeholder (server #409 merge 后切真 failed reason).
     const stamp = Date.now();
-    const chName = `cv43-failed-${stamp}`;
-    const chId = await createChannel(owner, chName);
-    await createMarkdownArtifact(owner, chId, 'failed demo', '# v1\n');
+    const chName = `cv43-diff-${stamp}`;
+    await createChannel(owner, chName);
 
     const ctx = await browser.newContext();
     await attachToken(ctx, owner.token);
     const page = await ctx.newPage();
     await gotoCanvas(page, chName);
-    await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, 'g3.4-cv4-iterate-failed.png'),
-      fullPage: false,
+
+    // 创 markdown artifact (UI path) → v1, then commit v2 with edits.
+    const artifactId = await createArtifactViaUI(page, 'CV-4 diff demo');
+
+    // commit v2 via REST — body changes trigger jsdiff add/del rows.
+    const v2Body = '# diff demo\n\n- new line A\n- new line B\n';
+    const c1 = await owner.ctx.post(`/api/v1/artifacts/${artifactId}/commits`, {
+      data: { expected_version: 1, body: v2Body },
     });
+    expect(c1.ok(), `commit v2: ${c1.status()}`).toBe(true);
+    await expect(page.locator('.artifact-version-tag')).toHaveText('v2', { timeout: 10_000 });
+
+    // 立场 ⑤ — "对比" tab byte-identical (单字, content-lock §1 ⑤).
+    const diffBtn = page.locator('.artifact-diff-btn');
+    await expect(diffBtn).toBeVisible();
+    await expect(diffBtn).toHaveText('对比');
+    await diffBtn.click();
+
+    // 立场 ③ — DiffView 渲染 + data-diff-line 三 enum (a11y ARIA 替代仅
+    // 颜色辨识反约束). add 行至少 ≥1 (v1 → v2 增了 "new line A" 等).
+    await expect(page.locator('.diff-view')).toBeVisible();
+    await expect(page.locator('.diff-view .diff-title')).toHaveText('v2 ↔ v1');
+    const addRows = page.locator('[data-diff-line="add"]');
+    await expect(addRows.first()).toBeVisible();
+
+    // ARIA byte-identical (色盲反约束).
+    await expect(addRows.first()).toHaveAttribute('aria-label', '增行');
+
+    // deep-link byte-identical (#380 ⑤ 同源).
+    await expect(page).toHaveURL(/[?&]diff=v2\.\.v1\b/);
+
+    // 返回 → URL 清 + 渲染回 markdown body.
+    await page.locator('.artifact-diff-exit-btn').click();
+    await expect(page.locator('.diff-view')).toHaveCount(0);
+    await expect(page).not.toHaveURL(/[?&]diff=/);
+  });
+
+  test.fixme('§4 G3.4 demo 4 截屏 (iterate-pending/running/completed/failed) 待 server #409 merge', async () => {
+    // server CV-4.2 #409 待 merge — 4 态 inline state DOM 需要 server
+    // POST /iterate + IterationStateChangedFrame 真路径触发. server merge
+    // 后 unfixme 让 e2e 跑真状态截屏归档 (撑章程 Phase 3 退出公告).
   });
 });
