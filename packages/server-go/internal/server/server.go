@@ -219,6 +219,14 @@ func (s *Server) SetupRoutes() {
 	}
 	pushSubsHandler.RegisterRoutes(s.mux, authMw)
 
+	// DL-4.4 PWA Web App Manifest — GET /api/v1/pwa/manifest (公开 endpoint,
+	// 浏览器 install prompt 在 login 前 fetch). 蓝图 client-shape.md L42
+	// (manifest + install prompt + Web Push + standalone).
+	// ⚠️ 命名拆死锚: 跟 HB-1 #491 GET /api/v1/plugin-manifest (binary plugin
+	// manifest, 双签必需) 不同 endpoint 不同安全模型 (zhanma-a drift audit).
+	pwaManifestHandler := &api.PWAManifestHandler{}
+	pwaManifestHandler.RegisterRoutes(s.mux)
+
 	// (DL-4.3 push gateway init moved earlier — line ~85 — to feed
 	// MentionDispatcher.PushNotifier.)
 

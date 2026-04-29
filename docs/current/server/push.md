@@ -57,12 +57,31 @@ type Gateway interface {
 | | endpoint | 用途 | 安全模型 |
 |---|---|---|---|
 | HB-1 #491 | `GET /api/v1/plugin-manifest` | install-butler 消费 binary plugin manifest | **双签必需** (蓝图 host-bridge §1.2 ① + §4.5 "未签 100% reject") |
-| DL-4 (本) | `GET /api/v1/pwa/manifest` (DL-4.4 待 commit) | PWA installable web app manifest (浏览器 install prompt) | HTTPS + bearer (无签) |
+| DL-4 (本) | `GET /api/v1/pwa/manifest` | PWA installable web app manifest (浏览器 install prompt) | 公开 endpoint (HTTPS, 无 auth — install prompt 在 login 前 fetch) |
 
-**反约束**: DL-4 endpoint 字面**不**含 `plugin-manifest` (HB-1 独占). 反向 grep `manifest/plugins|plugin-manifest` 在 `internal/api/pwa_manifest.go` + `packages/client/src/` count==0 (zhanma-a drift audit 锚源).
+**反约束**: DL-4 endpoint 字面**不**含 `plugin-manifest` (HB-1 独占). 反向 grep `manifest/plugins|plugin-manifest` 在 `internal/api/pwa_manifest.go` + `packages/client/src/` count==0 (zhanma-a drift audit 锚源). `TestDL44_PWAManifest_NameNotPluginManifest` 实测断言 DL-4 server 不响应 HB-1 路径 (404).
+
+## 6a. PWA Web App Manifest (`internal/api/pwa_manifest.go`)
+
+W3C App Manifest 标准 endpoint, 浏览器 install prompt 触发器.
+
+| 字段 | 值 | 锚 |
+|---|---|---|
+| `name` / `short_name` | "Borgee" / "Borgee" | install prompt + 主屏 label |
+| `start_url` | "/" | 桌面图标点击进 SPA 根 |
+| `display` | "standalone" | 蓝图 L22 字面 |
+| `theme_color` / `background_color` | "#16213e" / "#1a1a2e" | byte-identical 跟 packages/client/public/manifest.json 静态文件 |
+| `scope` | "/" | navigation scope (全应用) |
+| `icons` | 3 项 SVG (192x192 + 512x512 + favicon any maskable) | 引用 packages/client/public/icons/ + favicon.svg 现有资源 |
+
+`Content-Type: application/manifest+json` (W3C 标准 MIME, 浏览器 install prompt 严格识别). `Cache-Control: public, max-age=3600` (静态内容).
+
+**反约束** (TestDL44_PWAManifest_NoSecretsLeak 守门): manifest body 不含 `vapid_secret` / `vapid_private` / `private_key` / `api_key` / `secret` / `token` / `borgee_token` / `borgee_admin_session` 字面.
+
+**5 test 全绿**: PublicEndpoint (无 auth) / ContentType (W3C MIME) / RequiredFields (W3C 字段集 + display=standalone + 192x192/512x512 基线) / NoSecretsLeak / NameNotPluginManifest (拆死锚实测).
 
 ## 7. 锚
 
 - spec brief: [`docs/implementation/modules/dl-4-spec.md`](../../implementation/modules/dl-4-spec.md)
-- 实施: `internal/migrations/dl_4_1_*` (6 schema test) + `internal/api/push_subscriptions.go` (7 endpoint test) + `internal/api/dl_4_2_push_subscriptions_test.go` + `internal/push/gateway.go` (6 gateway test 含 410 GC) + `internal/push/mention_notifier.go` (5 fan-out test)
+- 实施: `internal/migrations/dl_4_1_*` (6 schema test) + `internal/api/push_subscriptions.go` (7 endpoint test) + `internal/api/dl_4_2_push_subscriptions_test.go` + `internal/api/pwa_manifest.go` (5 PWA manifest test) + `internal/push/gateway.go` (6 gateway test 含 410 GC) + `internal/push/mention_notifier.go` (5 fan-out test)
 - deferred Phase 后续: DL-4.4 PWA manifest API + DL-4.5 client subscribe + DL-4.6.b RT-3 派生 hook + DL-4.7 e2e + closure
