@@ -53,3 +53,33 @@ state_updated_at   : Unix ms (仅 error 态, error 时刻)
 - 不带 migration. 状态全部驻 `Tracker` map (内存). 重启全清, owner 触发任意 plugin 调用即重新分类.
 - 不实现 busy / idle. 没 BPP 不能 stub.
 - 不主动 push state 变更. 客户端依赖 RT-0 (#40) 已有的 `/events` long-poll wakeup 路径; AL-1b (Phase 4 BPP cutover) 再考虑专属 frame.
+
+## 6. AL-4.2 — runtime process descriptor API (PR #414)
+
+> AL-1a 三态是内存瞬时态 (online/offline/error); AL-4.2 落 `agent_runtimes` 表 (`schema_migrations` v=16, PR #398) — plugin process descriptor 持久化, 跟 AL-1a 内存态拆死 (蓝图 `agent-lifecycle.md §2.2`)。
+
+文件: `internal/api/runtimes.go` (`RuntimeHandler` user-rail + `AdminRuntimeHandler` admin-rail 双 mux 隔离)。
+
+Endpoints (acceptance §2 字面, owner-only 除标注):
+
+```
+POST /api/v1/agents/{id}/runtime/register   create agent_runtimes row
+POST /api/v1/agents/{id}/runtime/start      transition status → running   (Permission: agent.runtime.control)
+POST /api/v1/agents/{id}/runtime/stop       transition status → stopped (idempotent) (Permission: agent.runtime.control)
+POST /api/v1/agents/{id}/runtime/heartbeat  plugin → server, update last_heartbeat_at (v0 简化为 owner-only)
+POST /api/v1/agents/{id}/runtime/error      transition status → error + reason
+GET  /api/v1/agents/{id}/runtime            owner-only metadata read
+GET  /admin-api/v1/runtimes                 admin god-mode whitelist (no last_error_reason raw)
+```
+
+start + stop 二次防护 = `auth.RequirePermission(s, "agent.runtime.control", nil)` middleware (acceptance §4.6 字面 grep `RequirePermission..agent\.runtime\.control` count≥2 锁两路命中)。
+
+立场反查 (al-4-spec.md §0 + acceptance §4):
+
+- ① Borgee 不带 runtime: server 仅记 process descriptor, 不存 `llm_provider` / `model_name` / `api_key` / `prompt_template` (schema 闸位已就位 #398).
+- ② admin god-mode 元数据 only: admin endpoint 返白名单不写; `last_error_reason` raw 不返 (admin-rail 反向 grep `admin.*runtime.*start|admin.*runtime.*stop` count==0).
+- ③ runtime status ≠ presence: heartbeat 写 `agent_runtimes.last_heartbeat_at` 不写 `presence_sessions` (跟 AL-3 SessionsTracker 边界拆死 — schema 闸位已就位 #398, handler 不 import `internal/presence` 写表).
+- ④ status DM 文案锁 byte-identical: "{agent_name} 已启动" / "已停止" / "出错: {reason}" 跟野马 #321 三处单测同源.
+- ⑤ reason 复用 AL-1a #249 6 reason 枚举字面 + AL-4 stub fail-closed 加 `runtime_not_registered` 第 7 reason — 不另起字典 (跟 `agent/state.go Reason*` + `lib/agent-state.ts REASON_LABELS` byte-identical).
+- ⑥ 走 BPP-1 既有 frame 不裂 namespace: register / start / stop **不发** `runtime.start` / `runtime.stop` 自造 frame type (acceptance §4.4 反向 grep count==0).
+

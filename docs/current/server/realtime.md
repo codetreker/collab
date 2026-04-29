@@ -71,6 +71,11 @@ DM-2.2 mention dispatch handler `parser regex @([0-9a-f-]{36})` 落 `message_men
 
 8 字段 envelope `body_preview` 80 rune-safe 截断 (`utf8.RuneCountInString`, 不切 CJK 字符) — 隐私 §13 红线 (完整 body 走 `new_message` event channel ACL 授权路径, 不通过此 frame)。**反约束** (DM-2.2 自查 4 锚 0 hit): `mention.*owner_id` / `cc.*owner` / `notify.*owner_id` / `system.*DM.*body`; `@channel` 0 hit (留 DM-3)。
 
-### 6.4 cursor 共序契约 (跨 RT-1 / CV-2 / DM-2 / 未来 CV-4)
+### 6.4 IterationStateChanged (CV-4.2 #409)
 
-四 frame (ArtifactUpdated 7 / AnchorCommentAdded 10 / MentionPushed 8 / IterationStateChanged 9 待) 共一根 `hub.cursors` 单调 sequence (RT-1.1 atomic int64 + CAS 保 100 并发无重复, 重启从 `MAX(events.cursor)` seed)。client 不可按 `created_at`/`updated_at` 排序, 必须按 `cursor` (RT-1 反约束)。BPP-1 #304 envelope CI lint reflect 比对 `bpp/frame_schemas.go` ↔ server-go 端 frame struct 字段顺序自动闸位 — 改字段顺序 = lint fail = PR 卡。
+CV-4.2 iterate handler 写 `artifact_iterations` 行后 + 每次 state machine 转移 (pending → running / pending → failed / running → completed / running → failed) 触发 `Hub.PushIterationStateChanged` 推 channel 全员 (channel-scoped fanout 跟 RT-1.1 / CV-2.2 同模式)。9 字段 envelope: type / cursor / iteration_id / artifact_id / channel_id / state / error_reason / created_artifact_version_id / completed_at — cursor 走 hub.cursors 同 RT-1.1 / CV-2.2 / DM-2.2 单调 sequence (反约束: 不另起 channel)。**反约束**: error_reason / created_artifact_version_id / completed_at 在 pending/running 态时为零值 (string="" / int64=0), 始终序列化, 不挂 omitempty (跟 AnchorComment resolved_at 模式不同); state CHECK 4 态 byte-identical 跟 #380 文案锁 + migration v=18 字面; AL-4 stub fail-closed → state='failed' + error_reason='runtime_not_registered' (跟 AL-1a #249 6 reason 同源, 立场 ⑤)。
+
+### 6.5 cursor 共序契约 (跨 RT-1 / CV-2 / DM-2 / CV-4)
+
+
+四 frame (ArtifactUpdated 7 / AnchorCommentAdded 10 / MentionPushed 8 / IterationStateChanged 9) 共一根 `hub.cursors` 单调 sequence (RT-1.1 atomic int64 + CAS 保 100 并发无重复, 重启从 `MAX(events.cursor)` seed)。client 不可按 `created_at`/`updated_at` 排序, 必须按 `cursor` (RT-1 反约束)。BPP-1 #304 envelope CI lint reflect 比对 `bpp/frame_schemas.go` ↔ server-go 端 frame struct 字段顺序自动闸位 — 改字段顺序 = lint fail = PR 卡。

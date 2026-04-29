@@ -186,6 +186,47 @@ http.Server.Serve       # 0.0.0.0:4900
 
 `sanitizeAgentInvitation` 自 bug-029 修起 JOIN `users` + `channels` 解析三个 label 字段：`agent_name`（agent 所属 user 的 display_name，agent 本身没 name 列）、`channel_name`、`requester_name`。lookup miss → 字段输出空串（key 始终在，UI 端 `name || id` fallback）。store 为 `nil` 时（白盒测试径）三字段全部空串。改 sanitizer 字段集 = 同步改 `agent_invitations_test.go::TestAgentInvitations_SanitizerKeys` 白名单（red line）。
 
+### Agent runtime (AL-4.2, PR #414)
+落 `agent_runtimes` 表 (migration v=16, PR #398) 上的 plugin process descriptor 启停 API。Handler `internal/api/runtimes.go`，详见 [`agent-runtime-state.md §6`](agent-runtime-state.md#6-al-42--runtime-process-descriptor-api-pr-414)。
+| Method | Path | 用途 |
+|--------|------|------|
+| POST | `/api/v1/agents/{id}/runtime/register` | 创建 `agent_runtimes` 行（owner-only） |
+| POST | `/api/v1/agents/{id}/runtime/start` | status → running（owner-only + `agent.runtime.control` permission） |
+| POST | `/api/v1/agents/{id}/runtime/stop` | status → stopped（owner-only + `agent.runtime.control`，idempotent） |
+| POST | `/api/v1/agents/{id}/runtime/heartbeat` | plugin → server，更新 `last_heartbeat_at`（v0 简化为 owner-only） |
+| POST | `/api/v1/agents/{id}/runtime/error` | status → error + reason（owner-only） |
+| GET | `/api/v1/agents/{id}/runtime` | owner-only metadata 读 |
+| GET | `/admin-api/v1/runtimes` | admin god-mode whitelist（不返 `last_error_reason` raw） |
+
+### Artifacts (CV-1.2 / CV-3.2 / CV-4.2)
+`POST /api/v1/channels/{channelId}/artifacts` 创建 artifact（CV-3.2: kind ∈ {markdown, code, image_link}, code 必含 metadata.language ∈ 11 项白名单, image_link 必含 metadata.kind ∈ ('image','link') + URL https only）。**CHN-2.1 立场 ② DM 反约束 (PR #407)**: `ch.Type == "dm"` → 403 `{code: "dm.workspace_not_supported", message: "DM 无 workspace, 跟 channel 拆"}` (蓝图 §1.2 字面禁; 反向 grep `dm.workspace_not_supported` count≥1 锁 handler)。
+
+`GET/POST /api/v1/artifacts/{id}/commits`、`POST /api/v1/artifacts/{id}/rollback` — CV-1.2 commit/rollback。Commit 单源接受 `?iteration_id=<id>` query: 同 atomic UPDATE 把对应 `artifact_iterations.state` running → completed 并写 `created_artifact_version_id` (CV-4.2 立场 ②, 反约束: 不开 `POST /iterations/:id/commit` 旁路)。
+
+### Iterations (CV-4.2, PR #409)
+落 `artifact_iterations` 表 (migration v=18, PR #405)。Handler `internal/api/iterations.go`。
+| Method | Path | 用途 |
+|--------|------|------|
+| POST | `/api/v1/artifacts/{artifactId}/iterate` | 创建 iteration row（owner-only），body `{intent_text, target_agent_id}`；AL-4 stub fail-closed: `agent_runtimes.status != 'running'` → state='failed' + error_reason='runtime_not_registered' |
+| GET | `/api/v1/artifacts/{artifactId}/iterations` | 列 history（ORDER BY created_at DESC） |
+
+state machine 4 态合法转移 (pending→running / pending→failed / running→completed / running→failed); 反断 completed→running / completed→pending / failed→pending 等回退 (acceptance §2.3 + §4.3)。WS push: `iteration_state_changed` frame 9 字段（详见 [`ws/event-schemas.md`](ws/event-schemas.md)）。admin god-mode 不返 `intent_text` raw (隐私字段, ADM-0 §1.3 红线)。
+
+### Anchor comments (CV-2.2, PR #360)
+`POST /api/v1/artifacts/{id}/anchors`、`POST /api/v1/anchors/{id}/comments`、`GET /api/v1/anchors/{id}/comments`。WS push: `anchor_comment_added` frame 10 字段。
+
+### Mentions (DM-2.2, PR #372)
+解析 `messages.body` 中 `@<user_id>` 36-char uuid token 写 `message_mentions` 行（migration v=15, PR #361）。在线 → `mention_pushed` frame 单推 target；离线 → `enqueueOwnerSystemDM` 写 owner ↔ agent 内置 DM system message + 5min/(agent, channel) 节流。
+
+### Personal layout (CHN-3.2, PR #412)
+落 `user_channel_layout` 表 (migration v=19, PR #410) 的本人偏好读写 endpoint。Handler `internal/api/layout.go`，本人写本人读，admin token 不入此 rail (立场 ⑤ ADM-0 红线)。
+| Method | Path | 用途 |
+|--------|------|------|
+| GET | `/api/v1/me/layout` | 返回 `{layout: [{channel_id, collapsed, position, created_at, updated_at}, ...]}`（空数组 if 无偏好） |
+| PUT | `/api/v1/me/layout` | 批量 upsert，body `{layout: [{channel_id, collapsed, position}, ...]}`；DM channel reject → 400 `{code: "layout.dm_not_grouped"}` byte-identical (#357 / #353 / #366 / #402 5 源锁)；non-member channel reject |
+
+立场反查: 入参字段反约束断言 reject `hidden` / `muted` / `pinned` / `group_id` (立场 ②); server 不算 MIN-1.0 pin 算法 (client 端事, 立场 ③ + ⑥); 不发 `LayoutChangedFrame` push (立场 ⑥ — 反向 grep `WSEnvelope.*position|push.*frame.*position|fanout.*user_channel_layout` count==0)。失败 toast 文案锁 "侧栏顺序保存失败, 请重试" 跟 client #371 / 文案锁 ④ 三源同步。
+
 ### Commands
 `GET /api/v1/commands` — 当前所有 plugin 注册过的 slash command，按 agent 分组。
 
