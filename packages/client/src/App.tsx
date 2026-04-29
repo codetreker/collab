@@ -10,6 +10,7 @@ import AgentManager from './components/AgentManager';
 import InvitationsInbox from './components/InvitationsInbox';
 import WorkspaceManager from './components/WorkspaceManager';
 import NodeManager from './components/NodeManager';
+import SettingsPage from './components/Settings/SettingsPage';
 import { useWebSocket } from './hooks/useWebSocket';
 import { fetchMe, ApiError } from './lib/api';
 import './index.css';
@@ -45,6 +46,7 @@ function AppInner() {
   const [showInvitations, setShowInvitations] = useState(false);
   const [showWorkspaces, setShowWorkspaces] = useState(false);
   const [showRemoteNodes, setShowRemoteNodes] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Wire sendWsMessage into context
   useEffect(() => {
@@ -152,6 +154,7 @@ function AppInner() {
     setShowInvitations(false);
     setShowWorkspaces(false);
     setShowRemoteNodes(false);
+    setShowSettings(false);
   }, []);
 
   const handleLogin = useCallback(async () => {
@@ -200,7 +203,7 @@ function AppInner() {
         <div className="sidebar-overlay" onClick={closeSidebar} />
       )}
       <div className={`sidebar-wrapper ${isMobile ? (sidebarOpen ? 'sidebar-open' : 'sidebar-closed') : ''}`}>
-        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAgentsOpen={() => setShowAgents(true)} onInvitationsOpen={() => setShowInvitations(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} />
+        <Sidebar onClose={isMobile ? closeSidebar : undefined} onChannelSelect={closeAllViews} onLogout={handleLogout} onAgentsOpen={() => setShowAgents(true)} onInvitationsOpen={() => setShowInvitations(true)} onWorkspacesOpen={() => setShowWorkspaces(true)} onRemoteNodesOpen={() => setShowRemoteNodes(true)} onSettingsOpen={() => setShowSettings(true)} />
       </div>
 
       <div className="main-content">
@@ -218,6 +221,8 @@ function AppInner() {
           <WorkspaceManager onBack={() => setShowWorkspaces(false)} />
         ) : showRemoteNodes ? (
           <NodeManager onBack={() => setShowRemoteNodes(false)} />
+        ) : showSettings ? (
+          <SettingsPage onBack={() => setShowSettings(false)} />
         ) : state.currentChannelId ? (
           <ChannelView channelId={state.currentChannelId} />
         ) : (
