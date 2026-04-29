@@ -3929,3 +3929,100 @@ body {
 .artifact-rollback-btn {
   margin-left: auto;
 }
+
+/* CV-2.3 anchor entry + thread side panel */
+.anchor-comment-btn {
+  position: absolute;
+  right: 1rem;
+  top: 4rem;
+  font-size: 1.1rem;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  z-index: 5;
+}
+.anchor-comment-btn:hover { background: #ebebeb; }
+
+.artifact-anchors {
+  border-top: 1px solid #eee;
+  padding: 8px 12px;
+}
+.artifact-anchor-list { list-style: none; padding: 0; margin: 4px 0 0; }
+.artifact-anchor-row {
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.artifact-anchor-row:hover { background: #f0f4f8; }
+.artifact-anchor-row.resolved { opacity: 0.55; }
+
+.anchor-thread {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: 320px;
+  max-height: 60vh;
+  background: #f7f7f8;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px 12px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.anchor-thread-resolved { opacity: 0.7; }
+.anchor-thread-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.anchor-thread-title { margin: 0; font-size: 14px; }
+.anchor-thread-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
+.anchor-stale-label {
+  font-size: 11px;
+  color: #777;
+  background: #fff8e0;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.anchor-comment-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.anchor-comment-row {
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.anchor-comment-empty { color: #999; font-size: 12px; padding: 6px 0; }
+.anchor-reply-author {
+  font-size: 11px;
+  color: #555;
+  margin-right: 4px;
+}
+.anchor-thread-textarea {
+  width: 100%;
+  resize: vertical;
+  margin-top: 6px;
+}
+.anchor-thread-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.anchor-resolve-btn { margin-left: auto; }
+.anchor-err { color: #c33; font-size: 12px; margin: 4px 0 0; }

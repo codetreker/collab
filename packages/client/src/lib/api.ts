@@ -867,3 +867,88 @@ export async function rollbackArtifact(
     },
   );
 }
+
+// ─── Anchors (CV-2.2 server / CV-2.3 client) ───────────────
+//
+// Spec: docs/implementation/modules/cv-2-spec.md §0 (3 立场) + §1
+// (CV-2.3 段). Server: packages/server-go/internal/api/anchors.go (#360).
+//
+// Pull-side契约: server's PushAnchorCommentAdded frame is signal-only
+// (10 字段 envelope, no body). 当 anchor_comment_added frame 到达
+// client, 必须再走 GET /api/v1/artifacts/:id/anchors +
+// GET /api/v1/anchors/:id/comments 拿评论列表 (立场 ③ envelope 仅信号).
+
+export interface AnchorThread {
+  id: string;
+  artifact_id: string;
+  artifact_version_id: number;
+  start_offset: number;
+  end_offset: number;
+  created_by: string;
+  created_at: number;
+  resolved_at: number | null;
+}
+
+export interface AnchorComment {
+  id: number;
+  anchor_id: string;
+  body: string;
+  /** 'human' | 'agent' — naming aligned with anchor_comments.author_kind. */
+  author_kind: 'human' | 'agent';
+  author_id: string;
+  created_at: number;
+}
+
+/** POST /artifacts/:id/anchors — owner-only on server (kind='human' check); agent → 403 anchor.create_owner_only. */
+export async function createAnchor(
+  artifactId: string,
+  payload: { version?: number; start_offset: number; end_offset: number },
+): Promise<AnchorThread> {
+  return request<AnchorThread>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/anchors`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/** GET /artifacts/:id/anchors — list active + resolved anchors (channel members). */
+export async function listAnchors(
+  artifactId: string,
+): Promise<{ anchors: AnchorThread[] }> {
+  return request<{ anchors: AnchorThread[] }>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/anchors`,
+  );
+}
+
+/** POST /anchors/:id/comments — channel members may reply; agent only on threads with a human author (server-enforced). */
+export async function addAnchorComment(
+  anchorId: string,
+  body: string,
+): Promise<AnchorComment> {
+  return request<AnchorComment>(
+    `/api/v1/anchors/${encodeURIComponent(anchorId)}/comments`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    },
+  );
+}
+
+/** GET /anchors/:id/comments — pull comment list after WS signal. */
+export async function listAnchorComments(
+  anchorId: string,
+): Promise<{ comments: AnchorComment[] }> {
+  return request<{ comments: AnchorComment[] }>(
+    `/api/v1/anchors/${encodeURIComponent(anchorId)}/comments`,
+  );
+}
+
+/** POST /anchors/:id/resolve — owner / creator only (server-enforced). */
+export async function resolveAnchor(anchorId: string): Promise<{ id: string; resolved_at: number }> {
+  return request<{ id: string; resolved_at: number }>(
+    `/api/v1/anchors/${encodeURIComponent(anchorId)}/resolve`,
+    { method: 'POST' },
+  );
+}

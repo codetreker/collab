@@ -102,6 +102,7 @@ func (h *AnchorHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Hand
 	mux.Handle("POST /api/v1/artifacts/{artifactId}/anchors", wrap(h.handleCreateAnchor))
 	mux.Handle("GET /api/v1/artifacts/{artifactId}/anchors", wrap(h.handleListAnchors))
 	mux.Handle("POST /api/v1/anchors/{anchorId}/comments", wrap(h.handleAddComment))
+	mux.Handle("GET /api/v1/anchors/{anchorId}/comments", wrap(h.handleListComments))
 	mux.Handle("POST /api/v1/anchors/{anchorId}/resolve", wrap(h.handleResolveAnchor))
 }
 
@@ -455,6 +456,50 @@ func (h *AnchorHandler) handleAddComment(w http.ResponseWriter, r *http.Request)
 		"author_id":   user.ID,
 		"created_at":  nowMs,
 	})
+}
+
+// ----- GET /api/v1/anchors/{anchorId}/comments -----
+//
+// CV-2.3 client SPA pull path: after the anchor_comment_added WS frame
+// lands (signal-only, 立场 ③), AnchorThreadPanel calls this endpoint to
+// hydrate the thread body. channel-scoped ACL same as create/list anchors.
+
+func (h *AnchorHandler) handleListComments(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	anchorID := r.PathValue("anchorId")
+	_, art, err := h.loadAnchor(anchorID)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "Anchor not found")
+		return
+	}
+	if !h.canAccessChannel(art.ChannelID, user.ID) {
+		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+	var rows []anchorCommentRow
+	if err := h.Store.DB().Raw(`SELECT
+  id, anchor_id, body, author_kind, author_id, created_at
+FROM anchor_comments WHERE anchor_id = ?
+ORDER BY id ASC`, anchorID).Scan(&rows).Error; err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "list comments failed")
+		return
+	}
+	out := make([]map[string]any, 0, len(rows))
+	for _, c := range rows {
+		out = append(out, map[string]any{
+			"id":          c.ID,
+			"anchor_id":   c.AnchorID,
+			"body":        c.Body,
+			"author_kind": c.AuthorKind,
+			"author_id":   c.AuthorID,
+			"created_at":  c.CreatedAt,
+		})
+	}
+	writeJSONResponse(w, http.StatusOK, map[string]any{"comments": out})
 }
 
 // ----- POST /api/v1/anchors/{anchorId}/resolve -----
