@@ -135,6 +135,9 @@ func (h *ArtifactHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Ha
 	mux.Handle("POST /api/v1/artifacts/{artifactId}/rollback", wrap(h.handleRollback))
 	// CV-2 v2 (#cv-2-v2): owner-only preview thumbnail generation.
 	mux.Handle("POST /api/v1/artifacts/{artifactId}/preview", wrap(h.handlePreview))
+	// CV-3 v2 (#cv-3-v2): owner-only code/markdown thumbnail generation
+	// (二闸互斥 跟 /preview — markdown/code 走此, image/video/pdf 走 /preview).
+	mux.Handle("POST /api/v1/artifacts/{artifactId}/thumbnail", wrap(h.handleThumbnail))
 }
 
 // artifactRow is the raw shape we read back via gorm.Raw.Scan. We don't
@@ -153,6 +156,10 @@ type artifactRow struct {
 	LockAcquiredAt    *int64  `gorm:"column:lock_acquired_at"`
 	// CV-2 v2 (#cv-2-v2) — server-recorded thumbnail/poster URL (https only).
 	PreviewURL        *string `gorm:"column:preview_url"`
+	// CV-3 v2 (#cv-3-v2) — server-recorded code/markdown thumbnail URL
+	// (https only). 跟 PreviewURL 字段拆: PreviewURL 给 image/video/pdf
+	// media kind, ThumbnailURL 给 markdown/code text kind (二闸互斥).
+	ThumbnailURL      *string `gorm:"column:thumbnail_url"`
 }
 
 type versionRow struct {
@@ -170,7 +177,7 @@ func (h *ArtifactHandler) loadArtifact(id string) (*artifactRow, error) {
 	var rows []artifactRow
 	if err := h.Store.DB().Raw(`SELECT
   id, channel_id, type, title, body, current_version, created_at,
-  archived_at, lock_holder_user_id, lock_acquired_at, preview_url
+  archived_at, lock_holder_user_id, lock_acquired_at, preview_url, thumbnail_url
 FROM artifacts WHERE id = ?`, id).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -722,6 +729,10 @@ func (h *ArtifactHandler) serializeArtifact(a *artifactRow, committerKind, commi
 	// CV-2 v2 (#cv-2-v2): preview_url echoed when set; null/missing when absent.
 	if a.PreviewURL != nil {
 		out["preview_url"] = *a.PreviewURL
+	}
+	// CV-3 v2 (#cv-3-v2): thumbnail_url echoed when set (markdown/code only).
+	if a.ThumbnailURL != nil {
+		out["thumbnail_url"] = *a.ThumbnailURL
 	}
 	return out
 }
