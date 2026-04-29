@@ -35,6 +35,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"borgee-server/internal/auth"
@@ -42,11 +43,30 @@ import (
 	"gorm.io/gorm"
 )
 
-// AgentConfigHandler handles agent config SSOT endpoints (AL-2a.2).
+// AgentConfigPusher is the interface for fanning out agent_config_update
+// BPP frames to the target plugin connection (AL-2b §2.1 server→plugin).
+// Implemented by *ws.Hub.PushAgentConfigUpdate; injected via interface
+// seam to keep the api package from depending on internal/ws (跟
+// IterationStatePusher / ArtifactPusher / AgentInvitationPusher 同模式).
+//
+// 反约束: AL-2a-only callers (legacy poll path) leave Pusher nil — PATCH
+// handler skips fanout silently. AL-2b wire-up sets Pusher at server
+// boot, single source of truth.
+type AgentConfigPusher interface {
+	PushAgentConfigUpdate(agentID string, schemaVersion int64, blob string,
+		idempotencyKey string, createdAt int64) (cursor int64, sent bool)
+}
+
+// AgentConfigHandler handles agent config SSOT endpoints (AL-2a.2) +
+// AL-2b BPP fanout (when Pusher is wired).
 type AgentConfigHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 	Now    func() time.Time // injectable clock for tests; defaults to time.Now.
+	// Pusher is the AL-2b BPP fanout seam. Nil-safe — handler logs +
+	// continues if not wired (best-effort, plugin reconnect 后 GET
+	// /agents/:id/config 主动拉最新, 跟蓝图 §1.5 "runtime 不缓存" 同源).
+	Pusher AgentConfigPusher
 }
 
 func (h *AgentConfigHandler) now() int64 {
@@ -247,6 +267,28 @@ func (h *AgentConfigHandler) handlePatchAgentConfig(w http.ResponseWriter, r *ht
 		"blob":           req.Blob,
 		"updated_at":     row.UpdatedAt,
 	})
+
+	// AL-2b §2.1 BPP fanout — server→plugin push of the new config delta.
+	// Best-effort: failure here MUST NOT block the PATCH response (跟
+	// DM-2.2 #372 mention dispatch 失败不阻 message 落库 同模式; plugin
+	// reconnect 后 GET /agents/:id/config 主动拉最新, 跟蓝图 §1.5
+	// "runtime 不缓存" 同源).
+	//
+	// idempotency_key 走 server-side stable derivation (agent_id +
+	// schema_version) — plugin 端按此 key 去重 reload (acceptance §2.2
+	// 字面承袭). 同 (agent_id, schema_version) 重发 N 次 → plugin reload
+	// 行为只触发 1 次.
+	if h.Pusher != nil {
+		idemKey := id + ":" + strconv.FormatInt(row.SchemaVersion, 10)
+		_, sent := h.Pusher.PushAgentConfigUpdate(id, row.SchemaVersion,
+			row.Blob, idemKey, now)
+		if !sent && h.Logger != nil {
+			// plugin offline — frame dropped (反约束: 不入队列). Audit
+			// trail only, not an error from PATCH's POV.
+			h.Logger.Info("agent_config push skipped (plugin offline)",
+				"agent_id", id, "schema_version", row.SchemaVersion)
+		}
+	}
 }
 
 func (h *AgentConfigHandler) logErr(op string, err error) {

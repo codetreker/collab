@@ -125,9 +125,14 @@ func (s *Server) SetupRoutes() {
 
 	// AL-2a.2 agent_configs — SSOT REST endpoints (owner-only, fail-closed
 	// runtime-field reject, acceptance #264 §4.1.a-d). 蓝图 §1.4 字段划界 +
-	// §1.5 BPP frame `agent_config_update` 留 AL-2b + BPP-3 同合 — AL-2a
-	// 走轮询 reload (本 handler 无 hub.Broadcast).
-	agentConfigHandler := &api.AgentConfigHandler{Store: s.store, Logger: s.logger}
+	// §1.5 BPP frame `agent_config_update` AL-2b 已落 — PATCH 后 fanout
+	// 走 hub.PushAgentConfigUpdate (best-effort, plugin 离线 frame 丢弃,
+	// 重连后 GET /agents/:id/config 主动拉最新, 跟蓝图 "runtime 不缓存" 同源).
+	agentConfigHandler := &api.AgentConfigHandler{
+		Store:  s.store,
+		Logger: s.logger,
+		Pusher: s.hub, // AL-2b §2.1 server→plugin BPP fanout seam
+	}
 	agentConfigHandler.RegisterRoutes(s.mux, authMw)
 
 	// Channels
