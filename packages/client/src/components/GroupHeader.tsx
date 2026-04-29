@@ -55,11 +55,13 @@ export default function GroupHeader({ group, collapsed, onToggle, onContextMenu,
       ref={setNodeRef}
       style={style}
       className="group-header"
+      data-collapsed={collapsed ? "true" : "false"}
+      aria-label="折叠分组"
       onClick={onToggle}
       onContextMenu={e => { e.preventDefault(); onContextMenu?.(e); }}
       {...attributes}
     >
-      <span className={`group-header-arrow${collapsed ? ' collapsed' : ''}`}>▼</span>
+      <span className={`group-header-arrow${collapsed ? ' collapsed' : ''}`}>{collapsed ? '▶' : '▼'}</span>
       {renaming ? (
         <input
           ref={inputRef}
