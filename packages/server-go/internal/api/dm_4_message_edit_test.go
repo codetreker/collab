@@ -13,6 +13,7 @@
 package api_test
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -224,5 +225,149 @@ func TestDM41_NoThinkingPatternInBody(t *testing.T) {
 	}
 	if len(hits) > 0 {
 		t.Errorf("DM-4 立场 ③ broken: thinking 5-pattern literal in dm_4*.go production: %v", hits)
+	}
+}
+
+// patchRaw fires a PATCH with arbitrary raw body (bypasses JSON marshal so
+// tests can exercise invalid-JSON branches in handleEdit).
+func patchRaw(t *testing.T, url, token, body string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest("PATCH", url, strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	return resp
+}
+
+// TestDM41_ChannelNotFound — handleEdit step 3: GetChannelByID error/nil
+// returns 404. Path uses a synthetic channel id that does not exist.
+func TestDM41_ChannelNotFound(t *testing.T) {
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+
+	resp, _ := testutil.JSON(t, "PATCH",
+		ts.URL+"/api/v1/channels/nonexistent-channel/messages/some-msg", ownerToken,
+		map[string]any{"content": "x"})
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("channel not found: got status %d, want 404", resp.StatusCode)
+	}
+}
+
+// TestDM41_InvalidJSON — handleEdit step 4: malformed JSON body → 400.
+func TestDM41_InvalidJSON(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	ownerToken, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
+
+	resp := patchRaw(t,
+		ts.URL+"/api/v1/channels/"+dmID+"/messages/"+messageID, ownerToken,
+		"{not valid json")
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("invalid json: got status %d, want 400", resp.StatusCode)
+	}
+}
+
+// TestDM41_EmptyContent — handleEdit step 4 trim path: whitespace-only
+// content trims to empty → 400.
+func TestDM41_EmptyContent(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	ownerToken, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
+
+	resp, body := testutil.JSON(t, "PATCH",
+		ts.URL+"/api/v1/channels/"+dmID+"/messages/"+messageID, ownerToken,
+		map[string]any{"content": "   \t\n  "})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("empty content: got status %d, want 400 (body=%v)", resp.StatusCode, body)
+	}
+}
+
+// TestDM41_MessageInOtherChannel — handleEdit step 5: message exists but
+// belongs to a different channel id than the path → 404.
+func TestDM41_MessageInOtherChannel(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	ownerToken, dmID, _ := dm4SetupOwnerAndDM(t, ts, s)
+	owner, _ := s.GetUserByEmail("owner@test.com")
+
+	// Create a second DM (between owner and a fresh agent) and post a
+	// message there. PATCH against {dmID, messageID-of-other-dm} → 404.
+	otherEmail := "agent-other@test.com"
+	otherRole := "agent"
+	other := &store.User{
+		DisplayName: "AgentOther",
+		Role:        otherRole,
+		Email:       &otherEmail,
+		OrgID:       owner.OrgID,
+		OwnerID:     &owner.ID,
+	}
+	if err := s.CreateUser(other); err != nil {
+		t.Fatalf("create other agent: %v", err)
+	}
+	dm2 := &store.Channel{
+		Name:       "dm-owner-agentother",
+		Visibility: "private",
+		CreatedBy:  owner.ID,
+		Type:       "dm",
+		Position:   store.GenerateInitialRank(),
+		OrgID:      owner.OrgID,
+	}
+	if err := s.CreateChannel(dm2); err != nil {
+		t.Fatalf("create dm2: %v", err)
+	}
+	_ = s.AddChannelMember(&store.ChannelMember{ChannelID: dm2.ID, UserID: owner.ID})
+	_ = s.AddChannelMember(&store.ChannelMember{ChannelID: dm2.ID, UserID: other.ID})
+
+	respPost, postBody := testutil.JSON(t, "POST",
+		ts.URL+"/api/v1/channels/"+dm2.ID+"/messages", ownerToken,
+		map[string]any{"content": "in dm2", "content_type": "text"})
+	if respPost.StatusCode != http.StatusCreated && respPost.StatusCode != http.StatusOK {
+		t.Fatalf("seed dm2 message: %d %v", respPost.StatusCode, postBody)
+	}
+	dm2Msg, _ := postBody["message"].(map[string]any)
+	dm2MessageID, _ := dm2Msg["id"].(string)
+
+	// Now PATCH against the FIRST dm path with the SECOND dm's message id.
+	resp, _ := testutil.JSON(t, "PATCH",
+		ts.URL+"/api/v1/channels/"+dmID+"/messages/"+dm2MessageID, ownerToken,
+		map[string]any{"content": "x"})
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("cross-channel message id: got status %d, want 404", resp.StatusCode)
+	}
+}
+
+// TestDM41_CrossOrg403 — handleEdit step 6: REG-INV-002 fail-closed
+// cross-org reject. Foreign-org caller logs in, finds DM in their own org
+// is impossible — so we instead place a message owned by a foreign-org
+// user in the owner DM via direct store insert (CrossOrg branch).
+func TestDM41_CrossOrg403(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	_, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
+
+	// Mutate the seed message's OrgID to a different org so the owner caller
+	// triggers the CrossOrg(user.OrgID, existing.OrgID) branch (step 6,
+	// before owner-only ACL at step 7).
+	foreign := testutil.SeedForeignOrgUser(t, s, "Foreign", "foreign-dm4@test.com")
+	if err := s.DB().Model(&store.Message{}).
+		Where("id = ?", messageID).
+		Update("org_id", foreign.OrgID).Error; err != nil {
+		t.Fatalf("mutate message org_id: %v", err)
+	}
+
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	resp, _ := testutil.JSON(t, "PATCH",
+		ts.URL+"/api/v1/channels/"+dmID+"/messages/"+messageID, ownerToken,
+		map[string]any{"content": "cross-org attempt"})
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("cross-org: got status %d, want 403", resp.StatusCode)
 	}
 }
