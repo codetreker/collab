@@ -248,7 +248,7 @@ AP-3 ─┘
 
 ### admin-model
 - [x] **ADM-1** 用户隐私承诺页 ✅ Phase 4 启动 milestone — 战马B 实施 #455 + 战马D e2e/截屏 #459 (3 cases PASS, `g4.1-adm1-{privacy-promise,privacy-table}.png` 入 git, REG-ADM1-001..006 6 🟢; 联签 ADM-2 留账)
-- [ ] **ADM-2** 分层透明 (取消 ⭐, 野马 R2 — 普通用户无感)
+- [x] **ADM-2** 分层透明 audit + impersonate ✅ (取消 ⭐, 野马 R2 — 普通用户无感; 内部 milestone 烈马代签) — 战马D 实施 #484 (一 milestone 一 PR 整闭): admin_actions schema v=22 + impersonation_grants schema v=23 + 5 REST endpoints (双 GET + 业主授权 CRUD) + 4/5 admin handler audit hook (start_impersonation 留 follow-up) + system DM 5 模板字面 byte-identical + client UI (BannerImpersonate.tsx + AdminActionsList.tsx + ImpersonateGrantSection.tsx) + 71 unit tests PASS + coverage 85.1%; REG-ADM2-001..009 9 🟢; ADM-1 #464 deferred 2 行 (admin 写动作 system DM admin_name 非 raw UUID) ⏸️→✅ 兑现; ⏸️ follow-up: REG-ADM2-010 (grant 校验 wire) + REG-ADM2-011 (admin SPA audit-log 页 + e2e + G4.2 双截屏)
 - [ ] **ADM-3** 来源 C 混合
 
 ### data-layer (剩余, INFRA-1 在 Phase 0)

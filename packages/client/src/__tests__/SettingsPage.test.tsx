@@ -1,8 +1,21 @@
 // SettingsPage.test.tsx — ADM-1 acceptance §2 SettingsPage DOM 锁.
+//
+// ADM-2 mock: SettingsPage 现在嵌入 ImpersonateGrantSection +
+// AdminActionsList, 它们 mount 时调 lib/api fetch helpers; jsdom 没真
+// fetch endpoint, 这里 mock 整个 module 防止 ERR_INVALID_URL unhandled
+// rejection (CI client-vitest 看作 failure).
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
+
+vi.mock('../lib/api', () => ({
+  getMyAdminActions: () => Promise.resolve({ actions: [] }),
+  getMyImpersonateGrant: () => Promise.resolve({ grant: null }),
+  createMyImpersonateGrant: () => Promise.resolve({ grant: null }),
+  revokeMyImpersonateGrant: () => Promise.resolve(),
+}));
+
 import SettingsPage from '../components/Settings/SettingsPage';
 
 let container: HTMLDivElement | null = null;

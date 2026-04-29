@@ -100,8 +100,10 @@
 
 ### `admin/`
 - 独立 SPA，用 React Router v7。`useAdminAuth()` 处理 `/admin-api/v1/auth/*` 的 cookie session。
-- 页面：`DashboardPage`（统计）、`UsersPage` + `UserDetailPage`（账号、权限、API key）、`ChannelsPage`、`InvitesPage`、`SettingsPage`。
+- 页面：`DashboardPage`（统计）、`UsersPage` + `UserDetailPage`（账号、权限、API key）、`ChannelsPage`、`InvitesPage`、`SettingsPage`、**`AdminAuditLogPage`** (ADM-2 PR #484, `GET /admin-api/v1/audit-log` 全 admin 互可见 audit log + ?actor_id/?action/?target_user_id 三 filter; 跟 user-rail 中文动词字面**拆死**, admin SPA 用英文 `action` enum, stance §6 反向 lint 锁)。
 - `admin/api.ts` 镜像 `lib/api.ts`，base URL 为 `/admin-api/v1`。
+
+> ADM-2 client (PR #484) 详见 [`ui/settings.md §7`](ui/settings.md) — user 设置页 ADM-2 三段 (PrivacyPromise + ImpersonateGrantSection + AdminActionsList) + App-level `BannerImpersonate.tsx` 顶部红横幅。
 
 ## 4. 与 server 的通信
 
