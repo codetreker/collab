@@ -126,3 +126,23 @@ func TestBPP3_OwnerResolver_MissingAgent(t *testing.T) {
 		t.Errorf("expected error for missing agent, got nil")
 	}
 }
+
+// TestBPP3_OwnerResolver_AgentWithNilOwner covers the nil-OwnerID branch
+// (legacy data path — agents row exists but OwnerID is NULL; bpp dispatcher
+// will treat as cross-owner reject upstream).
+func TestBPP3_OwnerResolver_AgentWithNilOwner(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	agent := testutil.CreateAgent(t, ts.URL, token, "BPP3-Nil-Owner")
+	agentID := agent["id"].(string)
+
+	// Force OwnerID to nil to simulate legacy/orphan agent row.
+	if err := s.DB().Exec("UPDATE users SET owner_id = NULL WHERE id = ?", agentID).Error; err != nil {
+		t.Fatalf("nil owner_id: %v", err)
+	}
+
+	r := &api.AgentOwnerResolver{Store: s}
+	if _, err := r.OwnerOf(agentID); err == nil {
+		t.Errorf("expected error for agent with nil OwnerID, got nil")
+	}
+}
