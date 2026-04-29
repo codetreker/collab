@@ -84,14 +84,21 @@ jobs:
         run: |
           set -e
           patterns='release.gate.*skip|release.gate.*manual.*sign|allow.*bypass|--admin.*merge.*release|release.gate.*human.review|release.gate.*demo.signoff'
-          # Scan workflows + release docs (this file is allowed to mention
-          # the patterns in commentary; AST is unavailable for yml so we
-          # only scan executable scripts via grep on `run:` blocks would
-          # require yq parsing — instead scan all release docs only).
-          hits=$(grep -rE "$patterns" docs/release/ 2>/dev/null | grep -vE '反向 grep|count==0|不允许|MUST NOT|拆死|留账' | wc -l)
+          # Scan release docs + workflows. Self-file + sibling AL yml
+          # excluded so the patterns string definition in this file (and
+          # in al-release-gate.yml) doesn't false-positive match itself.
+          # (跟 AL-2 wrapper #512 8ad9975 同 self-grep fix 模式承袭.)
+          # Metaword grep -v 守 docs/release/ md 中合法字面提及 (反向 grep /
+          # count==0 / 不允许 / MUST NOT / 拆死 / 留账).
+          hits=$(grep -rE "$patterns" docs/release/ .github/workflows/ \
+                 --exclude='release-gate.yml' --exclude='al-release-gate.yml' \
+                 2>/dev/null \
+                 | grep -vE '反向 grep|count==0|不允许|MUST NOT|拆死|留账' | wc -l)
           if [ "$hits" -gt 0 ]; then
-            echo "::error::release-gate bypass / sign-off skip / 4.1/4.2 mix patterns found in docs/release/ ($hits hits)"
-            grep -rE "$patterns" docs/release/ | grep -vE '反向 grep|count==0|不允许|MUST NOT|拆死|留账'
+            echo "::error::release-gate bypass / sign-off skip / 4.1/4.2 mix patterns found ($hits hits)"
+            grep -rE "$patterns" docs/release/ .github/workflows/ \
+                 --exclude='release-gate.yml' --exclude='al-release-gate.yml' \
+                 | grep -vE '反向 grep|count==0|不允许|MUST NOT|拆死|留账'
             exit 1
           fi
 
