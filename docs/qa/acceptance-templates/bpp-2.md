@@ -3,8 +3,9 @@
 > 蓝图: `plugin-protocol.md` §1.3 (Plugin 调 Borgee 抽象语义层 C, 不直对 REST + 协议红线 "不允许 plugin 下穿语义层直调 REST" + 7 v1 必须语义动作字面) + §1.5 (配置热更新单源 server→plugin + 幂等 reload) + §1.6 (失联与故障状态 — task_started/task_finished 是 busy/idle source 唯一上行) + §2.1+§2.2 (BPP 接口清单 v1) + §3 (现状差距 — plugin WS api_request 直调 REST → 新增高级动作 API + dispatch 层 + 权限收敛)
 > Spec: `docs/implementation/modules/bpp-2-spec.md` (战马E PM 客串, 3 立场 + 3 拆段 + 11 grep 反查 含 5 反约束)
 > 文案锁: 共用 `bpp-2-spec.md` §0 + AL-1a #249 reason 6 项字面承袭 (跟 AL-3 #305 + AL-4 #321 三处单测锁同源)
-> 拆 PR (拟): **BPP-2.1** semantic_action dispatch 层 + envelope schema (8 字段 byte-identical + 7 op 白名单 + AP-0 权限复用) + **BPP-2.2** task lifecycle reverse-channel (task_started/task_finished/progress + subject 空 reject + AL-1b busy/idle source) + **BPP-2.3** agent_config_update server→plugin (6 字段 + 6 fields 白名单 + 幂等 reload, 跟 AL-2b/BPP-3 同期合)
-> Owner: 战马 实施 (待 spawn) / 飞马 / 野马 (subject 文案) / 烈马 验收
+> 拆 PR: **BPP-2 整 milestone 一 PR** (新协议 "一 milestone = 一 worktree = 一 PR" #479): `feat/bpp-2` PR #485 三段一次合 — BPP-2.1 dispatch 层 + 7 op 白名单 + ActionHandler interface + BPP-2.2 task lifecycle reverse-channel (task_started/task_finished + subject 空 reject + outcome 3 态 + reason AL-1a 6 字典) + BPP-2.3 agent_config_update validation + 6 fields 白名单 + ConfigRevTracker 幂等 reload. AL-1b busy/idle source 真接管 + AL-2b/BPP-3 SSOT 推送触发留 BPP-3 起步时同期合.
+> Owner: 战马E (PM 客串 + 实施) / 飞马 review / 烈马 验收
+> Status: ✅ 三段四件全闭 (实施 PR #485 land + REG-BPP2-001..017 全 🟢)
 
 ## 验收清单
 

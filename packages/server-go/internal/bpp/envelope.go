@@ -44,10 +44,18 @@ const (
 	FrameTypeBPPInboundMessage         = "inbound_message"
 
 	// Data plane (Plugin → Server) — §2.2.
-	FrameTypeBPPHeartbeat       = "heartbeat"
-	FrameTypeBPPSemanticAction  = "semantic_action"
-	FrameTypeBPPErrorReport     = "error_report"
-	FrameTypeBPPAgentConfigAck  = "agent_config_ack" // AL-2b #452 §1.2 ack 路径
+	// Data plane (Plugin → Server) — §2.2.
+	FrameTypeBPPHeartbeat      = "heartbeat"
+	FrameTypeBPPSemanticAction = "semantic_action"
+	FrameTypeBPPErrorReport    = "error_report"
+	FrameTypeBPPAgentConfigAck = "agent_config_ack" // AL-2b #481 §1.2 ack 路径
+	// BPP-2.2 task lifecycle reverse-channel — plugin upstream signals
+	// agent busy/idle (蓝图 §1.6 + agent-lifecycle §2.3 字面: source 必须
+	// plugin 上行 frame, 不准 stub). 跟 AL-1b #482 BPP single source
+	// 立场同源 (蓝图 §2.3 R3). online = session-level 走 WS conn
+	// lifecycle, 跟 task-level (busy) 正交.
+	FrameTypeBPPTaskStarted  = "task_started"
+	FrameTypeBPPTaskFinished = "task_finished"
 )
 
 // Direction is the hard direction lock the lint enforces.
@@ -287,6 +295,44 @@ const (
 	AgentConfigAckStatusStale    = "stale"
 )
 
+// TaskStartedFrame — BPP-2.2 plugin signals agent has started a task
+// (§1.6 + agent-lifecycle.md §2.3 字面: busy/idle source 必须 plugin
+// 上行 frame, stub 一旦上 v1 拆掉 = 白写). The `Subject` field is the
+// human-readable description ("agent 在做什么") — server REJECTS empty
+// or whitespace-only Subject + log warn `bpp.task_subject_empty`
+// (野马 §11 文案守 + spec §0 立场 ② 字面禁默认值 fallback).
+type TaskStartedFrame struct {
+	Type      string `json:"type"`
+	TaskID    string `json:"task_id"`
+	AgentID   string `json:"agent_id"`
+	ChannelID string `json:"channel_id"`
+	Subject   string `json:"subject"`
+	StartedAt int64  `json:"started_at"` // Unix ms (semantic only — server cursor IS the order)
+}
+
+func (TaskStartedFrame) FrameType() string         { return FrameTypeBPPTaskStarted }
+func (TaskStartedFrame) FrameDirection() Direction { return DirectionPluginToServer }
+
+// TaskFinishedFrame — BPP-2.2 plugin signals task termination. `Outcome`
+// ∈ 3 enum ('completed' / 'failed' / 'cancelled'); when 'failed', `Reason`
+// MUST be one of AL-1a #249 6 字典 (api_key_invalid / quota_exceeded /
+// network_unreachable / runtime_crashed / runtime_timeout / unknown) —
+// 跟 AL-3 #305 + AL-4 #321 + #427 三处单测锁同源 (改 = 改四处, BPP-2.2
+// 是第四). 反约束: 'partial' / 'paused' / 'pending' / 'starting' 中间
+// 态 reject.
+type TaskFinishedFrame struct {
+	Type       string `json:"type"`
+	TaskID     string `json:"task_id"`
+	AgentID    string `json:"agent_id"`
+	ChannelID  string `json:"channel_id"`
+	Outcome    string `json:"outcome"`
+	Reason     string `json:"reason"`      // empty unless outcome=='failed'
+	FinishedAt int64  `json:"finished_at"` // Unix ms
+}
+
+func (TaskFinishedFrame) FrameType() string         { return FrameTypeBPPTaskFinished }
+func (TaskFinishedFrame) FrameDirection() Direction { return DirectionPluginToServer }
+
 // bppEnvelopeWhitelist — single-source-of-truth list of permitted
 // BPP-1 envelope OpNames. The reflection lint asserts every exported
 // frame struct in this file maps to exactly one entry here and
@@ -302,7 +348,9 @@ var bppEnvelopeWhitelist = map[string]Direction{
 	FrameTypeBPPHeartbeat:              DirectionPluginToServer,
 	FrameTypeBPPSemanticAction:         DirectionPluginToServer,
 	FrameTypeBPPErrorReport:            DirectionPluginToServer,
-	FrameTypeBPPAgentConfigAck:         DirectionPluginToServer, // AL-2b #452
+	FrameTypeBPPAgentConfigAck: DirectionPluginToServer, // AL-2b #481
+	FrameTypeBPPTaskStarted:    DirectionPluginToServer, // BPP-2.2 #485
+	FrameTypeBPPTaskFinished:   DirectionPluginToServer, // BPP-2.2 #485
 }
 
 // BPPEnvelopeWhitelist exposes the registry to tests in other packages
@@ -330,6 +378,8 @@ func AllBPPEnvelopes() []BPPEnvelope {
 		HeartbeatFrame{},
 		SemanticActionFrame{},
 		ErrorReportFrame{},
-		AgentConfigAckFrame{}, // AL-2b #452 §1.2
+		AgentConfigAckFrame{}, // AL-2b #481 §1.2
+		TaskStartedFrame{},    // BPP-2.2 #485
+		TaskFinishedFrame{},   // BPP-2.2 #485
 	}
 }
