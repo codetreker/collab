@@ -107,6 +107,14 @@ func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 		logger)
 	pfd.Register(bpp.FrameTypeBPPReconnectHandshake, reconnectHandler)
 
+	// BPP-6 cold-start handshake — plugin upstream signals process restart
+	// (state 全丢, 无 cursor; 反向 BPP-5 reconnect). handler 走 AL-1 #492
+	// single-gate AppendAgentStateTransition any→online + agent.Tracker.Clear,
+	// reason 复用 `runtime_crashed` 6-dict byte-identical (锁链第 11 处).
+	// Reuses the BPP-3 PluginFrameDispatcher boundary.
+	coldStartHandler := bpp.NewColdStartHandler(s, ownerResolver, srv.agentTracker, logger)
+	pfd.Register(bpp.FrameTypeBPPColdStartHandshake, coldStartHandler)
+
 	hub.SetPluginFrameRouter(&pluginFrameRouterAdapter{pfd: pfd})
 
 	// BPP-4.1 heartbeat watchdog: 30s plugin liveness threshold, flips

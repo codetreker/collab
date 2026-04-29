@@ -43,11 +43,11 @@ import (
 // byte-identical — direction lock plugin→server.
 func TestBPPEnvelopeFrameWhitelist(t *testing.T) {
 	envs := bpp.AllBPPEnvelopes()
-	if got, want := len(envs), 14; got != want {
-		t.Fatalf("BPP envelope count: got %d, want %d (BPP-1 control 6 + data 3 + AL-2b ack +1 + BPP-2.2 task +2 + BPP-3.1 permission_denied +1 + BPP-5 reconnect_handshake +1 = 14)", got, want)
+	if got, want := len(envs), 15; got != want {
+		t.Fatalf("BPP envelope count: got %d, want %d (BPP-1 control 6 + data 3 + AL-2b ack +1 + BPP-2.2 task +2 + BPP-3.1 permission_denied +1 + BPP-5 reconnect_handshake +1 + BPP-6 cold_start_handshake +1 = 15)", got, want)
 	}
 	wl := bpp.BPPEnvelopeWhitelist()
-	if got, want := len(wl), 14; got != want {
+	if got, want := len(wl), 15; got != want {
 		t.Fatalf("whitelist size: got %d, want %d", got, want)
 	}
 	seen := map[string]struct{}{}
@@ -97,8 +97,8 @@ func TestBPPEnvelopeDirectionLock(t *testing.T) {
 	if ctrl != 7 {
 		t.Errorf("control-plane envelope count: got %d, want 7 (§2.1 + BPP-3.1 permission_denied)", ctrl)
 	}
-	if data != 7 {
-		t.Errorf("data-plane envelope count: got %d, want 7 (§2.2 + AL-2b agent_config_ack + BPP-2.2 task_started/task_finished + BPP-5 reconnect_handshake)", data)
+	if data != 8 {
+		t.Errorf("data-plane envelope count: got %d, want 8 (§2.2 + AL-2b agent_config_ack + BPP-2.2 task_started/task_finished + BPP-5 reconnect_handshake + BPP-6 cold_start_handshake)", data)
 	}
 }
 
