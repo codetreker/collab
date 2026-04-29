@@ -346,5 +346,252 @@ func msgsContents(ms []store.Message) []string {
 	return out
 }
 
+// TestAL42_Endpoints_AnonAndNotFound covers 401/404 branches across all
+// runtime endpoints to lift coverage past 85% threshold (CI ci.yml:55,
+// 跟 #409 d5a2e70 同 pattern).
+func TestAL42_Endpoints_AnonAndNotFound(t *testing.T) {
+	url, ownerTok, _, agentID := al42Setup(t)
+
+	// 401 anon paths.
+	for _, ep := range []struct {
+		method, path string
+	}{
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/register"},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/start"},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/stop"},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/heartbeat"},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/error"},
+		{"GET", "/api/v1/agents/" + agentID + "/runtime"},
+	} {
+		req, _ := http.NewRequest(ep.method, url+ep.path, strings.NewReader("{}"))
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("anon %s %s: %v", ep.method, ep.path, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden {
+			t.Errorf("anon %s %s: expected 401/403, got %d", ep.method, ep.path, resp.StatusCode)
+		}
+	}
+
+	// 404 — non-existent agent.
+	for _, ep := range []struct {
+		method, path string
+	}{
+		{"POST", "/api/v1/agents/no-such/runtime/register"},
+		{"POST", "/api/v1/agents/no-such/runtime/start"},
+		{"POST", "/api/v1/agents/no-such/runtime/stop"},
+		{"POST", "/api/v1/agents/no-such/runtime/heartbeat"},
+		{"POST", "/api/v1/agents/no-such/runtime/error"},
+		{"GET", "/api/v1/agents/no-such/runtime"},
+	} {
+		resp, _ := testutil.JSON(t, ep.method, url+ep.path, ownerTok, map[string]any{"reason": "unknown"})
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("missing agent %s %s: expected 404, got %d", ep.method, ep.path, resp.StatusCode)
+		}
+	}
+
+	// 404 — runtime not registered for valid agent (start/stop/heartbeat/
+	// error/GET all run loadRuntimeByAgent before any state mutation).
+	for _, ep := range []struct {
+		method, path string
+	}{
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/start"},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/stop"},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/heartbeat"},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/error"},
+		{"GET", "/api/v1/agents/" + agentID + "/runtime"},
+	} {
+		resp, _ := testutil.JSON(t, ep.method, url+ep.path, ownerTok, map[string]any{"reason": "unknown"})
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("unregistered runtime %s %s: expected 404, got %d", ep.method, ep.path, resp.StatusCode)
+		}
+	}
+}
+
+// TestAL42_GetRuntime_ReturnsRow covers handleGet (was 0% in coverage).
+// Verifies serializeRuntime nil-safe paths for last_heartbeat_at /
+// last_error_reason both NULL (registered fresh) and both populated
+// (after heartbeat + error).
+func TestAL42_GetRuntime_ReturnsRow(t *testing.T) {
+	url, ownerTok, _, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+
+	// Fresh registered: last_heartbeat_at + last_error_reason both nil.
+	resp, data := testutil.JSON(t, "GET", url+"/api/v1/agents/"+agentID+"/runtime", ownerTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET runtime not 200: got %d", resp.StatusCode)
+	}
+	if data["status"] != api.RuntimeStatusRegistered {
+		t.Errorf("status not registered: %v", data["status"])
+	}
+	if data["last_heartbeat_at"] != nil {
+		t.Errorf("last_heartbeat_at should be nil on fresh register: %v", data["last_heartbeat_at"])
+	}
+	if data["last_error_reason"] != nil {
+		t.Errorf("last_error_reason should be nil on fresh register: %v", data["last_error_reason"])
+	}
+
+	// After heartbeat + error: both populated.
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/heartbeat", ownerTok, nil)
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/error", ownerTok, map[string]any{
+		"reason": "runtime_timeout",
+	})
+	resp2, data2 := testutil.JSON(t, "GET", url+"/api/v1/agents/"+agentID+"/runtime", ownerTok, nil)
+	if resp2.StatusCode != http.StatusOK {
+		t.Fatalf("GET runtime 2nd not 200: got %d", resp2.StatusCode)
+	}
+	if data2["last_heartbeat_at"] == nil {
+		t.Error("last_heartbeat_at should be populated post-heartbeat")
+	}
+	if data2["last_error_reason"] != "runtime_timeout" {
+		t.Errorf("last_error_reason mismatch: %v", data2["last_error_reason"])
+	}
+}
+
+// TestAL42_RegisterMalformedBody covers the 400 branch on register +
+// error endpoints (empty endpoint_url + readJSON malformed via raw
+// http.NewRequest with cookie auth).
+func TestAL42_RegisterMalformedBody(t *testing.T) {
+	url, ownerTok, _, agentID := al42Setup(t)
+
+	// Helper: send raw body with cookie auth (testutil.JSON marshals via
+	// json.Marshal so we can't pass syntactically-broken JSON through it).
+	rawAuth := func(method, path, body string) *http.Response {
+		req, _ := http.NewRequest(method, url+path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: ownerTok})
+		req.Header.Set("Authorization", "Bearer "+ownerTok)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("raw req %s %s: %v", method, path, err)
+		}
+		return resp
+	}
+
+	// Malformed JSON on register.
+	resp := rawAuth("POST", "/api/v1/agents/"+agentID+"/runtime/register", "{not json")
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("malformed JSON 400 expected, got %d", resp.StatusCode)
+	}
+
+	// Empty endpoint_url.
+	resp2, _ := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/register", ownerTok, map[string]any{
+		"endpoint_url": "",
+	})
+	if resp2.StatusCode != http.StatusBadRequest {
+		t.Errorf("empty endpoint_url 400 expected, got %d", resp2.StatusCode)
+	}
+
+	// Malformed body for runtime/error endpoint (after registering).
+	al42Register(t, url, ownerTok, agentID)
+	resp3 := rawAuth("POST", "/api/v1/agents/"+agentID+"/runtime/error", "{garbage")
+	resp3.Body.Close()
+	if resp3.StatusCode != http.StatusBadRequest {
+		t.Errorf("malformed error JSON 400 expected, got %d", resp3.StatusCode)
+	}
+}
+
+// TestAL42_AdminListReturnsEmptyAndPopulated covers admin handleListRuntimes
+// 0-row + multi-row branches + reflect-scan privacy invariant.
+func TestAL42_AdminListReturnsEmptyAndPopulated(t *testing.T) {
+	url, ownerTok, _, agentID := al42Setup(t)
+
+	// Empty list before any register.
+	adminTok := testutil.LoginAsAdmin(t, url)
+	resp, data := testutil.AdminJSON(t, "GET", url+"/admin-api/v1/runtimes", adminTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("admin list empty not 200: got %d", resp.StatusCode)
+	}
+	rows := data["runtimes"].([]any)
+	if len(rows) != 0 {
+		t.Errorf("expected 0 rows, got %d", len(rows))
+	}
+
+	// After register + heartbeat (populates last_heartbeat_at).
+	al42Register(t, url, ownerTok, agentID)
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/heartbeat", ownerTok, nil)
+	resp2, data2 := testutil.AdminJSON(t, "GET", url+"/admin-api/v1/runtimes", adminTok, nil)
+	if resp2.StatusCode != http.StatusOK {
+		t.Fatalf("admin list populated not 200: got %d", resp2.StatusCode)
+	}
+	rows2 := data2["runtimes"].([]any)
+	if len(rows2) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows2))
+	}
+	row := rows2[0].(map[string]any)
+	if row["last_heartbeat_at"] == nil {
+		t.Error("admin row last_heartbeat_at should be populated post-heartbeat")
+	}
+	if _, has := row["last_error_reason"]; has {
+		t.Errorf("admin god-mode leaked last_error_reason: %v (反约束 ADM-0 §1.3)", row["last_error_reason"])
+	}
+}
+
+// TestAL42_StartStopGet_NonOwner_403 covers the OwnerID inline check on
+// start/stop/heartbeat/error/GET — non-owner who passes auth gets 403.
+// This walks the OwnerID branch that anonymous tests can't reach.
+func TestAL42_StartStopGet_NonOwner_403(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+
+	// Seed second human (non-owner of agent).
+	hash := mustHash(t, "password123")
+	em := "nonowner-al42@test.com"
+	other := &store.User{DisplayName: "Other", Role: "user", Email: &em, PasswordHash: hash}
+	if err := s.CreateUser(other); err != nil {
+		t.Fatalf("create other: %v", err)
+	}
+	_ = s.UpdateUser(other.ID, map[string]any{"org_id": mustOrgID(t, s, "owner@test.com")})
+	_ = s.GrantDefaultPermissions(other.ID, "member")
+	otherTok := testutil.LoginAs(t, url, em, "password123")
+
+	for _, ep := range []struct {
+		method, path string
+		body         any
+	}{
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/start", nil},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/stop", nil},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/heartbeat", nil},
+		{"POST", "/api/v1/agents/" + agentID + "/runtime/error", map[string]any{"reason": "unknown"}},
+		{"GET", "/api/v1/agents/" + agentID + "/runtime", nil},
+	} {
+		resp, _ := testutil.JSON(t, ep.method, url+ep.path, otherTok, ep.body)
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("non-owner %s %s: 403 expected, got %d", ep.method, ep.path, resp.StatusCode)
+		}
+	}
+}
+
+// TestAL42_StartTransitionsRunning_FromError pins state-machine forward
+// progress: a runtime in 'error' state can be brought back to 'running'
+// via start (last_error_reason cleared). Adds coverage on handleStart's
+// "source state != 'running' so emit DM" branch from a non-default
+// starting state.
+func TestAL42_StartTransitionsRunning_FromError(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+	_, _ = testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/error", ownerTok, map[string]any{
+		"reason": "runtime_crashed",
+	})
+	resp, data := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/start", ownerTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("start from error not 200: got %d", resp.StatusCode)
+	}
+	if data["status"] != api.RuntimeStatusRunning {
+		t.Errorf("status not running: %v", data["status"])
+	}
+	// last_error_reason cleared (start path UPDATEs to NULL).
+	resp2, data2 := testutil.JSON(t, "GET", url+"/api/v1/agents/"+agentID+"/runtime", ownerTok, nil)
+	_ = resp2
+	if data2["last_error_reason"] != nil {
+		t.Errorf("last_error_reason should be cleared on start: %v", data2["last_error_reason"])
+	}
+	_ = s
+}
+
 // Compile-time guard: ensures strings import not removed by a stray edit.
 var _ = strings.Contains
