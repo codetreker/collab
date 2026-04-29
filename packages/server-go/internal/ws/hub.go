@@ -50,7 +50,43 @@ type Hub struct {
 	// need DB-backed presence; the lifecycle hook no-ops cleanly.
 	presenceWriter presence.PresenceWriter
 
+	// pluginFrameRouter (BPP-3) is the unified upstream BPP frame
+	// dispatcher. plugin.go's read loop calls Route() on any frame whose
+	// `type` is not part of the {api_request, api_response, ping, pong,
+	// response} RPC envelope set. Set via SetPluginFrameRouter at server
+	// boot (server.go); nil-safe — when nil the read loop silently skips
+	// routing (kept for tests + early boot).
+	pluginFrameRouter PluginFrameRouter
+
 	mu sync.RWMutex
+}
+
+// PluginFrameRouter is the read-side of bpp.PluginFrameDispatcher,
+// declared here so internal/ws does not import internal/bpp directly
+// (跟 BPP-2.1 ActionHandler / cv-4.2 IterationStatePusher / AL-2b
+// AgentConfigPusher 同 interface seam 模式).
+//
+// Implementations (currently *bpp.PluginFrameDispatcher) must:
+//   - Be safe for concurrent calls (one goroutine per plugin connection)
+//   - Soft-skip on unknown frame type (forward-compat for plugin upgrades)
+//   - Soft-skip on malformed JSON (defense-in-depth — plugin.go already
+//     filtered the surrounding {type, id, data} envelope)
+//
+// The wire-up at server.go boot:
+//
+//	pfd := bpp.NewPluginFrameDispatcher(logger)
+//	pfd.Register(bpp.FrameTypeBPPAgentConfigAck, bpp.NewAckFrameAdapter(ackDispatcher))
+//	hub.SetPluginFrameRouter(pfd)
+type PluginFrameRouter interface {
+	Route(raw []byte, sess PluginSessionContext) (handled bool, err error)
+}
+
+// PluginSessionContext mirrors bpp.PluginSessionContext with field
+// names byte-identical (defined here to avoid the ws→bpp import).
+// plugin.go fills OwnerUserID from the BPP-1 connect handshake (the
+// authenticated user.ID), then passes to Route on every BPP frame.
+type PluginSessionContext struct {
+	OwnerUserID string
 }
 
 func NewHub(s *store.Store, logger *slog.Logger, cfg *config.Config) *Hub {
@@ -80,6 +116,26 @@ func (h *Hub) SetPresenceWriter(w presence.PresenceWriter) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.presenceWriter = w
+}
+
+// SetPluginFrameRouter wires the BPP-3 unified plugin-upstream BPP
+// frame router after construction. Safe to call once at boot; if never
+// called the plugin read loop silently skips routing (RPC envelope path
+// untouched, BPP frames soft-dropped — same forward-compat semantics
+// as unknown frame type within the router).
+func (h *Hub) SetPluginFrameRouter(r PluginFrameRouter) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.pluginFrameRouter = r
+}
+
+// pluginFrameRouterSnapshot returns the current router under RLock so
+// the plugin read loop sees a stable pointer for the duration of one
+// frame. Returns nil if SetPluginFrameRouter was never called.
+func (h *Hub) pluginFrameRouterSnapshot() PluginFrameRouter {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.pluginFrameRouter
 }
 
 func (h *Hub) Register(c *Client) {
