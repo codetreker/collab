@@ -44,6 +44,7 @@ var All = []Migration{
 	cv11Artifacts,
 	cv21AnchorComments,
 	dm21MessageMentions,
+	al41AgentRuntimes,
 	cv31ArtifactKinds,
 }
 
