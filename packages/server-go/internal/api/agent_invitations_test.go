@@ -48,6 +48,7 @@ func privateChannel(t *testing.T, serverURL, token, name string) string {
 // E2E: owner@test.com creates a private channel, invites an agent owned by
 // member@test.com → member approves → agent joins the private channel.
 func TestAgentInvitations_E2E_Approve(t *testing.T) {
+	t.Parallel()
 	ts, st, _ := testutil.NewTestServer(t)
 
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -110,6 +111,7 @@ func TestAgentInvitations_E2E_Approve(t *testing.T) {
 }
 
 func TestAgentInvitations_PatchReject(t *testing.T) {
+	t.Parallel()
 	ts, st, _ := testutil.NewTestServer(t)
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	ownerTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -138,6 +140,7 @@ func TestAgentInvitations_PatchReject(t *testing.T) {
 }
 
 func TestAgentInvitations_PostValidation(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	ownerTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -187,6 +190,7 @@ func TestAgentInvitations_PostValidation(t *testing.T) {
 }
 
 func TestAgentInvitations_PatchValidation(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	ownerTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -223,6 +227,7 @@ func TestAgentInvitations_PatchValidation(t *testing.T) {
 }
 
 func TestAgentInvitations_List(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	ownerTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -267,6 +272,7 @@ func TestAgentInvitations_List(t *testing.T) {
 }
 
 func TestAgentInvitations_GetNotFound(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	resp, _ := testutil.JSON(t, http.MethodGet, ts.URL+"/api/v1/agent_invitations/nope", tok, nil)
@@ -278,6 +284,7 @@ func TestAgentInvitations_GetNotFound(t *testing.T) {
 // Sanitizer must not leak GORM-internal fields. Verifies the response
 // keys are exactly the documented contract (飞马 review flag #1).
 func TestAgentInvitations_SanitizerKeys(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	ownerTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -343,6 +350,7 @@ var _ = store.AgentInvitationPending
 
 // Empty-input branch: a fresh user with no agents lists as owner.
 func TestAgentInvitations_ListEmptyOwner(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	registerBody := map[string]any{
@@ -374,6 +382,7 @@ func TestAgentInvitations_ListEmptyOwner(t *testing.T) {
 // exercises the canSee owner branch (admin path is the only other branch
 // covered elsewhere).
 func TestAgentInvitations_GetAsAgentOwner(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	ownerTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123") // role=member
@@ -402,6 +411,7 @@ func TestAgentInvitations_GetAsAgentOwner(t *testing.T) {
 // belongs on /admin-api/v1; the user-rail "admin" fixture (now role='member')
 // must NOT see the requester's invitation.
 func TestAgentInvitations_AdminListSeesAll(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	requesterTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	ownerTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -428,6 +438,7 @@ func TestAgentInvitations_AdminListSeesAll(t *testing.T) {
 
 // Malformed JSON body → 400.
 func TestAgentInvitations_BadBody(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -448,6 +459,7 @@ func TestAgentInvitations_BadBody(t *testing.T) {
 
 // Non-owner non-admin tries to PATCH → 403.
 func TestAgentInvitations_PatchForbidden(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	// Register a fresh non-admin user via the public API so we have a

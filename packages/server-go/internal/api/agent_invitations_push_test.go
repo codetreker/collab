@@ -200,6 +200,7 @@ func bearerJSON(t *testing.T, method, url, token string, body any) (*http.Respon
 }
 
 func TestPushOnCreate_PendingFrameToAgentOwner(t *testing.T) {
+	t.Parallel()
 	ts, _, pusher, reqTok, _, channelID, agentID := setupPushTest(t)
 
 	resp, body := bearerJSON(t, http.MethodPost, ts.URL+"/api/v1/agent_invitations", reqTok,
@@ -244,6 +245,7 @@ func TestPushOnCreate_PendingFrameToAgentOwner(t *testing.T) {
 }
 
 func TestPushOnPatch_DecidedFrameToBothParties(t *testing.T) {
+	t.Parallel()
 	for _, target := range []string{"approved", "rejected"} {
 		t.Run(target, func(t *testing.T) {
 			ts, _, pusher, reqTok, ownerTok, channelID, agentID := setupPushTest(t)
@@ -305,6 +307,7 @@ func TestPushOnPatch_DecidedFrameToBothParties(t *testing.T) {
 // Nil-Hub handler must not panic — push is best-effort, the persisted row
 // is the source of truth. Belt-and-suspenders for the helper's nil guard.
 func TestPushNilHub_NoPanic(t *testing.T) {
+	t.Parallel()
 	h := &AgentInvitationHandler{}
 	h.pushPending("user-1", &ws.AgentInvitationPendingFrame{Type: ws.FrameTypeAgentInvitationPending})
 	h.pushDecided("user-1", &ws.AgentInvitationDecidedFrame{Type: ws.FrameTypeAgentInvitationDecided})

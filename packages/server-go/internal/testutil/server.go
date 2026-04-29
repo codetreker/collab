@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +22,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// PERF: ADM-0.1/0.2 require BORGEE_ADMIN_* env at server.New()'s admin.Bootstrap.
+// Pre-2026-04-29 NewTestServer used t.Setenv per call — that flips t.Parallel
+// into a serial path (Setenv-bearing tests cannot Parallel). Moved env setup
+// to package init so callers can `t.Parallel()` freely. The values are stable
+// test-only literals (bcrypt cost=10 hash of "password123") that never reach
+// production.
+func init() {
+	os.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
+	os.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
+}
+
 func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
 	t.Helper()
 
@@ -32,11 +44,7 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 		t.Fatalf("store.Migrate: %v", err)
 	}
 
-	// ADM-0.1/0.2: server.New calls admin.Bootstrap which is fail-loud on
-	// missing BORGEE_ADMIN_* env. Provide test-only literals; bcrypt cost=10
-	// hash of "password123" (test-only, never reaches prod).
-	t.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
-	t.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
+	// PERF (was t.Setenv blocking parallel): admin env now in package init.
 
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",

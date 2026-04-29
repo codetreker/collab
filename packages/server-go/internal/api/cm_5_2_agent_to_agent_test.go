@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"sync"
 	"testing"
-	"time"
 
 	"borgee-server/internal/store"
 	"borgee-server/internal/testutil"
@@ -74,6 +73,7 @@ func cm52SetupTwoAgents(t *testing.T) (url, ownerTok, agentATok, agentBTok strin
 // agent A POST /messages 走人协作 path (POST /api/v1/channels/:id/messages).
 // 反约束: 不开 agent-only endpoint, 走人 path 同 endpoint 同源.
 func TestCM52_AgentMessagesViaHumanPath(t *testing.T) {
+	t.Parallel()
 	url, _, agentATok, _, _, chID, _, _, agentBID := cm52SetupTwoAgents(t)
 
 	// agent A → channel message containing @agent_B mention token (DM-2.2
@@ -99,6 +99,7 @@ func TestCM52_AgentMessagesViaHumanPath(t *testing.T) {
 // 反约束: 立场 ④ 不开 'agent_to_agent_mention' 专属 frame (反约束 grep 守
 // 见 cm5stance.TestCM51_NoBypassTable).
 func TestCM52_AgentToAgentMentionViaDM2Router(t *testing.T) {
+	t.Parallel()
 	url, _, agentATok, _, s, chID, _, _, agentBID := cm52SetupTwoAgents(t)
 
 	// agent A → message + @agent_B mention. message_mentions 行落跟人协作
@@ -139,6 +140,7 @@ func TestCM52_AgentToAgentMentionViaDM2Router(t *testing.T) {
 // 是 channel member-allowed, agent 同 channel 走人 path. 若 commit ACL
 // 限 owner-only, fallback 用 owner + agent 触发 user-level lock 路径同源).
 func TestCM52_X2ConflictReusesCV1Lock(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, agentATok, _, _, _, artID, _, _ := cm52SetupTwoAgents(t)
 
 	// owner commits first → 拿 lock + bumps version 1 → 2.
@@ -184,6 +186,7 @@ func TestCM52_X2ConflictReusesCV1Lock(t *testing.T) {
 // gate 复用 (TestCM52_X2ConflictReusesCV1Lock 上方 agent token + ACL gate
 // 同源测).
 func TestCM52_X2ConcurrentCommitOneWins(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, _, _, _, artID, _, _ := cm52SetupTwoAgents(t)
 
 	const N = 5
@@ -237,6 +240,7 @@ func TestCM52_X2ConcurrentCommitOneWins(t *testing.T) {
 // 路径返同 chain — 立场 ⑤ 透明协作 owner-first 实证. 反约束: 不裂
 // visibility scope, response 不挂 ai_only/visibility_scope 隐藏字段.
 func TestCM52_OwnerVisibilityIterateChain(t *testing.T) {
+	t.Parallel()
 	url, ownerTok, _, agentBTok, _, _, artID, _, agentAID := cm52SetupTwoAgents(t)
 
 	// owner_A 触发 iterate by agent_A (CV-4.2 既有 path).
@@ -297,7 +301,7 @@ func TestCM52_OwnerVisibilityIterateChain(t *testing.T) {
 		}
 	}
 
-	// Anti-flake — small sleep so async dispatchers (if any) settle (走
-	// 既有 path, 此 test 不依赖 async, 但 sleep 防 race 边界 不影响 PASS).
-	time.Sleep(10 * time.Millisecond)
+	// PERF: removed 10ms sleep — comment self-acknowledged "此 test 不依赖
+	// async". Sync path 反向断言: 若 async dispatcher 引入则改用 channel
+	// signal 而非 sleep guess.
 }

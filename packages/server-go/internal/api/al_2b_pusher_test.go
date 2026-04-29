@@ -62,6 +62,7 @@ func (f *fakePusher) Calls() []fakePush {
 // TestAL2B_AgentConfigPusherInterface — compile-time gate, prevents seam
 // drift (any change to AgentConfigPusher signature breaks this).
 func TestAL2B_AgentConfigPusherInterface(t *testing.T) {
+	t.Parallel()
 	var p api.AgentConfigPusher = newFakePusher()
 	cur, sent := p.PushAgentConfigUpdate("agent-X", 1, "{}", "agent-X:1", 1700000000000)
 	if !sent {
@@ -75,6 +76,7 @@ func TestAL2B_AgentConfigPusherInterface(t *testing.T) {
 // TestAL2B_FakePusherTracksCalls — test-double records all calls in order
 // + thread-safe (used by integration tests that wire fanout via interface).
 func TestAL2B_FakePusherTracksCalls(t *testing.T) {
+	t.Parallel()
 	p := newFakePusher()
 
 	for i := 1; i <= 3; i++ {
@@ -102,6 +104,7 @@ func TestAL2B_FakePusherTracksCalls(t *testing.T) {
 // TestAL2B_HandlerPusherFieldExists — pin AgentConfigHandler exposes the
 // Pusher field (server boot wires *ws.Hub here; nil-safe).
 func TestAL2B_HandlerPusherFieldExists(t *testing.T) {
+	t.Parallel()
 	pusher := newFakePusher()
 	h := &api.AgentConfigHandler{Pusher: pusher}
 	if h.Pusher == nil {
@@ -125,6 +128,7 @@ func TestAL2B_HandlerPusherFieldExists(t *testing.T) {
 // TestAL2B_FakePusherTracksCalls + TestAL2B_HandlerPusherFieldExists; this
 // test only proves the wired path doesn't panic / 5xx when plugin offline.
 func TestAL2B_PatchInvokesPusher_Live(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2B-LiveFanout")

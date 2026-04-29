@@ -10,6 +10,7 @@ import (
 )
 
 func TestP2ThreeChannelConcurrentMessagesConsistency(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 

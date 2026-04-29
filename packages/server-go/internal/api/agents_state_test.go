@@ -40,6 +40,7 @@ func (f *fakeRuntimeProvider) SetAgentError(id, reason string) {
 }
 
 func TestWithState_OnlineFromProvider(t *testing.T) {
+	t.Parallel()
 	prov := &fakeRuntimeProvider{snaps: map[string]agentpkg.Snapshot{
 		"a-1": {State: agentpkg.StateOnline},
 	}}
@@ -54,6 +55,7 @@ func TestWithState_OnlineFromProvider(t *testing.T) {
 }
 
 func TestWithState_ErrorWithReason(t *testing.T) {
+	t.Parallel()
 	prov := &fakeRuntimeProvider{snaps: map[string]agentpkg.Snapshot{
 		"a-1": {State: agentpkg.StateError, Reason: agentpkg.ReasonAPIKeyInvalid, UpdatedAt: 1700000000000},
 	}}
@@ -71,6 +73,7 @@ func TestWithState_ErrorWithReason(t *testing.T) {
 }
 
 func TestWithState_DisabledAlwaysOffline(t *testing.T) {
+	t.Parallel()
 	// Disabled agent must read offline even if provider claims online —
 	// 蓝图 §2.4: 禁用 = 停接消息. UI 不能显示绿点.
 	prov := &fakeRuntimeProvider{snaps: map[string]agentpkg.Snapshot{
@@ -84,6 +87,7 @@ func TestWithState_DisabledAlwaysOffline(t *testing.T) {
 }
 
 func TestWithState_NilProviderFallsBackToOffline(t *testing.T) {
+	t.Parallel()
 	h := &AgentHandler{} // no State
 	got := h.withState(map[string]any{}, "a-1", false)
 	if got["state"] != "offline" {
@@ -92,6 +96,7 @@ func TestWithState_NilProviderFallsBackToOffline(t *testing.T) {
 }
 
 func TestAgentStateClassify_Wiring(t *testing.T) {
+	t.Parallel()
 	// classifyAgentProxyError is the convenience adapter the handler calls
 	// inside ProxyPluginRequest error paths. Assert the wiring forwards
 	// to agent.ClassifyProxyError unchanged for the canonical cases.

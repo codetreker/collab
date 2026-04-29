@@ -14,6 +14,7 @@ import (
 )
 
 func TestNowInjectionUsesProvidedClock(t *testing.T) {
+	t.Parallel()
 	fixed := time.Unix(1700000000, 0)
 	h := &AgentInvitationHandler{Now: func() time.Time { return fixed }}
 	if got := h.now(); !got.Equal(fixed) {
@@ -22,6 +23,7 @@ func TestNowInjectionUsesProvidedClock(t *testing.T) {
 }
 
 func TestNowFallbackUsesWallClock(t *testing.T) {
+	t.Parallel()
 	h := &AgentInvitationHandler{}
 	got := h.now()
 	if time.Since(got) > time.Second {
@@ -30,6 +32,7 @@ func TestNowFallbackUsesWallClock(t *testing.T) {
 }
 
 func TestSanitizerOmitsNilOptionals(t *testing.T) {
+	t.Parallel()
 	inv := &store.AgentInvitation{
 		ID:          "x",
 		ChannelID:   "c",
@@ -68,6 +71,7 @@ func TestSanitizerOmitsNilOptionals(t *testing.T) {
 }
 
 func TestCanSeeBranches(t *testing.T) {
+	t.Parallel()
 	h := &AgentInvitationHandler{}
 	inv := &store.AgentInvitation{ID: "i", AgentID: "a", RequestedBy: "u-req"}
 
@@ -90,6 +94,7 @@ func TestCanSeeBranches(t *testing.T) {
 // 401 branch in all four endpoints (auth middleware normally rejects
 // before the handler runs, so this is the only way to cover them).
 func TestUnauthorizedBranches(t *testing.T) {
+	t.Parallel()
 	h := &AgentInvitationHandler{}
 	endpoints := []struct {
 		name string

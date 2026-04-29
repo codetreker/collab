@@ -17,6 +17,7 @@ import (
 )
 
 func TestEventsBackfillSinceCursor(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 

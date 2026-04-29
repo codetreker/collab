@@ -179,6 +179,7 @@ func getGeneralID(t *testing.T, url, token string) string {
 }
 
 func TestWriteRemoteResponse(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -203,6 +204,7 @@ func TestWriteRemoteResponse(t *testing.T) {
 }
 
 func TestPollHelpers(t *testing.T) {
+	t.Parallel()
 	// intersect
 	result := intersect([]string{"a", "b", "c"}, map[string]bool{"b": true, "c": true})
 	if len(result) != 2 {
@@ -227,6 +229,7 @@ func TestPollHelpers(t *testing.T) {
 }
 
 func TestChannelScopeFunc(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest("GET", "/api/v1/channels/test-id/topic", nil)
 	req.SetPathValue("channelId", "test-id")
 	scope := channelScope(req)
@@ -236,6 +239,7 @@ func TestChannelScopeFunc(t *testing.T) {
 }
 
 func TestReadJSONFunc(t *testing.T) {
+	t.Parallel()
 	// Test with normal JSON
 	req := httptest.NewRequest("POST", "/", bytes.NewReader([]byte(`{"name":"test"}`)))
 	var body struct{ Name string }
@@ -255,6 +259,7 @@ func TestReadJSONFunc(t *testing.T) {
 }
 
 func TestSlugifyFunc(t *testing.T) {
+	t.Parallel()
 	tests := []struct{ input, want string }{
 		{"Hello World", "hello-world"},
 		{"  test  ", "test"},
@@ -270,6 +275,7 @@ func TestSlugifyFunc(t *testing.T) {
 }
 
 func TestInternalChannelHandlers(t *testing.T) {
+	t.Parallel()
 	_ = os.Setenv("TMPDIR", os.TempDir())
 	ts, s, _ := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")

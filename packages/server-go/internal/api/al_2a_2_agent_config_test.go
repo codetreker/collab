@@ -41,6 +41,7 @@ func al2a2CreateAgent(t *testing.T, baseURL, token, displayName string) string {
 // any PATCH returns schema_version=0 + empty blob {} (server fallback,
 // no row in agent_configs yet).
 func TestAL2A2_GetEmpty(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-Initial")
@@ -65,6 +66,7 @@ func TestAL2A2_GetEmpty(t *testing.T) {
 // blob + bumps schema_version; subsequent GET returns the same blob
 // + monotonic version (drift test 防 cache 不刷).
 func TestAL2A2_PatchAndGet(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-PatchGet")
@@ -118,6 +120,7 @@ func TestAL2A2_PatchAndGet(t *testing.T) {
 // TestAL2A2_CrossOwnerReject pins acceptance §4.1.b — non-owner PATCH/GET
 // returns 403.
 func TestAL2A2_CrossOwnerReject(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -140,6 +143,7 @@ func TestAL2A2_CrossOwnerReject(t *testing.T) {
 // fields (api_key / temperature / token_limit / retry_policy) fail-closed
 // reject with code `agent_config.runtime_field_rejected`.
 func TestAL2A2_RuntimeFieldRejected(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-Runtime")
@@ -164,6 +168,7 @@ func TestAL2A2_RuntimeFieldRejected(t *testing.T) {
 // TestAL2A2_InvalidPayload pins error surface — empty body / malformed
 // JSON / blob field missing → 400 `agent_config.invalid_payload`.
 func TestAL2A2_InvalidPayload(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-Invalid")
@@ -183,6 +188,7 @@ func TestAL2A2_InvalidPayload(t *testing.T) {
 // PATCH 并发 → no rows lost + schema_version monotonic + final state
 // from one of the writers (last-write-wins).
 func TestAL2A2_ConcurrentLastWriteWins(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-Concurrent")
@@ -221,6 +227,7 @@ func TestAL2A2_ConcurrentLastWriteWins(t *testing.T) {
 // **not** mount agent_configs via /admin-api/* (acceptance §4.1.c implicit:
 // runtime path 与 admin path 拆死).
 func TestAL2A2_AdminAPINotMounted(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-Admin")
@@ -235,6 +242,7 @@ func TestAL2A2_AdminAPINotMounted(t *testing.T) {
 // TestAL2A2_AgentNotFound covers GET/PATCH 404 path — bogus agent_id
 // 返 404 Not Found (uncovered branch, coverage follow-up).
 func TestAL2A2_AgentNotFound(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	bogusID := "bogus-agent-id-does-not-exist"
@@ -253,6 +261,7 @@ func TestAL2A2_AgentNotFound(t *testing.T) {
 // TestAL2A2_UnauthorizedNoToken covers GET/PATCH 401 path — no auth token
 // 返 401 (uncovered auth branch, coverage follow-up).
 func TestAL2A2_UnauthorizedNoToken(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-NoAuth")
@@ -272,6 +281,7 @@ func TestAL2A2_UnauthorizedNoToken(t *testing.T) {
 // TestAL2A2_PatchInvalidJSON covers JSON parse failure path — malformed
 // JSON body 触发 decoder error → 400 invalid_payload (uncovered edge).
 func TestAL2A2_PatchInvalidJSON(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-BadJSON")
@@ -291,6 +301,7 @@ func TestAL2A2_PatchInvalidJSON(t *testing.T) {
 // error on stored blob) — direct DB insert with malformed JSON, then GET
 // returns 500 (covers handleGetAgentConfig blob unmarshal branch + logErr).
 func TestAL2A2_GetCorruptBlob(t *testing.T) {
+	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agentID := al2a2CreateAgent(t, ts.URL, token, "AL2A2-Corrupt")
@@ -313,6 +324,7 @@ func TestAL2A2_GetCorruptBlob(t *testing.T) {
 // → 100%) — handler with custom Now func returns deterministic timestamp.
 // Direct unit test on the handler struct, not via HTTP.
 func TestAL2A2_HandlerNowInjection(t *testing.T) {
+	t.Parallel()
 	const fixedMs = int64(1700000000000)
 	h := &api.AgentConfigHandler{
 		Now: func() time.Time { return time.UnixMilli(fixedMs) },
@@ -328,6 +340,7 @@ func TestAL2A2_HandlerNowInjection(t *testing.T) {
 // access (no-op smoke test for coverage on RegisterRoutes / handler init).
 // Smoke covers public struct surface.
 func TestAL2A2_HandlerStructFields(t *testing.T) {
+	t.Parallel()
 	h := &api.AgentConfigHandler{}
 	if h.Store != nil {
 		t.Error("default Store should be nil")

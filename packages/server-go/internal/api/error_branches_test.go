@@ -187,6 +187,7 @@ func typedMultipartBody(t *testing.T, filename, contentType string, content []by
 }
 
 func TestHandlerUnauthorizedBranches(t *testing.T) {
+	t.Parallel()
 	logger := testLogger()
 	cfg := &config.Config{JWTSecret: "test-secret", WorkspaceDir: t.TempDir(), UploadDir: t.TempDir()}
 
@@ -266,6 +267,7 @@ func TestHandlerUnauthorizedBranches(t *testing.T) {
 }
 
 func TestHTTPErrorBranches(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
@@ -310,6 +312,7 @@ func TestHTTPErrorBranches(t *testing.T) {
 }
 
 func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
+	t.Parallel()
 	t.Run("upload save failure returns 500", func(t *testing.T) {
 		ts, s, cfg := setupFullTestServer(t)
 		token := loginAs(t, ts.URL, "owner@test.com", "password123")
@@ -375,6 +378,7 @@ func TestUploadAndWorkspaceHardErrorBranches(t *testing.T) {
 }
 
 func TestRemoteProxyErrorBranches(t *testing.T) {
+	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
 	token := loginAs(t, ts.URL, "owner@test.com", "password123")
 	adminID := adminIDFromStore(t, s)
@@ -422,6 +426,7 @@ func TestRemoteProxyErrorBranches(t *testing.T) {
 }
 
 func TestSSEBackfillAndFlush(t *testing.T) {
+	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
 	token := loginAs(t, ts.URL, "owner@test.com", "password123")
 	generalID := getGeneralID(t, ts.URL, token)
@@ -458,6 +463,7 @@ func TestSSEBackfillAndFlush(t *testing.T) {
 }
 
 func TestAdminAndAgentAdditionalBranches(t *testing.T) {
+	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
@@ -552,6 +558,7 @@ func TestAdminAndAgentAdditionalBranches(t *testing.T) {
 }
 
 func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
@@ -700,6 +707,7 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 }
 
 func TestInvalidJSONBranches(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	generalID := getGeneralID(t, ts.URL, adminToken)
@@ -761,6 +769,7 @@ func TestInvalidJSONBranches(t *testing.T) {
 }
 
 func TestClosedStoreInternalErrorBranches(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		pattern string
@@ -848,6 +857,7 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 }
 
 func TestAuthPollAndMessageAdditionalBranches(t *testing.T) {
+	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
@@ -975,6 +985,7 @@ func TestAuthPollAndMessageAdditionalBranches(t *testing.T) {
 }
 
 func TestWorkspaceAndRemoteAdditionalBranches(t *testing.T) {
+	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")
@@ -1068,6 +1079,7 @@ func TestWorkspaceAndRemoteAdditionalBranches(t *testing.T) {
 }
 
 func TestSmallFallbackBranches(t *testing.T) {
+	t.Parallel()
 	if got := mustJSON(map[string]any{"bad": func() {}}); got != "{}" {
 		t.Fatalf("expected fallback JSON, got %q", got)
 	}

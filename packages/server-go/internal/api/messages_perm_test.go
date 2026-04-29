@@ -16,6 +16,7 @@ import (
 // store.GrantDefaultPermissions automatically get message.read (queries.go),
 // so the only way to hit this branch is the legacy fixture.
 func TestGetMessages_LegacyAgentNoReadPerm_403(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	agent := testutil.SeedLegacyAgent(t, s, "Legacy Agent")
@@ -36,6 +37,7 @@ func TestGetMessages_LegacyAgentNoReadPerm_403(t *testing.T) {
 // A newly-registered agent gets message.read in default grants (queries.go
 // AP-0-bis). The same GET should succeed.
 func TestGetMessages_AgentWithReadPerm_200(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	agent := testutil.SeedLegacyAgent(t, s, "Modern Agent")
