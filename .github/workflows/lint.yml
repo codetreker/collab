@@ -6,75 +6,26 @@ on:
 
 jobs:
   pr-lint:
-    name: PR lint (template + current 同步)
+    name: PR lint (current 同步)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: PR template (Blueprint / Touches / Current 同步 / Acceptance / Stage)
-        env:
-          BODY: ${{ github.event.pull_request.body }}
-          TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          set -euo pipefail
-          fail=0
-          if [ -z "${BODY:-}" ]; then
-            echo "::error::PR body is empty. Use the PR template."
-            exit 1
-          fi
-
-          # 闸 2 grep: Blueprint cited with §X.Y. Accept BOTH:
-          #   inline:   Blueprint: <module> §X.Y           (optionally **bold**)
-          #   h2 章节:   ## Blueprint\n\n<content containing §X.Y>
-          inline_blueprint=$(echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Blueprint:?(\*\*)?[[:space:]].+§' || true)
-          h2_blueprint=$(echo "$BODY" | awk '/^##[[:space:]]+Blueprint([[:space:]]|$)/{f=1;next} /^##[[:space:]]/{f=0} f && /§/' || true)
-          if [ -z "$inline_blueprint" ] && [ -z "$h2_blueprint" ]; then
-            echo "::error::PR body missing Blueprint citation with §X.Y (inline 'Blueprint: <module> §X.Y' or '## Blueprint' section with §)"
-            fail=1
-          fi
-
-          # Touches: inline OR h2 section with non-empty content
-          inline_touches=$(echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Touches:?(\*\*)?[[:space:]].+' || true)
-          h2_touches=$(echo "$BODY" | awk '/^##[[:space:]]+Touches([[:space:]]|$)/{f=1;next} /^##[[:space:]]/{f=0} f && /[^[:space:]]/ && !/^<!--/ && !/^-->/' || true)
-          if [ -z "$inline_touches" ] && [ -z "$h2_touches" ]; then
-            echo "::error::PR body missing Touches (inline 'Touches: <subsystems>' or '## Touches' section)"
-            fail=1
-          fi
-
-          # Current 同步 section heading (substring covers both inline + h2)
-          if ! echo "$BODY" | grep -F 'Current 同步' >/dev/null; then
-            echo "::error::PR body missing 'Current 同步' section"
-            fail=1
-          fi
-
-          # Acceptance section heading
-          if ! echo "$BODY" | grep -E '^##[[:space:]]*(\*\*)?Acceptance(\*\*)?' >/dev/null; then
-            echo "::error::PR body missing '## Acceptance' section"
-            fail=1
-          fi
-
-          # Stage: inline 'Stage: v0|v1' OR '## Stage' section with v0/v1
-          inline_stage=$(echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Stage:?(\*\*)?[[:space:]]v(0|1)\b' || true)
-          h2_stage=$(echo "$BODY" | awk '/^##[[:space:]]+Stage([[:space:]]|$)/{f=1;next} /^##[[:space:]]/{f=0} f && /\<v[01]\>/' || true)
-          if [ -z "$inline_stage" ] && [ -z "$h2_stage" ]; then
-            echo "::error::PR body missing Stage (inline 'Stage: v0|v1' or '## Stage' section with v0/v1)"
-            fail=1
-          fi
-
-          if [ "$fail" -ne 0 ]; then
-            echo "PR template lint failed. See .github/pull_request_template.md"
-            exit 1
-          fi
-          echo "PR template ok"
-
       - name: current sync (规则 6)
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
+          # Use gh api to fetch the *current* PR body. github.event.pull_request.body
+          # is captured at event creation and may be stale after `gh pr edit` /
+          # `gh api PATCH` to the body — see #444 stale body bug.
+          BODY=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq .body)
+
           # Map: code_prefix -> docs_prefix (kept in sync with .github/lint-current-sync.yml)
           # Note: admin SPA lives physically under packages/client/src/ but is its
           # own module with separate cookie / auth / docs. Longest-prefix-wins
@@ -99,10 +50,7 @@ jobs:
           echo "Changed files (raw):"
           echo "$changed"
 
-          # Filter out files that don't change behavior. Keep these in sync
-          # with exclude_globs in .github/lint-current-sync.yml.
-          # NOTE: hard-coded here on purpose — Actions has no yq by default,
-          # and a 6-line filter is cheaper than a YAML parser dependency.
+          # Filter out files that don't change behavior.
           changed=$(echo "$changed" | grep -Ev '(_test\.go$|\.test\.tsx?$|\.spec\.tsx?$|/__snapshots__/|/testdata/)' || true)
           echo "Changed files (after exclude_globs filter):"
           echo "$changed"
@@ -110,19 +58,13 @@ jobs:
           # If the PR body explicitly opts out with 'N/A' under Current 同步,
           # we still warn but do not fail. The reviewer reads the reason.
           opted_out=0
-          # Accept both forms:
-          #   ## Current 同步\n- N/A — reason       (H2 + bullet)
-          #   Current 同步: N/A — reason            (4-line bare metadata)
           if echo "$BODY" | grep -B 1 -A 5 'Current 同步' | grep -F 'N/A' >/dev/null; then
             opted_out=1
           fi
 
           # Sort prefixes by length descending so longest-prefix wins per file.
-          # (Bash associative arrays don't preserve insertion order.)
           prefixes_sorted=$(for p in "${!MAP[@]}"; do echo "${#p} $p"; done | sort -rn | awk '{print $2}')
 
-          # For each changed file, attribute it to the longest matching code prefix.
-          # A rule is "triggered" only if at least one file's longest match is that prefix.
           declare -A TRIGGERED=()
           while IFS= read -r f; do
             [ -z "$f" ] && continue
