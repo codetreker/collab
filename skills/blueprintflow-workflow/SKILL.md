@@ -92,10 +92,11 @@ description: Borgee 工作流总览 — 多 agent 协作做产品的方法论。
 产出: PROGRESS.md ready, Phase 1/2/3+ 拆段清晰
 
 ### 阶段 3: milestone 实施 (主战场)
-**目标**: 每 milestone 落 4 件套 → 拆段实施 ≤3 PR → 全 merged 闭环
+**目标**: 每 milestone 一 worktree + 一 branch + 一 PR — teamlead 创 worktree, 全员叠 commit, teamlead 唯一开 PR, merged 后 teamlead 删 worktree
 
-4. **blueprintflow:milestone-fourpiece** — 4 件套并行 (spec / stance / acceptance / content-lock)
-5. **blueprintflow:pr-review-flow** — PR open 后双 review + 标准 squash merge (永远不 admin/ruleset bypass)
+4. **blueprintflow:git-workflow** — git 协议: 一 milestone 一 worktree, 角色不开 PR, teamlead 唯一开 PR
+5. **blueprintflow:milestone-fourpiece** — 4 件套全员同 worktree 叠 commit (spec / stance / acceptance / content-lock 都进同一 PR)
+6. **blueprintflow:pr-review-flow** — PR (teamlead 开) 后双 review + 标准 squash merge (永远不 admin/ruleset bypass)
 
 产出: milestone 全 merged + acceptance template ⚪→🟢 翻牌 + REG-* 寄存
 
@@ -160,7 +161,7 @@ tmux attach -t $SESSION
 
 ## 关键协议
 
-- **Worktree 协议**: 战马 worktree 在 repo 根 `.worktrees/<milestone>`, 不再 `/tmp/`. 一 milestone 一 worktree 一 branch (`feat/<milestone>`).
+- **Git workflow** (见 `blueprintflow-git-workflow`): teamlead 唯一创建 `.worktrees/<milestone>` + branch `feat/<milestone>`, 全员同 worktree 叠 commit, **角色不开 PR, teamlead 唯一开 PR**, PR merged 后 teamlead 删 worktree.
 - **一 milestone 一 PR**: 4 件套 + 三段实施 + e2e + docs/current sync + REG flip + acceptance ⚪→✅ + PROGRESS [x] **全在同一 PR**, 不拆多 PR. 不开 closure follow-up.
 - **PR 合并永远不 admin bypass / 不 ruleset disable** (硬红线, 见 pr-review-flow): CI 必须真过, flaky 真修不绕 (含 PR template lint 误报 / e2e flaky / coverage 卡线 — 都修不绕)
 - **PR template 顶部 4 行裸 metadata**: `Blueprint: §X.Y` / `Touches:` / `Current 同步:` / `Stage: v0|v1` (或 h2 章节式)
