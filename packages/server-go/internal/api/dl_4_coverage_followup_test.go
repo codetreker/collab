@@ -164,3 +164,48 @@ func TestDL42_PushUnsubscribe_OwnUserDeletes(t *testing.T) {
 	}
 }
 
+// TestDL42_PushSubscriptionsHandler_NowDefault exercises the default
+// time.Now path (Now field nil → fallback). Uses construction + reflection
+// to avoid panic on nil Now field.
+func TestDL42_PushSubscriptionsHandler_NowDefault(t *testing.T) {
+	// Default-Now handler — call the handler's internal now() via the
+	// handleSubscribe path which exercises h.now() default branch.
+	ts, _, _ := testutil.NewTestServer(t)
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+
+	// POST → exercises h.now() (default time.Now path) at created_at.
+	resp, body := testutil.JSON(t, "POST", ts.URL+"/api/v1/push/subscribe", token, map[string]any{
+		"endpoint": "https://fcm.googleapis.com/fcm/send/now-default",
+		"p256dh":   "p", "auth": "a",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST expected 200, got %d", resp.StatusCode)
+	}
+	if ca, _ := body["created_at"].(float64); ca == 0 {
+		t.Errorf("created_at = 0 — h.now() default path not exercised")
+	}
+}
+
+// TestDL42_PushSubscribe_ResponseShape pins the response JSON shape —
+// covers the writeJSONResponse 200 success branch (separate from error
+// branches already covered).
+func TestDL42_PushSubscribe_ResponseShape(t *testing.T) {
+	ts, _, _ := testutil.NewTestServer(t)
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+
+	resp, body := testutil.JSON(t, "POST", ts.URL+"/api/v1/push/subscribe", token, map[string]any{
+		"endpoint": "https://fcm.googleapis.com/fcm/send/response-shape",
+		"p256dh":   "p256dh-rs",
+		"auth":     "auth-rs",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST expected 200, got %d", resp.StatusCode)
+	}
+	if ep, _ := body["endpoint"].(string); ep != "https://fcm.googleapis.com/fcm/send/response-shape" {
+		t.Errorf("response endpoint mismatch: got %v", body["endpoint"])
+	}
+	if _, ok := body["created_at"]; !ok {
+		t.Errorf("response missing created_at field")
+	}
+}
+
