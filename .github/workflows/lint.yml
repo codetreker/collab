@@ -24,19 +24,25 @@ jobs:
             exit 1
           fi
 
-          # 闸 2 grep: at least one `Blueprint:` line with §X.Y anchor
-          if ! echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Blueprint:?(\*\*)?[[:space:]].+§' >/dev/null; then
-            echo "::error::PR body missing 'Blueprint: <module> §X.Y' line"
+          # 闸 2 grep: Blueprint cited with §X.Y. Accept BOTH:
+          #   inline:   Blueprint: <module> §X.Y           (optionally **bold**)
+          #   h2 章节:   ## Blueprint\n\n<content containing §X.Y>
+          inline_blueprint=$(echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Blueprint:?(\*\*)?[[:space:]].+§' || true)
+          h2_blueprint=$(echo "$BODY" | awk '/^##[[:space:]]+Blueprint([[:space:]]|$)/{f=1;next} /^##[[:space:]]/{f=0} f && /§/' || true)
+          if [ -z "$inline_blueprint" ] && [ -z "$h2_blueprint" ]; then
+            echo "::error::PR body missing Blueprint citation with §X.Y (inline 'Blueprint: <module> §X.Y' or '## Blueprint' section with §)"
             fail=1
           fi
 
-          # Touches: header
-          if ! echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Touches:?(\*\*)?[[:space:]].+' >/dev/null; then
-            echo "::error::PR body missing 'Touches: <subsystems>' line"
+          # Touches: inline OR h2 section with non-empty content
+          inline_touches=$(echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Touches:?(\*\*)?[[:space:]].+' || true)
+          h2_touches=$(echo "$BODY" | awk '/^##[[:space:]]+Touches([[:space:]]|$)/{f=1;next} /^##[[:space:]]/{f=0} f && /[^[:space:]]/ && !/^<!--/ && !/^-->/' || true)
+          if [ -z "$inline_touches" ] && [ -z "$h2_touches" ]; then
+            echo "::error::PR body missing Touches (inline 'Touches: <subsystems>' or '## Touches' section)"
             fail=1
           fi
 
-          # Current 同步 section heading
+          # Current 同步 section heading (substring covers both inline + h2)
           if ! echo "$BODY" | grep -F 'Current 同步' >/dev/null; then
             echo "::error::PR body missing 'Current 同步' section"
             fail=1
@@ -48,9 +54,11 @@ jobs:
             fail=1
           fi
 
-          # Stage line
-          if ! echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Stage:?(\*\*)?[[:space:]]v(0|1)\b' >/dev/null; then
-            echo "::error::PR body missing 'Stage: v0' (or v1) line"
+          # Stage: inline 'Stage: v0|v1' OR '## Stage' section with v0/v1
+          inline_stage=$(echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Stage:?(\*\*)?[[:space:]]v(0|1)\b' || true)
+          h2_stage=$(echo "$BODY" | awk '/^##[[:space:]]+Stage([[:space:]]|$)/{f=1;next} /^##[[:space:]]/{f=0} f && /\<v[01]\>/' || true)
+          if [ -z "$inline_stage" ] && [ -z "$h2_stage" ]; then
+            echo "::error::PR body missing Stage (inline 'Stage: v0|v1' or '## Stage' section with v0/v1)"
             fail=1
           fi
 

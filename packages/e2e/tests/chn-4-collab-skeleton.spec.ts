@@ -158,7 +158,8 @@ test.describe('CHN-4 协作场骨架 — acceptance §1 §4 §5 §6', () => {
     const userB = await registerUser(serverURL, invB, 'dm-b');
 
     // userA opens DM with userB — server creates dm channel (CHN-2 既有 endpoint).
-    const dmRes = await userA.ctx.get(`/api/v1/dm/${userB.userId}`);
+    // Endpoint is `POST /api/v1/dm/{userId}` (see server-go/internal/api/dm.go).
+    const dmRes = await userA.ctx.post(`/api/v1/dm/${userB.userId}`);
     expect(dmRes.ok(), `dm open: ${dmRes.status()}`).toBe(true);
 
     const ctx = await browser.newContext();
