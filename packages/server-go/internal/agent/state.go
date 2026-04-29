@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"borgee-server/internal/agent/reasons"
 )
 
 // RuntimeState — Phase 2 三态.
@@ -34,13 +36,18 @@ const (
 
 // Reason codes — 故障原因. UI 直达修复入口 (蓝图 §2.3 关键设计).
 // 字符串面跟客户端文案表绑定, 改这里 = 改 AgentManager.tsx 的 reasonLabel.
+//
+// REFACTOR-REASONS: SSOT 已迁到 internal/agent/reasons. 此处仅 re-export
+// 维持 byte-identical 调用语义 + 既有 import-site (api/al_1b_2_status.go /
+// api/runtimes.go / api/iterations.go 等) 不破. 改字面 = 改 reasons.ALL
+// 一处即 8 处单测同步挂. 新代码请直接 import internal/agent/reasons.
 const (
-	ReasonAPIKeyInvalid     = "api_key_invalid"
-	ReasonQuotaExceeded     = "quota_exceeded"
-	ReasonNetworkUnreachable = "network_unreachable"
-	ReasonRuntimeCrashed    = "runtime_crashed"
-	ReasonRuntimeTimeout    = "runtime_timeout"
-	ReasonUnknown           = "unknown"
+	ReasonAPIKeyInvalid      = reasons.APIKeyInvalid
+	ReasonQuotaExceeded      = reasons.QuotaExceeded
+	ReasonNetworkUnreachable = reasons.NetworkUnreachable
+	ReasonRuntimeCrashed     = reasons.RuntimeCrashed
+	ReasonRuntimeTimeout     = reasons.RuntimeTimeout
+	ReasonUnknown            = reasons.Unknown
 )
 
 // Snapshot — 单次查询结果, JSON 直接 marshal 到 GET /api/v1/agents 的

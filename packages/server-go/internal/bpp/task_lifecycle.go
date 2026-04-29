@@ -51,7 +51,7 @@ import (
 	"fmt"
 	"strings"
 
-	agentpkg "borgee-server/internal/agent"
+	"borgee-server/internal/agent/reasons"
 )
 
 // TaskOutcome enum — content-lock §1 ③ byte-identical 跟蓝图 §1.6
@@ -72,20 +72,14 @@ var validTaskOutcomes = map[string]bool{
 	TaskOutcomeCancelled: true,
 }
 
-// validTaskReasons is the 6-字典 byte-identical 跟 agent/state.go
-// Reason* 同源 — source-of-truth lives in internal/agent. Drift here
-// breaks REG-AL1a-* + REG-AL3-* + REG-CV4-* + REG-AL2a-* + REG-AL1b-*
-// + REG-AL4-* + REG-BPP2-* 单测锁七处+ (改 = 改七处: AL-1a #249 +
-// AL-3 #305 + CV-4 #380 + AL-2a #454 + AL-1b #458 + AL-4 #387/#461,
-// BPP-2.2 是第七处跟链, 不另起字典).
-var validTaskReasons = map[string]bool{
-	agentpkg.ReasonAPIKeyInvalid:      true,
-	agentpkg.ReasonQuotaExceeded:      true,
-	agentpkg.ReasonNetworkUnreachable: true,
-	agentpkg.ReasonRuntimeCrashed:     true,
-	agentpkg.ReasonRuntimeTimeout:     true,
-	agentpkg.ReasonUnknown:            true,
-}
+// validTaskReasons — REFACTOR-REASONS: SSOT 迁到 internal/agent/reasons.
+// 直接调 reasons.IsValid(s); 不再 inline map. 改字面 = 改 reasons.ALL 一处
+// 即 8 处单测同步挂.
+//
+// 历史: 此处原 inline 6 字面 byte-identical 跟 agent/state.go Reason*
+// (#249/#305/#321/#380/#454/#458/#481/#492 八处单测锁链), REFACTOR-REASONS
+// 一 PR dedupe 到 internal/agent/reasons SSOT 包.
+func validTaskReason(s string) bool { return reasons.IsValid(s) }
 
 // TaskErrCode* — error code literals byte-identical 跟 content-lock
 // §1 ⑥ 同源 (跟 anchor.create_owner_only #360 / dm.workspace_not_supported
@@ -150,7 +144,7 @@ func ValidateTaskFinished(frame TaskFinishedFrame) error {
 			return fmt.Errorf("%w: outcome=failed agent_id=%q task_id=%q",
 				errFinishedNoReason, frame.AgentID, frame.TaskID)
 		}
-		if !validTaskReasons[frame.Reason] {
+		if !validTaskReason(frame.Reason) {
 			return fmt.Errorf("%w: reason=%q (AL-1a 6-dict: api_key_invalid/quota_exceeded/network_unreachable/runtime_crashed/runtime_timeout/unknown)",
 				errReasonUnknown, frame.Reason)
 		}
