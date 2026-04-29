@@ -548,6 +548,45 @@ export async function updateAgentPermissions(id: string, permissions: { permissi
   });
 }
 
+// AL-2a.2 agent_configs SSOT API (#264 acceptance §4.1.a-d).
+// Blueprint: agent-lifecycle.md §2.1 + plugin-protocol.md §1.4 (Borgee=SSOT
+// 字段划界, blob 仅含 Borgee 管字段) + §1.5 (热更新分级 — AL-2a 走轮询
+// reload, BPP frame agent_config_update 留 AL-2b + BPP-3 同合).
+export interface AgentConfig {
+  schema_version: number;
+  blob: AgentConfigBlob;
+  updated_at?: number;
+}
+
+// allowedConfigKeys whitelist 跟 server-go internal/api/agent_config.go
+// 同源 byte-identical (蓝图 §1.4 SSOT 字段划界).
+export interface AgentConfigBlob {
+  name?: string;
+  avatar?: string;
+  prompt?: string;
+  model?: string;
+  capabilities?: string[];
+  enabled?: boolean;
+  memory_ref?: string;
+}
+
+export async function fetchAgentConfig(id: string): Promise<AgentConfig> {
+  return request<AgentConfig>(`/api/v1/agents/${id}/config`);
+}
+
+// PATCH atomic blob 整体替换 + schema_version 严格递增 (server-stamp).
+// Failure surface (跟 server-go agent_config.go 同源):
+//   - 400 agent_config.invalid_payload (空 body / 非 JSON / blob 缺)
+//   - 400 agent_config.runtime_field_rejected (runtime-only field, fail-closed)
+//   - 403 (cross-owner)
+//   - 500 with msg "agent 配置保存失败, 请重试" byte-identical
+export async function updateAgentConfig(id: string, blob: AgentConfigBlob): Promise<AgentConfig> {
+  return request<AgentConfig>(`/api/v1/agents/${id}/config`, {
+    method: 'PATCH',
+    body: JSON.stringify({ blob }),
+  });
+}
+
 export async function addAgentToChannel(channelId: string, agentId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/members`, {
     method: 'POST',

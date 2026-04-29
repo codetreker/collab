@@ -209,7 +209,7 @@ AP-3 ─┘
 - [ ] **AL-1** 状态四态扩展
   - [x] **AL-1a** online/offline + error 旁路 + 6 reason codes (PR #249, Phase 2 起步, 蓝图 §2.3 R3 锁)
   - [ ] **AL-1b** busy/idle (Phase 4, 跟 BPP task_started/task_finished frame 同期)
-- [ ] **AL-2a** config 表 + update API (并行 CM-*)
+- [x] **AL-2a** config 表 + update API + client SPA (并行 CM-*) — Phase 4 起步 milestone, 三段全闭 ✅: AL-2a.1 schema v=20 + AL-2a.2 server REST PATCH+GET /api/v1/agents/:id/config + 7 TestAL2A2_* (含并发 last-write-wins + runtime-field fail-closed 4 子) + AL-2a.3 client SPA AgentConfigPanel + 8 content-lock cases + 失败 toast `agent 配置保存失败, 请重试` byte-identical (#447)
 - [ ] **AL-2b** BPP ConfigUpdated frame (与 BPP-3 同 PR)
 - [x] **AL-3** presence 完整版 ✅ (复用 PresenceTracker IsOnline + Sessions 接口, #277 stub → 真实施)
   - [x] **AL-3.1** schema (presence_sessions 表, v=12) (PR #310 merged)
