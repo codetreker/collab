@@ -388,6 +388,15 @@ func TestCV12_AgentCommitSystemMessage(t *testing.T) {
 		"title": "Plan", "body": "v1",
 	})
 	id := art["id"].(string)
+	// AP-1.2: agent ABAC capability gate requires explicit
+	// (commit_artifact, artifact:<id>) grant — owner-issued per-artifact
+	// (蓝图 §1.4 立场承袭). Default [message.send, message.read] is not
+	// enough for artifact write.
+	if err := s.GrantPermission(&store.UserPermission{
+		UserID: agent.ID, Permission: auth.CommitArtifact, Scope: "artifact:" + id,
+	}); err != nil {
+		t.Fatalf("grant artifact perm: %v", err)
+	}
 	resp, _ := testutil.JSON(t, "POST", ts.URL+"/api/v1/artifacts/"+id+"/commits", agentTok, map[string]any{
 		"expected_version": 1, "body": "v2",
 	})

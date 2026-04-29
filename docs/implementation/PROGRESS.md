@@ -239,7 +239,7 @@ AP-3 ─┘
 - [ ] **RT-3** ⭐ 多端全推 + 活物感 + thinking subject 反约束 (升 ⭐, 取代 RT-2)
 
 ### auth-permissions (剩余, AP-0 在 Phase 1)
-- [ ] **AP-1** ABAC scope 三层
+- [x] **AP-1** ABAC 单 SSOT + capability 白名单 + 严格 403 — 战马C 一 milestone 一 PR ✅ (按 `docs/implementation/modules/ap-1-spec.md` 飞马 v0 spec 三立场对齐): ① **REG-CHN1-007 ⏸️→🟢** `internal/api/channels.go::handleGetChannel` 404→403 flip (非 member 严格 403, 不再 404 隐藏存在性, 跟 GitHub repo 私有路径同模式) + 3 处 e2e flip; ② `internal/auth/abac.go::HasCapability(ctx, perm, scope) bool` 单 SSOT helper (agent 不享 (*,*) 短路 / human 享 wildcard / 跨 scope 严格); ③ `internal/auth/capabilities.go` const 白名单 14 项 byte-identical 跟 spec §1 ③; 真路由 wired POST /api/v1/artifacts/{id}/commits 用 `auth.HasCapability(ctx, auth.CommitArtifact, ...)` (POC); 反约束 grep 单测守 spec §2 #1 (`HasCapability("..."` hardcode 0 hit). 不在范围 (spec §5): expires_at runtime check (schema slot 留 v=24 migration, 业务化 v2+) / bundle UI / cross-org AP-3 / permission_denied BPP frame. REG-CHN1-007 + REG-AP1-001..007 + REG-AP1-101..104 共 11 行 🟢 + 1 flip ⏸️→🟢.
 - [ ] **AP-2** UI bundle (无角色名)
 - [ ] **AP-3** 跨 org owner-only 强制
 - [ ] **AP-4** capability 清单 enum 化

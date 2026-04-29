@@ -415,6 +415,16 @@ func (h *ArtifactHandler) handleCommit(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
+	// AP-1 立场 ②③: ABAC capability check 单 SSOT — agent 严格 (蓝图
+	// §1.4 不享 wildcard); human 享 wildcard 短路. 反向 grep 守 const
+	// 字面单源 (spec §2 #1).
+	if !auth.HasCapability(r.Context(), h.Store, auth.CommitArtifact, auth.ArtifactScopeStr(id)) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprintf(w, `{"error":"Forbidden","required_capability":%q,"current_scope":%q}`,
+			auth.CommitArtifact, auth.ArtifactScopeStr(id))
+		return
+	}
 
 	var req commitRequest
 	if err := readJSON(r, &req); err != nil {
