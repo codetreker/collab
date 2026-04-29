@@ -952,3 +952,39 @@ export async function resolveAnchor(anchorId: string): Promise<{ id: string; res
     { method: 'POST' },
   );
 }
+
+// ─── CHN-3.2 user_channel_layout (CHN-3.3 client) ──────────
+//
+// Spec: docs/implementation/modules/chn-3-spec.md §1 CHN-3.2 段 + §0
+// 立场 ② 个人偏好两维 collapsed + position. Server: api/layout.go
+// (#412, stacked off CHN-3.1 schema #410 v=19).
+//
+// 立场 ④ 反约束 错码 byte-identical: server PUT 对 DM channel_id 返
+// 400 with code `layout.dm_not_grouped` (5 源 #357/#353/#366/#402/
+// #412); client 走 GET pull, PUT batch upsert, 不挂 push frame
+// (立场 ⑥ ordering client 端事).
+
+export interface LayoutRow {
+  channel_id: string;
+  collapsed: number; // 0 | 1 (BOOL); position is REAL.
+  position: number;
+  created_at?: number;
+  updated_at?: number;
+}
+
+/** GET /me/layout — 本人 layout list (position ASC ordering). */
+export async function getMyLayout(): Promise<{ layout: LayoutRow[] }> {
+  return request<{ layout: LayoutRow[] }>(`/api/v1/me/layout`);
+}
+
+/**
+ * PUT /me/layout — batch upsert (collapsed + position 两维, server 跑
+ * ON CONFLICT (user_id, channel_id) DO UPDATE atomic). 反约束: DM
+ * channel_id → 400 `layout.dm_not_grouped` (server 兜底).
+ */
+export async function putMyLayout(layout: LayoutRow[]): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/v1/me/layout`, {
+    method: 'PUT',
+    body: JSON.stringify({ layout }),
+  });
+}
