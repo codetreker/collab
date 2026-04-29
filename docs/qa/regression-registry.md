@@ -469,7 +469,7 @@ Phase 1 退出 gate 全签: 见 `docs/qa/signoffs/g1-exit-gate.md` (2026-04-28).
 | CM-5 | 5 | 5 | 0 |
 | ADM-2 | 9 | 9 | 0 |
 | BPP-2 | 17 | 17 | 0 |
-| **总计** | **237** | **211** | **26** |
+| **总计** | **238** | **213** | **25** |
 
 Phase 2 全部 milestone 落地后, 预计 active 55 行 — G2.audit 时全员检视一遍 + 翻态 + sign off。
 
