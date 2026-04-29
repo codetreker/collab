@@ -39,9 +39,12 @@ func (f *fakeHandler) HandleAction(frame bpp.SemanticActionFrame, sess bpp.Sessi
 	return f.result, f.err
 }
 
-// TestBPP21_OpWhitelist pins acceptance §1.2: 7 v1 ops byte-identical
+// TestBPP21_OpWhitelist pins acceptance §1.2: v1 ops byte-identical
 // 跟蓝图 plugin-protocol.md §1.3 字面. Order matters — content-lock
 // §1 ① bytes the op list directly.
+//
+// BPP-3.2.1 (#494 follow-up) extends 7→8 with `request_capability_grant`
+// (蓝图 auth-permissions.md §1.3 主入口字面承袭).
 func TestBPP21_OpWhitelist(t *testing.T) {
 	want := []string{
 		"create_artifact",
@@ -51,6 +54,7 @@ func TestBPP21_OpWhitelist(t *testing.T) {
 		"request_agent_join",
 		"read_channel_history",
 		"read_artifact",
+		"request_capability_grant", // BPP-3.2.1
 	}
 	for _, op := range want {
 		if !bpp.ValidSemanticOps[op] {

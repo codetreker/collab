@@ -17,6 +17,18 @@ request_agent_join / read_channel_history / read_artifact
 
 枚举外值 reject + 错误码 `bpp.semantic_op_unknown` (跟 anchor.create_owner_only #360 / dm.workspace_not_supported #407 命名同模式).
 
+### 2.1 BPP-3.2.1 扩展 — `request_capability_grant` (7→8)
+
+蓝图 `auth-permissions.md` §1.3 主入口字面承袭. plugin SDK 收 BPP-3.1 `permission_denied` frame 后通过此 op 触发 server 给 owner 写 system DM (复用 DM-2 既有 path + CM-onboarding `quick_action` JSON).
+
+Handler: `internal/api/capability_grant.go::CapabilityGrantHandler`. Payload 5 字段 `{agent_id, attempted_action, required_capability, current_scope, request_id}` byte-identical 跟 BPP-3.1 frame body 同源 (跨 PR drift 守, 改 = 改五处+).
+
+DM body 字面锁: `"{agent_name} 想 {attempted_action} 但缺权限 {required_capability}"` (见 `docs/qa/bpp-3.2-content-lock.md` §1).
+
+quick_action JSON shape (content-lock §2): `{action, agent_id, capability, scope, request_id}` (action ∈ {grant, reject, snooze}; client UI 渲染三按钮 "授权/拒绝/稍后").
+
+Capability 必走 AP-1 `auth.Capabilities` 14 项 const 白名单; 字典外值 reject + 错误码 `bpp.grant_capability_disallowed`. 反向 grep `GrantPermission.*Permission:.*"<literal>"` 在 `internal/api/` count==0 (跟 AP-1 反约束 #1 同源).
+
 ## 3. ActionHandler interface seam
 
 `bpp` 包零 `internal/api` 依赖 — api 包 server boot 时调 `Dispatcher.RegisterHandler(op, handler)` 注入. 跟 ArtifactPusher / IterationStatePusher / AgentInvitationPusher 同模式.
