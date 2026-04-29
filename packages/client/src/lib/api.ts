@@ -948,6 +948,94 @@ export async function rollbackArtifact(
   );
 }
 
+// ─── Iterations (CV-4.2 server #409 / CV-4.3 client) ─────────
+//
+// Spec: docs/implementation/modules/cv-4-spec.md §0 立场 ②
+// (owner triggers iterate, agent commit goes through CV-1's existing
+// /commits endpoint with ?iteration_id query). 文案锁:
+// docs/qa/cv-4-content-lock.md §1 ③ (state 4 态 byte-identical).
+// Stance: docs/qa/cv-4-stance-checklist.md §1 ①-⑦.
+//
+// Push frame: IterationStateChangedFrame 9 字段 byte-identical 跟
+// server-go iteration_state_frame.go 同源 (BPP-1 #304 envelope CI lint).
+
+export type IterationState = 'pending' | 'running' | 'completed' | 'failed';
+
+/**
+ * artifact_iterations row (server CV-4.1 schema #405 + CV-4.2 #409).
+ *
+ * 字段顺序锁: id / artifact_id / requested_by / intent_text /
+ * target_agent_id / state / created_artifact_version_id NULL /
+ * error_reason NULL / created_at / completed_at NULL.
+ *
+ * 立场 ⑦ admin god-mode 字段白名单不含 intent_text — 但 owner 拉自己
+ * 触发的 iteration 时返完整 row (intent_text 是 owner 自己输入).
+ */
+export interface ArtifactIteration {
+  id: string;
+  artifact_id: string;
+  requested_by: string;
+  intent_text: string;
+  target_agent_id: string;
+  state: IterationState;
+  /** AL-1a 6 reason 之一; state='failed' 时非空, 走 REASON_LABELS 渲染. */
+  error_reason?: AgentRuntimeReason | null;
+  /** state='completed' 时非空; FK PK 非用户号 version. */
+  created_artifact_version_id?: number | null;
+  created_at: number;
+  completed_at?: number | null;
+}
+
+export interface CreateIterationResponse {
+  iteration: ArtifactIteration;
+}
+
+/**
+ * Trigger iterate — owner-only (server enforces; client also gates DOM
+ * via CV-1 #347 line 254 同模式 owner-only DOM omit defense-in-depth).
+ *
+ * 反约束: 不开 `/iterations/:id/commit` 旁路 endpoint — agent commit
+ * 走 CV-1 既有 `POST /artifacts/:id/commits` 加 query `?iteration_id=`
+ * (cv-4-stance §1 ② CV-1 commit 单源).
+ */
+export async function createIteration(
+  artifactId: string,
+  payload: { intent_text: string; target_agent_id: string },
+): Promise<CreateIterationResponse> {
+  return request<CreateIterationResponse>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/iterate`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/**
+ * GET single iteration body — 立场 ⑤ envelope-signal-only 后 pull 路径.
+ * Push frame 仅信号, intent_text 不在 frame (admin 字段白名单反断同源).
+ */
+export async function getIteration(
+  artifactId: string,
+  iterationId: string,
+): Promise<ArtifactIteration> {
+  return request<ArtifactIteration>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/iterations/${encodeURIComponent(iterationId)}`,
+  );
+}
+
+/**
+ * GET iteration list — artifact panel "迭代历史" 折叠区
+ * (cv-4-content-lock §1 ⑥ 头 5 条 + intent_text 头 40 字截断).
+ */
+export async function listIterations(
+  artifactId: string,
+): Promise<{ iterations: ArtifactIteration[] }> {
+  return request<{ iterations: ArtifactIteration[] }>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/iterations`,
+  );
+}
+
 // ─── Anchors (CV-2.2 server / CV-2.3 client) ───────────────
 //
 // Spec: docs/implementation/modules/cv-2-spec.md §0 (3 立场) + §1

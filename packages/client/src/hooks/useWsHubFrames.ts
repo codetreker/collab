@@ -29,11 +29,13 @@ import {
   ARTIFACT_UPDATED_EVENT,
   MENTION_PUSHED_EVENT,
   ANCHOR_COMMENT_ADDED_EVENT,
+  ITERATION_STATE_CHANGED_EVENT,
   type AgentInvitationPendingFrame,
   type AgentInvitationDecidedFrame,
   type ArtifactUpdatedFrame,
   type MentionPushedFrame,
   type AnchorCommentAddedFrame,
+  type IterationStateChangedFrame,
 } from '../types/ws-frames';
 
 /**
@@ -171,5 +173,35 @@ export function useAnchorCommentAdded(
     };
     window.addEventListener(ANCHOR_COMMENT_ADDED_EVENT, listener);
     return () => window.removeEventListener(ANCHOR_COMMENT_ADDED_EVENT, listener);
+  }, [handler]);
+}
+
+// ─── CV-4.3 IterationStateChanged dispatch (CV-4.3 client) ──
+//
+// Same precedent as artifact_updated / anchor_comment_added: useWebSocket.ts
+// decodes the frame then calls dispatchIterationStateChanged; IteratePanel
+// listens via useIterationStateChanged(handler) — handler decides whether
+// to refetch the iteration via GET /api/v1/artifacts/:id/iterations/:iid
+// or splice locally on state change. envelope is signal-only — frame
+// carries no intent_text (privacy red-line ADM-0 §1.3, intent_text 走 GET
+// 拉, push 仅 state 信号).
+
+export function dispatchIterationStateChanged(
+  frame: IterationStateChangedFrame,
+): void {
+  window.dispatchEvent(
+    new CustomEvent(ITERATION_STATE_CHANGED_EVENT, { detail: frame }),
+  );
+}
+
+export function useIterationStateChanged(
+  handler: (frame: IterationStateChangedFrame) => void,
+): void {
+  useEffect(() => {
+    const listener = (e: Event) => {
+      handler((e as CustomEvent<IterationStateChangedFrame>).detail);
+    };
+    window.addEventListener(ITERATION_STATE_CHANGED_EVENT, listener);
+    return () => window.removeEventListener(ITERATION_STATE_CHANGED_EVENT, listener);
   }, [handler]);
 }
