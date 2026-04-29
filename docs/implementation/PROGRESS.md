@@ -163,7 +163,7 @@
    - [x] PR RT-1.1 BPP `ArtifactUpdated` frame + server cursor (PR #290 merged)
    - [x] PR RT-1.2 client backfill `?since=N` (PR #292 merged)
    - [x] PR RT-1.3 BPP `session.resume` frame (PR #296 merged)
-4. [ ] **CV-2** 锚点对话 — 4 件套 ✅ (spec #356 v3 #368 / 文案锁 #355 / acceptance #358 / stance 借 spec); CV-2.1 ✅ #359 schema v=14 + CV-2.2 ✅ #360 server (4 endpoints + 8+2 PASS); CV-2.3 client SPA 待战马
+4. [x] **CV-2** 锚点对话 三段四件全闭 ✅ (spec #356 v3 #368 / 文案锁 #355 / acceptance #358 / stance 借 spec; CV-2.1 ✅ #359 c5bf03d schema v=14 + CV-2.2 ✅ #360 84f9e5d server 4 endpoints + 8+2 PASS + AnchorCommentAdded 10 字段 byte-identical WS frame + CV-2.3 ✅ #404 693e70c client SPA 选区→锚 + thread side panel + 4 literals 文案锁 byte-identical + e2e §3.1+§3.2+§3.5+§3.6; REG-CV2-001..005 🟢 #421)
 5. [ ] **CV-3** D-lite 画布渲染 — 4 件套 ✅ (spec #363+#397 v1 / 文案锁 #370 / acceptance #376 / 借 spec stance); CV-3.1 ✅ #396 schema v=17 (artifacts.kind enum 扩 'code'/'image_link'); CV-3.2/3.3 实施待战马A
 6. [ ] **CHN-2** DM 概念独立 — 4 件套 ✅ (spec #357 / 文案锁 #354+#364 / acceptance #353 / 借 spec stance); CHN-2.1/2.2/2.3 实施待战马
 7. [ ] **CHN-3** 个人分组 reorder + pin — 4 件套 ✅ (spec #371 / 文案锁 待野马 / acceptance #376 / stance #366); CHN-3.1/3.2/3.3 实施待战马B
