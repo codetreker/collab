@@ -234,6 +234,12 @@ func (s *Server) SetupRoutes() {
 	al14Handler := &api.AL14Handler{Store: s.store, Logger: s.logger}
 	al14Handler.RegisterRoutes(s.mux, authMw)
 
+	// AL-5 agent error recovery — owner-only POST /api/v1/agents/:id/recover
+	// (蓝图 §2.3 5-state error → online recovery; 复用 AL-1 #492 single-gate
+	// helper, 不裂状态机).
+	al5Handler := &api.AL5Handler{Store: s.store, Logger: s.logger}
+	al5Handler.RegisterRoutes(s.mux, authMw)
+
 	// DL-4 web push subscriptions — POST/DELETE /api/v1/push/subscribe.
 	// 蓝图 client-shape.md L22 (Mobile PWA + Web Push VAPID).
 	pushSubsHandler := &api.PushSubscriptionsHandler{

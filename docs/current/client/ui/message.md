@@ -71,3 +71,31 @@ DOM 字面锁 byte-identical 跟 content-lock §3 (改 = 改两处: content-lock
 **反约束 (content-lock §3 同义词反向 grep)**: 12 词禁出现在 button label — 批准/授予/同意/许可 (替 "授权") / 驳回/拒接/否决/不允许 (替 "拒绝") / 稍候/延后/推迟/暂缓/过会儿 (替 "稍后"). 单测 `SystemMessageBubble.bpp32.test.tsx` 守.
 
 CM-onboarding 既有单按钮 (`{kind: 'button', label, action}`) 路径不变 — `isBPP32GrantPayload` type guard 区分 shape.
+
+---
+
+## 4g. AL-5.2 — Agent error recovery DM 单 "重连" button (Phase 5)
+
+> AL-5 (#516) · 蓝图 [`agent-lifecycle.md`](../../../blueprint/agent-lifecycle.md) §2.3 (5-state error → online edge) + spec [`al-5-spec.md`](../../../implementation/modules/al-5-spec.md) §1 AL-5.2 byte-identical.
+
+agent 翻 error 后, owner 收 system DM (AL-5.1 server 写, follow-up) → `SystemMessageBubble` 检测 quick_action JSON 是 AL-5 shape (`action='recover'` + `agent_id` + `reason` + `request_id`) → 渲染**单按钮**:
+
+```
+┌──┐  System                          2:30 PM
+│SY│  AgentX 状态变更: error (api_key_invalid)
+└──┘  ┌──────┐
+      │ 重连 │
+      └──────┘
+```
+
+DOM 字面锁 byte-identical 跟 spec §1 AL-5.2 (改 = 改两处: al-5-spec.md + SystemMessageBubble.tsx):
+
+| label | data-action | data-al5-button | container marker |
+|---|---|---|---|
+| `重连` | `recover` | `recover` | `data-al5-recover="true"` |
+
+点击 → `postAgentRecover({action, agent_id, reason, request_id})` → POST `/api/v1/agents/{id}/recover` → server 走 AL-1 #492 single-gate `AppendAgentStateTransition(error→online, lastReason)`, 不裂状态机, 不另起 reason 字典.
+
+**反约束 (AL-5 spec §0 同义词反向 grep)**: 5 词禁出现在 button label — 重启 / reset / restart / 重新启动 / 重置 (替 "重连"). 单测 `SystemMessageBubble.al5.test.tsx::reverse — no synonym buttons` 守.
+
+`isAL5RecoverPayload` type guard 区分 shape, BPP-3.2 + AL-5 共用 SystemMessageBubble — 两 payload 都给时按 BPP-3.2 优先 (al5 ∧ ¬bpp32 才渲 重连按钮). CM-onboarding 单按钮 fallback 在两者都无时渲.

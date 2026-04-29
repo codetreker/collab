@@ -1293,3 +1293,32 @@ export async function postMeGrant(req: MeGrantRequest): Promise<MeGrantResponse>
   }
   return (await resp.json()) as MeGrantResponse;
 }
+
+// AL-5.2 — owner agent error recovery (POST /api/v1/agents/:id/recover).
+export interface AL5RecoverPayload {
+  action: 'recover';
+  agent_id: string;
+  reason: string;
+  request_id: string;
+}
+export interface AL5RecoverResponse {
+  state: string;
+  reason: string;
+}
+export async function postAgentRecover(req: AL5RecoverPayload): Promise<AL5RecoverResponse> {
+  const resp = await fetch(`${BASE}/api/v1/agents/${encodeURIComponent(req.agent_id)}/recover`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ request_id: req.request_id }),
+  });
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body?.error) detail = body.error;
+    } catch { /* ignore */ }
+    throw new Error(`agents/recover ${detail}`);
+  }
+  return (await resp.json()) as AL5RecoverResponse;
+}
