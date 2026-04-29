@@ -228,7 +228,7 @@ export default function ChannelList({ channels, currentChannelId, onSelectChanne
   }, [channels, sortedUngrouped, groupedChannels, channelGroupLookup, dispatch]);
 
   return (
-    <div className="channel-list">
+    <div className="channel-list" data-kind="channel">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
