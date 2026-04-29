@@ -18,6 +18,7 @@ import (
 	"borgee-server/internal/bpp"
 	"borgee-server/internal/config"
 	"borgee-server/internal/presence"
+	"borgee-server/internal/push"
 	"borgee-server/internal/store"
 	"borgee-server/internal/testutil/clock"
 	"borgee-server/internal/ws"
@@ -135,9 +136,24 @@ func (s *Server) SetupRoutes() {
 	// MentionFrameBroadcaster interface via PushMentionPushed (#NNN
 	// mention_pushed_frame.go). Nil presence => skip dispatch (legacy
 	// boot path, smoke survives without DM-2 fanout).
+	//
+	// DL-4.3 push gateway — server→browser fan-out via VAPID. Init early
+	// so MentionDispatcher can pick up MentionPushNotifier seam. Falls
+	// back to noop when VAPID env unset (跟 admin Bootstrap 区分: push
+	// 是体验补丁不阻 server 启动).
+	pushGW, err := push.NewGateway(s.store, s.logger)
+	if err != nil {
+		s.logger.Info("push.NewGateway: VAPID env unset, falling back to noop", "err", err)
+		pushGW = push.NewNoopGateway(s.logger)
+	}
+	mentionPushNotifier := push.NewMentionNotifier(pushGW)
+
 	var mentionDispatcher *api.MentionDispatcher
 	if pt, err := presence.NewSessionsTracker(s.store.DB()); err == nil {
 		mentionDispatcher = api.NewMentionDispatcher(s.store, pt, s.hub)
+		// DL-4.6 cross-device fan-out — mention also fires push (best-
+		// effort, browser SW handles visibility-based dedup).
+		mentionDispatcher.PushNotifier = mentionPushNotifier
 	} else {
 		s.logger.Warn("mention dispatcher init skipped — presence tracker unavailable", "err", err)
 	}
@@ -194,6 +210,25 @@ func (s *Server) SetupRoutes() {
 	// (蓝图 §2.3 "故障可解释" — owner 看 agent state 历史轨迹查病因).
 	al14Handler := &api.AL14Handler{Store: s.store, Logger: s.logger}
 	al14Handler.RegisterRoutes(s.mux, authMw)
+
+	// DL-4 web push subscriptions — POST/DELETE /api/v1/push/subscribe.
+	// 蓝图 client-shape.md L22 (Mobile PWA + Web Push VAPID).
+	pushSubsHandler := &api.PushSubscriptionsHandler{
+		Store:  s.store,
+		Logger: s.logger,
+	}
+	pushSubsHandler.RegisterRoutes(s.mux, authMw)
+
+	// DL-4.4 PWA Web App Manifest — GET /api/v1/pwa/manifest (公开 endpoint,
+	// 浏览器 install prompt 在 login 前 fetch). 蓝图 client-shape.md L42
+	// (manifest + install prompt + Web Push + standalone).
+	// ⚠️ 命名拆死锚: 跟 HB-1 #491 GET /api/v1/plugin-manifest (binary plugin
+	// manifest, 双签必需) 不同 endpoint 不同安全模型 (zhanma-a drift audit).
+	pwaManifestHandler := &api.PWAManifestHandler{}
+	pwaManifestHandler.RegisterRoutes(s.mux)
+
+	// (DL-4.3 push gateway init moved earlier — line ~85 — to feed
+	// MentionDispatcher.PushNotifier.)
 
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
