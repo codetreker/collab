@@ -16,7 +16,7 @@
 
 | 段 | 范围 | 闭锁 | owner |
 |---|---|---|---|
-| **AL-4.1** schema migration v=15 | `agent_runtimes` 表 (`id` PK / `agent_id` NOT NULL FK agents UNIQUE / `endpoint_url` TEXT NOT NULL / `process_kind` CHECK in ('openclaw','hermes') / `status` CHECK in ('registered','running','stopped','error') / `last_error_reason` nullable (复用 AL-1a 6 reason 枚举字面) / `last_heartbeat_at` INTEGER nullable / `created_at` / `updated_at`); 索引 `idx_agent_runtimes_agent_id` (lookup 热路径); migration v=14 → v=15 双向 | 待 PR (战马待派) | TBD |
+| **AL-4.1** schema migration v=16 | `agent_runtimes` 表 (`id` PK / `agent_id` NOT NULL FK agents UNIQUE / `endpoint_url` TEXT NOT NULL / `process_kind` CHECK in ('openclaw','hermes') / `status` CHECK in ('registered','running','stopped','error') / `last_error_reason` nullable (复用 AL-1a 6 reason 枚举字面) / `last_heartbeat_at` INTEGER nullable / `created_at` / `updated_at`); 索引 `idx_agent_runtimes_agent_id` (lookup 热路径); migration v=15 → v=16 双向 (v=15 已被 DM-2.1 #361 抢号顺延; CV-3.1 拿 v=17) | 待 PR (战马待派) | TBD |
 | **AL-4.2** server registry + start/stop API + heartbeat hook | `internal/api/runtimes.go` `POST /agents/:id/runtime/start` (校验 owner perm + UPDATE status='running' + emit BPP-1 `agent_register` frame, 走 #304 whitelist) / `/stop` (UPDATE status='stopped' + 通知 plugin 关闭) / `GET /admin/runtimes` (admin god-mode 元数据 only); heartbeat 周期更 `last_heartbeat_at` (跟 AL-3 hub lifecycle hook 同 internal/ws 路径); error 回填 `status='error'` + `last_error_reason` (复用 AL-1a #249 6 reason 字面 byte-identical) | 待 PR (战马待派) | TBD |
 | **AL-4.3** client SPA agent settings 启停 UI | agent 详情页 `Runtime` 卡片: 显示 endpoint_url + process_kind + status badge (4 态颜色字面对齐 AL-1a #249 REASON_LABELS 模板); start/stop 按钮 owner-only (非 owner DOM 不渲染); error 状态显示 reason label (跟 #249 客户端 lib/agent-state.ts REASON_LABELS 同源) + "查看日志" 直达入口 (蓝图 §2.3 "故障可解释" 字面) | 待 PR (战马待派) | TBD |
 
@@ -54,7 +54,7 @@ git grep -nE "type:.*'runtime\." packages/server-go/internal/ws/                
 
 ## 5. Test plan (实施 PR 各自带, 此 spec 不带)
 
-- AL-4.1: migration v=14 → v=15 双向 + UNIQUE(agent_id) 反向 (重复 runtime per agent reject) + CHECK process_kind reject 'hermes' v1 (反向断言, v2+ flip) + CHECK status reject 'unknown' 枚举外值 + 反约束反射列名 grep `llm_provider|api_key` count==0
+- AL-4.1: migration v=15 → v=16 双向 + UNIQUE(agent_id) 反向 (重复 runtime per agent reject) + CHECK process_kind reject 'hermes' v1 (反向断言, v2+ flip) + CHECK status reject 'unknown' 枚举外值 + 反约束反射列名 grep `llm_provider|api_key` count==0
 - AL-4.2: start owner-only (非 owner 403) + admin 401 (admin god-mode 不入写) + start 触发 BPP-1 `agent_register` frame (走 #304 whitelist, 反向 grep frame type 不裂 namespace) + heartbeat 周期 (clock fixture, 跟 G2.3/AL-3 同节流模式) + error 回填 last_error_reason 枚举对齐 AL-1a #249 6 reason byte-identical + admin god-mode `GET /admin/runtimes` 元数据白名单反向断言 (last_error_reason 字段不返回)
 - AL-4.3: e2e owner-only 按钮 (非 owner DOM 不渲染) + 4 态 badge 颜色字面对齐 AL-1a #249 REASON_LABELS 模板 + error 状态 reason label 跟 client `lib/agent-state.ts` 同源 + "查看日志" 直达入口跳转
 
@@ -63,3 +63,4 @@ git grep -nE "type:.*'runtime\." packages/server-go/internal/ws/                
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-28 | 飞马 | v0 — spec lock Phase 4 第三波 spec, 3 立场 (runtime≠LLM / owner-only 启停 admin 元数据 only / runtime status≠presence) + 3 拆段 (schema v=15 / API + heartbeat / SPA UI) + 7 grep 反查 (含 4 反约束) + 7 反约束 + AL-1/AL-3/BPP-1/ADM-0/第6轮 留账边界字面对齐, 蓝图 §2.2 v1 边界字面 + 立场 #7 "Borgee 不带 runtime" 锁
+| 2026-04-29 | 飞马 | v1 — AL-4.1 schema 号 v=15 → v=16 顺延 (DM-2.1 #361 抢 v=15, 串接 CV-2.1 #359 v=14 → DM-2.1 v=15 → AL-4.1 v=16 → CV-3.1 v=17 sequencing 锁字面延续 #356 v3 + #361 兑现); 1 行 diff 跟 CV-3 spec brief 同 PR 入 (不单开) |
