@@ -40,8 +40,9 @@ test('DL-4.4 PWA manifest endpoint returns W3C-compliant JSON', async ({ request
 
 test('DL-4.4 命名拆死 — DL-4 不响应 HB-1 plugin-manifest 字面', async ({ request }) => {
   // HB-1 #491 endpoint 字面 — DL-4 server 不冒充 (zhanma-a drift audit 锚源)
+  // Expect non-2xx (404 most likely — DL-4 没注册此路由).
   const res = await request.get('/api/v1/plugin-manifest');
-  expect(res.status()).not.toBeGreaterThanOrEqual(200);
+  expect(res.status()).toBeGreaterThanOrEqual(400);
 });
 
 test('DL-4.5 service worker /sw.js loads + push handler exists', async ({ page }) => {
