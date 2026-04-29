@@ -32,7 +32,7 @@
 | **CV-3** | `g3.4-cv3-markdown.png` | markdown artifact 渲染 + `data-artifact-kind="markdown"` | #370 ① |
 | **CV-3** | `g3.4-cv3-code-go-highlight.png` | code artifact + 语言徽标 `GO` + prism 高亮 | #370 ② |
 | **CV-3** | `g3.4-cv3-image-embed.png` | image_link artifact + `<img loading="lazy">` https only | #370 ④ |
-| **CV-4** | `g3.4-cv4-iterate-trigger.png` | iterate 按钮 🔄 owner-only DOM omit + 输入框 placeholder "告诉 agent 你希望它做什么…" | #380 ①② |
+| **CV-4** | `g3.4-cv4-iterate-pending.png` | iterate 按钮 🔄 owner-only DOM omit + 输入框 placeholder + state=pending 触发刚提交 (语义跟原 trigger 一致, 命名跟 #380 文案锁 ① state 同源) | #380 ①② |
 | **CV-4** | `g3.4-cv4-running-state.png` | state running "agent 正在迭代…" + 进度条 | #380 ③ |
 | **CV-4** | `g3.4-cv4-completed-newversion.png` | state completed "已生成 v{N}" + 自动跳新版 + kindBadge 🤖 | #380 ④ |
 | **CV-4** | `g3.4-cv4-diff-view.png` | "对比" tab + jsdiff 蓝绿配色 + ARIA label | #380 ⑤ |
@@ -40,6 +40,8 @@
 | **CHN-2** | `g3.x-dm-view-no-workspace.png` | DM 视图反向断言无 workspace tab + 无 channel-only 控件 | #354 ④ + 7 源同根 |
 | **CHN-2** | `g3.x-dm-mention-third-blocked.png` | DM `@<3rd_user>` 候选空 + placeholder "私信仅限两人..." | #354 ⑤ |
 | **CHN-3** | `g3.x-chn3-sidebar-reorder.png` | sidebar 拖拽 reorder + group ▼/▶ 折叠 + DM 行无拖拽 handle | #371 §3 + #366 ④ |
+| **CHN-4 followup** | `g3.x-chn4-followup-dm-no-handle.png` | DM 行 sidebar 不挂 drag handle ⋮⋮ count==0 反约束视觉证据 | #371 §3 + chn-4-followup.spec.ts §DM-handle |
+| **CHN-4 followup** | `g3.x-chn4-followup-cross-org-isolation.png` | 跨 org 隔离 — 用户 A 不见用户 B org 的 channel/DM list | chn-4-followup.spec.ts §cross-org |
 | **DM-2** | `g2.6-mention-render.png` | `<span data-mention-id>@{display_name}</span>` 蓝色高亮 + raw UUID 仅 attr | #314 ① |
 | **DM-2** | `g2.6-mention-candidate.png` | textarea `@` 候选列表 + agent 🤖 角标 | #314 ② |
 | **DM-2** | `g2.6-offline-fallback-dm.png` | system DM "{agent_name} 当前离线，#{channel} 中有人 @ 了它，你可能需要处理" byte-identical | #314 ③ |

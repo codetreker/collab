@@ -148,7 +148,7 @@ test.describe('CHN-4 follow-up — 反约束兜底 + 跨 org 隔离', () => {
 
     // 边界态截屏 — DM sidebar (无 drag handle / 反约束视觉证据).
     await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, 'chn-4-followup-dm-no-handle.png'),
+      path: path.join(SCREENSHOT_DIR, 'g3.x-chn4-followup-dm-no-handle.png'),
       fullPage: false,
     });
   });
@@ -192,7 +192,7 @@ test.describe('CHN-4 follow-up — 反约束兜底 + 跨 org 隔离', () => {
     const visible = await page.locator('.channel-name', { hasText: chName }).count();
     expect(visible, `userB sidebar 不应见 ${chName}`).toBe(0);
     await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, 'chn-4-followup-cross-org-isolation.png'),
+      path: path.join(SCREENSHOT_DIR, 'g3.x-chn4-followup-cross-org-isolation.png'),
       fullPage: false,
     });
   });
