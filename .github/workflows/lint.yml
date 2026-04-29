@@ -46,7 +46,7 @@ jobs:
           fi
 
           # Stage line
-          if ! echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Stage:?(\*\*)?[[:space:]](v0|v1)' >/dev/null; then
+          if ! echo "$BODY" | grep -E '^[[:space:]]*(\*\*)?Stage:?(\*\*)?[[:space:]]v(0|1)\b' >/dev/null; then
             echo "::error::PR body missing 'Stage: v0' (or v1) line"
             fail=1
           fi
