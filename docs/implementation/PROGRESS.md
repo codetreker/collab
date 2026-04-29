@@ -239,7 +239,7 @@ AP-3 ─┘
 - [ ] **RT-3** ⭐ 多端全推 + 活物感 + thinking subject 反约束 (升 ⭐, 取代 RT-2)
 
 ### auth-permissions (剩余, AP-0 在 Phase 1)
-- [ ] **AP-1** ABAC scope 三层
+- [x] **AP-1** ABAC scope 三层 + agent 严格 403 — 战马C 三段全闭 ✅: AP-1.1 schema v=24 (`ap_1_1_user_permissions_expires.go` + 5 migration test, `expires_at` nullable + sparse index `idx_user_permissions_expires WHERE expires_at IS NOT NULL`) + AP-1.2 server (`internal/auth/abac_artifact.go` ArtifactScope resolver + RequireAgentStrict403 强不享 wildcard 短路 + HasAgentScope BPP 路由 helper, 11 unit + 4 e2e) + 真路由 wired (`POST /api/v1/artifacts/{id}/commits` 挂 strict-403 with `artifact.edit_content` + `ArtifactScope`, 蓝图 §1.4 字面承袭). 立场关键: **agent 不享 (*,*) 短路 + 跨 scope 严格 403 + 403 body 含 `required_capability` + `current_scope` 字段供 BPP permission_denied 路由 consumer 用** (蓝图 §2 不变量字面). REG-AP1-001..011 + REG-AP1-101..104 共 15 行 🟢.
 - [ ] **AP-2** UI bundle (无角色名)
 - [ ] **AP-3** 跨 org owner-only 强制
 - [ ] **AP-4** capability 清单 enum 化

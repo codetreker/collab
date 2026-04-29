@@ -52,6 +52,7 @@ var All = []Migration{
 	adm21AdminActions,
 	adm22ImpersonationGrants,
 	al1b1AgentStatus,
+	ap11UserPermissionsExpires,
 	al14AgentStateLog,
 }
 

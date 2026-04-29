@@ -128,10 +128,15 @@ func (h *ArtifactHandler) newID() string {
 
 func (h *ArtifactHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	wrap := func(f http.HandlerFunc) http.Handler { return authMw(f) }
+	// AP-1.2: artifact-write paths gated by RequireAgentStrict403 with
+	// artifact:<id> scope (蓝图 auth-permissions.md §1.2 三层 scope +
+	// §1.4 agent 跨 scope 严格 403). Human owners (role!="agent") still
+	//享 wildcard `(*,*)` 短路 — 立场 ④ 区分.
+	commitGate := authMw(auth.RequireAgentStrict403(h.Store, "artifact.edit_content", auth.ArtifactScope)(http.HandlerFunc(h.handleCommit)))
 	mux.Handle("POST /api/v1/channels/{channelId}/artifacts", wrap(h.handleCreate))
 	mux.Handle("GET /api/v1/artifacts/{artifactId}", wrap(h.handleGet))
 	mux.Handle("GET /api/v1/artifacts/{artifactId}/versions", wrap(h.handleListVersions))
-	mux.Handle("POST /api/v1/artifacts/{artifactId}/commits", wrap(h.handleCommit))
+	mux.Handle("POST /api/v1/artifacts/{artifactId}/commits", commitGate)
 	mux.Handle("POST /api/v1/artifacts/{artifactId}/rollback", wrap(h.handleRollback))
 }
 
