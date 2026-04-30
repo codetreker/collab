@@ -674,3 +674,49 @@ func TestRespondNotImplemented(t *testing.T) {
 		t.Fatalf("expected 404, got %d", rec.Code)
 	}
 }
+
+// TestNewRateLimiter_NilCtx_FallsBack — TEST-FIX-2 defensive nil-ctx branch
+// (caller bug; newRateLimiter falls back to context.Background to avoid
+// panic but goroutine will leak — tests must always pass real ctx).
+func TestNewRateLimiter_NilCtx_FallsBack(t *testing.T) {
+	rl := newRateLimiter(nil)
+	if rl == nil {
+		t.Fatal("newRateLimiter(nil) returned nil")
+	}
+	if rl.clients == nil {
+		t.Fatal("newRateLimiter(nil) returned uninitialized rl.clients")
+	}
+}
+
+// TestNew_NilCtx_FallsBack — TEST-FIX-2 defensive nil-ctx branch in
+// server.New (warns + falls back to context.Background, used as last-resort
+// safety net; production + tests pass real ctx).
+func TestNew_NilCtx_FallsBack(t *testing.T) {
+	s, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Close() })
+	if err := s.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	t.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
+	t.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
+	cfg := &config.Config{
+		JWTSecret:    "test-secret",
+		NodeEnv:      "development",
+		UploadDir:    t.TempDir(),
+		WorkspaceDir: t.TempDir(),
+		ClientDist:   t.TempDir(),
+		CORSOrigin:   "*",
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	//nolint:staticcheck // SA1012: intentional nil ctx — exercise defensive fallback path
+	srv := New(nil, cfg, logger, s)
+	if srv == nil {
+		t.Fatal("New(nil ctx, ...) returned nil")
+	}
+	if srv.ctx == nil {
+		t.Fatal("New(nil ctx, ...) did not fall back: srv.ctx is nil")
+	}
+}
