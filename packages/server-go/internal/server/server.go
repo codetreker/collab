@@ -294,6 +294,15 @@ func (s *Server) SetupRoutes() {
 	pwaManifestHandler := &api.PWAManifestHandler{}
 	pwaManifestHandler.RegisterRoutes(s.mux)
 
+	// HB-1 install-butler server-side `GET /api/v1/plugin-manifest` (v0 [A]
+	// scope). Bearer api-key 鉴权 (authMw 已守 立场 ①); admin god-mode 不挂.
+	// manifest data 走 const slice (PluginManifestEntries 0 schema 立场 ②);
+	// ed25519 detached signature non-empty (立场 ④, sequoia/openpgp 双签
+	// 留 HB-1b Rust client). SigningKey 留 nil 走 test placeholder, production
+	// 接 env 私钥 inject (留 HB-1b 接).
+	hb1ManifestHandler := &api.HB1PluginManifestHandler{Logger: s.logger}
+	hb1ManifestHandler.RegisterRoutes(s.mux, authMw)
+
 	// (DL-4.3 push gateway init moved earlier — line ~85 — to feed
 	// MentionDispatcher.PushNotifier.)
 

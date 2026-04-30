@@ -1,120 +1,76 @@
-# HB-1 install-butler — spec brief v0 (pre-DL-4 stub)
+# HB-1 install-butler — spec brief v1 (server-side endpoint, scope [A])
 
-> Owner: 战马A 起 v0 spec / 飞马 review 安全模型 / 烈马 acceptance
-> Blueprint锚: `docs/blueprint/host-bridge.md` §1.1 + §1.2 安全四件套
-> Module ref: `docs/implementation/modules/host-bridge.md` §HB-1
-> 依赖: **DL-4 server-side-services** (plugin manifest API, gating)
-> Status: **🚧 spec brief v0** — code stub deferred until DL-4 lands real
-> manifest endpoint. This doc locks the interface boundary so HB-1
-> implementation can begin the moment DL-4 ships.
+> Owner: 战马A v0 (#491 锚) → 战马D v1 升级 / 飞马 review / 烈马 acceptance.
+> Blueprint锚: `host-bridge.md` §1.1+§1.2. Status: **🟢 v1 server endpoint scope**;
+> Rust client (install-butler daemon) 留 HB-1b 单 milestone (BPP-2 server先模式).
 
 ## 1. 一句话定义
 
-install-butler 是 Borgee Helper 内部短命 daemon, 负责 plugin runtime 二进制
-的下载 / 校验 (SHA256 + GPG 双签) / 安装 / 卸载. 任务完即退, 不常驻. 跟
-host-bridge daemon (常驻 + 无 sudo) 拆开, 两进程 UI 合一为 "Borgee Helper".
+`GET /api/v1/plugin-manifest` 返 ed25519 签名的 plugin binary 清单, 供 Rust
+install-butler (HB-1b) 拉后双签校验. v0 schema 0 改 (manifest 走 const slice).
 
 ## 2. 范围 / 不在范围
 
-### 在范围 (HB-1 v0)
+### 在范围 (HB-1 v0 [A])
 
-1. **daemon lifecycle**: 短命进程, IPC server (UDS / Named Pipe) 启停; 任
-   务完即 shutdown (反约束: 不常驻, 攻击面减半 — 蓝图 §1.1)
-2. **从 server 拉 manifest**: HTTP GET DL-4 manifest endpoint
-   (`/api/v1/plugin-manifest`, schema TBD by DL-4); 校验响应 GPG 签名 (蓝图
-   §1.2 ①)
-3. **plugin 二进制下载 + 校验**: 按 manifest entry 下载到临时目录, SHA256
-   比对 + GPG 二次签名校验 (双签). 任一失败 → reject + 不安装 (fail-closed,
-   蓝图 §1.2 ① "白名单 + 双签")
-4. **安装到本地 well-known 路径**: 跨平台路径 (Linux:
-   `~/.local/share/borgee/plugins/<id>/`; macOS:
-   `~/Library/Application Support/Borgee/plugins/<id>/`; Windows: 推 v2)
-5. **卸载**: 按 plugin id 删本地路径 + 注册表 (信任底线, 蓝图 §1.2 ④
-   "一键完全卸载")
-6. **审计日志**: 每次 install/uninstall 写本地 JSON line (蓝图 §1.2 + HB-4
-   §1.5 release gate "审计日志格式锁定")
+1. server endpoint Bearer api-key 鉴权 (admin god-mode 不挂)
+2. manifest hardcoded const (0 schema)
+3. ed25519 detached signature over canonical JSON
+4. 7-reason 字典字面锁 byte-identical
+5. pwa_manifest_test.go 反向锚转正向 (HB-1 真返 200)
+6. 审计日志 5 字段 (HB-4 §1.5 release gate 第 4 行 byte-identical)
 
 ### 不在范围
 
-- v1 不自动更新 (反模式, 蓝图 §1.2 ③ "自动更新 = 反模式")
-- 多源 registry ❌ (仅 Borgee 签名 manifest, v1)
-- Windows 支持 (v2 重新设计 sandbox)
-- shell exec / 写命令 (HB-2 也禁, v2 才推)
-- BPP 协议握手 (BPP 模块负责)
-- server 端 manifest API 本身 (DL-4 负责; HB-1 仅消费)
+- install-butler Rust daemon (HB-1b 后续 — Rust crate / IPC / GPG verify /
+  install/uninstall / audit 留独立 milestone)
+- v1 不自动更新, 多源 registry, Windows, shell exec
 
-## 3. 接口边界 (interface stub, lock-in 防 drift)
+## 3. 接口边界
 
-### 3.1 daemon IPC contract (host-bridge ↔ install-butler)
+### 3.1 server endpoint (HB-1 v0 实施)
 
-短命 daemon 走单连接 IPC (UDS Linux/macOS, Named Pipe Windows v2).
-Request/response JSON line, daemon 处理完单 request 即退.
-
-#### Request (host-bridge → install-butler)
-
-```json
-{
-  "request_id": "<uuid>",
-  "action": "install" | "uninstall" | "verify",
-  "plugin_id": "openclaw",
-  "version": "1.0.0",          // optional for uninstall
-  "manifest_url": "https://api.borgee.io/api/v1/plugin-manifest"
-}
+```
+GET /api/v1/plugin-manifest    Authorization: Bearer <user-api-key>
+200 {manifest_version:1, issued_at, expires_at, signature, plugins:[
+  {id, version, binary_url, sha256, signature, platforms}]}
 ```
 
-#### Response (install-butler → host-bridge)
+### 3.2 reason 字典 (跟 AL-1a 6-dict 拆死, 7 字面 const)
 
-```json
-{
-  "request_id": "<uuid>",
-  "status": "ok" | "rejected" | "failed",
-  "reason": "manifest_signature_invalid" |
-            "binary_sha256_mismatch" |
-            "binary_gpg_invalid" |
-            "manifest_fetch_failed" |
-            "disk_write_failed" |
-            "unknown_plugin" |
-            "ok",
-  "installed_path": "/abs/path/to/plugin/binary",   // when status=ok
-  "audit_log_id": "<uuid>"
-}
-```
+`HB1ReasonOK / HB1ReasonManifestSignatureInvalid / HB1ReasonBinarySHA256Mismatch
+/ HB1ReasonBinaryGPGInvalid / HB1ReasonManifestFetchFailed / HB1ReasonDiskWriteFailed
+/ HB1ReasonUnknownPlugin` byte-identical 跟 战马A v0 spec §3.3.
 
-### 3.2 DL-4 manifest endpoint contract (server → install-butler)
+## 4. 立场 (3 + 3 边界)
 
-> **TBD by DL-4 follow-up** — locked here to prevent drift. install-butler
-> reads this shape. **不要** 跟 DL-4 PWA endpoint `GET /api/v1/manifest/
-> plugins` 混 (两个 endpoint, 两个范围, 安全模型不同). 详 cross-PR drift
-> 锚: [`dl-4-hb-1-drift-anchor.md`](dl-4-hb-1-drift-anchor.md).
+- **①** server endpoint owner-only Bearer api-key (admin god-mode 不挂 ADM-0 §1.3 红线)
+- **②** manifest data const slice (0 schema, 跟 RT-4 / DM-9 同模式)
+- **③** 7-reason 字典字面锁 byte-identical 跟 §3.2 + spec brief v0 #491 同源
+- **④** ed25519 detached signature non-empty 单测 verify 通过 (双签 v1 升级到 sequoia/openpgp 留 HB-1b)
+- **⑤** AL-1a reason 锁链不漂 — HB-1 7-dict 跟 runtime AL-1a 6-dict 反向 grep 拆死, 锁链停在 HB-6 #19
+- **⑥** AST 锁链延伸第 23 处 forbidden 3 token (`pendingPluginManifest / pluginManifestQueue / deadLetterPluginManifest`) 0 hit
 
-```json
-GET /api/v1/plugin-manifest
-Authorization: Bearer <user-api-key>
+## 5. 反约束 grep 锚
 
-200 OK
-Content-Type: application/json
+- 0 schema: `migrations/hb_1_\d+|ALTER.*plugin` 0 hit
+- admin god-mode 不挂: `admin-api/v[0-9]+/.*plugin-manifest` 0 hit
+- 7-reason 字面锁: const 字符串 byte-identical 跟 §3.2
+- pwa_manifest_test.go 既有反向锚不破 + 新加 `TestHB1_PluginManifest_Returns200`
+- AST 锁链延伸第 23 处: 3 forbidden token 0 hit
+- AL-1a 拆死: `hb1.*reason|plugin.*reason` 在 internal/agent/reasons/ 0 hit
 
-{
-  "manifest_version": 1,
-  "issued_at": 1735689600000,
-  "expires_at": 1735776000000,
-  "gpg_signature": "<base64 detached signature over canonical JSON>",
-  "plugins": [
-    {
-      "id": "openclaw",
-      "version": "1.0.0",
-      "binary_url": "https://cdn.borgee.io/plugins/openclaw-1.0.0-linux-x64",
-      "sha256": "<hex>",
-      "gpg_signature": "<base64 detached signature over binary>",
-      "platforms": ["linux-x64", "darwin-x64", "darwin-arm64"]
-    }
-  ]
-}
-```
+## 6. 跨 milestone byte-identical 锁
 
-### 3.3 reason 字典 (跟 AL-1a 6-dict 同模式, fail-closed 字面锁)
+- DL-4 命名拆死: DL-4 PWA manifest `/api/v1/manifest/plugins` 跟 HB-1 plugin
+  manifest `/api/v1/plugin-manifest` 不混 (反向锚 `pwa_manifest_test.go::
+  TestDL44_PWAManifest_NameNotPluginManifest` 不破)
+- HB-1b Rust client 消费 HB-1 v0 endpoint, manifest JSON shape byte-identical
+- HB-4 ⭐ release gate 第 3 行 (签名校验失败率 0%) + 第 4 行 (audit log
+  schema) byte-identical 跟此 spec
+- AL-1a reason 字典分立 (HB-1 install 路径 vs AL-1a runtime 路径)
 
-7 字典 (HB-1 install-butler 专属, 不复用 AL-1a runtime reason):
+## 7. 不在范围 (HB-1 v0 [A] vs 留 HB-1b)
 
 - `manifest_signature_invalid` — manifest GPG 签名校验失败
 - `binary_sha256_mismatch`     — plugin 二进制 SHA256 不匹配 manifest
