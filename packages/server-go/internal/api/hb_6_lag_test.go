@@ -102,6 +102,41 @@ func TestHB61_AggregateLag_EmptyNoRisk(t *testing.T) {
 	}
 }
 
+// REG-HB6-002c — single-sample percentile edge case (covers len==1 branch).
+func TestHB61_AggregateLag_SingleSample(t *testing.T) {
+	t.Parallel()
+	snap := api.AggregateLag([]int64{5000}, 1700000000000)
+	if snap.Count != 1 {
+		t.Errorf("count: got %d, want 1", snap.Count)
+	}
+	if snap.P50Ms != 5000 || snap.P95Ms != 5000 || snap.P99Ms != 5000 {
+		t.Errorf("single-sample percentiles: got P50=%d P95=%d P99=%d, want all 5000",
+			snap.P50Ms, snap.P95Ms, snap.P99Ms)
+	}
+	if snap.AtRisk {
+		t.Error("5000ms < 15000 threshold; at_risk should be false")
+	}
+}
+
+// REG-HB6-002d — empty store → SampleLagFromStore returns empty + handleGet
+// shape correct (covers handleGet HappyPath through AggregateLag path).
+func TestHB62_GetPresence_EmptyStore(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+	resp, body := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/heartbeat-lag", adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	if got, ok := body["count"].(float64); !ok || int(got) != 0 {
+		t.Errorf("count: got %v, want 0 (empty store)", body["count"])
+	}
+	if body["at_risk"] != false {
+		t.Errorf("at_risk: got %v, want false (empty store)", body["at_risk"])
+	}
+}
+
 // REG-HB6-003 — window cutoff excludes stale (>30s) samples + status≠running.
 func TestHB61_WindowCutoffExcludesStale(t *testing.T) {
 	t.Parallel()
