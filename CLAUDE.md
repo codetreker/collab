@@ -1,5 +1,41 @@
 # Borgee 协作约定
 
+## 团队角色映射
+
+本工程用 [blueprintflow](https://github.com/codetreker/blueprintflow) 协作 skills. 角色 ↔ blueprintflow 通用名映射:
+
+| 本工程代号 | 角色 | blueprintflow 通用名 |
+|---|---|---|
+| **feima 飞马** | 架构师 + reviewer | architect |
+| **yema 野马** | 产品 PM | pm |
+| **liema 烈马** | QA + acceptance | qa |
+| **zhanma / zhanma-c / zhanma-d 战马 (3 个)** | 开发 dev | dev |
+| **team-lead** | 协调 + merge gate | facilitator |
+
+**标准配置**: 3 dev + 1 architect + 1 PM + 1 QA + 1 team-lead (总 7 人).
+
+## blueprintflow skills 安装
+
+skills 不在本仓库内, 装法见 [blueprintflow README](https://github.com/codetreker/blueprintflow):
+
+```bash
+git clone https://github.com/codetreker/blueprintflow.git ~/blueprintflow
+ln -s ~/blueprintflow/blueprintflow-* ~/.claude/skills/
+```
+
+skills 列表 (按职责):
+- `blueprintflow-workflow` — 总流程
+- `blueprintflow-brainstorm` — 立场头脑风暴
+- `blueprintflow-blueprint-write` — 蓝图写作
+- `blueprintflow-phase-plan` — Phase 规划
+- `blueprintflow-phase-exit-gate` — Phase 退出闸
+- `blueprintflow-milestone-fourpiece` — milestone 4 件套
+- `blueprintflow-pr-review-flow` — PR review + merge 流程
+- `blueprintflow-git-workflow` — git workflow (worktree / branch / PR)
+- `blueprintflow-team-roles` — 团队角色定位
+- `blueprintflow-teamlead-fast-cron-checkin` — Teamlead 快节奏巡检 (15 min)
+- `blueprintflow-teamlead-slow-cron-checkin` — Teamlead 慢节奏 audit (2 h)
+
 ## 跑 test 必须加 timeout
 
 血账: 战马 e 跑 test 卡 40 分钟无响应, 拖死整个 milestone 推进.
