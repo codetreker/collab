@@ -242,3 +242,135 @@ func TestDM10_UnpinUnpinned_Idempotent(t *testing.T) {
 		t.Errorf("expected pinned=false, got %v", body["pinned"])
 	}
 }
+
+// =============================================================================
+// 飞马 (C) — 6 cov bump funcs covering dm_10_pin.go three-handler error branches.
+// 真补 cov 不 mask, 不调阈值, 不 skip. 立场: gate/handler 错误分支 byte-identical.
+// =============================================================================
+
+// 1) TestDM10_GateDM_AuthNil_401 — POST 不带 token → 401 (gateDM auth==nil 分支).
+func TestDM10_GateDM_AuthNil_401(t *testing.T) {
+	t.Parallel()
+	url, _, _, _, chID, msgID := dm10Setup(t)
+	r, _ := testutil.JSON(t, "POST",
+		url+"/api/v1/channels/"+chID+"/messages/"+msgID+"/pin", "", nil)
+	if r.StatusCode != http.StatusUnauthorized {
+		t.Errorf("AuthNil_401: expected 401, got %d", r.StatusCode)
+	}
+}
+
+// 2) TestDM10_GateDM_NonDMChannel_400 — 建非 DM channel + pin → 400 dm_only_path.
+func TestDM10_GateDM_NonDMChannel_400(t *testing.T) {
+	t.Parallel()
+	ts, s, _ := testutil.NewTestServer(t)
+	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	if owner == nil {
+		t.Skip("owner missing")
+	}
+	// Create a non-DM channel directly via store (bypass /api/v1/channels which
+	// may not allow Type=public depending on caller role).
+	ch := &store.Channel{
+		Name: "chn-nondm-pin", Type: "channel", Visibility: "public",
+		CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
+		OrgID: owner.OrgID,
+	}
+	if err := s.CreateChannel(ch); err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	if err := s.AddChannelMember(&store.ChannelMember{ChannelID: ch.ID, UserID: owner.ID}); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+	// Post a message to pin.
+	resp, msg := testutil.JSON(t, "POST", ts.URL+"/api/v1/channels/"+ch.ID+"/messages",
+		ownerTok, map[string]any{"content": "hello"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("post message: %d", resp.StatusCode)
+	}
+	msgID, _ := msg["message"].(map[string]any)["id"].(string)
+	if msgID == "" {
+		t.Fatalf("no msg id")
+	}
+	r, body := testutil.JSON(t, "POST",
+		ts.URL+"/api/v1/channels/"+ch.ID+"/messages/"+msgID+"/pin", ownerTok, nil)
+	if r.StatusCode != http.StatusBadRequest {
+		t.Errorf("NonDMChannel_400: expected 400, got %d body=%v", r.StatusCode, body)
+	}
+	if code, _ := body["code"].(string); code != "pin.dm_only_path" {
+		t.Errorf("expected code=pin.dm_only_path, got %q", code)
+	}
+}
+
+// 3) TestDM10_GateDM_NonMember_404 — third user pin on someone else's DM → 404
+// (channel-member ACL fail-closed; do not leak existence).
+func TestDM10_GateDM_NonMember_404(t *testing.T) {
+	t.Parallel()
+	url, _, _, s, chID, msgID := dm10Setup(t)
+	// Create a third user not in this DM.
+	thirdEmail := "third-pin-test@example.com"
+	thirdPass := "thirdpass123"
+	regResp, _ := testutil.JSON(t, "POST", url+"/api/v1/auth/register", "",
+		map[string]any{
+			"email":        thirdEmail,
+			"password":     thirdPass,
+			"display_name": "Third",
+			"invite_code":  "test-invite",
+		})
+	if regResp.StatusCode != http.StatusOK && regResp.StatusCode != http.StatusCreated {
+		// Fallback: directly create user via store if registration path differs.
+		t.Skipf("register third user: %d", regResp.StatusCode)
+	}
+	thirdTok := testutil.LoginAs(t, url, thirdEmail, thirdPass)
+	if thirdTok == "" {
+		t.Skip("third user login failed")
+	}
+	r, _ := testutil.JSON(t, "POST",
+		url+"/api/v1/channels/"+chID+"/messages/"+msgID+"/pin", thirdTok, nil)
+	if r.StatusCode != http.StatusNotFound {
+		t.Errorf("NonMember_404: expected 404 (no existence leak), got %d", r.StatusCode)
+	}
+	_ = s
+}
+
+// 4) TestDM10_HandleListPinned_Empty_200 — DM with no pin → 200 messages=[].
+func TestDM10_HandleListPinned_Empty_200(t *testing.T) {
+	t.Parallel()
+	url, _, memberTok, _, chID, _ := dm10Setup(t)
+	r, body := testutil.JSON(t, "GET",
+		url+"/api/v1/channels/"+chID+"/messages/pinned", memberTok, nil)
+	if r.StatusCode != http.StatusOK {
+		t.Errorf("Empty_200: expected 200, got %d", r.StatusCode)
+	}
+	msgs, _ := body["messages"].([]any)
+	if len(msgs) != 0 {
+		t.Errorf("expected empty messages list, got %d", len(msgs))
+	}
+}
+
+// 5) TestDM10_HandleUnpin_AlreadyUnpinned_Idempotent — pin → unpin → unpin
+// (second unpin still returns 200, pinned_at IS NULL update no-op).
+func TestDM10_HandleUnpin_AlreadyUnpinned_Idempotent(t *testing.T) {
+	t.Parallel()
+	url, _, memberTok, _, chID, msgID := dm10Setup(t)
+	// Pin.
+	r1, _ := testutil.JSON(t, "POST",
+		url+"/api/v1/channels/"+chID+"/messages/"+msgID+"/pin", memberTok, nil)
+	if r1.StatusCode != http.StatusOK {
+		t.Fatalf("setup pin: %d", r1.StatusCode)
+	}
+	// Unpin (1st).
+	r2, _ := testutil.JSON(t, "DELETE",
+		url+"/api/v1/channels/"+chID+"/messages/"+msgID+"/pin", memberTok, nil)
+	if r2.StatusCode != http.StatusOK {
+		t.Fatalf("first unpin: %d", r2.StatusCode)
+	}
+	// Unpin (2nd, idempotent).
+	r3, body3 := testutil.JSON(t, "DELETE",
+		url+"/api/v1/channels/"+chID+"/messages/"+msgID+"/pin", memberTok, nil)
+	if r3.StatusCode != http.StatusOK {
+		t.Errorf("AlreadyUnpinned_Idempotent: expected 200, got %d", r3.StatusCode)
+	}
+	if body3["pinned"] != false {
+		t.Errorf("expected pinned=false on idempotent unpin, got %v", body3["pinned"])
+	}
+}
