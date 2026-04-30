@@ -196,7 +196,10 @@ test.describe('CV-8.3 artifact comment thread reply REST e2e (acceptance §3)', 
     const r = await other.ctx.post(`/api/v1/channels/${chId}/messages`, {
       data: { content: 'drive-by reply', content_type: 'artifact_comment', reply_to_id: parent.id },
     });
-    expect(r.status()).toBe(403);
+    // Private channel non-member: server returns 404 (channel hidden) or 403
+    // (forbidden) depending on access path. Both are fail-closed — REG-INV-002
+    // invariant is that the message MUST NOT land. (Same shape as CV-9 §3.3.)
+    expect([403, 404]).toContain(r.status());
   });
 
   test('§3.6 立场 ④ sanity — text-typed message can NOT be parent of artifact_comment thread (反向断)', async () => {
