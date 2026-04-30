@@ -23,6 +23,9 @@ const nodeRequire = createRequire(import.meta.url);
 const fs: any = nodeRequire('fs');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodePath: any = nodeRequire('path');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const url: any = nodeRequire('url');
+const HERE = nodePath.dirname(url.fileURLToPath(import.meta.url));
 
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
@@ -191,13 +194,13 @@ describe('CHN-10.3 DescriptionEditor content lock', () => {
     // Source-level reverse-grep on user-visible Chinese tokens (data-testid +
     // className legitimately use English; we only check Chinese synonyms).
     const compPath = nodePath.resolve(
-      __dirname,
+      HERE,
       '..',
       'components',
       'DescriptionEditor.tsx',
     );
     const headerPath = nodePath.resolve(
-      __dirname,
+      HERE,
       '..',
       'components',
       'ChannelHeader.tsx',

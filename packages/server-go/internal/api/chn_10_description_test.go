@@ -191,6 +191,40 @@ func TestCHN102_TopicPathByteIdentical(t *testing.T) {
 	}
 }
 
+// REG-CHN10-002d — channel not found → 404.
+func TestCHN102_PutDescription_ChannelNotFound(t *testing.T) {
+	t.Parallel()
+	url, ownerToken, _, _, _ := setupCHN10(t)
+	resp, _ := testutil.JSON(t, http.MethodPut,
+		url+"/api/v1/channels/00000000-0000-0000-0000-000000000000/description",
+		ownerToken,
+		map[string]any{"description": "x"})
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("not-found: got %d, want 404", resp.StatusCode)
+	}
+}
+
+// REG-CHN10-002e — invalid JSON body → 400 (bumps handler coverage).
+func TestCHN102_PutDescription_InvalidJSONBody(t *testing.T) {
+	t.Parallel()
+	urlBase, ownerToken, _, channelID, _ := setupCHN10(t)
+	// raw HTTP request with non-JSON body.
+	req, _ := http.NewRequest(http.MethodPut,
+		urlBase+"/api/v1/channels/"+channelID+"/description",
+		strings.NewReader("not json {{{"))
+	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: ownerToken})
+	req.Header.Set("Authorization", "Bearer "+ownerToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("invalid-json: got %d, want 400", resp.StatusCode)
+	}
+}
+
 // REG-CHN10-005 — admin god-mode 不挂 PATCH/PUT/POST/DELETE 在 admin-api/v1/.../description.
 func TestCHN103_NoAdminDescriptionPath(t *testing.T) {
 	t.Parallel()
