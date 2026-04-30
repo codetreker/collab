@@ -17,15 +17,7 @@ import (
 
 func setupTest(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { s.Close() })
-
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",

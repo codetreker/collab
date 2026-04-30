@@ -17,13 +17,7 @@ import (
 
 func newTestDataLayer(t *testing.T) *DataLayer {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatalf("store.Open: %v", err)
-	}
-	if err := s.Migrate(); err != nil {
-		t.Fatalf("store.Migrate: %v", err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 	t.Cleanup(func() { _ = s.Close() })
 	pt, err := presence.NewSessionsTracker(s.DB())
 	if err != nil {

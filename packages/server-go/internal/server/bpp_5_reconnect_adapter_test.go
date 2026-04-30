@@ -12,14 +12,7 @@ import (
 )
 
 func TestBPP5ChannelScopeAdapter_EmptyForUnknownUser(t *testing.T) {
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { s.Close() })
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 
 	adapter := &channelScopeAdapter{store: s}
 	ids, err := adapter.ChannelIDsForOwner("nonexistent-user")

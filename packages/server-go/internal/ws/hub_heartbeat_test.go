@@ -32,13 +32,7 @@ import (
 // 跑 t.Cleanup(s.Close) 走 store.Open(":memory:") 内置 cleanup.
 func newHubForHeartbeatTest(t *testing.T) *Hub {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 	t.Cleanup(func() { s.Close() })
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := &config.Config{JWTSecret: "test", NodeEnv: "development"}

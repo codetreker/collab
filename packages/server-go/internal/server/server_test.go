@@ -30,13 +30,7 @@ func (r *flushResponseRecorder) Flush() {
 
 func testServer(t *testing.T) (*Server, *store.Store) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 	t.Cleanup(func() { s.Close() })
 
 	// ADM-0.2: server.New → admin.Bootstrap is fail-loud on missing

@@ -86,14 +86,7 @@ func (f *fakeInvitationPusher) snapshot() []pushCall {
 
 func setupPushTest(t *testing.T) (*httptest.Server, *store.Store, *fakeInvitationPusher, string, string, string, string) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatalf("store.Open: %v", err)
-	}
-	t.Cleanup(func() { s.Close() })
-	if err := s.Migrate(); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 
 	cfg := &config.Config{
 		JWTSecret: "test-secret",

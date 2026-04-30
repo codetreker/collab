@@ -12,11 +12,7 @@ import (
 
 func setupTestHub(t *testing.T) (*ws.Hub, *store.Store) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	s.Migrate()
+	s := store.MigratedStoreFromTemplate(t)
 	t.Cleanup(func() { s.Close() })
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := &config.Config{JWTSecret: "test", NodeEnv: "development"}
