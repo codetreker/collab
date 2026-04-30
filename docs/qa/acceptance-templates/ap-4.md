@@ -1,4 +1,4 @@
-# Acceptance Template — AP-4: reactions ACL 收紧 (CV-7 gap 修) ✅
+# Acceptance Template — AP-4: reactions ACL 收紧 (CV-7 gap 修) ✅ closed
 
 > CV-7 #535 既存 reactions ACL gap 闭合, DM-5 #549 e2e §3.3 发现 (REG-DM5-005 文档化). **0 schema 改 + 0 新错码 + 0 新 endpoint**. Spec + Stance + Content-lock **不需** (server only).
 
