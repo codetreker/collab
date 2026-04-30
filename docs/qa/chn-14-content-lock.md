@@ -59,6 +59,23 @@
 - `data-testid="description-history-empty"` byte-identical
 - `data-testid="description-history-close"` byte-identical
 - 时间戳 RFC3339 (ISO string) byte-identical 跟 CHN-1.2 archive system DM
+
+### §1.1 Cross-modal byte-identical 锚 (跨 DM-7 EditHistoryModal + CHN-14 DescriptionHistoryModal)
+
+> feima review #2 锚: 跨 modal 共享立场必锁 byte-identical, 否则 drift 漂.
+
+| 字面 | DM-7 EditHistoryModal | CHN-14 DescriptionHistoryModal | 反向 grep 守门 |
+|---|---|---|---|
+| modal title 中文 | `编辑历史` | `编辑历史` | vitest 双向 grep — 两 modal 都必须含 `<h3>编辑历史</h3>` |
+| close aria-label | `关闭` | `关闭` | vitest 双向 grep — `aria-label="关闭"` |
+| RFC3339 ts 表达 | `new Date(entry.ts).toISOString()` | `new Date(entry.ts).toISOString()` | vitest source grep 表达式 byte-identical |
+
+**反向 grep 守门 test** (`packages/client/src/__tests__/cross_modal_history_lock.test.ts`):
+- 同时读 `EditHistoryModal.tsx` + `DescriptionHistoryModal.tsx` 源文件
+- 反向断 3 字面在两 modal 各 ≥1 hit (字面消失 = drift fail)
+- 文案 SSOT-by-content-lock 模式 (跟 admin god-mode 不挂在 DM-7/CHN-14
+  共享立场同精神; 不是 SSOT-by-component-reuse, 因 DM-7 立场 ⑤ 空态
+  return null vs CHN-14 立场 ⑥ 显式空态 真分歧, component 字段 key 也别).
   + DM-7 #558 同源
 - `data-history-index` 行级 byte-identical
 
