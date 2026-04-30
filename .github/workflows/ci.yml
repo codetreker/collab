@@ -93,7 +93,7 @@ jobs:
       - name: Run tests with coverage (no race)
         # TEST-FIX-3: cov job 加 race_heavy build tag — race_heavy 文件
         # (closed_store_race_test.go::TestClosedStoreInternalErrorBranches)
-        # 走此 tag 跑覆盖, 否则 11 sub-test 覆盖度丢 (≥0.3% 总 cov 跌破 84%
+        # 走此 tag 跑覆盖, 否则 11 sub-test 覆盖度丢 (≥0.3% 总 cov 跌破 85%
         # 阈值). 不带 -race 所以 timing/leak 不复发, 安全包含.
         # 立场 ②: 不降 cov 阈值铁律 — race_heavy 隔离仅针对 race detector
         # serialize 长 (主 race job timeout), 不针对 cov 路径.
@@ -102,13 +102,19 @@ jobs:
         run: |
           COVERAGE=$(cd packages/server-go && go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
-          # Threshold = 84% (deterministic no-race baseline; was 85% with race
-          # but race scheduler bumps StartHeartbeat coverage 33.3%→58.3%
-          # non-deterministically. New invariant: 84% no-race deterministic
-          # is the truth; the prior 85% was race-detector flake masquerading
-          # as ratchet — relying on it was the bug we're fixing).
-          if (( $(echo "$COVERAGE < 84" | bc -l) )); then
-            echo "Coverage ${COVERAGE}% is below 84% threshold"
+          # Threshold = 85% (TEST-FIX-3-COV restoration). User mandate:
+          # 永不降 cov threshold (no_lower_test_coverage 铁律). #610 临时
+          # 落到 84% 以"race-detector flake masquerading as ratchet"为由,
+          # 用户拒绝该论证 — 85% 是真值. TEST-FIX-3-COV 真补 deterministic
+          # baseline ≥85%, 不靠 race scheduler 抖:
+          #   ① ws/hub.go heartbeatTick 抽出 + 4 deterministic unit test
+          #      (alive/dead/mixed branch + ctx-cancel-exit, 0 race scheduler 依赖)
+          #   ② store + internal/api + internal/server low-cov helpers 真补
+          #      (logErr stubs / errInvalid* / channelDisplayName / SetChannelReadonly
+          #      / adapter wrappers / sweeper inj / handler injectable-clock 等)
+          # 实测 (race_heavy tag): 85.1% (margin ≥0.1%, 不靠 flaky CI).
+          if (( $(echo "$COVERAGE < 85" | bc -l) )); then
+            echo "Coverage ${COVERAGE}% is below 85% threshold"
             exit 1
           fi
 
