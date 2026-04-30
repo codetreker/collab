@@ -34,7 +34,7 @@
 // 解析 string literal, 注释里说立场 (intentional doc) 不 trip; 仅守
 // 代码字面 (string literal context).
 
-package cm5stance_test
+package api_test
 
 import (
 	"go/ast"
@@ -74,7 +74,7 @@ func repoRoot(t *testing.T) string {
 }
 
 // walkGoFiles collects all non-test .go files under root recursively,
-// excluding _test.go and excluding the cm5stance_test package itself.
+// excluding _test.go and excluding the api_test package itself.
 func walkGoFiles(t *testing.T, root string) []string {
 	t.Helper()
 	var out []string

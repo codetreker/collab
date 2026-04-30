@@ -17,14 +17,10 @@ import (
 
 func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { s.Close() })
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	// TEST-FIX-3-COV: 走 store.MigratedStoreFromTemplate (1.24ms) 替代
+	// store.Open(":memory:") + Migrate (26ms), ~20x 加速. 750+ tests 调用
+	// 此 setup, 估省 ~18s / 36s wall clock (>50%). byte-identical schema.
+	s := store.MigratedStoreFromTemplate(t)
 
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",

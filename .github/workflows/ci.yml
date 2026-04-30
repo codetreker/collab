@@ -117,7 +117,6 @@ jobs:
           THRESHOLD_PRINT: "85"
           BUILD_TAGS: "sqlite_fts5 race_heavy"
           COVERPROFILE: "coverage.out"
-          COVERPKG: "borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server"
           FAIL_ON_CRITICAL_BLOCKS: "false"
           RACE_DETECTION: "false"
         run: cd packages/server-go && go run ./scripts/lib/coverage/

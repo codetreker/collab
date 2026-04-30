@@ -6,11 +6,11 @@ import (
 
 func migratedStore(t *testing.T) *Store {
 	t.Helper()
-	s := testStore(t)
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
-	return s
+	// TEST-FIX-3-COV: 走 MigratedStoreFromTemplate (1.24ms) 替代 testStore +
+	// Migrate (26ms), ~20x 加速. byte-identical schema (template 跑同一份
+	// Migrate). 反约束: testStore + Migrate 仍存在 (TestMigrate 真测 Migrate),
+	// 仅业务 test 走 template 路径.
+	return MigratedStoreFromTemplate(t)
 }
 
 func createUser(t *testing.T, s *Store, name, role string) *User {
