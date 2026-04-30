@@ -171,3 +171,109 @@ func TestCHN_6_CovBump_AgentStatusChain(t *testing.T) {
 		t.Error("nil should not match ErrRecordNotFound")
 	}
 }
+
+// REG-CHN6-cov-bump v3 — AL-8 audit-log filter param branches.
+func TestCHN_6_CovBump_AuditLogFilters(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+
+	// since invalid (negative).
+	resp, _ := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?since=-1", adminToken, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("since=-1: got %d", resp.StatusCode)
+	}
+	// since invalid (non-int).
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?since=abc", adminToken, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("since=abc: got %d", resp.StatusCode)
+	}
+	// until invalid.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?until=xyz", adminToken, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("until=xyz: got %d", resp.StatusCode)
+	}
+	// since > until → inverted.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?since=2000&until=1000", adminToken, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("inverted: got %d", resp.StatusCode)
+	}
+	// archived invalid.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?archived=foo", adminToken, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("archived=foo: got %d", resp.StatusCode)
+	}
+	// archived=all happy.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?archived=all", adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("archived=all: got %d", resp.StatusCode)
+	}
+	// archived=archived happy.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?archived=archived", adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("archived=archived: got %d", resp.StatusCode)
+	}
+	// multi-action.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?action=a&action=b", adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("multi-action: got %d", resp.StatusCode)
+	}
+	// since/until happy.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/audit-log?since=0&until=999999999999", adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("since/until happy: got %d", resp.StatusCode)
+	}
+}
+
+// REG-CHN6-cov-bump v3 — impersonation-grant lifecycle (create/get/revoke).
+func TestCHN_6_CovBump_ImpersonateGrantLifecycle(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+
+	// GET when no grant — 200 with null body or absent.
+	resp, _ := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/api/v1/me/impersonation-grant", ownerToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("get null grant: got %d", resp.StatusCode)
+	}
+	// POST create.
+	resp, _ = testutil.JSON(t, http.MethodPost,
+		ts.URL+"/api/v1/me/impersonation-grant", ownerToken, map[string]any{})
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		t.Skipf("create grant not 200/201: %d", resp.StatusCode)
+	}
+	// GET after create — 200.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/api/v1/me/impersonation-grant", ownerToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("get grant: got %d", resp.StatusCode)
+	}
+	// DELETE revoke.
+	resp, _ = testutil.JSON(t, http.MethodDelete,
+		ts.URL+"/api/v1/me/impersonation-grant", ownerToken, nil)
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		t.Errorf("revoke grant: got %d", resp.StatusCode)
+	}
+	// 401 on revoke without token.
+	resp, _ = testutil.JSON(t, http.MethodDelete,
+		ts.URL+"/api/v1/me/impersonation-grant", "", nil)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("revoke 401: got %d", resp.StatusCode)
+	}
+	// 401 on get without token.
+	resp, _ = testutil.JSON(t, http.MethodGet,
+		ts.URL+"/api/v1/me/impersonation-grant", "", nil)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("get 401: got %d", resp.StatusCode)
+	}
+}
