@@ -15,6 +15,8 @@ import (
 // TestDM10_HandlePin_DBError_500 — SQLite query_only=ON before
 // SetMessagePinnedAt → INSERT/UPDATE fail while SELECT (gateDM lookups)
 // 仍 succeed → handler 真撞 "Failed to pin message" 500 分支.
+//
+// state-based fault injection (跟 TestClosedStoreInternalErrorBranches 同模式 — SQLite read-only / missing-table 真 driver 错误路径)
 func TestDM10_HandlePin_DBError_500(t *testing.T) {
 	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
@@ -72,6 +74,8 @@ func TestDM10_HandlePin_DBError_500(t *testing.T) {
 }
 
 // TestDM10_HandleUnpin_DBError_500 — same query_only trick for unpin path.
+//
+// state-based fault injection (跟 TestClosedStoreInternalErrorBranches 同模式 — SQLite read-only / missing-table 真 driver 错误路径)
 func TestDM10_HandleUnpin_DBError_500(t *testing.T) {
 	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
@@ -120,6 +124,8 @@ func TestDM10_HandleUnpin_DBError_500(t *testing.T) {
 // TestDM10_HandleListPinned_DBError_500 — drop messages table after
 // gateDM passes → ListPinnedMessages SELECT fails → handler reaches
 // "Failed to list pinned messages" 500 branch.
+//
+// state-based fault injection (跟 TestClosedStoreInternalErrorBranches 同模式 — SQLite read-only / missing-table 真 driver 错误路径)
 func TestDM10_HandleListPinned_DBError_500(t *testing.T) {
 	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
