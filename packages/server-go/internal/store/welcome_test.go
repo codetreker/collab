@@ -159,7 +159,7 @@ func TestListChannelsWithUnread_IncludesSystemWelcome(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := s.ListChannelsWithUnread(u.ID)
+	got, err := s.ListChannelsWithUnread(u.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func TestListChannelsWithUnread_IncludesSystemWelcome(t *testing.T) {
 	if err := s.CreateUser(u2); err != nil {
 		t.Fatal(err)
 	}
-	got2, err := s.ListChannelsWithUnread(u2.ID)
+	got2, err := s.ListChannelsWithUnread(u2.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}

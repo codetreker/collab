@@ -845,8 +845,36 @@ func (s *Store) ListChannelsPublic() ([]ChannelWithCounts, error) {
 // 必须显式邀请). Archived channels (archived_at IS NOT NULL) are filtered
 // out unless the user is still a member, so a creator who archives a
 // channel can still see it but org peers stop seeing it.
-func (s *Store) ListChannelsWithUnread(userID string) ([]ChannelWithCounts, error) {
+//
+// CHN-13 立场 ②: optional `q` filter — 空 q 走原 SQL byte-identical;
+// q != "" 加 `AND c.name LIKE '%' || ? || '%' COLLATE NOCASE` 子串
+// 大小写不敏感. 既有 ordering (position ASC, created_at ASC) 不变.
+func (s *Store) ListChannelsWithUnread(userID, q string) ([]ChannelWithCounts, error) {
 	var results []ChannelWithCounts
+	// CHN-13 立场 ④: 空 q 路径 byte-identical 跟既有 SQL 同源.
+	if q == "" {
+		err := s.db.Raw(`
+			SELECT c.*,
+				(SELECT COUNT(*) FROM channel_members cm2 WHERE cm2.channel_id = c.id) AS member_count,
+				(SELECT COUNT(*) FROM messages m
+					WHERE m.channel_id = c.id AND m.deleted_at IS NULL
+					AND m.created_at > COALESCE((SELECT cm3.last_read_at FROM channel_members cm3 WHERE cm3.channel_id = c.id AND cm3.user_id = ?), 0)
+				) AS unread_count,
+				(SELECT MAX(m2.created_at) FROM messages m2 WHERE m2.channel_id = c.id AND m2.deleted_at IS NULL) AS last_message_at,
+				CASE WHEN cm.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_member
+			FROM channels c
+			LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+			LEFT JOIN users u ON u.id = ?
+			WHERE c.deleted_at IS NULL AND c.type IN ('channel', 'system')
+				AND (
+					cm.user_id IS NOT NULL
+					OR (c.visibility = 'public' AND c.org_id = u.org_id AND c.archived_at IS NULL)
+				)
+			ORDER BY c.position ASC, c.created_at ASC
+		`, userID, userID, userID).Scan(&results).Error
+		return results, err
+	}
+	// CHN-13 立场 ②: q != "" 加 LIKE 子句 (COLLATE NOCASE 大小写不敏感).
 	err := s.db.Raw(`
 		SELECT c.*,
 			(SELECT COUNT(*) FROM channel_members cm2 WHERE cm2.channel_id = c.id) AS member_count,
@@ -860,12 +888,13 @@ func (s *Store) ListChannelsWithUnread(userID string) ([]ChannelWithCounts, erro
 		LEFT JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
 		LEFT JOIN users u ON u.id = ?
 		WHERE c.deleted_at IS NULL AND c.type IN ('channel', 'system')
+			AND c.name LIKE '%' || ? || '%' COLLATE NOCASE
 			AND (
 				cm.user_id IS NOT NULL
 				OR (c.visibility = 'public' AND c.org_id = u.org_id AND c.archived_at IS NULL)
 			)
 		ORDER BY c.position ASC, c.created_at ASC
-	`, userID, userID, userID).Scan(&results).Error
+	`, userID, userID, userID, q).Scan(&results).Error
 	return results, err
 }
 
