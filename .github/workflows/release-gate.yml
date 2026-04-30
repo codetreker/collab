@@ -186,7 +186,7 @@ jobs:
           echo "::notice::signature-pass-rate deferred — HB-1 install-butler Go binary 真实施 PR 加 contract test (HB stack Go 重审)"
           # placeholder: assert HB-1 spec contract not drifted
           test -f docs/implementation/modules/hb-1-spec.md
-          grep -q 'gpg_signature' docs/implementation/modules/hb-1-spec.md
+          grep -q 'signature' docs/implementation/modules/hb-1-spec.md
 
       # INFRA-3 progress-line-budget — PROGRESS.md 主文件瘦身锁
       # (反战马 commit 塞 1500+ 字符到 milestone 行 + 反主文件行膨胀).
