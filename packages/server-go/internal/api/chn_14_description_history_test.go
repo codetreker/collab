@@ -21,177 +21,162 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// REG-CHN14-002a — UpdateChannelDescription appends entry on change.
-func TestCHN142_UpdateChannelDescription_AppendsHistory(t *testing.T) {
+// REG-CHN14-002a/b/c — UpdateChannelDescription store-layer behaviors.
+// Consolidated into one parent test sharing one fixture server (reduces
+// race-detector load: 3 servers → 1; 团队 race budget 优化).
+func TestCHN142_UpdateChannelDescription_Behaviors(t *testing.T) {
 	t.Parallel()
 	_, s, _ := testutil.NewTestServer(t)
 	owner, _ := s.GetUserByEmail("owner@test.com")
-	ch := &store.Channel{
-		Name: "chn14-append", Type: "channel", Visibility: "public",
-		CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
-		OrgID: owner.OrgID, Topic: "v1",
-	}
-	if err := s.CreateChannel(ch); err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	if err := s.UpdateChannelDescription(ch.ID, "v2"); err != nil {
-		t.Fatalf("update: %v", err)
-	}
-	hist, err := s.GetChannelDescriptionHistory(ch.ID)
-	if err != nil {
-		t.Fatalf("get: %v", err)
-	}
-	if len(hist) != 1 {
-		t.Fatalf("history length: got %d, want 1", len(hist))
-	}
-	if got, _ := hist[0]["old_content"].(string); got != "v1" {
-		t.Errorf("old_content: got %q, want v1", got)
-	}
-	if got, _ := hist[0]["reason"].(string); got != "unknown" {
-		t.Errorf("reason: got %q, want unknown (AL-1a 锁链停在 HB-6 #19)", got)
-	}
-}
 
-// REG-CHN14-002b — multiple edits append all (ts 单调递增).
-func TestCHN142_UpdateChannelDescription_MultipleEdits(t *testing.T) {
-	t.Parallel()
-	_, s, _ := testutil.NewTestServer(t)
-	owner, _ := s.GetUserByEmail("owner@test.com")
-	ch := &store.Channel{
-		Name: "chn14-multi", Type: "channel", Visibility: "public",
-		CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
-		OrgID: owner.OrgID, Topic: "a",
-	}
-	if err := s.CreateChannel(ch); err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	for _, v := range []string{"b", "c", "d"} {
-		if err := s.UpdateChannelDescription(ch.ID, v); err != nil {
-			t.Fatalf("update %s: %v", v, err)
+	t.Run("AppendsHistory", func(t *testing.T) {
+		ch := &store.Channel{
+			Name: "chn14-append", Type: "channel", Visibility: "public",
+			CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
+			OrgID: owner.OrgID, Topic: "v1",
 		}
-	}
-	hist, _ := s.GetChannelDescriptionHistory(ch.ID)
-	if len(hist) != 3 {
-		t.Fatalf("history length: got %d, want 3", len(hist))
-	}
-	wants := []string{"a", "b", "c"} // each entry holds the OLD content.
-	for i, w := range wants {
-		if got, _ := hist[i]["old_content"].(string); got != w {
-			t.Errorf("entry %d old_content: got %q, want %q", i, got, w)
+		if err := s.CreateChannel(ch); err != nil {
+			t.Fatalf("create: %v", err)
 		}
-	}
-}
-
-// REG-CHN14-002c — same-content PUT idempotent (no append).
-func TestCHN142_UpdateChannelDescription_SameContent_NoAppend(t *testing.T) {
-	t.Parallel()
-	_, s, _ := testutil.NewTestServer(t)
-	owner, _ := s.GetUserByEmail("owner@test.com")
-	ch := &store.Channel{
-		Name: "chn14-noop", Type: "channel", Visibility: "public",
-		CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
-		OrgID: owner.OrgID, Topic: "stable",
-	}
-	if err := s.CreateChannel(ch); err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	for i := 0; i < 3; i++ {
-		if err := s.UpdateChannelDescription(ch.ID, "stable"); err != nil {
+		if err := s.UpdateChannelDescription(ch.ID, "v2"); err != nil {
 			t.Fatalf("update: %v", err)
 		}
-	}
-	hist, _ := s.GetChannelDescriptionHistory(ch.ID)
-	if len(hist) != 0 {
-		t.Errorf("idempotent: same-content PUT must not append, got %d entries", len(hist))
-	}
+		hist, err := s.GetChannelDescriptionHistory(ch.ID)
+		if err != nil {
+			t.Fatalf("get: %v", err)
+		}
+		if len(hist) != 1 {
+			t.Fatalf("history length: got %d, want 1", len(hist))
+		}
+		if got, _ := hist[0]["old_content"].(string); got != "v1" {
+			t.Errorf("old_content: got %q, want v1", got)
+		}
+		if got, _ := hist[0]["reason"].(string); got != "unknown" {
+			t.Errorf("reason: got %q, want unknown (AL-1a 锁链停在 HB-6 #19)", got)
+		}
+	})
+
+	t.Run("MultipleEdits", func(t *testing.T) {
+		ch := &store.Channel{
+			Name: "chn14-multi", Type: "channel", Visibility: "public",
+			CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
+			OrgID: owner.OrgID, Topic: "a",
+		}
+		if err := s.CreateChannel(ch); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+		for _, v := range []string{"b", "c", "d"} {
+			if err := s.UpdateChannelDescription(ch.ID, v); err != nil {
+				t.Fatalf("update %s: %v", v, err)
+			}
+		}
+		hist, _ := s.GetChannelDescriptionHistory(ch.ID)
+		if len(hist) != 3 {
+			t.Fatalf("history length: got %d, want 3", len(hist))
+		}
+		wants := []string{"a", "b", "c"} // each entry holds the OLD content.
+		for i, w := range wants {
+			if got, _ := hist[i]["old_content"].(string); got != w {
+				t.Errorf("entry %d old_content: got %q, want %q", i, got, w)
+			}
+		}
+	})
+
+	t.Run("SameContent_NoAppend", func(t *testing.T) {
+		ch := &store.Channel{
+			Name: "chn14-noop", Type: "channel", Visibility: "public",
+			CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
+			OrgID: owner.OrgID, Topic: "stable",
+		}
+		if err := s.CreateChannel(ch); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+		for i := 0; i < 3; i++ {
+			if err := s.UpdateChannelDescription(ch.ID, "stable"); err != nil {
+				t.Fatalf("update: %v", err)
+			}
+		}
+		hist, _ := s.GetChannelDescriptionHistory(ch.ID)
+		if len(hist) != 0 {
+			t.Errorf("idempotent: same-content PUT must not append, got %d entries", len(hist))
+		}
+	})
 }
 
-// REG-CHN14-003a — GET user-rail owner HappyPath.
-func TestCHN142_GetHistory_HappyPath(t *testing.T) {
-	t.Parallel()
-	ts, s, _ := testutil.NewTestServer(t)
-	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
-	owner, _ := s.GetUserByEmail("owner@test.com")
-	ch := &store.Channel{
-		Name: "chn14-hist-happy", Type: "channel", Visibility: "public",
-		CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
-		OrgID: owner.OrgID, Topic: "v1",
-	}
-	if err := s.CreateChannel(ch); err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	s.UpdateChannelDescription(ch.ID, "v2")
-
-	resp, body := testutil.JSON(t, http.MethodGet,
-		ts.URL+"/api/v1/channels/"+ch.ID+"/description/history", ownerToken, nil)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-	hist, _ := body["history"].([]any)
-	if len(hist) != 1 {
-		t.Errorf("history length: got %d, want 1", len(hist))
-	}
-}
-
-// REG-CHN14-003b — non-owner 403.
-func TestCHN142_GetHistory_NonOwnerRejected(t *testing.T) {
+// REG-CHN14-003 GET endpoints — consolidated into one parent server
+// (4 servers → 1 server; 减 race-detector 重复 setup 负担).
+func TestCHN142_GetHistory_Endpoints(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 	owner, _ := s.GetUserByEmail("owner@test.com")
-	ch := &store.Channel{
-		Name: "chn14-nonowner", Type: "channel", Visibility: "public",
-		CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
-		OrgID: owner.OrgID, Topic: "v1",
-	}
-	if err := s.CreateChannel(ch); err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	_ = ownerToken
 
-	resp, _ := testutil.JSON(t, http.MethodGet,
-		ts.URL+"/api/v1/channels/"+ch.ID+"/description/history", memberToken, nil)
-	if resp.StatusCode != http.StatusForbidden {
-		t.Errorf("non-owner GET: got %d, want 403", resp.StatusCode)
-	}
-}
+	t.Run("HappyPath", func(t *testing.T) {
+		ch := &store.Channel{
+			Name: "chn14-hist-happy", Type: "channel", Visibility: "public",
+			CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
+			OrgID: owner.OrgID, Topic: "v1",
+		}
+		if err := s.CreateChannel(ch); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+		s.UpdateChannelDescription(ch.ID, "v2")
 
-// REG-CHN14-003c — empty history returns [].
-func TestCHN142_GetHistory_EmptyHistory(t *testing.T) {
-	t.Parallel()
-	ts, s, _ := testutil.NewTestServer(t)
-	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
-	owner, _ := s.GetUserByEmail("owner@test.com")
-	ch := &store.Channel{
-		Name: "chn14-empty", Type: "channel", Visibility: "public",
-		CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
-		OrgID: owner.OrgID, Topic: "fresh",
-	}
-	if err := s.CreateChannel(ch); err != nil {
-		t.Fatalf("create: %v", err)
-	}
+		resp, body := testutil.JSON(t, http.MethodGet,
+			ts.URL+"/api/v1/channels/"+ch.ID+"/description/history", ownerToken, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		hist, _ := body["history"].([]any)
+		if len(hist) != 1 {
+			t.Errorf("history length: got %d, want 1", len(hist))
+		}
+	})
 
-	resp, body := testutil.JSON(t, http.MethodGet,
-		ts.URL+"/api/v1/channels/"+ch.ID+"/description/history", ownerToken, nil)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-	hist, _ := body["history"].([]any)
-	if len(hist) != 0 {
-		t.Errorf("empty history: got %d entries, want 0", len(hist))
-	}
-}
+	t.Run("NonOwnerRejected", func(t *testing.T) {
+		ch := &store.Channel{
+			Name: "chn14-nonowner", Type: "channel", Visibility: "public",
+			CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
+			OrgID: owner.OrgID, Topic: "v1",
+		}
+		if err := s.CreateChannel(ch); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+		resp, _ := testutil.JSON(t, http.MethodGet,
+			ts.URL+"/api/v1/channels/"+ch.ID+"/description/history", memberToken, nil)
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("non-owner GET: got %d, want 403", resp.StatusCode)
+		}
+	})
 
-// REG-CHN14-003d — 401 no auth.
-func TestCHN142_GetHistory_Unauthorized(t *testing.T) {
-	t.Parallel()
-	ts, _, _ := testutil.NewTestServer(t)
-	resp, _ := testutil.JSON(t, http.MethodGet,
-		ts.URL+"/api/v1/channels/some-id/description/history", "", nil)
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("no auth: got %d, want 401", resp.StatusCode)
-	}
+	t.Run("EmptyHistory", func(t *testing.T) {
+		ch := &store.Channel{
+			Name: "chn14-empty", Type: "channel", Visibility: "public",
+			CreatedBy: owner.ID, Position: store.GenerateInitialRank(),
+			OrgID: owner.OrgID, Topic: "fresh",
+		}
+		if err := s.CreateChannel(ch); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+		resp, body := testutil.JSON(t, http.MethodGet,
+			ts.URL+"/api/v1/channels/"+ch.ID+"/description/history", ownerToken, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		hist, _ := body["history"].([]any)
+		if len(hist) != 0 {
+			t.Errorf("empty history: got %d entries, want 0", len(hist))
+		}
+	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		resp, _ := testutil.JSON(t, http.MethodGet,
+			ts.URL+"/api/v1/channels/some-id/description/history", "", nil)
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("no auth: got %d, want 401", resp.StatusCode)
+		}
+	})
 }
 
 // REG-CHN14-004a — admin readonly GET HappyPath.
