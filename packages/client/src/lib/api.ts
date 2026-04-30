@@ -87,7 +87,7 @@ export async function createChannel(
 
 export async function updateChannel(
   channelId: string,
-  updates: { name?: string; topic?: string; visibility?: 'public' | 'private'; archived?: boolean },
+  updates: { name?: string; topic?: string; visibility?: 'public' | 'private' | 'creator_only'; archived?: boolean },
 ): Promise<Channel> {
   if (updates.topic !== undefined && !updates.name && !updates.visibility && updates.archived === undefined) {
     const data = await request<{ channel: Channel }>(`/api/v1/channels/${channelId}/topic`, {
@@ -118,6 +118,17 @@ export async function muteChannel(channelId: string, muted: boolean): Promise<{ 
   return request<{ collapsed: number; muted: boolean }>(`/api/v1/channels/${channelId}/mute`, {
     method,
   });
+}
+
+// CHN-9: set channel visibility (one of 'creator_only' / 'private' /
+// 'public'). user-rail only — owner-only via existing channel.manage_visibility
+// permission (CHN-1.2 既有 ACL byte-identical 不动). admin god-mode 不挂
+// (ADM-0 §1.3 红线). 单源调用 updateChannel 路径.
+export async function setChannelVisibility(
+  channelId: string,
+  visibility: import('./visibility').ChannelVisibility,
+): Promise<Channel> {
+  return updateChannel(channelId, { visibility });
 }
 
 export async function joinChannel(channelId: string): Promise<void> {
