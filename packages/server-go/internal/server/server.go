@@ -351,7 +351,7 @@ func (s *Server) SetupRoutes() {
 	chn10DescHandler := &api.CHN10DescriptionHandler{Store: s.store, Logger: s.logger}
 	chn10DescHandler.RegisterUserRoutes(s.mux, authMw)
 	// CHN-14 channel description edit history audit — owner-only user-rail GET.
-	// schema v=36 ALTER channels ADD COLUMN description_edit_history TEXT NULL
+	// schema v=44 ALTER channels ADD COLUMN description_edit_history TEXT NULL
 	// (跟 DM-7.1 #558 messages.edit_history 同模式; 跨八 milestone ALTER ADD
 	// nullable). UpdateChannelDescription SSOT 包装 SELECT old + JSON append
 	// + UPDATE; CHN-10 #561 既有 PUT path 调用此包装 byte-identical (length

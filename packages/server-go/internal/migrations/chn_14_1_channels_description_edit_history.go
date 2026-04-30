@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// chn141ChannelsDescriptionEditHistory is migration v=36 — Phase 6 / CHN-14.1.
+// chn141ChannelsDescriptionEditHistory is migration v=44 — Phase 6 / CHN-14.1.
 //
 // Blueprint锚: channel-model.md §3 audit forward-only history. Spec brief:
 // docs/implementation/modules/chn-14-spec.md §0 立场 ① + §1 拆段 CHN-14.1.
@@ -28,12 +28,12 @@ import "gorm.io/gorm"
 //     单源 (反向 grep `channel_description_history\|channel_history_log\|
 //     chn14_history` 0 hit, 立场 ① 守).
 //
-// v=36 sequencing: HB-5.1 v=35 (#540 merged) → CHN-14.1 **v=36** (本
+// v=44 sequencing: HB-5.1 v=35 (#540 merged) → CHN-14.1 **v=44** (本
 // migration). registry.go 字面锁; 顺位.
 //
 // v0 stance: forward-only, no Down().
 var chn141ChannelsDescriptionEditHistory = Migration{
-	Version: 36,
+	Version: 44,
 	Name:    "chn_14_1_channels_description_edit_history",
 	Up: func(tx *gorm.DB) error {
 		if exists, err := hasTable(tx, "channels"); err != nil {

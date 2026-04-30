@@ -5,7 +5,7 @@
 
 ## §0 立场 3 项
 
-- [x] **① schema migration v=36 ALTER channels ADD COLUMN
+- [x] **① schema migration v=44 ALTER channels ADD COLUMN
   description_edit_history TEXT NULL** — 跟 DM-7.1+AL-7.1+HB-5.1 +
   AP-1.1+AP-3.1+AP-2.1 跨七 milestone ALTER ADD nullable 同模式 (NULL
   = 无历史; 老 channel 行 byte-identical 不动). 反向 grep
@@ -35,9 +35,9 @@
   (`pendingDescriptionAudit / descriptionHistoryQueue /
   deadLetterDescriptionHistory`) 0 hit.
 
-## §1 立场 ① schema v=36 ALTER ADD nullable (CHN-14.1 守)
+## §1 立场 ① schema v=44 ALTER ADD nullable (CHN-14.1 守)
 
-- [x] migration v=36 ALTER channels ADD COLUMN description_edit_history TEXT NULL
+- [x] migration v=44 ALTER channels ADD COLUMN description_edit_history TEXT NULL
 - [x] idempotent guard (hasColumn check 跟 DM-7.1 / AL-7.1 同模式)
 - [x] registry.go 加 chn141ChannelsDescriptionEditHistory 字面锁
 - [x] 老 channel 行 byte-identical 保留 (NULL 不影响 GET / PUT)

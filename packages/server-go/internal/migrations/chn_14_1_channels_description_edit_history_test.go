@@ -45,9 +45,9 @@ func TestCHN141_AddsDescriptionEditHistoryColumn(t *testing.T) {
 	}
 }
 
-// TestCHN141_VersionIs36 — registry literal lock.
-func TestCHN141_VersionIs36(t *testing.T) {
-	if got, want := chn141ChannelsDescriptionEditHistory.Version, 36; got != want {
+// TestCHN141_VersionIs44 — registry literal lock.
+func TestCHN141_VersionIs44(t *testing.T) {
+	if got, want := chn141ChannelsDescriptionEditHistory.Version, 44; got != want {
 		t.Errorf("CHN-14.1 Version drift: got %d, want %d", got, want)
 	}
 	if got, want := chn141ChannelsDescriptionEditHistory.Name, "chn_14_1_channels_description_edit_history"; got != want {
@@ -55,13 +55,13 @@ func TestCHN141_VersionIs36(t *testing.T) {
 	}
 	found := false
 	for _, m := range All {
-		if m.Version == 36 {
+		if m.Version == 44 {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Fatal("CHN-14.1 (v=36) not registered in migrations.All")
+		t.Fatal("CHN-14.1 (v=44) not registered in migrations.All")
 	}
 }
 

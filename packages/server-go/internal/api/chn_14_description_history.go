@@ -3,7 +3,7 @@
 //
 // Blueprint: channel-model.md §3 audit forward-only history. Spec:
 // docs/implementation/modules/chn-14-spec.md (战马D v0). schema migration
-// v=36 ALTER channels ADD description_edit_history TEXT NULL (跟 DM-7.1
+// v=44 ALTER channels ADD description_edit_history TEXT NULL (跟 DM-7.1
 // #558 + AL-7.1 + 跨七 milestone ALTER ADD nullable 同模式; CHN-14 第八处).
 //
 // Public surface:

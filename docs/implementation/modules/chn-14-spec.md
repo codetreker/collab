@@ -33,7 +33,7 @@
 
 ## §1 拆段
 
-**CHN-14.1 schema** v=36: `ALTER TABLE channels ADD COLUMN
+**CHN-14.1 schema** v=44: `ALTER TABLE channels ADD COLUMN
 description_edit_history TEXT NULL` (跟 DM-7.1 messages.edit_history
 ALTER byte-identical). hasColumn 守 idempotent.
 
@@ -58,7 +58,7 @@ ALTER byte-identical). hasColumn 守 idempotent.
 ## §2 反约束 grep 锚
 
 - 0 新表: `channel_description_history|channel_history_log|chn14_history` 0 hit.
-- v=36 字面锁 (registry.go).
+- v=44 字面锁 (registry.go).
 - 既有 chn_10_description.go::handlePut owner-only ACL + length cap 500
   byte-identical (反向 grep `chn_14` 在 handlePut block 0 hit).
 - 既有 CHN-2 #406 PUT /topic path 不动 (反向 grep 锚).

@@ -2,16 +2,16 @@
 
 > 蓝图 channel-model.md §3 audit + CHN-10 #561 description endpoint
 > forward-only history. Spec `chn-14-spec.md` (战马D v0). Stance + content-lock.
-> schema migration v=36 ALTER ADD description_edit_history nullable
+> schema migration v=44 ALTER ADD description_edit_history nullable
 > (跨八 milestone 同模式). Owner: 战马D 实施 / 飞马 review / 烈马 验收.
 
 ## 验收清单
 
-### §1 CHN-14.1 — schema v=36 + CHN-14.2 server UpdateChannelDescription SSOT
+### §1 CHN-14.1 — schema v=44 + CHN-14.2 server UpdateChannelDescription SSOT
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 1.1 schema migration v=36 ALTER channels ADD COLUMN description_edit_history TEXT NULL (跟 DM-7.1+AL-7.1+HB-5.1+AP-1.1+AP-3.1+AP-2.1 跨七 milestone + 本 milestone 第八 同模式; idempotent + 老 channel 行 byte-identical 不动) | unit (3 sub-case) | 战马D / 烈马 | `internal/migrations/chn_14_1_channels_description_edit_history_test.go::TestCHN141_AddsDescriptionEditHistoryColumn` (PRAGMA nullable) + `_VersionIs36` + `_Idempotent` |
+| 1.1 schema migration v=44 ALTER channels ADD COLUMN description_edit_history TEXT NULL (跟 DM-7.1+AL-7.1+HB-5.1+AP-1.1+AP-3.1+AP-2.1 跨七 milestone + 本 milestone 第八 同模式; idempotent + 老 channel 行 byte-identical 不动) | unit (3 sub-case) | 战马D / 烈马 | `internal/migrations/chn_14_1_channels_description_edit_history_test.go::TestCHN141_AddsDescriptionEditHistoryColumn` (PRAGMA nullable) + `_VersionIs44` + `_Idempotent` |
 | 1.2 UpdateChannelDescription SSOT — 改 topic 前 SELECT old topic + edit_history → JSON append `{old_content, ts, reason='unknown'}` → UPDATE; AL-1a reason 锁链停在 HB-6 #19 byte-identical | unit (3 sub-case) | 战马D / 烈马 | `_UpdateChannelDescription_AppendsHistory` + `_MultipleEdits_AppendsAll` (改 N 次 → JSON array length=N + ts 单调递增) + `_SameContent_NoAppend` (idempotent — same-content PUT 不入 history) |
 | 1.3 GET /api/v1/channels/{channelId}/description/history user-rail — caller = channel.CreatedBy 反向断 (member 403); 历史空时返 `[]`; HappyPath 返 JSON array | unit (4 sub-case) | 战马D / 烈马 | `_GetHistory_HappyPath` + `_NonOwnerRejected` + `_EmptyHistory` + `_Unauthorized` |
 | 1.4 admin-rail GET /admin-api/v1/channels/{channelId}/description/history readonly + admin god-mode 不挂 PATCH/DELETE 反向断 | unit + grep | 战马D / 飞马 / 烈马 | `_GetHistoryAdmin_HappyPath` + `_NoAdminPatchDeletePath` (双反向 grep 0 hit) |
@@ -43,7 +43,7 @@
 ## 退出条件
 
 - §1 (5) + §2 (3) + §3 (1) 全绿 — 一票否决
-- schema migration v=36 ALTER ADD nullable + idempotent
+- schema migration v=44 ALTER ADD nullable + idempotent
 - CHN-10 既有 unit 不破 (handlePut path byte-identical)
 - AL-1a reason 锁链停在 HB-6 #19
 - AST 锁链延伸第 22 处
