@@ -160,6 +160,9 @@ packages/borgee-helper/         # 独立 Go module (separate go.mod, 防 server-
 
 ## 6. 实施切入路线 (HB-1 落地后)
 
+> **HB-1 #589 cross-check (战马D 1 行 verify)**: HB-1 #589 PR 真落 Go binary skeleton 后, HB-2 §3 IPC contract + §5.5 包结构跟 HB-1 真实施 1:1 verify (Go module 共享 audit log JSON schema + sandbox build tag 命名跟 install-butler 同模式). 反向 grep `package install_butler` 在 HB-2 路径 0 hit (模块拆死), 但 audit log JSON 字段顺序 byte-identical (跟 HB-4 §1.5 第 4 行守门).
+
+
 1. HB-1 ship install-butler Go binary + audit log schema 锁.
 2. HB-2.1 daemon skeleton: Go binary `packages/borgee-helper/host-bridge/`
    (独立 Go module, separate go.mod 防 server-go binary bloat; 跟 install-butler 同 mono-repo 但模块拆死, 复用 audit log JSON schema).
