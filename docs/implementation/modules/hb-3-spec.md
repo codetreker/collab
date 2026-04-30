@@ -1,10 +1,10 @@
 # HB-3 spec brief — host_grants schema SSOT + 情境化授权 (≤80 行)
 
-> 战马A · Phase 5 host-bridge · ≤80 行 · 蓝图 [`host-bridge.md`](../../blueprint/host-bridge.md) §1.3 (情境化授权 4 类) + §1.5 release gate 第 5 行 (撤销 grant → daemon < 100ms 拒绝). 模块锚 [`host-bridge.md`](host-bridge.md) §HB-3. 依赖 HB-1 #491 install-butler spec + HB-2 #491 host-bridge daemon spec (HB-2 §3.2 grants store contract 已锁: read-only consumer + HB-3 持 schema). Blocked-by: HB-1 / HB-2 真实施 (Rust crate skeleton 等 DL-4 manifest endpoint).
+> 战马A · Phase 5 host-bridge · ≤80 行 · 蓝图 [`host-bridge.md`](../../blueprint/host-bridge.md) §1.3 (情境化授权 4 类) + §1.5 release gate 第 5 行 (撤销 grant → daemon < 100ms 拒绝). 模块锚 [`host-bridge.md`](host-bridge.md) §HB-3. 依赖 HB-1 #491 install-butler spec + HB-2 #491 host-bridge daemon spec (HB-2 §3.2 grants store contract 已锁: read-only consumer + HB-3 持 schema). Blocked-by: HB-1 / HB-2 真实施 (Go binary skeleton 等 DL-4 manifest endpoint; HB stack Go 重审拍板, 撤 Rust crate 路径).
 
 ## 0. 关键约束 (3 条立场, 蓝图 §1.3 字面)
 
-1. **host_grants schema 单源 (HB-3 ownership)** — HB-2 host-bridge daemon 跟 install-butler **read-only consumer** (HB-2 spec §3.2 已锁). HB-3 持 schema migration + REST CRUD endpoints (server 端管理 + client SPA 弹窗写); daemon 仅 SELECT, 不 INSERT/UPDATE. **反约束**: 反向 grep `host_grants.*INSERT|host_grants.*UPDATE` 在 daemon 路径 (Rust crate `packages/host-bridge/`) 0 hit; 仅 server-go `internal/api/host_grants.go` 写.
+1. **host_grants schema 单源 (HB-3 ownership)** — HB-2 host-bridge daemon 跟 install-butler **read-only consumer** (HB-2 spec §3.2 已锁). HB-3 持 schema migration + REST CRUD endpoints (server 端管理 + client SPA 弹窗写); daemon 仅 SELECT, 不 INSERT/UPDATE. **反约束**: 反向 grep `host_grants.*INSERT|host_grants.*UPDATE` 在 daemon 路径 (Go binary `packages/borgee-helper/`) 0 hit; 仅 server-go `internal/api/host_grants.go` 写.
 
 2. **grant 字段跟 AP-1 user_permissions 概念分立** — host vs runtime 两层独立, **不复用 user_permissions schema**. user_permissions 是 platform-level (channel/message/admin perms); host_grants 是 OS-level (filesystem path / network domain / install / exec). 反约束: 反向 grep `host_grants.*JOIN.*user_permissions|grants.*INSERT.*user_permissions` 0 hit (字典分立, 跟 AL-1a vs HB-1 reason 分立同模式).
 
@@ -15,7 +15,7 @@
 | 段 | 文件 | 范围 |
 |---|---|---|
 | HB-3.1 schema + REST | `internal/migrations/hb_3_1_host_grants.go` (新, v=26) + 表 host_grants (id PK / user_id NOT NULL FK 逻辑 / agent_id NULL FK 逻辑 / grant_type CHECK enum / scope TEXT JSON / ttl_kind CHECK enum / granted_at NOT NULL / expires_at NULL / revoked_at NULL) + idx_user_id + idx_agent_id; `internal/api/host_grants.go` (新) GET/POST/DELETE `/api/v1/host-grants` (owner-only ACL 跟 anchor #360 同模式); 7 unit (schema 5 列反断 / grant_type 4 enum / ttl_kind 2 enum 'one_shot'/'always' / cross-user 403 reject / 撤销 < 100ms 真测 / audit log 5 字段 byte-identical / 反向断言 不复用 user_permissions schema) |
-| HB-3.2 daemon 读路径合约 | `docs/implementation/modules/hb-2-spec.md` §3.2 cross-ref 锁 — daemon 读路径既有合约 byte-identical 跟 HB-3.1 schema (无 server-go 代码改, daemon 是 Rust crate 真实施时跟 HB-2 同 PR; 本 milestone 只锁 contract); 跨 PR drift 守: server schema 改字段 = HB-2 daemon SELECT 改, 跟 DL-4 ↔ HB-1 drift anchor 8a35589 同模式 |
+| HB-3.2 daemon 读路径合约 | `docs/implementation/modules/hb-2-spec.md` §3.2 cross-ref 锁 — daemon 读路径既有合约 byte-identical 跟 HB-3.1 schema (无 server-go 代码改, daemon 是 Go binary 真实施时跟 HB-2 同 PR (Go interface `GrantsConsumer` 替代 Rust trait); 本 milestone 只锁 contract); 跨 PR drift 守: server schema 改字段 = HB-2 daemon SELECT 改, 跟 DL-4 ↔ HB-1 drift anchor 8a35589 同模式 |
 | HB-3.3 client SPA + e2e + closure | `packages/client/src/permissions/HostGrantsPanel.tsx` (新) 弹窗 UX 字面跟蓝图 §1.3 byte-identical (`[✗ 拒绝]    [✓ 仅这一次]    [✓ 始终允许]`); e2e: 弹窗触发 → 选 `仅这一次` → grants insert ttl_kind='one_shot' + expires_at=now+1h; 选 `始终允许` → ttl_kind='always' + expires_at NULL; 撤销 → revoked_at NOT NULL + daemon read 反断 < 100ms; REG-HB3-001..009 + acceptance + PROGRESS [x] |
 
 ## 2. 留账边界

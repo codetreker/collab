@@ -7,7 +7,7 @@
 > 跑) + plugin (BPP) 提需求方
 > Status: **🚧 spec brief v0** — code stub deferred until HB-1 lands.
 > 跟 HB-1 spec brief (#491 81a41fa) 同模式 — 锁住 IPC contract + 反约束防
-> drift, 真 Rust crate 实施等 HB-1 落.
+> drift, 真 Go binary 实施等 HB-1 落 (HB stack Go 重审拍板, 撤 Rust crate 路径).
 
 ## 1. 一句话定义
 
@@ -133,11 +133,62 @@ LIMIT 1;
 | **BPP**     | host-bridge 仅给 BPP runtime (plugin) 用; 不给 server-go 直接调 | 单源 plugin → host-bridge IPC, server 不绕过 |
 | **anchor #360 owner-only** | cross-agent ACL 立场承袭到 host 层 — agent 持的 grants 是 owner 授的, 跨 agent 调用 reject | 反向断言同源 |
 
+## 5.5 Go 包结构 + sandbox build tag 拆 (HB stack Go 重审 飞马 #2+#3 必修)
+
+**包结构** (项目布局):
+```
+packages/borgee-helper/         # 独立 Go module (separate go.mod, 防 server-go binary bloat)
+├── go.mod                      # module borgee-helper
+├── install-butler/             # HB-1 daemon (短命)
+│   └── main.go
+└── host-bridge/                # HB-2 daemon (常驻)
+    ├── main.go
+    ├── sandbox_linux.go        # //go:build linux  — landlock LSM (go-landlock + AppArmor fallback)
+    ├── sandbox_darwin.go       # //go:build darwin — sandbox-exec profile
+    └── sandbox_other.go        # //go:build !linux && !darwin — Windows / 其他 (no-op + 警告日志, v1 不挂)
+```
+
+**反约束**:
+- 反向 grep `package server` 在 `packages/borgee-helper/` 0 hit (模块拆死, 不混 server-go binary)
+- 反向 grep `cgroups` 在 sandbox_linux.go 0 hit (改用 landlock LSM, cgroups 不限 mmap/exec 路径)
+- 反向 grep `syscall.CreateNamedPipe` 0 hit (Windows IPC 走 `github.com/Microsoft/go-winio` SSOT)
+
+**Borgee Helper 命名拆死** (yema #9 必修):
+- **daemon binary**: `borgee-helper` (CLI/系统服务命名, OS user `borgee-helper`, systemd unit `borgee-helper.service`)
+- **PWA UI**: 不复用 "Borgee Helper" 文案 (避混淆 — PWA = "Borgee" 主品牌 SPA, daemon = OS-level 后台服务)
+- **install.sh**: `curl -fsSL borgee.cloud/install.sh | bash` 装 daemon + 注册系统服务 (跟 HB-1 §6.5 一键安装脚本立场承袭)
+
+## 5.6 HB-2.0 prerequisite — CI matrix + 3 IPC unit (HB stack Go 重审 飞马 #7 必修)
+
+**HB-2.0** (HB-2.1..HB-2.6 之前必跑) — CI matrix 跨平台 verify, 真挂 macOS + Windows runner:
+
+```yaml
+# .github/workflows/hb-stack-go.yml (HB-2.0 真实施 PR 加)
+strategy:
+  matrix:
+    os: [ubuntu-latest, macos-latest, windows-latest]
+runs-on: ${{ matrix.os }}
+steps:
+  - uses: actions/setup-go@v5
+    with: { go-version: '1.23' }
+  - run: cd packages/borgee-helper && go test -tags ${{ matrix.os == 'ubuntu-latest' && 'sandbox_linux' || matrix.os == 'macos-latest' && 'sandbox_darwin' || 'sandbox_other' }} ./...
+```
+
+**3 IPC unit** (HB-2.0 真实施 PR 加, 跨平台 byte-identical 反断):
+- `ipc_uds_test.go` (Linux + macOS UDS server start + JSON envelope round-trip)
+- `ipc_winpipe_test.go` (Windows Named Pipe via go-winio, 同 JSON envelope, byte-identical 跟 UDS 路径)
+- `ipc_dispatch_test.go` (跨平台 request_id 多路复用 + 11 reason 8-dict 字面 byte-identical)
+
+反约束: HB-2.1..HB-2.6 任一 PR merge 前, HB-2.0 CI matrix 跑过 3 OS × sandbox build tag 全 PASS (release-gate.yml step `hb-stack-go-matrix` 守门, 待 HB-2.0 PR 加).
+
 ## 6. 实施切入路线 (HB-1 落地后)
 
-1. HB-1 ship install-butler crate + audit log schema 锁.
-2. HB-2.1 daemon skeleton: Rust crate `packages/host-bridge/host-bridge/`
-   (跟 install-butler 同 workspace, 复用 cargo lockfile + audit log).
+> **HB-1 #589 cross-check (战马D 1 行 verify)**: HB-1 #589 PR 真落 Go binary skeleton 后, HB-2 §3 IPC contract + §5.5 包结构跟 HB-1 真实施 1:1 verify (Go module 共享 audit log JSON schema + sandbox build tag 命名跟 install-butler 同模式). 反向 grep `package install_butler` 在 HB-2 路径 0 hit (模块拆死), 但 audit log JSON 字段顺序 byte-identical (跟 HB-4 §1.5 第 4 行守门).
+
+
+1. HB-1 ship install-butler Go binary + audit log schema 锁.
+2. HB-2.1 daemon skeleton: Go binary `packages/borgee-helper/host-bridge/`
+   (独立 Go module, separate go.mod 防 server-go binary bloat; 跟 install-butler 同 mono-repo 但模块拆死, 复用 audit log JSON schema).
 3. HB-2.2 IPC server (UDS + serde JSON, request_id 多路复用).
 4. HB-2.3 文件读路径 + grants 校验 + 路径 normalization (anti-traversal).
 5. HB-2.4 网络出站白名单 + outbound proxy.
