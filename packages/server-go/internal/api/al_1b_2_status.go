@@ -5,7 +5,6 @@ import (
 	"time"
 
 	agentpkg "borgee-server/internal/agent"
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -59,9 +58,8 @@ import (
 // Permission: 任意 authed user 可查任意 agent status (跟 GET /agents/{id}
 // 既有 ACL 同源 — agent state 是 channel-scoped 协作场可见性的子集).
 func (h *AgentHandler) handleGetAgentStatus(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	_, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -84,9 +82,8 @@ func (h *AgentHandler) handleGetAgentStatus(w http.ResponseWriter, r *http.Reque
 // imply some other role could). admin god-mode reject 跟 AL-4.2 同源 — 改
 // busy/idle 必须走 BPP frame, 没有任何后门.
 func (h *AgentHandler) handleRejectStatusPatch(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	_, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	w.Header().Set("Allow", "GET")

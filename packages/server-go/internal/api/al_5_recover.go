@@ -7,11 +7,12 @@
 // edge `error → online`; does not introduce new states or recovery dictionary.
 //
 // 立场反查 (al-5-spec.md §0):
-//   ② recovery = 单 helper SSOT — 走 AppendAgentStateTransition (AL-1 #492
-//      single-gate); 不另起 recovery 状态机, 不在 5-state 加新态
-//   ③ recovery reason 不另起字典 — reason ∈ AL-1a 6 字面 (REFACTOR-REASONS
-//      #496 SSOT 同源); 反约束: 不新增 recovery_in_progress / auto_reconnect
-//      等中间态字面
+//
+//	② recovery = 单 helper SSOT — 走 AppendAgentStateTransition (AL-1 #492
+//	   single-gate); 不另起 recovery 状态机, 不在 5-state 加新态
+//	③ recovery reason 不另起字典 — reason ∈ AL-1a 6 字面 (REFACTOR-REASONS
+//	   #496 SSOT 同源); 反约束: 不新增 recovery_in_progress / auto_reconnect
+//	   等中间态字面
 //
 // Owner-only ACL: agent.OwnerID == current_user.ID; non-owner → 403.
 // Admin god-mode 不挂此路径 (ADM-0 §1.3 红线 — recovery 是业务态变更,
@@ -23,14 +24,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
 
 // AL5Handler hosts AL-5 agent error recovery POST endpoint.
 type AL5Handler struct {
-	Store  *store.Store
+	Store *store.Store
 	// DataLayer — DL-1.2 SSOT 4-interface bundle. When non-nil, owner-only
 	// ACL agent lookup walks UserRepo.GetByID instead of store.GetUserByID.
 	// nil-safe (legacy boot / unit tests fall back to Store).
@@ -53,13 +53,13 @@ type AL5RecoverPayload struct {
 // handleRecover — POST /api/v1/agents/:id/recover.
 //
 // Flow:
-//   1. Auth + path id present.
-//   2. Owner-only ACL: agent.OwnerID == user.ID; non-owner 403, non-agent 404.
-//   3. Read most-recent state-log row to discover (a) current state must be
-//      `error` and (b) the reason to carry forward in the recovery transition.
-//   4. AppendAgentStateTransition(agent, error, online, reason, "") via the
-//      AL-1 #492 single-gate helper — ValidateTransition守 valid edge.
-//   5. Returns 200 with {state: "online", reason}.
+//  1. Auth + path id present.
+//  2. Owner-only ACL: agent.OwnerID == user.ID; non-owner 403, non-agent 404.
+//  3. Read most-recent state-log row to discover (a) current state must be
+//     `error` and (b) the reason to carry forward in the recovery transition.
+//  4. AppendAgentStateTransition(agent, error, online, reason, "") via the
+//     AL-1 #492 single-gate helper — ValidateTransition守 valid edge.
+//  5. Returns 200 with {state: "online", reason}.
 //
 // Reverse约束:
 //   - admin god-mode 不挂此路径 (反向 grep `admin-api.*recover` count==0,
@@ -67,9 +67,8 @@ type AL5RecoverPayload struct {
 //   - 状态机不裂 — 走 AL-1 ValidateTransition 既有 graph
 //   - reason 不新增 — 复用 last error transition 的 reason (≤6 字面 byte-identical)
 func (h *AL5Handler) handleRecover(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	agentID := r.PathValue("id")

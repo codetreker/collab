@@ -37,7 +37,6 @@ import (
 	"net/http"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 
 	"github.com/google/uuid"
@@ -67,15 +66,15 @@ func (h *HostGrantsHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.
 
 // hostGrantRow mirrors migration v=27 (HB-3.1 schema 9 列).
 type hostGrantRow struct {
-	ID         string `gorm:"column:id"          json:"id"`
-	UserID     string `gorm:"column:user_id"     json:"user_id"`
-	AgentID    string `gorm:"column:agent_id"    json:"agent_id,omitempty"`
-	GrantType  string `gorm:"column:grant_type"  json:"grant_type"`
-	Scope      string `gorm:"column:scope"       json:"scope"`
-	TtlKind    string `gorm:"column:ttl_kind"    json:"ttl_kind"`
-	GrantedAt  int64  `gorm:"column:granted_at"  json:"granted_at"`
-	ExpiresAt  *int64 `gorm:"column:expires_at"  json:"expires_at,omitempty"`
-	RevokedAt  *int64 `gorm:"column:revoked_at"  json:"revoked_at,omitempty"`
+	ID        string `gorm:"column:id"          json:"id"`
+	UserID    string `gorm:"column:user_id"     json:"user_id"`
+	AgentID   string `gorm:"column:agent_id"    json:"agent_id,omitempty"`
+	GrantType string `gorm:"column:grant_type"  json:"grant_type"`
+	Scope     string `gorm:"column:scope"       json:"scope"`
+	TtlKind   string `gorm:"column:ttl_kind"    json:"ttl_kind"`
+	GrantedAt int64  `gorm:"column:granted_at"  json:"granted_at"`
+	ExpiresAt *int64 `gorm:"column:expires_at"  json:"expires_at,omitempty"`
+	RevokedAt *int64 `gorm:"column:revoked_at"  json:"revoked_at,omitempty"`
 }
 
 func (hostGrantRow) TableName() string { return "host_grants" }
@@ -115,9 +114,8 @@ type hostGrantPostRequest struct {
 // handlePost — POST /api/v1/host-grants. Owner-only (caller writes own
 // grants; admin god-mode 不入路径 — 立场 ⑦).
 func (h *HostGrantsHandler) handlePost(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	var req hostGrantPostRequest
@@ -179,9 +177,8 @@ func (h *HostGrantsHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 // handleList — GET /api/v1/host-grants. Returns active (revoked_at IS
 // NULL AND (expires_at IS NULL OR expires_at > now)) grants for caller.
 func (h *HostGrantsHandler) handleList(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	now := h.now()
@@ -206,9 +203,8 @@ func (h *HostGrantsHandler) handleList(w http.ResponseWriter, r *http.Request) {
 // 实现 = REST DELETE → revoked_at NOT NULL + daemon 每次 IPC 重查
 // (反向 grep `cachedGrants` 0 hit).
 func (h *HostGrantsHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	id := r.PathValue("id")

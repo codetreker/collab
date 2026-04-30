@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/bpp"
 	"borgee-server/internal/store"
 )
@@ -45,9 +44,8 @@ func (h *HB3V2DecayListHandler) RegisterRoutes(mux *http.ServeMux,
 // handleDecay returns {state: "fresh"|"stale"|"dead", agent_id: ...}
 // for the agent. Owner-only ACL (agent.OwnerID == user.ID).
 func (h *HB3V2DecayListHandler) handleDecay(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	agentID := r.PathValue("agentId")

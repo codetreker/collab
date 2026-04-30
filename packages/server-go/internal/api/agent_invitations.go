@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 	"borgee-server/internal/ws"
 
@@ -159,9 +158,8 @@ func sanitizeAgentInvitation(s *store.Store, inv *store.AgentInvitation) map[str
 // the org column is mostly empty — CM-3 will tighten this. Already-pending
 // invitation for the same (channel, agent) returns 409.
 func (h *AgentInvitationHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -248,9 +246,8 @@ func (h *AgentInvitationHandler) handleCreate(w http.ResponseWriter, r *http.Req
 //
 // Visible to: the requester, or the agent's owner.
 func (h *AgentInvitationHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -277,9 +274,8 @@ func (h *AgentInvitationHandler) handleGet(w http.ResponseWriter, r *http.Reques
 // role=requester → invitations the caller created.
 // Admins listing as owner also see all-agent invitations.
 func (h *AgentInvitationHandler) handleList(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -331,9 +327,8 @@ func (h *AgentInvitationHandler) handleList(w http.ResponseWriter, r *http.Reque
 // agent is added to the channel as a side-effect (the whole point of the
 // invite). DecidedAt is stamped by Transition using the injected clock.
 func (h *AgentInvitationHandler) handlePatch(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

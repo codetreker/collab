@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"borgee-server/internal/admin"
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -58,9 +57,8 @@ func (h *ADM2Handler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.
 // 立场 ④ user 只见自己: WHERE target_user_id = current_user_id.
 // 反约束: ?target_user_id 参数 server 忽略 (跨业主 inject 防线 — 测试反向断言).
 func (h *ADM2Handler) handleListMyAdminActions(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	limit := parseLimit(r, 50, 200)
@@ -172,9 +170,8 @@ var errAL8NegativeMs = errors.New("al8: negative ms epoch")
 // client BannerImpersonate.tsx to render the 24h red banner with countdown.
 // 立场 ⑦ + content-lock §2.
 func (h *ADM2Handler) handleGetMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	g, err := h.Store.ActiveImpersonationGrant(user.ID)
@@ -193,9 +190,8 @@ func (h *ADM2Handler) handleGetMyImpersonateGrant(w http.ResponseWriter, r *http
 // 蓝图 §3 字面 "由 user 创建" — 业主自己 grant. 24h 固定期限 (server 端,
 // 立场 ⑦ 反约束: 不接受 client 传 expires_at). 重复 grant in-cooldown → 409.
 func (h *ADM2Handler) handleCreateMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	g, err := h.Store.GrantImpersonation(user.ID)
@@ -217,9 +213,8 @@ func (h *ADM2Handler) handleCreateMyImpersonateGrant(w http.ResponseWriter, r *h
 // handleRevokeMyImpersonateGrant — DELETE /api/v1/me/impersonation-grant.
 // 业主主动撤销; no-op if no active grant.
 func (h *ADM2Handler) handleRevokeMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	if err := h.Store.RevokeImpersonation(user.ID); err != nil {

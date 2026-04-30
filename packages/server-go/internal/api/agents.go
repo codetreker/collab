@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	agentpkg "borgee-server/internal/agent"
-	"borgee-server/internal/auth"
 	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
@@ -40,7 +39,7 @@ func (fp *flexPermissions) UnmarshalJSON(data []byte) error {
 }
 
 type AgentHandler struct {
-	Store  *store.Store
+	Store *store.Store
 	// DataLayer — DL-1.2 SSOT 4-interface bundle (nil-safe; see UserHandler).
 	DataLayer *datalayer.DataLayer
 	Logger    *slog.Logger
@@ -134,17 +133,16 @@ func classifyAgentProxyError(status int, err error) string {
 }
 
 func (h *AgentHandler) handleCreateAgent(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
 	var body struct {
-		ID          string            `json:"id"`
-		DisplayName string            `json:"display_name"`
-		AvatarURL   string            `json:"avatar_url"`
-		Permissions flexPermissions   `json:"permissions"`
+		ID          string          `json:"id"`
+		DisplayName string          `json:"display_name"`
+		AvatarURL   string          `json:"avatar_url"`
+		Permissions flexPermissions `json:"permissions"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
@@ -208,9 +206,8 @@ func (h *AgentHandler) handleCreateAgent(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *AgentHandler) handleListAgents(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -230,16 +227,13 @@ func (h *AgentHandler) handleListAgents(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AgentHandler) handleGetAgent(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
-	id := r.PathValue("id")
-	agent, err := h.Store.GetAgent(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "Agent not found")
+	agent, _, ok := loadAgentByPath(w, r, h.Store)
+	if !ok {
 		return
 	}
 
@@ -252,16 +246,13 @@ func (h *AgentHandler) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AgentHandler) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
-	id := r.PathValue("id")
-	agent, err := h.Store.GetAgent(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "Agent not found")
+	agent, id, ok := loadAgentByPath(w, r, h.Store)
+	if !ok {
 		return
 	}
 
@@ -279,16 +270,13 @@ func (h *AgentHandler) handleDeleteAgent(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *AgentHandler) handleRotateAPIKey(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
-	id := r.PathValue("id")
-	agent, err := h.Store.GetAgent(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "Agent not found")
+	agent, id, ok := loadAgentByPath(w, r, h.Store)
+	if !ok {
 		return
 	}
 
@@ -312,16 +300,13 @@ func (h *AgentHandler) handleRotateAPIKey(w http.ResponseWriter, r *http.Request
 }
 
 func (h *AgentHandler) handleGetPermissions(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
-	id := r.PathValue("id")
-	agent, err := h.Store.GetAgent(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "Agent not found")
+	agent, id, ok := loadAgentByPath(w, r, h.Store)
+	if !ok {
 		return
 	}
 
@@ -355,16 +340,13 @@ func (h *AgentHandler) handleGetPermissions(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *AgentHandler) handleSetPermissions(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
-	id := r.PathValue("id")
-	agent, err := h.Store.GetAgent(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "Agent not found")
+	agent, id, ok := loadAgentByPath(w, r, h.Store)
+	if !ok {
 		return
 	}
 
@@ -416,16 +398,13 @@ func (h *AgentHandler) handleSetPermissions(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *AgentHandler) handleGetAgentFiles(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
-	id := r.PathValue("id")
-	agent, err := h.Store.GetAgent(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "Agent not found")
+	agent, id, ok := loadAgentByPath(w, r, h.Store)
+	if !ok {
 		return
 	}
 

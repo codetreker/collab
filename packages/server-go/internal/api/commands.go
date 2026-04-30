@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
@@ -33,7 +32,7 @@ type CommandStoreReader interface {
 }
 
 type CommandHandler struct {
-	Store  *store.Store
+	Store *store.Store
 	// DataLayer — DL-1.2 SSOT 4-interface bundle (nil-safe; see UserHandler).
 	DataLayer *datalayer.DataLayer
 	Logger    *slog.Logger
@@ -61,9 +60,8 @@ func (h *CommandHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Han
 }
 
 func (h *CommandHandler) handleListCommands(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	_, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

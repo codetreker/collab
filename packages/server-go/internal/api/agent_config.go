@@ -11,11 +11,11 @@
 //
 // Endpoint surface:
 //   - GET   /api/v1/agents/:id/config         return agent's current config
-//                                              ({schema_version, blob})
+//     ({schema_version, blob})
 //   - PATCH /api/v1/agents/:id/config         atomic blob 整体替换 + version++
-//                                              (acceptance §4.1.a 并发 update
-//                                              末次胜出 + schema_version 严格
-//                                              递增 + 无丢失)
+//     (acceptance §4.1.a 并发 update
+//     末次胜出 + schema_version 严格
+//     递增 + 无丢失)
 //
 // Stance reverse-grep targets (蓝图 §1.4 SSOT + §1.5 BPP frame 反约束):
 //   - 蓝图 §1.4 SSOT 立场: blob 仅 Borgee 管字段 (name / avatar / prompt /
@@ -38,8 +38,8 @@ import (
 	"strconv"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
+
 	"gorm.io/gorm"
 )
 
@@ -117,15 +117,12 @@ var allowedConfigKeys = map[string]bool{
 // Acceptance §4.1.d: 200 with {schema_version, blob} + agent 端轮询 reload
 // drift test 防 cache 不刷.
 func (h *AgentConfigHandler) handleGetAgentConfig(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
-	id := r.PathValue("id")
-	agent, err := h.Store.GetAgent(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "Agent not found")
+	agent, id, ok := loadAgentByPath(w, r, h.Store)
+	if !ok {
 		return
 	}
 	// Owner-only ACL (acceptance §4.1.b 同源 cross-owner reject 403).
@@ -135,7 +132,7 @@ func (h *AgentConfigHandler) handleGetAgentConfig(w http.ResponseWriter, r *http
 	}
 
 	var row agentConfigRow
-	err = h.Store.DB().Raw(`SELECT agent_id, schema_version, blob, created_at, updated_at
+	err := h.Store.DB().Raw(`SELECT agent_id, schema_version, blob, created_at, updated_at
 		FROM agent_configs WHERE agent_id = ?`, id).Scan(&row).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		h.logErr("agent_config get", err)
@@ -190,15 +187,12 @@ type agentConfigPatchRequest struct {
 }
 
 func (h *AgentConfigHandler) handlePatchAgentConfig(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
-	id := r.PathValue("id")
-	agent, err := h.Store.GetAgent(id)
-	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "Agent not found")
+	agent, id, ok := loadAgentByPath(w, r, h.Store)
+	if !ok {
 		return
 	}
 	// Owner-only ACL (acceptance §4.1.b).

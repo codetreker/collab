@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	"borgee-server/internal/admin"
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -55,9 +54,8 @@ func (h *DM7EditHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw 
 // 立场 ③: sender ≠ current user → 403. 历史空时返 `[]`. HappyPath
 // 返 JSON array (server-side store layer pre-normalized).
 func (h *DM7EditHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	messageID := r.PathValue("messageId")

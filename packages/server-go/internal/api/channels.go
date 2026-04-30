@@ -80,9 +80,8 @@ func (h *ChannelHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Han
 }
 
 func (h *ChannelHandler) handleListChannels(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -114,9 +113,8 @@ func (h *ChannelHandler) handleListChannels(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -207,9 +205,8 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *ChannelHandler) handleGetChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -254,9 +251,8 @@ func (h *ChannelHandler) handleGetChannel(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ChannelHandler) handlePreviewChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	_, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -285,9 +281,8 @@ func (h *ChannelHandler) handlePreviewChannel(w http.ResponseWriter, r *http.Req
 }
 
 func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -413,9 +408,8 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *ChannelHandler) handleSetTopic(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -456,9 +450,8 @@ func (h *ChannelHandler) handleSetTopic(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *ChannelHandler) handleJoinChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -497,9 +490,8 @@ func (h *ChannelHandler) handleJoinChannel(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ChannelHandler) handleLeaveChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -533,9 +525,8 @@ func (h *ChannelHandler) handleLeaveChannel(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -610,9 +601,8 @@ func (h *ChannelHandler) handleAddMember(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *ChannelHandler) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -652,9 +642,8 @@ func (h *ChannelHandler) handleRemoveMember(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *ChannelHandler) handleListMembers(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -677,9 +666,8 @@ func (h *ChannelHandler) handleListMembers(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ChannelHandler) handleMarkRead(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -698,9 +686,8 @@ func (h *ChannelHandler) handleMarkRead(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *ChannelHandler) handleDeleteChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	_, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -747,9 +734,8 @@ func (h *ChannelHandler) handleDeleteChannel(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *ChannelHandler) handleReorderChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -823,9 +809,8 @@ func (h *ChannelHandler) handleListGroups(w http.ResponseWriter, r *http.Request
 }
 
 func (h *ChannelHandler) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -872,9 +857,8 @@ func (h *ChannelHandler) handleCreateGroup(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ChannelHandler) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -926,9 +910,8 @@ func (h *ChannelHandler) handleUpdateGroup(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -971,9 +954,8 @@ func (h *ChannelHandler) handleDeleteGroup(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ChannelHandler) handleReorderGroup(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -1099,33 +1081,14 @@ func (h *ChannelHandler) emitAgentJoinSystemMessage(channelID, agentName string)
 // channel — sufficient for the audit trail and matches the ADM-0 §1.4 红线
 // ③ shape (one row per member fanout would duplicate noise).
 func (h *ChannelHandler) fanoutArchiveSystemMessage(channelID, channelName, ownerID string, archiveTs int64) {
-	owner, err := h.Store.GetUserByID(ownerID)
-	ownerName := "system"
-	if err == nil && owner != nil && owner.DisplayName != "" {
-		ownerName = owner.DisplayName
-	}
-	tsLabel := time.UnixMilli(archiveTs).UTC().Format(time.RFC3339)
-	content := fmt.Sprintf("channel #%s 已被 %s 关闭于 %s", channelName, ownerName, tsLabel)
-	now := nowMillis()
-	msg := &store.Message{
-		ID:          uuid.NewString(),
-		ChannelID:   channelID,
-		SenderID:    "system",
-		Content:     content,
-		ContentType: "text",
-		CreatedAt:   now,
-	}
-	if err := h.Store.CreateMessage(msg); err != nil {
-		if h.Logger != nil {
-			h.Logger.Error("fanoutArchiveSystemMessage failed", "channel_id", channelID, "error", err)
-		}
-		return
-	}
-	if h.Hub != nil {
-		h.Hub.BroadcastEventToChannel(channelID, "channel_archived", map[string]any{
-			"channel_id":  channelID,
-			"archived_at": archiveTs,
-			"content":     content,
-		})
-	}
+	h.fanoutChannelStateMessage(channelStateMessageArgs{
+		channelID:    channelID,
+		channelName:  channelName,
+		ownerID:      ownerID,
+		ts:           archiveTs,
+		verbLiteral:  "关闭于",
+		eventName:    "channel_archived",
+		eventTSKey:   "archived_at",
+		errLogPrefix: "fanoutArchiveSystemMessage failed",
+	})
 }

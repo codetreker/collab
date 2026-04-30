@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -67,9 +66,8 @@ func ClampBPP8LifecycleLimitForTest(raw string) int { return bpp8ClampLifecycleL
 // agent. Owner-only ACL (agent.OwnerID == user.ID) — non-owner / unauth /
 // non-existent agent paths return 403 / 401 / 404 respectively.
 func (h *BPP8LifecycleListHandler) handleList(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	agentID := r.PathValue("agentId")
