@@ -32,6 +32,12 @@ type Server struct {
 	hub          *ws.Hub
 	agentTracker *agent.Tracker
 	startTime    time.Time
+	// ctx is the lifetime-bound context for goroutines spawned in New() +
+	// Handler() (rateLimiter cleanup loop). Tests pass t.Context() so the
+	// goroutines exit on test teardown, preventing leak into next sub-test
+	// (TEST-FIX-2: was nil ctx → unbounded ticker leak → DB-closed write
+	// → panic: test timed out after 2m0s).
+	ctx context.Context
 	// clk is the time source for JWT mint (PERF-JWT-CLOCK). Defaults to Real
 	// in New(); tests inject *clock.Fake via SetClock to advance JWT iat
 	// without sleeping. nil-safe via getClock().
@@ -55,7 +61,7 @@ func (s *Server) SetClock(c clock.Clock) {
 	}
 }
 
-func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
+func New(ctx context.Context, cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	hub := ws.NewHub(s, logger, cfg)
 
 	// AL-3.2: wire the presence write end so /ws lifecycle hooks can
@@ -75,6 +81,7 @@ func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 		hub:          hub,
 		agentTracker: agent.NewTracker(),
 		startTime:    time.Now(),
+		ctx:          ctx,
 	}
 	srv.SetupRoutes()
 
@@ -134,7 +141,6 @@ func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	// tests via separate (NewTestServer doesn't invoke this path).
 	watchdog := bpp.NewHeartbeatWatchdog(&hubLivenessAdapter{hub}, srv.agentTracker, logger)
 
-	ctx := context.Background()
 	go hub.StartHeartbeat(ctx)
 	go watchdog.Run(ctx)
 
@@ -407,13 +413,13 @@ func (s *Server) SetupRoutes() {
 	// AL-7.2 retention sweeper goroutine (1h ticker, ctx-aware shutdown). Same
 	// pattern as AP-2 ExpiresSweeper #525. Forward-only soft-archive via
 	// admin_actions.archived_at column (立场 ① 不真删 / 不裂表).
-	(&auth.RetentionSweeper{Store: s.store, Logger: s.logger}).Start(context.Background())
+	(&auth.RetentionSweeper{Store: s.store, Logger: s.logger}).Start(s.ctx)
 	// HB-5.2 heartbeat retention sweeper + admin override (复用 AL-7 既有
 	// audit retention override action; metadata target='heartbeat' 字面区分,
 	// 立场 ② 不挂 admin_actions CHECK 第 13 项 enum).
 	hb5HeartbeatRetentionHandler := &api.HB5HeartbeatRetentionHandler{Store: s.store, Logger: s.logger}
 	hb5HeartbeatRetentionHandler.RegisterAdminRoutes(s.mux, adminMw)
-	(&auth.HeartbeatRetentionSweeper{Store: s.store, Logger: s.logger}).Start(context.Background())
+	(&auth.HeartbeatRetentionSweeper{Store: s.store, Logger: s.logger}).Start(s.ctx)
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
@@ -562,7 +568,7 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Handler() http.Handler {
-	rl := newRateLimiter()
+	rl := newRateLimiter(s.ctx)
 
 	var handler http.Handler = s.mux
 	handler = rateLimitMiddleware(rl, s.cfg.IsDevelopment(), handler)

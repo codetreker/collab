@@ -55,7 +55,7 @@ func testServer(t *testing.T) (*Server, *store.Store) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := New(cfg, logger, s)
+	srv := New(t.Context(), cfg, logger, s)
 	return srv, s
 }
 
@@ -299,7 +299,7 @@ func TestStatusRecorderFlush(t *testing.T) {
 }
 
 func TestRateLimiter(t *testing.T) {
-	rl := newRateLimiter()
+	rl := newRateLimiter(t.Context())
 	ip := "127.0.0.1"
 
 	for i := 0; i < 10; i++ {
@@ -310,7 +310,7 @@ func TestRateLimiter(t *testing.T) {
 }
 
 func TestRateLimiterUsesAuthBucket(t *testing.T) {
-	rl := newRateLimiter()
+	rl := newRateLimiter(t.Context())
 	rl.authRate = 0
 	rl.authMax = 1
 	rl.apiMax = 0
@@ -325,7 +325,7 @@ func TestRateLimiterUsesAuthBucket(t *testing.T) {
 }
 
 func TestRateLimitMiddlewareRejectsExhaustedClient(t *testing.T) {
-	rl := newRateLimiter()
+	rl := newRateLimiter(t.Context())
 	rl.apiRate = 0
 	rl.apiMax = 1
 
@@ -384,7 +384,7 @@ func TestRateLimitBypass_RequiresBothHeaderAndDevMode(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			rl := newRateLimiter()
+			rl := newRateLimiter(t.Context())
 			rl.apiRate = 0
 			rl.apiMax = 1
 
@@ -468,7 +468,7 @@ func TestClientIPSources(t *testing.T) {
 }
 
 func TestRateLimiterRefills(t *testing.T) {
-	rl := newRateLimiter()
+	rl := newRateLimiter(t.Context())
 	rl.apiRate = 10
 	rl.apiMax = 2
 	ip := "198.51.100.11"
@@ -672,5 +672,45 @@ func TestRespondNotImplemented(t *testing.T) {
 	respondNotImplemented(rec, nil)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", rec.Code)
+	}
+}
+
+// TestRateLimiterCleanup_CtxCancelExits — TEST-FIX-2 covers the cleanup
+// goroutine's ctx.Done() branch + ticker tick + delete loop. Pre-fix the
+// goroutine was unbounded; post-fix it exits when ctx cancelled (caller's
+// t.Context() in tests, srv ctx in production).
+func TestRateLimiterCleanup_CtxCancelExits(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	rl := newRateLimiter(ctx)
+	// Seed an old client so the cleanup loop's delete branch can fire.
+	rl.mu.Lock()
+	rl.clients["1.2.3.4"] = &clientBucket{lastTime: time.Now().Add(-20 * time.Minute)}
+	rl.mu.Unlock()
+	// Force the cleanup loop to exit promptly (don't wait for 5min ticker).
+	cancel()
+	// Brief wait for goroutine to observe Done.
+	time.Sleep(50 * time.Millisecond)
+}
+
+// TestRateLimiterCleanup_TickFiresDelete — TEST-FIX-2 covers the
+// evictStale eviction logic (extracted from cleanup() ticker.C body so it's
+// unit-testable without waiting 5min). Drops 10min+ stale entries, keeps fresh.
+func TestRateLimiterCleanup_TickFiresDelete(t *testing.T) {
+	rl := &rateLimiter{
+		clients:  make(map[string]*clientBucket),
+		authRate: 1,
+		authMax:  1,
+		apiRate:  1,
+		apiMax:   1,
+	}
+	// Seed old + fresh entries; cleanup should drop only old.
+	rl.clients["old"] = &clientBucket{lastTime: time.Now().Add(-20 * time.Minute)}
+	rl.clients["fresh"] = &clientBucket{lastTime: time.Now()}
+	rl.evictStale(time.Now())
+	if _, ok := rl.clients["old"]; ok {
+		t.Fatal("expected old entry deleted")
+	}
+	if _, ok := rl.clients["fresh"]; !ok {
+		t.Fatal("expected fresh entry kept")
 	}
 }

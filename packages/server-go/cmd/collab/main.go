@@ -62,7 +62,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	srv := server.New(cfg, logger, s)
+	// TEST-FIX-2: server.New now takes ctx; production wires it to a
+	// background context that lives for the process lifetime (cancelled
+	// during shutdown via httpServer.Shutdown / explicit srvCancel below).
+	srvCtx, srvCancel := context.WithCancel(context.Background())
+	defer srvCancel()
+
+	srv := server.New(srvCtx, cfg, logger, s)
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),

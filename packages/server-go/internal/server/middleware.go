@@ -138,7 +138,7 @@ type clientBucket struct {
 	lastTime time.Time
 }
 
-func newRateLimiter() *rateLimiter {
+func newRateLimiter(ctx context.Context) *rateLimiter {
 	rl := &rateLimiter{
 		clients:  make(map[string]*clientBucket),
 		authRate: 10.0 / 60.0, // 10 per minute
@@ -146,21 +146,36 @@ func newRateLimiter() *rateLimiter {
 		apiRate:  100.0 / 60.0, // 100 per minute
 		apiMax:   100,
 	}
-	go rl.cleanup()
+	go rl.cleanup(ctx)
 	return rl
 }
 
-func (rl *rateLimiter) cleanup() {
+func (rl *rateLimiter) cleanup(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Minute)
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		for key, b := range rl.clients {
-			if now.Sub(b.lastTime) > 10*time.Minute {
-				delete(rl.clients, key)
-			}
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			// TEST-FIX-2: ctx-aware shutdown. Tests that pass t.Context()
+			// (Go 1.24+ auto-cancels on test end) get clean goroutine exit
+			// instead of leaked ticker firing on closed DB.
+			return
+		case <-ticker.C:
+			rl.evictStale(time.Now())
 		}
-		rl.mu.Unlock()
+	}
+}
+
+// evictStale removes client buckets that haven't been touched in 10+ minutes.
+// Extracted from cleanup() so the eviction logic is unit-testable without
+// waiting on the 5-minute ticker.
+func (rl *rateLimiter) evictStale(now time.Time) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	for key, b := range rl.clients {
+		if now.Sub(b.lastTime) > 10*time.Minute {
+			delete(rl.clients, key)
+		}
 	}
 }
 
