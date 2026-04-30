@@ -136,7 +136,7 @@ func (h *CapabilityGrantHandler) HandleAction(frame bpp.SemanticActionFrame, ses
 		}
 	}
 	// Capability 必走 AP-1 const 白名单 (反约束 #1, 反向 grep 守 hardcode 0 hit).
-	if !auth.Capabilities[p.RequiredCapability] {
+	if !auth.IsValidCapability(p.RequiredCapability) {
 		return nil, fmt.Errorf("%w: capability=%q (AP-1 Capabilities 14 项)",
 			errCapabilityDisallowed, p.RequiredCapability)
 	}

@@ -121,7 +121,7 @@ func (h *MeGrantsHandler) handleGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// capability ∈ AP-1 14 项 const (反约束 #1 + spec §3 #1, 跟 BPP-3.2.1 同源).
-	if !auth.Capabilities[req.Capability] {
+	if !auth.IsValidCapability(req.Capability) {
 		h.errCode(w, http.StatusBadRequest, CapabilityGrantErrCodeCapabilityDisallowed,
 			fmt.Sprintf("capability=%q (AP-1 Capabilities 14 项)", req.Capability))
 		return

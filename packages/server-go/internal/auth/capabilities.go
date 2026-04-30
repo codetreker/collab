@@ -42,22 +42,47 @@ const (
 	ChangeRole    = "change_role"
 )
 
+// ALL is the canonical ordered slice of capability literals — single
+// source of truth for AP-4-enum (spec §0 立场 ①). Order is byte-identical
+// to const block above (channel scope → artifact scope → messaging →
+// channel admin); change one place to add a capability — init() rebuilds
+// Capabilities map automatically; reflect-lint test守 ALL ↔ const drift.
+//
+// 反约束: 不准直接 mutate `Capabilities` map (反向 grep
+// `Capabilities\[".*"\]\s*=` packages/server-go/internal/auth/ 仅 init() 1 hit).
+var ALL = []string{
+	ReadChannel,
+	WriteChannel,
+	DeleteChannel,
+	ReadArtifact,
+	WriteArtifact,
+	CommitArtifact,
+	IterateArtifact,
+	RollbackArtifact,
+	MentionUser,
+	ReadDM,
+	SendDM,
+	ManageMembers,
+	InviteUser,
+	ChangeRole,
+}
+
 // Capabilities is the canonical full list (membership lookup + future
-// CI lint reflection). Reverse grep guards drift — adding a new
-// capability MUST also add it here.
-var Capabilities = map[string]bool{
-	ReadChannel:      true,
-	WriteChannel:     true,
-	DeleteChannel:    true,
-	ReadArtifact:     true,
-	WriteArtifact:    true,
-	CommitArtifact:   true,
-	IterateArtifact:  true,
-	RollbackArtifact: true,
-	MentionUser:      true,
-	ReadDM:           true,
-	SendDM:           true,
-	ManageMembers:    true,
-	InviteUser:       true,
-	ChangeRole:       true,
+// CI lint reflection). AP-4-enum 立场 ① — auto-built from ALL via init();
+// no direct literal init. Adding a new capability = add to ALL only.
+var Capabilities map[string]bool
+
+func init() {
+	Capabilities = make(map[string]bool, len(ALL))
+	for _, c := range ALL {
+		Capabilities[c] = true
+	}
+}
+
+// IsValidCapability is the single-source helper for handler-side
+// capability validity checks (spec §0 立场 ③ — reasons.IsValid #496 同模式).
+// Handlers must call this; direct `auth.Capabilities[name]` access in
+// `internal/api/` is reverse-grep banned (count==0).
+func IsValidCapability(name string) bool {
+	return Capabilities[name]
 }

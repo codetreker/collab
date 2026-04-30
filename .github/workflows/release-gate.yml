@@ -113,7 +113,56 @@ jobs:
             exit 1
           fi
 
-      # §1.1 startup-benchmark — Rust crate 真实施时跑 cargo bench;
+      # AP-4-enum 立场 ② — capability 字面 hardcode 反向 grep + helper 单源
+      # (跟 BPP-4 AST scan / HB-3 dict-isolation 同模式; 一行 hardcode → CI red).
+      # 测试代码 (_test.go) 白名单允许. Spec: ap-4-enum-spec.md §0 立场 ②.
+      - name: ap4enum-no-hardcode-capability
+        run: |
+          set -e
+          # ① handler hardcode HasCapability("...") 字面禁 (走 const 单源)
+          hits=$(git grep -nE 'HasCapability\("[a-z_]+"' \
+                 -- 'packages/server-go/internal/api/*.go' \
+                 ':(exclude)packages/server-go/internal/api/*_test.go' \
+                 | wc -l)
+          if [ "$hits" -gt 0 ]; then
+            echo "::error::AP-4-enum 立场 ② — handler hardcode capability literal ($hits hits, must use auth.* const)"
+            git grep -nE 'HasCapability\("[a-z_]+"' \
+                 -- 'packages/server-go/internal/api/*.go' \
+                 ':(exclude)packages/server-go/internal/api/*_test.go'
+            exit 1
+          fi
+          # ② handler 直查 auth.Capabilities[ 禁 (走 IsValidCapability helper 单源)
+          mapHits=$(git grep -nE 'auth\.Capabilities\[' \
+                    -- 'packages/server-go/internal/api/*.go' \
+                    ':(exclude)packages/server-go/internal/api/*_test.go' \
+                    | wc -l)
+          if [ "$mapHits" -gt 0 ]; then
+            echo "::error::AP-4-enum 立场 ③ — handler direct Capabilities[name] access ($mapHits hits, must use auth.IsValidCapability)"
+            git grep -nE 'auth\.Capabilities\[' \
+                    -- 'packages/server-go/internal/api/*.go' \
+                    ':(exclude)packages/server-go/internal/api/*_test.go'
+            exit 1
+          fi
+          # ③ Capabilities map mutate 字面禁 (仅 init() 走 Capabilities[c]=true 变量)
+          mutHits=$(git grep -nE 'Capabilities\[".*"\]\s*=' \
+                    -- 'packages/server-go/internal/auth/*.go' \
+                    ':(exclude)packages/server-go/internal/auth/*_test.go' \
+                    | wc -l)
+          if [ "$mutHits" -gt 0 ]; then
+            echo "::error::AP-4-enum 立场 ① — Capabilities map literal mutate ($mutHits hits, only init() may write via variable)"
+            git grep -nE 'Capabilities\[".*"\]\s*=' \
+                    -- 'packages/server-go/internal/auth/*.go' \
+                    ':(exclude)packages/server-go/internal/auth/*_test.go'
+            exit 1
+          fi
+          # ④ admin god-mode 字面入 capabilities.go 禁 (ADM-0 §1.3 红线)
+          godHits=$(grep -cE 'admin_|godmode_|impersonat' packages/server-go/internal/auth/capabilities.go || true)
+          if [ "$godHits" -gt 0 ]; then
+            echo "::error::AP-4-enum 立场 ① — admin god-mode literal in capabilities.go ($godHits hits, ADM-0 §1.3 红线)"
+            exit 1
+          fi
+
+
       # 当前 server-go 段无 startup binary, 锁 placeholder 跟 spec brief 一致
       - name: startup-benchmark
         run: |
