@@ -170,6 +170,25 @@ func TestCV62_LimitClampAndParse(t *testing.T) {
 	}
 }
 
+// TestCV62_DBErrorPath500 — force the FTS5 table missing path so the
+// raw query errors. Covers the 500 fallback branch in handleArtifactSearch.
+func TestCV62_DBErrorPath500(t *testing.T) {
+	// Not parallel — we mutate the shared DB schema.
+	ts, s, _ := testutil.NewTestServer(t)
+	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	chID := cv12General(t, ts.URL, tok)
+
+	// Drop the FTS5 virtual table to force the search query to fail.
+	if err := s.DB().Exec(`DROP TABLE IF EXISTS artifacts_fts`).Error; err != nil {
+		t.Fatalf("drop fts: %v", err)
+	}
+
+	resp, _ := testutil.JSON(t, "GET", searchURL(ts.URL, "anything", chID), tok, nil)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("dropped FTS table: got %d, want 500", resp.StatusCode)
+	}
+}
+
 // REG-CV6-006 (acceptance §1.6 + 立场 ⑥) — archived artifacts excluded.
 func TestCV62_ArchivedNotInResults(t *testing.T) {
 	t.Parallel()
