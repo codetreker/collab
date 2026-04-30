@@ -1725,3 +1725,54 @@ export async function unsetChannelReadonly(channelID: string): Promise<ChannelRe
   }
   return (await resp.json()) as ChannelReadonlyResponse;
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// CV-15 (#cv-15): artifact comment edit history audit — sender-only GET.
+// ──────────────────────────────────────────────────────────────────────
+
+/**
+ * COMMENT_EDIT_HISTORY_ERR_TOAST — byte-identical 跟 server
+ * `internal/api/cv_15_comment_edit_history.go::CommentEditHistoryErrCode*`
+ * + `docs/qa/cv-15-content-lock.md` §3 同源.
+ *
+ * 改 = 改三处: server const + 此 map + content-lock §3.
+ */
+export const COMMENT_EDIT_HISTORY_ERR_TOAST: Record<string, string> = {
+  'comment.not_artifact_comment':  '该消息不是 artifact 评论',
+  'comment.not_owner':             '仅评论作者可查看历史',
+  'comment.message_not_found':     '消息不存在',
+};
+
+export interface ArtifactCommentEditHistoryEntry {
+  old_content: string;
+  ts: number;
+  reason?: string;
+}
+
+export interface ArtifactCommentEditHistoryResponse {
+  history: ArtifactCommentEditHistoryEntry[];
+}
+
+/**
+ * GET /api/v1/channels/{channelId}/messages/{messageId}/comment-edit-history.
+ * Sender-only — only the comment author can view history. Returns
+ * `{history: []}` when no edits.
+ */
+export async function getArtifactCommentEditHistory(
+  channelID: string,
+  messageID: string,
+): Promise<ArtifactCommentEditHistoryResponse> {
+  const resp = await fetch(
+    `${BASE}/api/v1/channels/${encodeURIComponent(channelID)}/messages/${encodeURIComponent(messageID)}/comment-edit-history`,
+    { credentials: 'include' },
+  );
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body?.error) detail = body.error;
+    } catch { /* ignore */ }
+    throw new Error(`cv15/comment-edit-history ${detail}`);
+  }
+  return (await resp.json()) as ArtifactCommentEditHistoryResponse;
+}

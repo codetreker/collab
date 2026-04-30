@@ -376,6 +376,13 @@ func (s *Server) SetupRoutes() {
 	dm7EditHistoryHandler := &api.DM7EditHistoryHandler{Store: s.store, Logger: s.logger}
 	dm7EditHistoryHandler.RegisterUserRoutes(s.mux, authMw)
 	dm7EditHistoryHandler.RegisterAdminRoutes(s.mux, adminMw)
+	// CV-15 artifact comment edit history — 0 schema 改 (复用 messages.edit_history
+	// DM-7.1 v=34 既有列), GET endpoint scoped to content_type='artifact_comment'
+	// (避免跟 DM-7 既有 /messages/{id}/edit-history 混淆). user-rail sender-only +
+	// admin readonly admin-rail (admin god-mode 不挂 PATCH/DELETE/PUT, ADM-0 §1.3).
+	cv15CommentEditHistoryHandler := &api.CV15CommentEditHistoryHandler{Store: s.store, Logger: s.logger}
+	cv15CommentEditHistoryHandler.RegisterUserRoutes(s.mux, authMw)
+	cv15CommentEditHistoryHandler.RegisterAdminRoutes(s.mux, adminMw)
 	// AL-7.2 admin-rail audit retention override (admin-model.md §3 retention
 	// + ADM-0 §1.3 红线 admin 操作必走 audit row). admin-rail only — 反向 grep
 	// `audit_retention_override` 在 user-rail handler 0 hit.
