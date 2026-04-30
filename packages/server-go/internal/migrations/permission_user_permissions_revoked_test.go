@@ -23,8 +23,8 @@ func runAP21(t *testing.T, db *gorm.DB) {
 		t.Fatalf("seed user_permissions: %v", err)
 	}
 	e := New(db)
-	e.Register(adm21AdminActions)
-	e.Register(ap21UserPermissionsRevoked)
+	e.Register(adminActions)
+	e.Register(userPermissionsRevoked)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run ap_2_1: %v", err)
 	}
@@ -123,8 +123,8 @@ func TestAP21_Idempotent(t *testing.T) {
 	runAP21(t, db)
 
 	e := New(db)
-	e.Register(adm21AdminActions)
-	e.Register(ap21UserPermissionsRevoked)
+	e.Register(adminActions)
+	e.Register(userPermissionsRevoked)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run ap_2_1: %v", err)
 	}

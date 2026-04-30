@@ -14,7 +14,7 @@ import (
 func runAL41(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(al41AgentRuntimes)
+	e.Register(agentRuntimes)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run al_4_1: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestAL41_Idempotent(t *testing.T) {
 	db := openMem(t)
 	runAL41(t, db)
 	e := New(db)
-	e.Register(al41AgentRuntimes)
+	e.Register(agentRuntimes)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run al_4_1: %v", err)
 	}

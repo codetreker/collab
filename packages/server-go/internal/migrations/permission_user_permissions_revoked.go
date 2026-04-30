@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// ap21UserPermissionsRevoked is migration v=30 — Phase 5+ / AP-2.1.
+// userPermissionsRevoked is migration v=30 — Phase 5+ / AP-2.1.
 //
 // Blueprint锚: `auth-permissions.md` §5 ("expires_at 列 — 加列 schema 不破,
 // 暂不业务化") — AP-1.1 #493 schema 列已就位, AP-2 接 runtime 业务化 sweeper.
@@ -39,7 +39,7 @@ import "gorm.io/gorm"
 //
 // v0 stance: forward-only, no Down(). Idempotent re-run guard via outer
 // migration framework's schema_migrations gate.
-var ap21UserPermissionsRevoked = Migration{
+var userPermissionsRevoked = Migration{
 	Version: 30,
 	Name:    "ap_2_1_user_permissions_revoked",
 	Up: func(tx *gorm.DB) error {

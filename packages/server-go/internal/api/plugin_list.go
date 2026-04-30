@@ -26,14 +26,14 @@ import (
 	"borgee-server/internal/store"
 )
 
-// BPP8LifecycleListHandler serves GET /api/v1/agents/{agentId}/lifecycle.
-type BPP8LifecycleListHandler struct {
+// PluginListHandler serves GET /api/v1/agents/{agentId}/lifecycle.
+type PluginListHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterRoutes wires the GET endpoint on the user rail.
-func (h *BPP8LifecycleListHandler) RegisterRoutes(mux *http.ServeMux,
+func (h *PluginListHandler) RegisterRoutes(mux *http.ServeMux,
 	authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/agents/{agentId}/lifecycle",
 		authMw(http.HandlerFunc(h.handleList)))
@@ -65,7 +65,7 @@ func ClampBPP8LifecycleLimitForTest(raw string) int { return bpp8ClampLifecycleL
 // handleList returns the most recent plugin_* lifecycle rows for the
 // agent. Owner-only ACL (agent.OwnerID == user.ID) — non-owner / unauth /
 // non-existent agent paths return 403 / 401 / 404 respectively.
-func (h *BPP8LifecycleListHandler) handleList(w http.ResponseWriter, r *http.Request) {
+func (h *PluginListHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return

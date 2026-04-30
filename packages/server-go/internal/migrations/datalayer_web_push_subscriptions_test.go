@@ -11,7 +11,7 @@ import (
 func runDL41(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(dl41WebPushSubscriptions)
+	e.Register(webPushSubscriptions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run dl_4_1: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestDL_Idempotent(t *testing.T) {
 	runDL41(t, db)
 	// Second run must be a no-op.
 	e := New(db)
-	e.Register(dl41WebPushSubscriptions)
+	e.Register(webPushSubscriptions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("second run failed (forward-only idempotency broken): %v", err)
 	}
@@ -144,12 +144,12 @@ func TestDL_Idempotent(t *testing.T) {
 // continues from AL-1.4 v=25 (#492 merged).
 func TestDL_VersionIs26(t *testing.T) {
 	t.Parallel()
-	if dl41WebPushSubscriptions.Version != 26 {
-		t.Errorf("dl41WebPushSubscriptions.Version = %d, want 26 (registry sequencing post-#492)",
-			dl41WebPushSubscriptions.Version)
+	if webPushSubscriptions.Version != 26 {
+		t.Errorf("webPushSubscriptions.Version = %d, want 26 (registry sequencing post-#492)",
+			webPushSubscriptions.Version)
 	}
-	if dl41WebPushSubscriptions.Name != "dl_4_1_web_push_subscriptions" {
-		t.Errorf("dl41WebPushSubscriptions.Name = %q, want %q",
-			dl41WebPushSubscriptions.Name, "dl_4_1_web_push_subscriptions")
+	if webPushSubscriptions.Name != "dl_4_1_web_push_subscriptions" {
+		t.Errorf("webPushSubscriptions.Name = %q, want %q",
+			webPushSubscriptions.Name, "dl_4_1_web_push_subscriptions")
 	}
 }

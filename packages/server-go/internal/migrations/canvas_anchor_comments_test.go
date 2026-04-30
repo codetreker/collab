@@ -13,8 +13,8 @@ import (
 func runCV21(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv21AnchorComments)
+	e.Register(artifacts)
+	e.Register(anchorComments)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run cv_2_1: %v", err)
 	}
@@ -301,8 +301,8 @@ func TestCV21_Idempotent(t *testing.T) {
 	db := openMem(t)
 	runCV21(t, db)
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv21AnchorComments)
+	e.Register(artifacts)
+	e.Register(anchorComments)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run cv_2_1: %v", err)
 	}

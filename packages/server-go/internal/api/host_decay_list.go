@@ -28,14 +28,14 @@ import (
 	"borgee-server/internal/store"
 )
 
-// HB3V2DecayListHandler serves GET /api/v1/agents/{agentId}/heartbeat-decay.
-type HB3V2DecayListHandler struct {
+// HostDecayListHandler serves GET /api/v1/agents/{agentId}/heartbeat-decay.
+type HostDecayListHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterRoutes wires the GET endpoint on the user rail.
-func (h *HB3V2DecayListHandler) RegisterRoutes(mux *http.ServeMux,
+func (h *HostDecayListHandler) RegisterRoutes(mux *http.ServeMux,
 	authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/agents/{agentId}/heartbeat-decay",
 		authMw(http.HandlerFunc(h.handleDecay)))
@@ -43,7 +43,7 @@ func (h *HB3V2DecayListHandler) RegisterRoutes(mux *http.ServeMux,
 
 // handleDecay returns {state: "fresh"|"stale"|"dead", agent_id: ...}
 // for the agent. Owner-only ACL (agent.OwnerID == user.ID).
-func (h *HB3V2DecayListHandler) handleDecay(w http.ResponseWriter, r *http.Request) {
+func (h *HostDecayListHandler) handleDecay(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return

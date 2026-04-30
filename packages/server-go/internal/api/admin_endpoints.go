@@ -28,18 +28,18 @@ import (
 	"borgee-server/internal/store"
 )
 
-// ADM2Handler hosts both user-rail (audit list + impersonate CRUD) and
+// AdminEndpointsHandler hosts both user-rail (audit list + impersonate CRUD) and
 // admin-rail (audit-log) endpoints. We keep them in one struct because
 // they share the Store backend; routing is split via separate Register*
 // methods called from server.go with the respective middleware.
-type ADM2Handler struct {
+type AdminEndpointsHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterUserRoutes wires the user-rail endpoints behind authMw (走
 // borgee_token cookie / Bearer). 立场 ④ + ⑦.
-func (h *ADM2Handler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *AdminEndpointsHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/me/admin-actions", authMw(http.HandlerFunc(h.handleListMyAdminActions)))
 	mux.Handle("GET /api/v1/me/impersonation-grant", authMw(http.HandlerFunc(h.handleGetMyImpersonateGrant)))
 	mux.Handle("POST /api/v1/me/impersonation-grant", authMw(http.HandlerFunc(h.handleCreateMyImpersonateGrant)))
@@ -48,7 +48,7 @@ func (h *ADM2Handler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Ha
 
 // RegisterAdminRoutes wires the admin-rail audit log endpoint behind adminMw
 // (走 borgee_admin_session cookie). 立场 ③.
-func (h *ADM2Handler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
+func (h *AdminEndpointsHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /admin-api/v1/audit-log", adminMw(http.HandlerFunc(h.handleAdminAuditLog)))
 }
 
@@ -56,7 +56,7 @@ func (h *ADM2Handler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.
 //
 // 立场 ④ user 只见自己: WHERE target_user_id = current_user_id.
 // 反约束: ?target_user_id 参数 server 忽略 (跨业主 inject 防线 — 测试反向断言).
-func (h *ADM2Handler) handleListMyAdminActions(w http.ResponseWriter, r *http.Request) {
+func (h *AdminEndpointsHandler) handleListMyAdminActions(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return
@@ -85,7 +85,7 @@ func (h *ADM2Handler) handleListMyAdminActions(w http.ResponseWriter, r *http.Re
 // BETWEEN created_at; ?archived 三态 ("" or "active" 默认 / "archived" /
 // "all"); ?action 多值 (重复 query param) 走 IN slice. 既有 3-filter
 // (actor_id/action/target_user_id) byte-identical 不动 (立场 ①).
-func (h *ADM2Handler) handleAdminAuditLog(w http.ResponseWriter, r *http.Request) {
+func (h *AdminEndpointsHandler) handleAdminAuditLog(w http.ResponseWriter, r *http.Request) {
 	a := admin.AdminFromContext(r.Context())
 	if a == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -169,7 +169,7 @@ var errAL8NegativeMs = errors.New("al8: negative ms epoch")
 // Returns the user's currently active grant (or `null` body) — used by
 // client BannerImpersonate.tsx to render the 24h red banner with countdown.
 // 立场 ⑦ + content-lock §2.
-func (h *ADM2Handler) handleGetMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
+func (h *AdminEndpointsHandler) handleGetMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return
@@ -189,7 +189,7 @@ func (h *ADM2Handler) handleGetMyImpersonateGrant(w http.ResponseWriter, r *http
 //
 // 蓝图 §3 字面 "由 user 创建" — 业主自己 grant. 24h 固定期限 (server 端,
 // 立场 ⑦ 反约束: 不接受 client 传 expires_at). 重复 grant in-cooldown → 409.
-func (h *ADM2Handler) handleCreateMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
+func (h *AdminEndpointsHandler) handleCreateMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return
@@ -212,7 +212,7 @@ func (h *ADM2Handler) handleCreateMyImpersonateGrant(w http.ResponseWriter, r *h
 
 // handleRevokeMyImpersonateGrant — DELETE /api/v1/me/impersonation-grant.
 // 业主主动撤销; no-op if no active grant.
-func (h *ADM2Handler) handleRevokeMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
+func (h *AdminEndpointsHandler) handleRevokeMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return

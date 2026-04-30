@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// bpp81AdminActionsPluginActions is migration v=31 — Phase 6 / BPP-8.1.
+// adminActionsPluginActions is migration v=31 — Phase 6 / BPP-8.1.
 //
 // Blueprint锚: `plugin-protocol.md` §1.6 (失联与故障状态) + §3 plugin
 // lifecycle audit. Spec brief: `docs/implementation/modules/bpp-8-spec.md`
@@ -30,7 +30,7 @@ import "gorm.io/gorm"
 // (SQLite 不支持 ALTER CHECK).
 //
 // v0 stance: forward-only, no Down().
-var bpp81AdminActionsPluginActions = Migration{
+var adminActionsPluginActions = Migration{
 	Version: 31,
 	Name:    "bpp_8_1_admin_actions_plugin_actions",
 	Up: func(tx *gorm.DB) error {

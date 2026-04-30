@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// cv31ArtifactKinds is migration v=17 — Phase 3 / CV-3.1.
+// artifactKinds is migration v=17 — Phase 3 / CV-3.1.
 //
 // Blueprint锚: `canvas-vision.md` §1.2 (D-lite, 不是 Miro) + §1.4
 // (artifact 集合: Markdown / 代码片段带语言标注 / 设计稿图片或链接 /
@@ -60,7 +60,7 @@ import (
 // v=17 sequencing (#363 spec §2 + 飞马 #379 v2 patch): CV-2.1 v=14 ✅
 // (#359 merged) / DM-2.1 v=15 ✅ (#361 merged) / AL-4.1 v=16 待落 (战马待派) /
 // CV-3.1 **v=17** (本 migration). registry.go 字面锁.
-var cv31ArtifactKinds = Migration{
+var artifactKinds = Migration{
 	Version: 17,
 	Name:    "cv_3_1_artifact_kinds",
 	Up: func(tx *gorm.DB) error {

@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// al14AgentStateLog is migration v=25 — Phase 4 / AL-1 状态四态扩展.
+// agentStateLog is migration v=25 — Phase 4 / AL-1 状态四态扩展.
 //
 // Blueprint锚: `agent-lifecycle.md` §2.3 (4 态: online / busy / idle / error;
 // 状态机 + cross-state transition lock + 故障可解释).
@@ -56,7 +56,7 @@ import (
 //
 // v0 stance: forward-only, no Down(). 表本身 v0 新增, IF NOT EXISTS 守
 // idempotency.
-var al14AgentStateLog = Migration{
+var agentStateLog = Migration{
 	Version: 25,
 	Name:    "al_1_4_agent_state_log",
 	Up: func(tx *gorm.DB) error {

@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// adm21AdminActions is migration v=22 — Phase 4 / ADM-2.1.
+// adminActions is migration v=22 — Phase 4 / ADM-2.1.
 //
 // Blueprint锚: `admin-model.md` §1.4 (L82-105 "谁能看到什么" 四档分层) +
 // §2 不变量 (L109-120 受影响者必感知 + Audit 100% 留痕 + 分层可见).
@@ -69,7 +69,7 @@ import (
 //
 // v0 stance: forward-only, no Down(). 表本身 v0 新增, IF NOT EXISTS 守
 // idempotency.
-var adm21AdminActions = Migration{
+var adminActions = Migration{
 	Version: 22,
 	Name:    "adm_2_1_admin_actions",
 	Up: func(tx *gorm.DB) error {

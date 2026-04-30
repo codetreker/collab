@@ -23,10 +23,10 @@ func runAL71(t *testing.T, db *gorm.DB) {
 		t.Fatalf("seed user_permissions: %v", err)
 	}
 	e := New(db)
-	e.Register(adm21AdminActions)
-	e.Register(ap21UserPermissionsRevoked)
-	e.Register(bpp81AdminActionsPluginActions)
-	e.Register(al71AdminActionsArchivedAt)
+	e.Register(adminActions)
+	e.Register(userPermissionsRevoked)
+	e.Register(adminActionsPluginActions)
+	e.Register(adminActionsArchivedAt)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run al_7_1 chain: %v", err)
 	}
@@ -130,10 +130,10 @@ func TestAL_RejectsUnknownAction(t *testing.T) {
 // TestAL_VersionIs33 — registry literal lock.
 func TestAL_VersionIs33(t *testing.T) {
 	t.Parallel()
-	if got, want := al71AdminActionsArchivedAt.Version, 33; got != want {
+	if got, want := adminActionsArchivedAt.Version, 33; got != want {
 		t.Errorf("AL-7.1 Version drift: got %d, want %d (post CV-6 v=32 sequencing)", got, want)
 	}
-	if got, want := al71AdminActionsArchivedAt.Name, "al_7_1_admin_actions_archived_at"; got != want {
+	if got, want := adminActionsArchivedAt.Name, "al_7_1_admin_actions_archived_at"; got != want {
 		t.Errorf("AL-7.1 Name drift: got %q, want %q", got, want)
 	}
 	found := false

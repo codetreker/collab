@@ -28,8 +28,8 @@ import (
 	"borgee-server/internal/store"
 )
 
-// AL5Handler hosts AL-5 agent error recovery POST endpoint.
-type AL5Handler struct {
+// AgentRecoverHandler hosts AL-5 agent error recovery POST endpoint.
+type AgentRecoverHandler struct {
 	Store *store.Store
 	// DataLayer — DL-1.2 SSOT 4-interface bundle. When non-nil, owner-only
 	// ACL agent lookup walks UserRepo.GetByID instead of store.GetUserByID.
@@ -39,12 +39,12 @@ type AL5Handler struct {
 }
 
 // RegisterRoutes wires the user-rail endpoint behind authMw.
-func (h *AL5Handler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *AgentRecoverHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("POST /api/v1/agents/{id}/recover", authMw(http.HandlerFunc(h.handleRecover)))
 }
 
-// AL5RecoverPayload is the POST body for /agents/:id/recover.
-type AL5RecoverPayload struct {
+// AgentRecoverPayload is the POST body for /agents/:id/recover.
+type AgentRecoverPayload struct {
 	// RequestID is an optional client-side trace id (idempotency hint, not
 	// enforced server-side in v1; future v2 may dedup retries within window).
 	RequestID string `json:"request_id,omitempty"`
@@ -66,7 +66,7 @@ type AL5RecoverPayload struct {
 //     dm-3-stance § 立场 ⑤ 同精神)
 //   - 状态机不裂 — 走 AL-1 ValidateTransition 既有 graph
 //   - reason 不新增 — 复用 last error transition 的 reason (≤6 字面 byte-identical)
-func (h *AL5Handler) handleRecover(w http.ResponseWriter, r *http.Request) {
+func (h *AgentRecoverHandler) handleRecover(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return
@@ -78,7 +78,7 @@ func (h *AL5Handler) handleRecover(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Optional payload — request_id pass-through; tolerate empty body.
-	var payload AL5RecoverPayload
+	var payload AgentRecoverPayload
 	if r.Body != nil {
 		_ = json.NewDecoder(r.Body).Decode(&payload)
 	}

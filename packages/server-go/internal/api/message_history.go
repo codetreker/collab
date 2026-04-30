@@ -6,9 +6,9 @@
 // milestone ALTER ADD nullable 同模式).
 //
 // Public surface:
-//   - DM7EditHistoryHandler{Store, Logger}
-//   - (h *DM7EditHistoryHandler) RegisterUserRoutes(mux, authMw)
-//   - (h *DM7EditHistoryHandler) RegisterAdminRoutes(mux, adminMw)
+//   - MessageEditHistoryHandler{Store, Logger}
+//   - (h *MessageEditHistoryHandler) RegisterUserRoutes(mux, authMw)
+//   - (h *MessageEditHistoryHandler) RegisterAdminRoutes(mux, adminMw)
 //
 // 反约束 (dm-7-spec.md §0):
 //   - 立场 ③ owner-only sender — user-rail GET 反向断言 sender ==
@@ -25,10 +25,10 @@ import (
 	"borgee-server/internal/store"
 )
 
-// DM7EditHistoryHandler hosts the user-rail and admin-rail GET endpoints
+// MessageEditHistoryHandler hosts the user-rail and admin-rail GET endpoints
 // for message edit history. user-rail is sender-only; admin-rail is
 // readonly only (no PATCH/DELETE — admin god-mode 不挂).
-type DM7EditHistoryHandler struct {
+type MessageEditHistoryHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
@@ -36,7 +36,7 @@ type DM7EditHistoryHandler struct {
 // RegisterUserRoutes wires GET /api/v1/channels/{channelId}/messages/
 // {messageId}/edit-history behind authMw. user-rail sender-only (立场 ③
 // owner-only ACL 锁链第 19 处).
-func (h *DM7EditHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *MessageEditHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/channels/{channelId}/messages/{messageId}/edit-history",
 		authMw(http.HandlerFunc(h.handleUserGet)))
 }
@@ -44,7 +44,7 @@ func (h *DM7EditHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, authMw fu
 // RegisterAdminRoutes wires GET /admin-api/v1/messages/{messageId}/edit-history
 // behind adminMw. admin readonly — no PATCH/DELETE on this path (反向
 // grep 守门; admin god-mode ADM-0 §1.3 红线 — admin 看不能改).
-func (h *DM7EditHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
+func (h *MessageEditHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /admin-api/v1/messages/{messageId}/edit-history",
 		adminMw(http.HandlerFunc(h.handleAdminGet)))
 }
@@ -53,7 +53,7 @@ func (h *DM7EditHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw 
 //
 // 立场 ③: sender ≠ current user → 403. 历史空时返 `[]`. HappyPath
 // 返 JSON array (server-side store layer pre-normalized).
-func (h *DM7EditHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
+func (h *MessageEditHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return
@@ -77,7 +77,7 @@ func (h *DM7EditHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Req
 // handleAdminGet — GET /admin-api/v1/messages/{messageId}/edit-history.
 //
 // admin readonly. 立场 ③ 反约束: 不挂 PATCH/DELETE (反向 grep 守门).
-func (h *DM7EditHistoryHandler) handleAdminGet(w http.ResponseWriter, r *http.Request) {
+func (h *MessageEditHistoryHandler) handleAdminGet(w http.ResponseWriter, r *http.Request) {
 	a := admin.AdminFromContext(r.Context())
 	if a == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")

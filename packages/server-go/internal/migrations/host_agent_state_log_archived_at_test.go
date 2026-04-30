@@ -14,8 +14,8 @@ import (
 func runHB51(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(al14AgentStateLog)
-	e.Register(hb51AgentStateLogArchivedAt)
+	e.Register(agentStateLog)
+	e.Register(agentStateLogArchivedAt)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run hb_5_1 chain: %v", err)
 	}
@@ -63,10 +63,10 @@ func TestHB_HasSparseIdx(t *testing.T) {
 // TestHB_VersionIs35 — registry literal lock.
 func TestHB_VersionIs35(t *testing.T) {
 	t.Parallel()
-	if got, want := hb51AgentStateLogArchivedAt.Version, 35; got != want {
+	if got, want := agentStateLogArchivedAt.Version, 35; got != want {
 		t.Errorf("HB-5.1 Version drift: got %d, want %d (post AL-7.1 v=33)", got, want)
 	}
-	if got, want := hb51AgentStateLogArchivedAt.Name, "hb_5_1_agent_state_log_archived_at"; got != want {
+	if got, want := agentStateLogArchivedAt.Name, "hb_5_1_agent_state_log_archived_at"; got != want {
 		t.Errorf("HB-5.1 Name drift: got %q, want %q", got, want)
 	}
 	found := false

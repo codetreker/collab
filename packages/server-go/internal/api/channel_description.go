@@ -4,8 +4,8 @@
 // Blueprint: docs/implementation/modules/chn-10-spec.md §0+§1+§2.
 //
 // Public surface:
-//   - CHN10DescriptionHandler{Store, Logger}
-//   - (h *CHN10DescriptionHandler) RegisterUserRoutes(mux, authMw)
+//   - ChannelDescriptionHandler{Store, Logger}
+//   - (h *ChannelDescriptionHandler) RegisterUserRoutes(mux, authMw)
 //   - DescriptionMaxLength (= 500, byte-identical 跟 channels.topic GORM
 //     size:500 同源, 双向锁守门 跟 client DESCRIPTION_MAX_LENGTH).
 //
@@ -35,10 +35,10 @@ import (
 // 改一处 = 改三处 (server const + GORM size + client const) 反向锁守门.
 const DescriptionMaxLength = 500
 
-// CHN10DescriptionHandler hosts the user-rail PUT endpoint for setting
+// ChannelDescriptionHandler hosts the user-rail PUT endpoint for setting
 // channel description (= channels.topic 列, owner-only 互补于既有
 // member-level PUT /topic CHN-2 #406 path byte-identical 不动).
-type CHN10DescriptionHandler struct {
+type ChannelDescriptionHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
@@ -46,7 +46,7 @@ type CHN10DescriptionHandler struct {
 // RegisterUserRoutes wires the user-rail endpoint behind authMw. 立场 ③
 // owner-only — channel.CreatedBy == user.ID 反向断 member-level reject 403.
 // admin god-mode 不挂 — 无 RegisterAdminRoutes (ADM-0 §1.3 红线).
-func (h *CHN10DescriptionHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *ChannelDescriptionHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("PUT /api/v1/channels/{channelId}/description",
 		authMw(http.HandlerFunc(h.handlePut)))
 }
@@ -60,7 +60,7 @@ type chn10DescriptionRequest struct {
 // owner-only: caller must equal channel.CreatedBy. length cap 500
 // (DescriptionMaxLength const byte-identical 跟 client). Writes via
 // store.UpdateChannel single-source (same column as 既有 PUT /topic).
-func (h *CHN10DescriptionHandler) handlePut(w http.ResponseWriter, r *http.Request) {
+func (h *ChannelDescriptionHandler) handlePut(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return

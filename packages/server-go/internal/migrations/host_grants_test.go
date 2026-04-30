@@ -12,7 +12,7 @@ import (
 func runHB31(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(hb31HostGrants)
+	e.Register(hostGrants)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run hb_3_1: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestHB31_Idempotent(t *testing.T) {
 	runHB31(t, db)
 	// Run again via fresh engine; should be no-op.
 	e := New(db)
-	e.Register(hb31HostGrants)
+	e.Register(hostGrants)
 	if err := e.Run(0); err != nil {
 		t.Errorf("re-run should be idempotent (forward-only stance): %v", err)
 	}
@@ -225,7 +225,7 @@ func TestHB31_Idempotent(t *testing.T) {
 // AL-1.4 v=25 + DL-4.1 v=26).
 func TestHB_VersionIs27(t *testing.T) {
 	t.Parallel()
-	if hb31HostGrants.Version != 27 {
-		t.Errorf("hb31HostGrants.Version=%d, want 27 (sequencing 跟 spec brief §1 byte-identical)", hb31HostGrants.Version)
+	if hostGrants.Version != 27 {
+		t.Errorf("hostGrants.Version=%d, want 27 (sequencing 跟 spec brief §1 byte-identical)", hostGrants.Version)
 	}
 }

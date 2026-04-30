@@ -55,7 +55,7 @@ func TestDM_HandlePin_DBError_500(t *testing.T) {
 
 	pattern := "POST /api/v1/channels/{channelId}/messages/{messageId}/pin"
 	target := "/api/v1/channels/" + ch.ID + "/messages/" + msg.ID + "/pin"
-	handler := (&DM10PinHandler{Store: s, Logger: testLogger()}).handlePin
+	handler := (&MessagePinHandler{Store: s, Logger: testLogger()}).handlePin
 
 	rec := exerciseAuthedHandler(t, s, cfg, memberToken, pattern, "POST", target, nil,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +108,7 @@ func TestDM_HandleUnpin_DBError_500(t *testing.T) {
 
 	pattern := "DELETE /api/v1/channels/{channelId}/messages/{messageId}/pin"
 	target := "/api/v1/channels/" + ch.ID + "/messages/" + msg.ID + "/pin"
-	handler := (&DM10PinHandler{Store: s, Logger: testLogger()}).handleUnpin
+	handler := (&MessagePinHandler{Store: s, Logger: testLogger()}).handleUnpin
 
 	rec := exerciseAuthedHandler(t, s, cfg, memberToken, pattern, "DELETE", target, nil,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +154,7 @@ func TestDM_HandleListPinned_DBError_500(t *testing.T) {
 
 	pattern := "GET /api/v1/channels/{channelId}/messages/pinned"
 	target := "/api/v1/channels/" + ch.ID + "/messages/pinned"
-	handler := (&DM10PinHandler{Store: s, Logger: testLogger()}).handleListPinned
+	handler := (&MessagePinHandler{Store: s, Logger: testLogger()}).handleListPinned
 
 	rec := exerciseAuthedHandler(t, s, cfg, memberToken, pattern, "GET", target, nil,
 		func(w http.ResponseWriter, r *http.Request) {

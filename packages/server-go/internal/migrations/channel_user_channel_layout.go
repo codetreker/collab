@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// chn31UserChannelLayout is migration v=19 — Phase 3 / CHN-3.1.
+// userChannelLayout is migration v=19 — Phase 3 / CHN-3.1.
 //
 // Blueprint锚: `channel-model.md` §1.4 (作者定义大局 + 个人偏好微调) +
 // §3.4 (差距 — 缺个人折叠/排序, 蓝图建议 `user_channel_layout(user_id,
@@ -73,7 +73,7 @@ import (
 // CV-3.1 v=17 ✅ (#388/#396 merged) / CV-4.1 v=18 ✅ (待 #404+ merge —
 // 已落 registry.go) / **CHN-3.1 v=19** (本 migration).
 // registry.go 字面锁.
-var chn31UserChannelLayout = Migration{
+var userChannelLayout = Migration{
 	Version: 19,
 	Name:    "chn_3_1_user_channel_layout",
 	Up: func(tx *gorm.DB) error {

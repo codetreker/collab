@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// hb51AgentStateLogArchivedAt is migration v=35 — Phase 6 / HB-5.1.
+// agentStateLogArchivedAt is migration v=35 — Phase 6 / HB-5.1.
 //
 // Blueprint锚: `agent-lifecycle.md` §2.3 forward-only state log + AL-7
 // #533 archived_at retention 模式延伸. Spec brief: docs/implementation/
@@ -36,7 +36,7 @@ import "gorm.io/gorm"
 // AL-8 #538 顺位 (AL-8 是 0 schema query filter, 不占号).
 //
 // v0 stance: forward-only, no Down().
-var hb51AgentStateLogArchivedAt = Migration{
+var agentStateLogArchivedAt = Migration{
 	Version: 35,
 	Name:    "hb_5_1_agent_state_log_archived_at",
 	Up: func(tx *gorm.DB) error {

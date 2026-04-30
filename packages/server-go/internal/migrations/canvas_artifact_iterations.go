@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// cv41ArtifactIterations is migration v=18 — Phase 3 / CV-4.1.
+// artifactIterations is migration v=18 — Phase 3 / CV-4.1.
 //
 // Blueprint锚: `canvas-vision.md` §1.4 ("artifact 自带版本历史: agent 每次
 // 修改产生一个版本, 人可以回滚") + §1.5 ("agent 写内容默认允许") + §2 v1
@@ -134,7 +134,7 @@ import (
 // merged) / DM-2.1 v=15 ✅ (#361 merged) / AL-4.1 v=16 ✅ (#398 merged) /
 // CV-3.1 v=17 ✅ (#388/#396 merged) / **CV-4.1 v=18** (本 migration).
 // registry.go 字面锁.
-var cv41ArtifactIterations = Migration{
+var artifactIterations = Migration{
 	Version: 18,
 	Name:    "cv_4_1_artifact_iterations",
 	Up: func(tx *gorm.DB) error {

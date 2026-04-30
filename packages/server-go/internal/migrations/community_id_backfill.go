@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// cm3OrgIDBackfill is migration v9 — CM-3 / Phase 1 close-out.
+// orgIDBackfill is migration v9 — CM-3 / Phase 1 close-out.
 //
 // Blueprint: docs/qa/cm-3-resource-ownership-checklist.md (#200, 野马).
 // Scope: 4 resource tables (channels, messages, workspace_files, remote_nodes).
@@ -28,7 +28,7 @@ import "gorm.io/gorm"
 // permissive (returns false) so unstamped rows fall through to existing
 // membership/owner checks. v1 hard-flips the column NOT NULL (no default ''),
 // gated on a real backfill PR.
-var cm3OrgIDBackfill = Migration{
+var orgIDBackfill = Migration{
 	Version: 9,
 	Name:    "cm_3_org_id_backfill",
 	Up: func(tx *gorm.DB) error {

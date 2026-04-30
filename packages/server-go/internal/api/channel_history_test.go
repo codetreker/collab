@@ -240,7 +240,7 @@ func TestCHN_CHN10HandlePutByteIdentical(t *testing.T) {
 		t.Fatalf("read chn_10_description.go: %v", err)
 	}
 	src := string(body)
-	idx := strings.Index(src, "func (h *CHN10DescriptionHandler) handlePut")
+	idx := strings.Index(src, "func (h *ChannelDescriptionHandler) handlePut")
 	if idx < 0 {
 		t.Fatalf("既有 chn_10 handlePut 不存在 — 边界 ④ broken")
 	}

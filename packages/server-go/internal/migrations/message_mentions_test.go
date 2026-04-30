@@ -14,7 +14,7 @@ import (
 func runDM21(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(dm21MessageMentions)
+	e.Register(messageMentions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run dm_2_1: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestDM21_Idempotent(t *testing.T) {
 	db := openMem(t)
 	runDM21(t, db)
 	e := New(db)
-	e.Register(dm21MessageMentions)
+	e.Register(messageMentions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run dm_2_1: %v", err)
 	}

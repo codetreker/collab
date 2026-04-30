@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// adm31AuditEventsRename is migration v=43 — Phase 4 / ADM-3.
+// auditEventsRename is migration v=43 — Phase 4 / ADM-3.
 //
 // Blueprint锚: `admin-model.md` §3 audit-forward-only 单表 + ADM-2.1
 // #484 admin_actions 表起源 + BPP-8 #532 5 plugin lifecycle 事件 →
@@ -39,7 +39,7 @@ import "gorm.io/gorm"
 //
 // v0 stance: forward-only, no Down() (跟 ADM-2.1 + AL-7.1 + AP-2.1 +
 // BPP-8.1 + AP-1.1 + AP-3.1 跨七 milestone audit 同模式).
-var adm31AuditEventsRename = Migration{
+var auditEventsRename = Migration{
 	Version: 43,
 	Name:    "adm_3_1_audit_events_rename",
 	Up: func(tx *gorm.DB) error {

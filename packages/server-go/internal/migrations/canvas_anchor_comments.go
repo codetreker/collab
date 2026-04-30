@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// cv21AnchorComments is migration v=14 — Phase 3 / CV-2.1.
+// anchorComments is migration v=14 — Phase 3 / CV-2.1.
 //
 // Blueprint锚: `canvas-vision.md` §1.4 (artifact 集合) + §1.6 (锚点对话 =
 // owner review agent 产物的工具) + §2 v1 不做清单第 5 条 ("段落锚点对话, v2 加").
@@ -71,7 +71,7 @@ import (
 // v=14 sequencing 锁 (spec v2 §2): DM-2.1 / CV-2.1 / CHN-2.1 三方候选, 真先到先拿;
 // 战马B (DM-2.1) ~6h 未回报, team-lead 派战马A 抢 v=14, DM-2.1 顺延 v=15, AL-4.1
 // v=16 (CHN-2.1 无 schema 改, 软约束在 server, 不抢号).
-var cv21AnchorComments = Migration{
+var anchorComments = Migration{
 	Version: 14,
 	Name:    "cv_2_1_anchor_comments",
 	Up: func(tx *gorm.DB) error {

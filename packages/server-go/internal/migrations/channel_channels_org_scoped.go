@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// chn11ChannelsOrgScoped is migration v=11 — Phase 3 / CHN-1.1.
+// channelsOrgScoped is migration v=11 — Phase 3 / CHN-1.1.
 //
 // Blueprint: channel-model.md §1.1 Channel = 协作场 + §2 关键不变量
 // (Channel 跨 org 共享 / Channel 创建者归属). concept-model.md §1.2
@@ -36,7 +36,7 @@ import (
 //
 // v0 stance: forward-only, no Down(). Trimmed-schema tolerance via
 // hasTable / hasColumn guards (mirrors cm_3 + cm_onboarding patterns).
-var chn11ChannelsOrgScoped = Migration{
+var channelsOrgScoped = Migration{
 	Version: 11,
 	Name:    "chn_1_1_channels_org_scoped",
 	Up: func(tx *gorm.DB) error {

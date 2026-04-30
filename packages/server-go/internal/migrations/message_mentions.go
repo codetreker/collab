@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// dm21MessageMentions is migration v=15 — Phase 3 / DM-2.1.
+// messageMentions is migration v=15 — Phase 3 / DM-2.1.
 //
 // Blueprint锚: `concept-model.md` §4 (agent 代表自己 — mention 只 ping
 // target, 不抄送 owner) + §4.1 (离线 fallback — owner 系统 DM + 节流
@@ -65,7 +65,7 @@ import (
 // CHN-2.1 三方候选撞 v=14, 真先到先拿 — 战马A 抢 CV-2.1 v=14 (#359
 // merged), DM-2.1 顺延 v=15; CHN-2.1 无 schema 改 (软约束在 server) 不
 // 抢号. AL-4.1 顺延 v=16.
-var dm21MessageMentions = Migration{
+var messageMentions = Migration{
 	Version: 15,
 	Name:    "dm_2_1_message_mentions",
 	Up: func(tx *gorm.DB) error {

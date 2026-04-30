@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// dm71MessagesEditHistory is migration v=34 — Phase 6 / DM-7.1.
+// messagesEditHistory is migration v=34 — Phase 6 / DM-7.1.
 //
 // Blueprint锚: dm-model.md §3 audit forward-only history. Spec brief:
 // docs/implementation/modules/dm-7-spec.md §0 立场 ① + §1 拆段 DM-7.1.
@@ -30,7 +30,7 @@ import "gorm.io/gorm"
 // migration). registry.go 字面锁; 顺位.
 //
 // v0 stance: forward-only, no Down().
-var dm71MessagesEditHistory = Migration{
+var messagesEditHistory = Migration{
 	Version: 34,
 	Name:    "dm_7_1_messages_edit_history",
 	Up: func(tx *gorm.DB) error {

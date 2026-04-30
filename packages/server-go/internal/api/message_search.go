@@ -5,7 +5,7 @@
 // docs/implementation/modules/dm-11-spec.md (战马E v0).
 //
 // Public surface:
-//   - (h *DM11SearchHandler) RegisterRoutes(mux, authMw)
+//   - (h *MessageSearchHandler) RegisterRoutes(mux, authMw)
 //
 // Endpoints:
 //   GET /api/v1/dm/search?q=<query>&limit=<N>
@@ -46,14 +46,14 @@ const (
 	dm11MaxLimit     = 50
 )
 
-// DM11SearchHandler is the cross-DM search endpoint dispatcher.
-type DM11SearchHandler struct {
+// MessageSearchHandler is the cross-DM search endpoint dispatcher.
+type MessageSearchHandler struct {
 	Store *store.Store
 }
 
 // RegisterRoutes wires GET /api/v1/dm/search behind authMw.
 // user-rail only; admin god-mode 不挂 (立场 ⑤ ADM-0 §1.3).
-func (h *DM11SearchHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *MessageSearchHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/dm/search", authMw(http.HandlerFunc(h.handleSearch)))
 }
 
@@ -64,7 +64,7 @@ func (h *DM11SearchHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.
 //  2. q query param required + 2..200 char (反 DoS, 反空查询全表扫).
 //  3. limit clamp default 30 / max 50.
 //  4. Store.SearchDMMessages (DM-only + channel-member ACL JOIN).
-func (h *DM11SearchHandler) handleSearch(w http.ResponseWriter, r *http.Request) {
+func (h *MessageSearchHandler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return

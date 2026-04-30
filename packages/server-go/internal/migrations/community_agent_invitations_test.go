@@ -9,7 +9,7 @@ func TestCM_CreatesAgentInvitationsTable(t *testing.T) {
 	db := openMem(t)
 
 	e := New(db)
-	e.Register(cm40AgentInvitations)
+	e.Register(agentInvitations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestCM_CreatesIndexes(t *testing.T) {
 	db := openMem(t)
 
 	e := New(db)
-	e.Register(cm40AgentInvitations)
+	e.Register(agentInvitations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestCM_CheckConstraintRejectsBadState(t *testing.T) {
 	db := openMem(t)
 
 	e := New(db)
-	e.Register(cm40AgentInvitations)
+	e.Register(agentInvitations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestCM_DefaultsStateToPending(t *testing.T) {
 	db := openMem(t)
 
 	e := New(db)
-	e.Register(cm40AgentInvitations)
+	e.Register(agentInvitations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestCM40_IsIdempotentOnRerun(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		e := New(db)
-		e.Register(cm40AgentInvitations)
+		e.Register(agentInvitations)
 		if err := e.Run(0); err != nil {
 			t.Fatalf("run #%d: %v", i+1, err)
 		}

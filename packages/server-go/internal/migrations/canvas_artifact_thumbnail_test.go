@@ -11,8 +11,8 @@ import (
 func runCV3V2(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv31ArtifactKinds)
+	e.Register(artifacts)
+	e.Register(artifactKinds)
 	e.Register(cv2v2MediaPreview)
 	e.Register(cv3v2ArtifactThumbnail)
 	if err := e.Run(0); err != nil {
@@ -44,8 +44,8 @@ func TestCV_LegacyRowsNullPreserved(t *testing.T) {
 	db := openMem(t)
 	// Run pre-CV-3 v2 chain, seed a row, then run v=31.
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv31ArtifactKinds)
+	e.Register(artifacts)
+	e.Register(artifactKinds)
 	e.Register(cv2v2MediaPreview)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run pre v=31: %v", err)
@@ -131,8 +131,8 @@ func TestCV3V21_Idempotent(t *testing.T) {
 	runCV3V2(t, db)
 
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv31ArtifactKinds)
+	e.Register(artifacts)
+	e.Register(artifactKinds)
 	e.Register(cv2v2MediaPreview)
 	e.Register(cv3v2ArtifactThumbnail)
 	if err := e.Run(0); err != nil {

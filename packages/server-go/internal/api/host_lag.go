@@ -4,8 +4,8 @@
 // Spec: docs/implementation/modules/hb-6-spec.md §1 拆段 HB-6.1 + HB-6.2.
 //
 // Public surface:
-//   - HB6LagHandler{Store, Logger}
-//   - (h *HB6LagHandler) RegisterAdminRoutes(mux, adminMw)
+//   - HostLagHandler{Store, Logger}
+//   - (h *HostLagHandler) RegisterAdminRoutes(mux, adminMw)
 //   - WindowSeconds (= BPP-4 BPP_HEARTBEAT_TIMEOUT_SECONDS byte-identical)
 //   - LagThresholdMs (= 15000, watchdog 周期一半)
 //
@@ -39,16 +39,16 @@ const WindowSeconds = 30
 // 体现接近超时风险). reason 复用 reasons.NetworkUnreachable byte-identical.
 const LagThresholdMs = 15000
 
-// HB6LagHandler hosts the admin-rail GET endpoint that aggregates 30s
+// HostLagHandler hosts the admin-rail GET endpoint that aggregates 30s
 // rolling-window heartbeat lag percentiles from agent_runtimes.
-type HB6LagHandler struct {
+type HostLagHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterAdminRoutes wires the admin-rail GET endpoint behind adminMw.
 // 立场 ③: admin-rail only. user-rail (`/api/v1/...`) 不挂.
-func (h *HB6LagHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
+func (h *HostLagHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /admin-api/v1/heartbeat-lag",
 		adminMw(http.HandlerFunc(h.handleGet)))
 }
@@ -147,7 +147,7 @@ func SampleLagFromStore(ctx context.Context, s *store.Store, nowMs int64) ([]int
 //
 // admin-rail only (adminMw + admin.AdminFromContext); aggregates 30s
 // rolling-window lag from agent_runtimes table, returns LagSnapshot.
-func (h *HB6LagHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+func (h *HostLagHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	a := admin.AdminFromContext(r.Context())
 	if a == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")

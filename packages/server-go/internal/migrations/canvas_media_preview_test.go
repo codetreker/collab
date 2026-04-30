@@ -12,8 +12,8 @@ import (
 func runCV2V2(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv31ArtifactKinds)
+	e.Register(artifacts)
+	e.Register(artifactKinds)
 	e.Register(cv2v2MediaPreview)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run cv_2_v2: %v", err)
@@ -98,8 +98,8 @@ func TestCV_PreservesExistingRows(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv31ArtifactKinds)
+	e.Register(artifacts)
+	e.Register(artifactKinds)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run pre v=28: %v", err)
 	}
@@ -179,8 +179,8 @@ func TestCV2V2_Idempotent(t *testing.T) {
 	runCV2V2(t, db)
 
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv31ArtifactKinds)
+	e.Register(artifacts)
+	e.Register(artifactKinds)
 	e.Register(cv2v2MediaPreview)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run cv_2_v2: %v", err)

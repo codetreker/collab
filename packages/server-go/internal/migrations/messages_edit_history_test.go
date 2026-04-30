@@ -25,7 +25,7 @@ func runDM71(t *testing.T, db *gorm.DB) {
 )`).Error; err != nil {
 		t.Fatal(err)
 	}
-	e.Register(dm71MessagesEditHistory)
+	e.Register(messagesEditHistory)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run dm_7_1 chain: %v", err)
 	}
@@ -49,10 +49,10 @@ func TestDM_AddsEditHistoryColumn(t *testing.T) {
 // TestDM_VersionIs34 — registry literal lock.
 func TestDM_VersionIs34(t *testing.T) {
 	t.Parallel()
-	if got, want := dm71MessagesEditHistory.Version, 34; got != want {
+	if got, want := messagesEditHistory.Version, 34; got != want {
 		t.Errorf("DM-7.1 Version drift: got %d, want %d", got, want)
 	}
-	if got, want := dm71MessagesEditHistory.Name, "dm_7_1_messages_edit_history"; got != want {
+	if got, want := messagesEditHistory.Name, "dm_7_1_messages_edit_history"; got != want {
 		t.Errorf("DM-7.1 Name drift: got %q, want %q", got, want)
 	}
 	found := false

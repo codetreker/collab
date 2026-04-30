@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// ap31UserPermissionsOrg is migration v=29 — Phase 5 / AP-3.1.
+// userPermissionsOrg is migration v=29 — Phase 5 / AP-3.1.
 //
 // Blueprint锚: `auth-permissions.md` §1.2 (Scope 层级 v1 三层) + §5 与现状的差距
 // ("cross-org 强制 — AP-3 后续 milestone"). Spec brief:
@@ -40,7 +40,7 @@ import "gorm.io/gorm"
 // idempotent-unsafe (重跑会报 duplicate column), engine 通过
 // schema_migrations 版本号守 idempotency — 跟所有 ALTER 类 migration
 // 同模式 (chn_3_1 / cm_3 / ap_1_1 等).
-var ap31UserPermissionsOrg = Migration{
+var userPermissionsOrg = Migration{
 	Version: 29,
 	Name:    "ap_3_1_user_permissions_org",
 	Up: func(tx *gorm.DB) error {

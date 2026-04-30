@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// ap11UserPermissionsExpires is migration v=24 — Phase 4 / AP-1.1.
+// userPermissionsExpires is migration v=24 — Phase 4 / AP-1.1.
 //
 // Blueprint锚: `auth-permissions.md` §1.2 (Scope 层级 v1 三层 — `*` /
 // `channel:<id>` / `artifact:<id>` 全 ✅, expires_at 列 "schema 保留, UI
@@ -33,7 +33,7 @@ import "gorm.io/gorm"
 // idempotent-unsafe (重跑会报 duplicate column), engine 通过
 // schema_migrations 版本号守 idempotency — 跟所有 ALTER 类 migration
 // 同模式 (chn_3_1 / cm_3 等).
-var ap11UserPermissionsExpires = Migration{
+var userPermissionsExpires = Migration{
 	Version: 24,
 	Name:    "ap_1_1_user_permissions_expires",
 	Up: func(tx *gorm.DB) error {

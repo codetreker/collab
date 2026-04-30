@@ -40,7 +40,7 @@ func TestCHN_HandleUserGet_DBError_500(t *testing.T) {
 
 	pattern := "GET /api/v1/channels/{channelId}/description/history"
 	target := "/api/v1/channels/" + ch.ID + "/description/history"
-	handler := (&CHN14DescriptionHistoryHandler{Store: s, Logger: testLogger()}).handleUserGet
+	handler := (&ChannelDescriptionHistoryHandler{Store: s, Logger: testLogger()}).handleUserGet
 
 	rec := exerciseAuthedHandler(t, s, cfg, ownerToken, pattern, "GET", target, nil,
 		func(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +91,7 @@ func TestCHN_HandleAdminGet_DBError_500(t *testing.T) {
 
 	pattern := "GET /admin-api/v1/channels/{channelId}/description/history"
 	target := "/admin-api/v1/channels/" + ch.ID + "/description/history"
-	handler := (&CHN14DescriptionHistoryHandler{Store: s, Logger: testLogger()}).handleAdminGet
+	handler := (&ChannelDescriptionHistoryHandler{Store: s, Logger: testLogger()}).handleAdminGet
 
 	rec := exerciseAuthedHandler(t, s, cfg, adminToken, pattern, "GET", target, nil,
 		func(w http.ResponseWriter, r *http.Request) {

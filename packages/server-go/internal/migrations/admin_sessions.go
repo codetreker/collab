@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// adm02AdminSessions is migration v5 — Phase 2 / ADM-0.2 schema landing.
+// adminSessions is migration v5 — Phase 2 / ADM-0.2 schema landing.
 //
 // Blueprint: admin-model.md §1.2 + §3 — server-side admin session table so
 // the cookie value is an opaque random token (not a raw admin id). Required
@@ -25,7 +25,7 @@ import "gorm.io/gorm"
 //   - No nullable fields; rows are deleted on logout / sweep, not soft-deleted.
 //
 // v0 stance: forward-only, no Down().
-var adm02AdminSessions = Migration{
+var adminSessions = Migration{
 	Version: 5,
 	Name:    "adm_0_2_admin_sessions",
 	Up: func(tx *gorm.DB) error {

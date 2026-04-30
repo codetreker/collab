@@ -21,13 +21,13 @@ func TestPrereqMissingMigrationsAreNoOp(t *testing.T) {
 		migration Migration
 		prereq    string // prerequisite table the migration guards on
 	}{
-		{"al_7_1", al71AdminActionsArchivedAt, "admin_actions"},
-		{"bpp_8_1", bpp81AdminActionsPluginActions, "admin_actions"},
-		{"hb_5_1", hb51AgentStateLogArchivedAt, "agent_state_log"},
-		{"chn_14_1", chn141ChannelsDescriptionEditHistory, "channels"},
-		{"ap_2_1", ap21UserPermissionsRevoked, "user_permissions"},
-		{"adm_3_1", adm31AuditEventsRename, "audit_events"},
-		{"dm_7_1", dm71MessagesEditHistory, "messages"},
+		{"al_7_1", adminActionsArchivedAt, "admin_actions"},
+		{"bpp_8_1", adminActionsPluginActions, "admin_actions"},
+		{"hb_5_1", agentStateLogArchivedAt, "agent_state_log"},
+		{"chn_14_1", channelsDescriptionEditHistory, "channels"},
+		{"ap_2_1", userPermissionsRevoked, "user_permissions"},
+		{"adm_3_1", auditEventsRename, "audit_events"},
+		{"dm_7_1", messagesEditHistory, "messages"},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -70,7 +70,7 @@ func TestADM_ExecError_BadPrior(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(adm01Admins)
+	e.Register(admins)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from index on missing login column")
 	}
@@ -84,7 +84,7 @@ func TestADM_ExecError_BadPrior_Sessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(adm02AdminSessions)
+	e.Register(adminSessions)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from index on missing column")
 	}
@@ -98,7 +98,7 @@ func TestCM_ExecError_BadPrior(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(cm11Organizations)
+	e.Register(organizations)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from missing slug column")
 	}
@@ -112,7 +112,7 @@ func TestCM_ExecError_BadPrior_2(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(cm40AgentInvitations)
+	e.Register(agentInvitations)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from index on missing column")
 	}
@@ -126,7 +126,7 @@ func TestDL_ExecError_BadPrior(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(dl41WebPushSubscriptions)
+	e.Register(webPushSubscriptions)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from index on missing column")
 	}
@@ -140,7 +140,7 @@ func TestCHN_ExecError_BadPrior(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(chn31UserChannelLayout)
+	e.Register(userChannelLayout)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from missing column")
 	}

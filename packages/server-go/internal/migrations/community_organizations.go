@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// cm11Organizations is migration v2 — Phase 1 / CM-1.1 schema landing.
+// organizations is migration v2 — Phase 1 / CM-1.1 schema landing.
 //
 // Blueprint: concept-model.md §1.1 + §2 — 1 person = 1 org, UI 永久不暴露;
 // 数据层 org first-class.
@@ -19,7 +19,7 @@ import "gorm.io/gorm"
 // v0 stance: NOT NULL DEFAULT '' is intentional — see audit row
 // "users.org_id NOT NULL: 直接加列". v1 backfill is tracked separately
 // (forward-only migration that flips defaults after a real backfill PR).
-var cm11Organizations = Migration{
+var organizations = Migration{
 	Version: 2,
 	Name:    "cm_1_1_organizations",
 	Up: func(tx *gorm.DB) error {

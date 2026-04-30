@@ -61,7 +61,7 @@ func TestAP0Bis_BackfillsMessageReadForLegacyAgents(t *testing.T) {
 	seedLegacyAgent(t, db, "agent-1")
 
 	e := New(db)
-	e.Register(ap0BisMessageRead)
+	e.Register(bisMessageRead)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestAP0Bis_Idempotent(t *testing.T) {
 
 	// First run: backfill creates the row.
 	e := New(db)
-	e.Register(ap0BisMessageRead)
+	e.Register(bisMessageRead)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestAP0Bis_Idempotent(t *testing.T) {
 	}
 
 	e2 := New(db)
-	e2.Register(ap0BisMessageRead)
+	e2.Register(bisMessageRead)
 	if err := e2.Run(0); err != nil {
 		t.Fatalf("second run: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestAP0Bis_SkipsNonAgentRoles(t *testing.T) {
 	}
 
 	e := New(db)
-	e.Register(ap0BisMessageRead)
+	e.Register(bisMessageRead)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestAP0Bis_SkipsSoftDeletedAgents(t *testing.T) {
 	}
 
 	e := New(db)
-	e.Register(ap0BisMessageRead)
+	e.Register(bisMessageRead)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}

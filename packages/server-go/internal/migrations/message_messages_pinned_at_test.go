@@ -23,7 +23,7 @@ func TestDM_AddsPinnedAtColumn(t *testing.T) {
 		t.Fatalf("seed messages: %v", err)
 	}
 	e := New(db)
-	e.Register(dm101MessagesPinnedAt)
+	e.Register(messagesPinnedAt)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run dm_10_1: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestDM_HasSparseIdx(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	e := New(db)
-	e.Register(dm101MessagesPinnedAt)
+	e.Register(messagesPinnedAt)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -71,8 +71,8 @@ func TestDM_HasSparseIdx(t *testing.T) {
 // TestDM_VersionIs45 — acceptance §1.3.
 // migration must be registered at v=45 (team-lead 占号 reservation).
 func TestDM_VersionIs45(t *testing.T) {
-	if dm101MessagesPinnedAt.Version != 45 {
-		t.Errorf("DM-10.1 version expected 45, got %d", dm101MessagesPinnedAt.Version)
+	if messagesPinnedAt.Version != 45 {
+		t.Errorf("DM-10.1 version expected 45, got %d", messagesPinnedAt.Version)
 	}
 }
 
@@ -88,13 +88,13 @@ func TestDM101_Idempotent(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	e := New(db)
-	e.Register(dm101MessagesPinnedAt)
+	e.Register(messagesPinnedAt)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("first: %v", err)
 	}
 	// Re-run — must skip cleanly.
 	e2 := New(db)
-	e2.Register(dm101MessagesPinnedAt)
+	e2.Register(messagesPinnedAt)
 	if err := e2.Run(0); err != nil {
 		t.Fatalf("re-run: %v", err)
 	}

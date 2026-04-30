@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// al41AgentRuntimes is migration v=16 — Phase 4 / AL-4.1.
+// agentRuntimes is migration v=16 — Phase 4 / AL-4.1.
 //
 // Blueprint锚: `agent-lifecycle.md` §2.2 (默认 remote-agent + power
 // user 直配 plugin 双路径 + v1 务实边界 — only OpenClaw / Mac+Linux /
@@ -87,7 +87,7 @@ import (
 // merged) / DM-2.1 v=15 ✅ (#361 merged) / **AL-4.1 v=16** (本 migration) /
 // CV-3.1 v=17 (战马C #396 待 spec follow-up patch 后实施) / CV-4.1 v=18 /
 // CHN-3.1 v=19 / CHN-4.1 v=20 占位无 schema 改.
-var al41AgentRuntimes = Migration{
+var agentRuntimes = Migration{
 	Version: 16,
 	Name:    "al_4_1_agent_runtimes",
 	Up: func(tx *gorm.DB) error {

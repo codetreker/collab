@@ -14,7 +14,7 @@ import (
 func runCHN31(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(chn31UserChannelLayout)
+	e.Register(userChannelLayout)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run chn_3_1: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestCHN31_Idempotent(t *testing.T) {
 	db := openMem(t)
 	runCHN31(t, db)
 	e := New(db)
-	e.Register(chn31UserChannelLayout)
+	e.Register(userChannelLayout)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run chn_3_1: %v", err)
 	}

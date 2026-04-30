@@ -48,7 +48,7 @@ func seedChn11Schema(t *testing.T, db *gorm.DB) {
 func runCHN11(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(chn11ChannelsOrgScoped)
+	e.Register(channelsOrgScoped)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run chn_1_1: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestCHN_HardFailsOnHistoricDuplicateNoAutoRename(t *testing.T) {
 		}
 	}
 	e := New(db)
-	e.Register(chn11ChannelsOrgScoped)
+	e.Register(channelsOrgScoped)
 	err := e.Run(0)
 	if err == nil {
 		t.Fatal("expected hard-fail on historic dup (org_id, name)")
@@ -226,7 +226,7 @@ func TestCHN_IsIdempotentOnRerun(t *testing.T) {
 	seedChn11Schema(t, db)
 	for i := 0; i < 2; i++ {
 		e := New(db)
-		e.Register(chn11ChannelsOrgScoped)
+		e.Register(channelsOrgScoped)
 		if err := e.Run(0); err != nil {
 			t.Fatalf("run #%d: %v", i+1, err)
 		}
@@ -250,7 +250,7 @@ func TestCHN_ToleratesTrimmedSchema(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	e := New(db)
-	e.Register(chn11ChannelsOrgScoped)
+	e.Register(channelsOrgScoped)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("trimmed run: %v", err)
 	}
@@ -268,7 +268,7 @@ func TestCHN_NameWithoutOrgID(t *testing.T) {
 		t.Fatalf("seed channel_members: %v", err)
 	}
 	e := New(db)
-	e.Register(chn11ChannelsOrgScoped)
+	e.Register(channelsOrgScoped)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}

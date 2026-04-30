@@ -14,7 +14,7 @@ import (
 func runADM21(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(adm21AdminActions)
+	e.Register(adminActions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run adm_2_1: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestADM21_Idempotent(t *testing.T) {
 	db := openMem(t)
 	runADM21(t, db)
 	e := New(db)
-	e.Register(adm21AdminActions)
+	e.Register(adminActions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run adm_2_1: %v", err)
 	}

@@ -5,7 +5,7 @@
 // docs/implementation/modules/dm-10-spec.md (战马E v0).
 //
 // Public surface:
-//   - (h *DM10PinHandler) RegisterRoutes(mux, authMw)
+//   - (h *MessagePinHandler) RegisterRoutes(mux, authMw)
 //
 // Endpoints (DM-only, channel.Type == "dm" 守):
 //   POST   /api/v1/channels/{channelId}/messages/{messageId}/pin
@@ -44,16 +44,16 @@ import (
 	"gorm.io/gorm"
 )
 
-// DM10PinHandler is the message pin/unpin REST endpoint dispatcher.
+// MessagePinHandler is the message pin/unpin REST endpoint dispatcher.
 // Wires POST/DELETE/GET via RegisterRoutes (server.go boot).
-type DM10PinHandler struct {
+type MessagePinHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterRoutes wires DM-10 endpoints behind authMw.
 // user-rail only; admin god-mode 不挂 (立场 ⑤ ADM-0 §1.3 红线).
-func (h *DM10PinHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *MessagePinHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("POST /api/v1/channels/{channelId}/messages/{messageId}/pin",
 		authMw(http.HandlerFunc(h.handlePin)))
 	mux.Handle("DELETE /api/v1/channels/{channelId}/messages/{messageId}/pin",
@@ -70,7 +70,7 @@ func (h *DM10PinHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Han
 //   2. Channel exists + Type == "dm" (else 400 dm_only_path)
 //   3. channel-member gate (Store.IsChannelMember + Store.CanAccessChannel,
 //      跟 AP-4 #551 + AP-5 #555 同 helper) — fail-closed 404 "Channel not found"
-func (h *DM10PinHandler) gateDM(w http.ResponseWriter, r *http.Request) (channelID string, user *store.User, ok bool) {
+func (h *MessagePinHandler) gateDM(w http.ResponseWriter, r *http.Request) (channelID string, user *store.User, ok bool) {
 	user = auth.UserFromContext(r.Context())
 	if user == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -105,7 +105,7 @@ func (h *DM10PinHandler) gateDM(w http.ResponseWriter, r *http.Request) (channel
 // Stamps messages.pinned_at = now() for the (channel, message) pair.
 // Idempotent — second call within the same instant overwrites pinned_at
 // (last-write-wins, 跟 AL-7 sweeper UPDATE archived_at 同精神).
-func (h *DM10PinHandler) handlePin(w http.ResponseWriter, r *http.Request) {
+func (h *MessagePinHandler) handlePin(w http.ResponseWriter, r *http.Request) {
 	channelID, _, ok := h.gateDM(w, r)
 	if !ok {
 		return
@@ -149,7 +149,7 @@ func (h *DM10PinHandler) handlePin(w http.ResponseWriter, r *http.Request) {
 // Stamps messages.pinned_at = NULL. Idempotent — unpinning an unpinned
 // message returns 200 + pinned=false (反 fail-closed reject — nothing
 // to undo).
-func (h *DM10PinHandler) handleUnpin(w http.ResponseWriter, r *http.Request) {
+func (h *MessagePinHandler) handleUnpin(w http.ResponseWriter, r *http.Request) {
 	channelID, _, ok := h.gateDM(w, r)
 	if !ok {
 		return
@@ -186,7 +186,7 @@ func (h *DM10PinHandler) handleUnpin(w http.ResponseWriter, r *http.Request) {
 // Returns messages with pinned_at IS NOT NULL ORDER BY pinned_at DESC,
 // scoped to the path channel. Empty list when no pinned messages
 // (反向 fail-closed — gorm.ErrRecordNotFound 走空 list 同 CV-5 同精神).
-func (h *DM10PinHandler) handleListPinned(w http.ResponseWriter, r *http.Request) {
+func (h *MessagePinHandler) handleListPinned(w http.ResponseWriter, r *http.Request) {
 	channelID, _, ok := h.gateDM(w, r)
 	if !ok {
 		return

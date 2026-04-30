@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// dl41WebPushSubscriptions is migration v=26 — Phase 4 / DL-4 must-fix.
+// webPushSubscriptions is migration v=26 — Phase 4 / DL-4 must-fix.
 //
 // Blueprint锚: docs/blueprint/client-shape.md L22 ("**Mobile PWA** 离桌面后
 // 的'团队感知'通道 + Web Push (VAPID)") + L37 ("没推送 = AI 团队像后台
@@ -69,7 +69,7 @@ import (
 //
 // v0 stance: forward-only, no Down(). 表本身 v0 新增, IF NOT EXISTS 守
 // idempotency.
-var dl41WebPushSubscriptions = Migration{
+var webPushSubscriptions = Migration{
 	Version: 26,
 	Name:    "dl_4_1_web_push_subscriptions",
 	Up: func(tx *gorm.DB) error {

@@ -17,14 +17,14 @@ import (
 	"borgee-server/internal/store"
 )
 
-// AL14Handler hosts AL-1.4 state log GET endpoint.
-type AL14Handler struct {
+// AgentStateLogHandler hosts AL-1.4 state log GET endpoint.
+type AgentStateLogHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterRoutes wires the user-rail endpoint behind authMw.
-func (h *AL14Handler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *AgentStateLogHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/agents/{id}/state-log", authMw(http.HandlerFunc(h.handleListStateLog)))
 }
 
@@ -33,7 +33,7 @@ func (h *AL14Handler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handle
 // 立场 ① owner-only: agent.OwnerID == current_user.ID; non-owner → 403.
 // 立场 ② sanitizer: 反向不返 raw FK (跟 ADM-2 sanitizeAdminAction 同模式 —
 // agent_id 已是 path param caller 知道, 不重复返).
-func (h *AL14Handler) handleListStateLog(w http.ResponseWriter, r *http.Request) {
+func (h *AgentStateLogHandler) handleListStateLog(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return

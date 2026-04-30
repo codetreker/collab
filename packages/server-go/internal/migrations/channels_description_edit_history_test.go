@@ -25,7 +25,7 @@ func runCHN141(t *testing.T, db *gorm.DB) {
 )`).Error; err != nil {
 		t.Fatal(err)
 	}
-	e.Register(chn141ChannelsDescriptionEditHistory)
+	e.Register(channelsDescriptionEditHistory)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run chn_14_1 chain: %v", err)
 	}
@@ -49,10 +49,10 @@ func TestCHN_AddsDescriptionEditHistoryColumn(t *testing.T) {
 // TestCHN_VersionIs44 — registry literal lock.
 func TestCHN_VersionIs44(t *testing.T) {
 	t.Parallel()
-	if got, want := chn141ChannelsDescriptionEditHistory.Version, 44; got != want {
+	if got, want := channelsDescriptionEditHistory.Version, 44; got != want {
 		t.Errorf("CHN-14.1 Version drift: got %d, want %d", got, want)
 	}
-	if got, want := chn141ChannelsDescriptionEditHistory.Name, "chn_14_1_channels_description_edit_history"; got != want {
+	if got, want := channelsDescriptionEditHistory.Name, "chn_14_1_channels_description_edit_history"; got != want {
 		t.Errorf("CHN-14.1 Name drift: got %q, want %q", got, want)
 	}
 	found := false

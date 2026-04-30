@@ -4,8 +4,8 @@
 // Blueprint: docs/implementation/modules/rt-4-spec.md §0+§1+§2.
 //
 // Public surface:
-//   - RT4PresenceHandler{Store, Tracker, Logger}
-//   - (h *RT4PresenceHandler) RegisterUserRoutes(mux, authMw)
+//   - RealtimePresenceHandler{Store, Tracker, Logger}
+//   - (h *RealtimePresenceHandler) RegisterUserRoutes(mux, authMw)
 //
 // 反约束 (rt-4-spec.md §0 立场 ②③ 边界 ⑥):
 //   - 0 schema 改 — 复用 AL-3.1 #277 presence_sessions + idx_presence_sessions_user_id.
@@ -25,9 +25,9 @@ import (
 	"borgee-server/internal/store"
 )
 
-// RT4PresenceHandler — handler for GET /api/v1/channels/{id}/presence.
+// RealtimePresenceHandler — handler for GET /api/v1/channels/{id}/presence.
 // Hosts the member-only synchronous read: channel.members ∩ IsOnline.
-type RT4PresenceHandler struct {
+type RealtimePresenceHandler struct {
 	Store   *store.Store
 	Tracker presence.PresenceTracker
 	Logger  *slog.Logger
@@ -35,7 +35,7 @@ type RT4PresenceHandler struct {
 
 // RegisterUserRoutes wires user-rail GET behind authMw. 立场 ③: member-
 // only — IsChannelMember 反向断. admin god-mode 不挂 (no RegisterAdminRoutes).
-func (h *RT4PresenceHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *RealtimePresenceHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/channels/{channelId}/presence",
 		authMw(http.HandlerFunc(h.handleGet)))
 }
@@ -50,7 +50,7 @@ type PresenceSnapshot struct {
 //
 // Returns the subset of channel members whose IsOnline predicate holds,
 // computed synchronously at request time (no caching / no background job).
-func (h *RT4PresenceHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+func (h *RealtimePresenceHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return

@@ -11,7 +11,7 @@ import (
 func runAL31(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(al31PresenceSessions)
+	e.Register(presenceSessions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run al_3_1: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestAL31_Idempotent(t *testing.T) {
 	runAL31(t, db)
 	// Second engine, fresh registry — body must succeed.
 	e := New(db)
-	e.Register(al31PresenceSessions)
+	e.Register(presenceSessions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run al_3_1: %v", err)
 	}

@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// hb31HostGrants is migration v=27 — Phase 5 / HB-3.1.
+// hostGrants is migration v=27 — Phase 5 / HB-3.1.
 //
 // Blueprint锚: `host-bridge.md` §1.3 (情境化授权 4 类: install / exec /
 // filesystem / network) + §1.5 release gate 第 5 行 (撤销 grant → daemon
@@ -73,7 +73,7 @@ import (
 //
 // v=27 sequencing: AL-1.4 v=25 ✅ (#492) / DL-4.1 v=26 ✅ (#502 web_push) /
 // **HB-3.1 v=27** (本 migration, Phase 5 host-bridge 起步).
-var hb31HostGrants = Migration{
+var hostGrants = Migration{
 	Version: 27,
 	Name:    "hb_3_1_host_grants",
 	Up: func(tx *gorm.DB) error {

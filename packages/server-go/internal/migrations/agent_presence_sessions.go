@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// al31PresenceSessions is migration v=12 — Phase 4 / AL-3.1.
+// presenceSessions is migration v=12 — Phase 4 / AL-3.1.
 //
 // Blueprint锚: `agent-lifecycle.md` §2.2 (默认 remote-agent — /ws hub
 // 心跳决定 reach) + §2.3 (四态机含 offline 态). #277 contract stub
@@ -45,7 +45,7 @@ import (
 //
 // v0 stance: forward-only, no Down(). 表本身 v0 新增, 无 trimmed-schema
 // 兼容路径需要; 直接 IF NOT EXISTS 守住 idempotency.
-var al31PresenceSessions = Migration{
+var presenceSessions = Migration{
 	Version: 12,
 	Name:    "al_3_1_presence_sessions",
 	Up: func(tx *gorm.DB) error {

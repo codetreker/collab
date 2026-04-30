@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// ap0BisMessageRead is migration v=8 — AP-0-bis backfill.
+// bisMessageRead is migration v=8 — AP-0-bis backfill.
 //
 // Blueprint: docs/blueprint/auth-permissions.md §3 (Messaging capability list);
 // R3 决议 #1 (2026-04-28): agent default capability set 锁 [message.send,
@@ -29,7 +29,7 @@ import "gorm.io/gorm"
 // Idempotency: the WHERE NOT EXISTS guard is the source of truth. Even if this
 // migration is replayed against a DB whose schema_migrations was wiped, no
 // duplicate (user_id, permission, scope) rows are inserted.
-var ap0BisMessageRead = Migration{
+var bisMessageRead = Migration{
 	Version: 8,
 	Name:    "ap_0_bis_message_read",
 	Up: func(tx *gorm.DB) error {

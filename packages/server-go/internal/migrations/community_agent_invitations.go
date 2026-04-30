@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// cm40AgentInvitations is migration v3 — Phase 2 / CM-4.0 schema landing.
+// agentInvitations is migration v3 — Phase 2 / CM-4.0 schema landing.
 //
 // Blueprint: concept-model.md §4.2 跨 org 邀请 agent 进 channel.
 //
@@ -25,7 +25,7 @@ import "gorm.io/gorm"
 // CM-4.0 严格边界:
 //   - 仅落表 + 状态机 helper + 单测.
 //   - 不写 HTTP handler / BPP frame / client UI / API — 留给 CM-4.1.
-var cm40AgentInvitations = Migration{
+var agentInvitations = Migration{
 	Version: 3,
 	Name:    "cm_4_0_agent_invitations",
 	Up: func(tx *gorm.DB) error {

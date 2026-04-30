@@ -169,7 +169,7 @@ func TestHB_SignPayloadEd25519Roundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("genkey: %v", err)
 	}
-	h := &api.HB1PluginManifestHandler{SigningKey: priv}
+	h := &api.PluginManifestHandler{SigningKey: priv}
 	payload := api.PluginManifestPayload{
 		ManifestVersion: 1,
 		IssuedAt:        1700000000000,

@@ -23,7 +23,7 @@ func runAP31(t *testing.T, db *gorm.DB) {
 		t.Fatalf("seed user_permissions: %v", err)
 	}
 	e := New(db)
-	e.Register(ap31UserPermissionsOrg)
+	e.Register(userPermissionsOrg)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run ap_3_1: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestAP31_Idempotent(t *testing.T) {
 	runAP31(t, db)
 
 	e := New(db)
-	e.Register(ap31UserPermissionsOrg)
+	e.Register(userPermissionsOrg)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run ap_3_1: %v", err)
 	}

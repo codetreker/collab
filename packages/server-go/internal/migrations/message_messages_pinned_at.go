@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// dm101MessagesPinnedAt is migration v=45 — Phase 5+ / DM-10.1.
+// messagesPinnedAt is migration v=45 — Phase 5+ / DM-10.1.
 //
 // Blueprint锚: dm-model.md §3 (per-user message layout, future v2 split).
 // Spec: docs/implementation/modules/dm-10-spec.md §0 立场 ① + §1 拆段.
@@ -38,7 +38,7 @@ import "gorm.io/gorm"
 // v=36 + dm-7 v=34 + al-7 v=33 跨链承袭.
 //
 // v0 stance: forward-only, no Down().
-var dm101MessagesPinnedAt = Migration{
+var messagesPinnedAt = Migration{
 	Version: 45,
 	Name:    "dm_10_1_messages_pinned_at",
 	Up: func(tx *gorm.DB) error {

@@ -47,7 +47,7 @@ func TestCM_CreatesOrganizationsTable(t *testing.T) {
 	seedLegacyTables(t, db)
 
 	e := New(db)
-	e.Register(cm11Organizations)
+	e.Register(organizations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestCM_AddsOrgIDToResourceTables(t *testing.T) {
 	seedLegacyTables(t, db)
 
 	e := New(db)
-	e.Register(cm11Organizations)
+	e.Register(organizations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestCM_CreatesOrgIDIndexes(t *testing.T) {
 	seedLegacyTables(t, db)
 
 	e := New(db)
-	e.Register(cm11Organizations)
+	e.Register(organizations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestCM11_IsIdempotentOnRerun(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		e := New(db)
-		e.Register(cm11Organizations)
+		e.Register(organizations)
 		if err := e.Run(0); err != nil {
 			t.Fatalf("run #%d: %v", i+1, err)
 		}

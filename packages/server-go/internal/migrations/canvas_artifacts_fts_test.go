@@ -11,8 +11,8 @@ import (
 func runCV61(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv61ArtifactsFTS)
+	e.Register(artifacts)
+	e.Register(artifactsFTS)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run cv_6_1: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestCV_BackfillExistingRows(t *testing.T) {
 	db := openMem(t)
 	// Run only CV-1.1 first.
 	e1 := New(db)
-	e1.Register(cv11Artifacts)
+	e1.Register(artifacts)
 	if err := e1.Run(0); err != nil {
 		t.Fatalf("run cv_1_1: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestCV_BackfillExistingRows(t *testing.T) {
 	}
 	// Now run v=36 — should backfill.
 	e2 := New(db)
-	e2.Register(cv61ArtifactsFTS)
+	e2.Register(artifactsFTS)
 	if err := e2.Run(0); err != nil {
 		t.Fatalf("run cv_6_1: %v", err)
 	}
@@ -181,8 +181,8 @@ func TestCV61_Idempotent(t *testing.T) {
 	runCV61(t, db)
 
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv61ArtifactsFTS)
+	e.Register(artifacts)
+	e.Register(artifactsFTS)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run cv_6_1: %v", err)
 	}

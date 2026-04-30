@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// cv61ArtifactsFTS is migration v=36 — Phase 5+ / CV-6.1.
+// artifactsFTS is migration v=36 — Phase 5+ / CV-6.1.
 //
 // Blueprint锚: `canvas-vision.md` §1.4 (artifact 集合, "首屏快读") + 整体
 // 技术栈 SQLite SSOT 字面承袭 (不另起 elasticsearch / opensearch /
@@ -40,7 +40,7 @@ import "gorm.io/gorm"
 // in flight) → ap_2_1 v=30 (AP-2 #525 merged) → cv_3_v2 v=31 (CV-3 v2
 // #528 in flight) → cv_6_1 **v=36** (本 migration). registry.go 字面锁;
 // 谁先 merge 谁拿号顺位.
-var cv61ArtifactsFTS = Migration{
+var artifactsFTS = Migration{
 	Version: 36,
 	Name:    "cv_6_1_artifacts_fts",
 	Up: func(tx *gorm.DB) error {

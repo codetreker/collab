@@ -7,9 +7,9 @@
 // #558 + AL-7.1 + 跨七 milestone ALTER ADD nullable 同模式; CHN-14 第八处).
 //
 // Public surface:
-//   - CHN14DescriptionHistoryHandler{Store, Logger}
-//   - (h *CHN14DescriptionHistoryHandler) RegisterUserRoutes(mux, authMw)
-//   - (h *CHN14DescriptionHistoryHandler) RegisterAdminRoutes(mux, adminMw)
+//   - ChannelDescriptionHistoryHandler{Store, Logger}
+//   - (h *ChannelDescriptionHistoryHandler) RegisterUserRoutes(mux, authMw)
+//   - (h *ChannelDescriptionHistoryHandler) RegisterAdminRoutes(mux, adminMw)
 //
 // 反约束 (chn-14-spec.md §0):
 //   - 立场 ③ owner-only — user-rail GET 反向断 caller == channel.CreatedBy
@@ -26,17 +26,17 @@ import (
 	"borgee-server/internal/store"
 )
 
-// CHN14DescriptionHistoryHandler hosts the user-rail and admin-rail GET
+// ChannelDescriptionHistoryHandler hosts the user-rail and admin-rail GET
 // endpoints for channel description edit history. user-rail is owner-only;
 // admin-rail is readonly only (no PATCH/DELETE — admin god-mode 不挂).
-type CHN14DescriptionHistoryHandler struct {
+type ChannelDescriptionHistoryHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterUserRoutes wires GET /api/v1/channels/{channelId}/description/history
 // behind authMw. user-rail owner-only (立场 ② owner-only ACL 锁链第 21 处).
-func (h *CHN14DescriptionHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *ChannelDescriptionHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/channels/{channelId}/description/history",
 		authMw(http.HandlerFunc(h.handleUserGet)))
 }
@@ -44,7 +44,7 @@ func (h *CHN14DescriptionHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, 
 // RegisterAdminRoutes wires GET /admin-api/v1/channels/{channelId}/description/history
 // behind adminMw. admin readonly — no PATCH/DELETE on this path (反向
 // grep 守门; admin god-mode ADM-0 §1.3 红线 — admin 看不能改).
-func (h *CHN14DescriptionHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
+func (h *ChannelDescriptionHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /admin-api/v1/channels/{channelId}/description/history",
 		adminMw(http.HandlerFunc(h.handleAdminGet)))
 }
@@ -53,7 +53,7 @@ func (h *CHN14DescriptionHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux,
 //
 // 立场 ②: caller ≠ channel.CreatedBy → 403 (member-level reject). 历史空时
 // 返 `[]`. HappyPath 返 JSON array (server-side store 层 pre-normalized).
-func (h *CHN14DescriptionHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
+func (h *ChannelDescriptionHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return
@@ -86,7 +86,7 @@ func (h *CHN14DescriptionHistoryHandler) handleUserGet(w http.ResponseWriter, r 
 // handleAdminGet — GET /admin-api/v1/channels/{channelId}/description/history.
 //
 // admin readonly. 立场 ② 反约束: 不挂 PATCH/DELETE (反向 grep 守门).
-func (h *CHN14DescriptionHistoryHandler) handleAdminGet(w http.ResponseWriter, r *http.Request) {
+func (h *ChannelDescriptionHistoryHandler) handleAdminGet(w http.ResponseWriter, r *http.Request) {
 	a := admin.AdminFromContext(r.Context())
 	if a == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")

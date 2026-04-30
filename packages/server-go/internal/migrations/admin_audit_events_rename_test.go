@@ -23,11 +23,11 @@ func runADM31(t *testing.T, db *gorm.DB) {
 		t.Fatalf("seed user_permissions: %v", err)
 	}
 	e := New(db)
-	e.Register(adm21AdminActions)
-	e.Register(ap21UserPermissionsRevoked)
-	e.Register(bpp81AdminActionsPluginActions)
-	e.Register(al71AdminActionsArchivedAt)
-	e.Register(adm31AuditEventsRename)
+	e.Register(adminActions)
+	e.Register(userPermissionsRevoked)
+	e.Register(adminActionsPluginActions)
+	e.Register(adminActionsArchivedAt)
+	e.Register(auditEventsRename)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run adm_3_1 chain: %v", err)
 	}
@@ -121,8 +121,8 @@ func TestADM_ViewInsertRoutedToTable(t *testing.T) {
 // migration must be registered at v=43 (team-lead 占号 reservation).
 func TestADM_VersionIs43(t *testing.T) {
 	t.Parallel()
-	if adm31AuditEventsRename.Version != 43 {
-		t.Errorf("ADM-3.1 version expected 43, got %d", adm31AuditEventsRename.Version)
+	if auditEventsRename.Version != 43 {
+		t.Errorf("ADM-3.1 version expected 43, got %d", auditEventsRename.Version)
 	}
 }
 
@@ -136,7 +136,7 @@ func TestADM31_Idempotent(t *testing.T) {
 
 	// Re-run only the rename migration — must skip cleanly.
 	e := New(db)
-	e.Register(adm31AuditEventsRename)
+	e.Register(auditEventsRename)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("idempotent re-run: %v", err)
 	}

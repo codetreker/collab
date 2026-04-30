@@ -5,8 +5,8 @@
 // Spec: docs/implementation/modules/al-7-spec.md §1 拆段 AL-7.2 立场 ②③.
 //
 // Public surface:
-//   - AL7AuditRetentionHandler{Store, Logger}
-//   - (h *AL7AuditRetentionHandler) RegisterAdminRoutes(mux, adminMw)
+//   - AgentRetentionOverrideHandler{Store, Logger}
+//   - (h *AgentRetentionOverrideHandler) RegisterAdminRoutes(mux, adminMw)
 //
 // 反约束 (al-7-spec.md §0 + 立场 ②③):
 //   - admin-rail only — RegisterAdminRoutes 走 adminMw (admin cookie middleware
@@ -27,19 +27,19 @@ import (
 	"borgee-server/internal/store"
 )
 
-// AL7AuditRetentionHandler hosts the admin-rail POST endpoint that
+// AgentRetentionOverrideHandler hosts the admin-rail POST endpoint that
 // (a) clamps + validates the proposed retention window and (b) writes
 // one admin_actions audit row so the override is visible in the existing
 // /admin-api/v1/audit-log feed (no new endpoint, 立场 ① 不裂表).
-type AL7AuditRetentionHandler struct {
+type AgentRetentionOverrideHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterAdminRoutes wires the admin-rail endpoint behind adminMw.
 // 立场 ③: admin-rail only. user-rail (`/api/v1/...`) 不挂 — 反向 grep
-// 在 user-rail handler 0 hit (ADM2Handler.RegisterUserRoutes 不挂此 path).
-func (h *AL7AuditRetentionHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
+// 在 user-rail handler 0 hit (AdminEndpointsHandler.RegisterUserRoutes 不挂此 path).
+func (h *AgentRetentionOverrideHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
 	mux.Handle("POST /admin-api/v1/audit-retention/override",
 		adminMw(http.HandlerFunc(h.handleOverride)))
 }
@@ -54,7 +54,7 @@ func (h *AL7AuditRetentionHandler) RegisterAdminRoutes(mux *http.ServeMux, admin
 // nil 401 → JSON decode → clamp → InsertAdminAction → response).
 // 立场 ⑥ 字面单源 — runtime hot-mutate 留 v3, v0 仅留痕 (RetentionSweeper
 // 窗口仍 compile-time const RetentionDays).
-func (h *AL7AuditRetentionHandler) handleOverride(w http.ResponseWriter, r *http.Request) {
+func (h *AgentRetentionOverrideHandler) handleOverride(w http.ResponseWriter, r *http.Request) {
 	writeRetentionOverride(w, r, h.Store, h.Logger,
 		"al7.override",
 		auth.ActionAuditRetentionOverride,

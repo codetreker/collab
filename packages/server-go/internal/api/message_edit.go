@@ -36,18 +36,18 @@ import (
 	"borgee-server/internal/store"
 )
 
-// DM4MessageEditHandler is the DM-4.1 PATCH endpoint dispatcher.
+// MessageEditHandler is the DM-4.1 PATCH endpoint dispatcher.
 // Delegates to MessageHandler.Store + Hub for the actual edit + event
 // broadcast (复用 PUT /api/v1/messages/{id} 既有 store 层 helpers, 仅
 // 加 DM-only path validation 包裹).
-type DM4MessageEditHandler struct {
+type MessageEditHandler struct {
 	Store  *store.Store
 	Hub    EventBroadcaster
 	Logger *slog.Logger
 }
 
 // RegisterRoutes wires PATCH /api/v1/channels/{channelId}/messages/{messageId}.
-func (h *DM4MessageEditHandler) RegisterRoutes(mux *http.ServeMux,
+func (h *MessageEditHandler) RegisterRoutes(mux *http.ServeMux,
 	authMw func(http.Handler) http.Handler) {
 	mux.Handle("PATCH /api/v1/channels/{channelId}/messages/{messageId}",
 		authMw(http.HandlerFunc(h.handleEdit)))
@@ -68,7 +68,7 @@ func (h *DM4MessageEditHandler) RegisterRoutes(mux *http.ServeMux,
 //     RT-3 fan-out 自动多端覆盖.
 //
 // Returns 200 with {message} on success.
-func (h *DM4MessageEditHandler) handleEdit(w http.ResponseWriter, r *http.Request) {
+func (h *MessageEditHandler) handleEdit(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return

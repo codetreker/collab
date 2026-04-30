@@ -6,8 +6,8 @@
 // 拆段 HB-5.2 立场 ②③.
 //
 // Public surface:
-//   - HB5HeartbeatRetentionHandler{Store, Logger}
-//   - (h *HB5HeartbeatRetentionHandler) RegisterAdminRoutes(mux, adminMw)
+//   - HostRetentionOverrideHandler{Store, Logger}
+//   - (h *HostRetentionOverrideHandler) RegisterAdminRoutes(mux, adminMw)
 //
 // 反约束 (hb-5-spec.md §0 + 立场 ②③):
 //   - admin-rail only — RegisterAdminRoutes 走 adminMw; user-rail 不挂.
@@ -28,18 +28,18 @@ import (
 	"borgee-server/internal/store"
 )
 
-// HB5HeartbeatRetentionHandler hosts the admin-rail POST endpoint that
+// HostRetentionOverrideHandler hosts the admin-rail POST endpoint that
 // validates the proposed heartbeat retention window and writes one
 // admin_actions audit row (reusing AL-7 既有 action; metadata.target=
 // 'heartbeat' 二选一字面区分).
-type HB5HeartbeatRetentionHandler struct {
+type HostRetentionOverrideHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
 
 // RegisterAdminRoutes wires the admin-rail endpoint behind adminMw.
 // 立场 ③: admin-rail only.
-func (h *HB5HeartbeatRetentionHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
+func (h *HostRetentionOverrideHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
 	mux.Handle("POST /admin-api/v1/heartbeat-retention/override",
 		adminMw(http.HandlerFunc(h.handleOverride)))
 }
@@ -53,7 +53,7 @@ func (h *HB5HeartbeatRetentionHandler) RegisterAdminRoutes(mux *http.ServeMux, a
 // (admin_retention_helper.go) — al_7 / hb_5 共享 5-step skeleton. metadata.
 // target='heartbeat' 字面区分 (立场 ②) 通过 extraMeta 传入; response 加
 // target 字段 (HB-5 acceptance 锚 byte-identical).
-func (h *HB5HeartbeatRetentionHandler) handleOverride(w http.ResponseWriter, r *http.Request) {
+func (h *HostRetentionOverrideHandler) handleOverride(w http.ResponseWriter, r *http.Request) {
 	writeRetentionOverride(w, r, h.Store, h.Logger,
 		"hb5.override",
 		auth.ActionAuditRetentionOverride,

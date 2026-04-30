@@ -23,9 +23,9 @@ func runBPP81(t *testing.T, db *gorm.DB) {
 		t.Fatalf("seed user_permissions: %v", err)
 	}
 	e := New(db)
-	e.Register(adm21AdminActions)
-	e.Register(ap21UserPermissionsRevoked)
-	e.Register(bpp81AdminActionsPluginActions)
+	e.Register(adminActions)
+	e.Register(userPermissionsRevoked)
+	e.Register(adminActionsPluginActions)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run bpp_8_1 chain: %v", err)
 	}
@@ -88,10 +88,10 @@ func TestBPP_RejectsUnknownAction(t *testing.T) {
 // TestBPP_VersionIs31 — registry literal lock.
 func TestBPP_VersionIs31(t *testing.T) {
 	t.Parallel()
-	if got, want := bpp81AdminActionsPluginActions.Version, 31; got != want {
+	if got, want := adminActionsPluginActions.Version, 31; got != want {
 		t.Errorf("BPP-8.1 Version drift: got %d, want %d", got, want)
 	}
-	if got, want := bpp81AdminActionsPluginActions.Name, "bpp_8_1_admin_actions_plugin_actions"; got != want {
+	if got, want := adminActionsPluginActions.Name, "bpp_8_1_admin_actions_plugin_actions"; got != want {
 		t.Errorf("BPP-8.1 Name drift: got %q, want %q", got, want)
 	}
 	// Confirm it's registered in All slice.

@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// adm03UsersRoleCollapse is migration v=10 — Phase 2 / ADM-0.3 close-out.
+// usersRoleCollapse is migration v=10 — Phase 2 / ADM-0.3 close-out.
 //
 // Blueprint: docs/implementation/modules/adm-0-review-checklist.md §ADM-0.3
 // (line 115-149). admin-model.md §1.2: admins live exclusively in the
@@ -43,7 +43,7 @@ import "gorm.io/gorm"
 // tracked separately (forward-only audit row).
 //
 // v0 stance: forward-only, no Down(). "delete db and rebuild" contract.
-var adm03UsersRoleCollapse = Migration{
+var usersRoleCollapse = Migration{
 	Version: 10,
 	Name:    "adm_0_3_users_role_collapse",
 	Up: func(tx *gorm.DB) error {

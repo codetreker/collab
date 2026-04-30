@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// schemaForADM03 stands up the trimmed surface adm03UsersRoleCollapse needs
+// schemaForADM03 stands up the trimmed surface usersRoleCollapse needs
 // (users + admins + user_permissions; sessions intentionally omitted to
 // exercise the hasTable gate for the future-only sessions branch).
 func schemaForADM03(t *testing.T, db *gorm.DB) {
@@ -64,7 +64,7 @@ func seedAdmin(t *testing.T, db *gorm.DB, id, email, hash string) {
 
 func runADM03(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := adm03UsersRoleCollapse.Up(db); err != nil {
+	if err := usersRoleCollapse.Up(db); err != nil {
 		t.Fatalf("adm-0.3 up: %v", err)
 	}
 }
@@ -195,7 +195,7 @@ func TestADM_NoUsersTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	// No users table at all.
-	if err := adm03UsersRoleCollapse.Up(db); err != nil {
+	if err := usersRoleCollapse.Up(db); err != nil {
 		t.Fatalf("expected no-op on missing users table: %v", err)
 	}
 }

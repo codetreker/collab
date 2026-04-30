@@ -5,8 +5,8 @@
 // docs/implementation/modules/hb-1-spec.md v1 (战马D 升级 战马A v0 #491).
 //
 // Public surface:
-//   - HB1PluginManifestHandler{Logger, SigningKey}
-//   - (h *HB1PluginManifestHandler) RegisterRoutes(mux, authMw)
+//   - PluginManifestHandler{Logger, SigningKey}
+//   - (h *PluginManifestHandler) RegisterRoutes(mux, authMw)
 //   - PluginManifestEntries (const slice — 0 schema 立场 ②)
 //   - HB1Reason* 7 字面 const (跟 spec §3.2 byte-identical)
 //
@@ -107,9 +107,9 @@ var PluginManifestEntries = []PluginManifestEntry{
 	},
 }
 
-// HB1PluginManifestHandler hosts the user-rail GET endpoint that returns
+// PluginManifestHandler hosts the user-rail GET endpoint that returns
 // signed plugin manifest for install-butler (HB-1b Rust client) consumption.
-type HB1PluginManifestHandler struct {
+type PluginManifestHandler struct {
 	Logger *slog.Logger
 	// SigningKey is the ed25519 private key used to sign manifest payload
 	// (立场 ④). nil = signature 走空字面占位 (test seam; production 必填).
@@ -125,14 +125,14 @@ const defaultManifestValidityMs int64 = 24 * 60 * 60 * 1000
 // RegisterRoutes wires GET /api/v1/plugin-manifest behind authMw (Bearer
 // api-key 鉴权; 立场 ①). admin god-mode 不挂 — 无 RegisterAdminRoutes
 // (ADM-0 §1.3 红线).
-func (h *HB1PluginManifestHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *PluginManifestHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/plugin-manifest",
 		authMw(http.HandlerFunc(h.handleGet)))
 }
 
 // handleGet — GET /api/v1/plugin-manifest. Bearer api-key (authMw 已守).
 // Returns signed manifest payload byte-identical 跟 content-lock §1 shape.
-func (h *HB1PluginManifestHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+func (h *PluginManifestHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return
@@ -182,7 +182,7 @@ func (h *HB1PluginManifestHandler) handleGet(w http.ResponseWriter, r *http.Requ
 	writeJSONResponse(w, http.StatusOK, payload)
 }
 
-func (h *HB1PluginManifestHandler) expiresInMs() int64 {
+func (h *PluginManifestHandler) expiresInMs() int64 {
 	if h.ExpiresInMs > 0 {
 		return h.ExpiresInMs
 	}
@@ -193,7 +193,7 @@ func (h *HB1PluginManifestHandler) expiresInMs() int64 {
 // whitespace) and signs with ed25519. Returns the raw signature bytes.
 // When SigningKey is nil (test seam), returns a fixed test signature so
 // shape is preserved without crypto setup.
-func (h *HB1PluginManifestHandler) signPayload(payload PluginManifestPayload) ([]byte, error) {
+func (h *PluginManifestHandler) signPayload(payload PluginManifestPayload) ([]byte, error) {
 	// Build canonical JSON: marshal payload with empty Signature, sort
 	// per encoding/json default (Go map ordering insertion-stable on
 	// struct fields; struct serializes fields in declared order which is

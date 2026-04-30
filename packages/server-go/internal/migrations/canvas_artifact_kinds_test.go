@@ -14,8 +14,8 @@ import (
 func runCV31(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv31ArtifactKinds)
+	e.Register(artifacts)
+	e.Register(artifactKinds)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run cv_3_1: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestCV_PreservesMarkdownRowsAcrossRebuild(t *testing.T) {
 	db := openMem(t)
 	// Run only CV-1.1 first so we can seed pre-CV-3.1 data, then CV-3.1.
 	e := New(db)
-	e.Register(cv11Artifacts)
+	e.Register(artifacts)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run cv_1_1: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestCV_PreservesMarkdownRowsAcrossRebuild(t *testing.T) {
 	}
 
 	e2 := New(db)
-	e2.Register(cv31ArtifactKinds)
+	e2.Register(artifactKinds)
 	if err := e2.Run(0); err != nil {
 		t.Fatalf("run cv_3_1: %v", err)
 	}
@@ -169,8 +169,8 @@ func TestCV31_Idempotent(t *testing.T) {
 	// Second engine, same registry — Run must succeed (no-op via
 	// schema_migrations.applied gate).
 	e := New(db)
-	e.Register(cv11Artifacts)
-	e.Register(cv31ArtifactKinds)
+	e.Register(artifacts)
+	e.Register(artifactKinds)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run cv_3_1: %v", err)
 	}

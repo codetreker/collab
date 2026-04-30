@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// cv11Artifacts is migration v=13 — Phase 4 / CV-1.1.
+// artifacts is migration v=13 — Phase 4 / CV-1.1.
 //
 // Blueprint锚: `canvas-vision.md` §0 (channel 围 artifact 协作) +
 // §1.1-§1.6 (D-lite + workspace per channel + Markdown ONLY v1) + §2
@@ -62,7 +62,7 @@ import (
 // v0 stance: forward-only, no Down(). 表本身 v0 新增, IF NOT EXISTS
 // 守 idempotency. SQLite FK 默认禁用, channel_id / artifact_id 走逻辑
 // FK (跟 al_3_1 / cm_4_0 同模式).
-var cv11Artifacts = Migration{
+var artifacts = Migration{
 	Version: 13,
 	Name:    "cv_1_1_artifacts",
 	Up: func(tx *gorm.DB) error {

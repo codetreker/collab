@@ -68,10 +68,10 @@ func TestADM_LoginUnique(t *testing.T) {
 // 当前最大 v + 1, 单调递增, 不准跳号).
 func TestADM_VersionPosition(t *testing.T) {
 	t.Parallel()
-	if adm01Admins.Version != 4 {
-		t.Fatalf("adm_0_1_admins version = %d, want 4", adm01Admins.Version)
+	if admins.Version != 4 {
+		t.Fatalf("adm_0_1_admins version = %d, want 4", admins.Version)
 	}
-	if adm01Admins.Name != "adm_0_1_admins" {
-		t.Fatalf("adm_0_1_admins name = %q, want \"adm_0_1_admins\"", adm01Admins.Name)
+	if admins.Name != "adm_0_1_admins" {
+		t.Fatalf("adm_0_1_admins name = %q, want \"adm_0_1_admins\"", admins.Name)
 	}
 }

@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// al71AdminActionsArchivedAt is migration v=33 — Phase 6 / AL-7.1.
+// adminActionsArchivedAt is migration v=33 — Phase 6 / AL-7.1.
 //
 // Blueprint锚: `admin-model.md` §3 retention + ADM-2.1 #484 forward-only
 // audit. Spec brief: docs/implementation/modules/al-7-spec.md §0 立场 ①
@@ -39,7 +39,7 @@ import "gorm.io/gorm"
 // merge) → AL-7.1 **v=33** (本 migration). registry.go 字面锁; 顺位.
 //
 // v0 stance: forward-only, no Down().
-var al71AdminActionsArchivedAt = Migration{
+var adminActionsArchivedAt = Migration{
 	Version: 33,
 	Name:    "al_7_1_admin_actions_archived_at",
 	Up: func(tx *gorm.DB) error {

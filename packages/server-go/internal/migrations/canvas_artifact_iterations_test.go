@@ -15,7 +15,7 @@ import (
 func runCV41(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	e := New(db)
-	e.Register(cv41ArtifactIterations)
+	e.Register(artifactIterations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run cv_4_1: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestCV41_Idempotent(t *testing.T) {
 	db := openMem(t)
 	runCV41(t, db)
 	e := New(db)
-	e.Register(cv41ArtifactIterations)
+	e.Register(artifactIterations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("re-run cv_4_1: %v", err)
 	}

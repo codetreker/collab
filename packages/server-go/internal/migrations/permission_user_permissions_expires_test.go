@@ -23,7 +23,7 @@ func runAP11(t *testing.T, db *gorm.DB) {
 		t.Fatalf("seed user_permissions: %v", err)
 	}
 	e := New(db)
-	e.Register(ap11UserPermissionsExpires)
+	e.Register(userPermissionsExpires)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("run ap_1_1: %v", err)
 	}

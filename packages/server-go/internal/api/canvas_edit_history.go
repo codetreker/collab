@@ -17,9 +17,9 @@
 // to avoid confusion with DM-7's generic /messages/{id}/edit-history.
 //
 // Public surface:
-//   - CV15CommentEditHistoryHandler{Store, Logger}
-//   - (h *CV15CommentEditHistoryHandler) RegisterUserRoutes(mux, authMw)
-//   - (h *CV15CommentEditHistoryHandler) RegisterAdminRoutes(mux, adminMw)
+//   - CanvasCommentEditHistoryHandler{Store, Logger}
+//   - (h *CanvasCommentEditHistoryHandler) RegisterUserRoutes(mux, authMw)
+//   - (h *CanvasCommentEditHistoryHandler) RegisterAdminRoutes(mux, adminMw)
 //
 // 反约束 (cv-15-spec.md §0):
 //   - 立场 ① 0 schema — 复用 messages.edit_history (DM-7.1 v=34); 反向
@@ -47,11 +47,11 @@ const (
 	CommentEditHistoryErrCodeMessageNotFound    = "comment.message_not_found"
 )
 
-// CV15CommentEditHistoryHandler hosts the user-rail and admin-rail GET
+// CanvasCommentEditHistoryHandler hosts the user-rail and admin-rail GET
 // endpoints for artifact comment edit history. user-rail is sender-only
 // (the comment author); admin-rail is readonly only (no PATCH/DELETE —
 // admin god-mode 不挂, ADM-0 §1.3 红线).
-type CV15CommentEditHistoryHandler struct {
+type CanvasCommentEditHistoryHandler struct {
 	Store  *store.Store
 	Logger *slog.Logger
 }
@@ -59,7 +59,7 @@ type CV15CommentEditHistoryHandler struct {
 // RegisterUserRoutes wires GET /api/v1/channels/{channelId}/messages/
 // {messageId}/comment-edit-history behind authMw. user-rail sender-only
 // (立场 ② owner-only ACL 锁链第 22 处).
-func (h *CV15CommentEditHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
+func (h *CanvasCommentEditHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/v1/channels/{channelId}/messages/{messageId}/comment-edit-history",
 		authMw(http.HandlerFunc(h.handleUserGet)))
 }
@@ -67,7 +67,7 @@ func (h *CV15CommentEditHistoryHandler) RegisterUserRoutes(mux *http.ServeMux, a
 // RegisterAdminRoutes wires GET /admin-api/v1/messages/{messageId}/comment-edit-history
 // behind adminMw. admin readonly — no PATCH/DELETE/PUT on this path
 // (反向 grep 守门; admin god-mode ADM-0 §1.3 红线).
-func (h *CV15CommentEditHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
+func (h *CanvasCommentEditHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, adminMw func(http.Handler) http.Handler) {
 	mux.Handle("GET /admin-api/v1/messages/{messageId}/comment-edit-history",
 		adminMw(http.HandlerFunc(h.handleAdminGet)))
 }
@@ -80,7 +80,7 @@ func (h *CV15CommentEditHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, 
 //  3. content_type == "artifact_comment" (else 404 comment.not_artifact_comment).
 //  4. Owner-only — sender == current user (else 403 comment.not_owner).
 //  5. Returns {history: [...]} with [] for empty/null.
-func (h *CV15CommentEditHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
+func (h *CanvasCommentEditHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
 		return
@@ -112,7 +112,7 @@ func (h *CV15CommentEditHistoryHandler) handleUserGet(w http.ResponseWriter, r *
 // content_type filter still applies — admin querying a non-artifact_comment
 // message via this endpoint gets 404 (so DM-7 vs CV-15 endpoints stay
 // disjoint by message kind).
-func (h *CV15CommentEditHistoryHandler) handleAdminGet(w http.ResponseWriter, r *http.Request) {
+func (h *CanvasCommentEditHistoryHandler) handleAdminGet(w http.ResponseWriter, r *http.Request) {
 	a := admin.AdminFromContext(r.Context())
 	if a == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")

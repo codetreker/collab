@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// adm22ImpersonationGrants is migration v=23 — Phase 4 / ADM-2.2.
+// impersonationGrants is migration v=23 — Phase 4 / ADM-2.2.
 //
 // Blueprint锚: `admin-model.md` §1.4 (L91 "被 impersonate 用户" 行 — 红色横幅 +
 // 24h 倒计时) + §3 (impersonation_grants 数据模型片段, "由 user 创建, admin
@@ -49,7 +49,7 @@ import (
 //
 // v0 stance: forward-only, no Down(). 表本身 v0 新增, IF NOT EXISTS 守
 // idempotency.
-var adm22ImpersonationGrants = Migration{
+var impersonationGrants = Migration{
 	Version: 23,
 	Name:    "adm_2_2_impersonation_grants",
 	Up: func(tx *gorm.DB) error {

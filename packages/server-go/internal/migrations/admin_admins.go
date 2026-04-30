@@ -2,7 +2,7 @@ package migrations
 
 import "gorm.io/gorm"
 
-// adm01Admins is migration v4 — Phase 2 / ADM-0.1 schema landing.
+// admins is migration v4 — Phase 2 / ADM-0.1 schema landing.
 //
 // Blueprint: admin-model.md §1.2 + §3 — admin 走独立 `admins` 表,
 // 永不出现在 users 表。R3 PR #188 + implementation R3 PR #189 锁定。
@@ -25,7 +25,7 @@ import "gorm.io/gorm"
 //
 // v0 stance: forward-only, no Down(). Per migrations.go contract: "v0 is
 // 'delete db and rebuild'; v1+ relies on backups."
-var adm01Admins = Migration{
+var admins = Migration{
 	Version: 4,
 	Name:    "adm_0_1_admins",
 	Up: func(tx *gorm.DB) error {
