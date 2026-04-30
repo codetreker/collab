@@ -24,4 +24,11 @@
 - [x] G0.5 current sync CI lint 工作 — 证据: [`docs/evidence/g0.5/README.md`](../evidence/g0.5/README.md) (双向闭环: fail 路径 PR #170 第一推送拒绝 + pass 路径 #170-#173 全绿; exclude_globs 防纯测试 PR 误伤)
 - [x] **G0.audit** v0 代码债 audit 表本 Phase 行已登记 — 飞马 (README §audit: schema_migrations 框架 DONE + main flaky test TODO 已入表)
 
+
+## 更新日志归档 (历史 changelog 迁入)
+
+| 日期 | 更新人 | 变化 |
+|------|--------|------|
+| 2026-04-28 | 烈马 | Phase 0 闭环: PR #169-#173 全 merged + Gates G0.1-G0.5 + G0.audit 全 ✅, G0.5 evidence 落 `docs/evidence/g0.5/README.md` |
+
 ---

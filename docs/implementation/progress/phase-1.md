@@ -26,4 +26,11 @@
 - [x] G1.5 UI 不泄漏 org_id (合约测试) — 烈马/野马 / 证据: 用户面 6 端点 + 2 响应体 leak-scan 全部不含 `org_id` (GET /api/v1/users/me, /admin-api/v1/auth/me, /admin-api/v1/users, /api/v1/agents; POST /api/v1/auth/register, /api/v1/agents 响应); /admin-api/v1/stats by_org 是 admin-only 故意暴露, 白名单
 - [x] **G1.audit** v0 代码债 audit 行已登记 (organizations 删库 / users.org_id 加列) — 飞马 (PR #182)
 
+
+## 更新日志归档 (历史 changelog 迁入)
+
+| 日期 | 更新人 | 变化 |
+|------|--------|------|
+| 2026-04-28 | 烈马 | Phase 1 收口: CM-1 (PR #176/#178/#179/#180) + AP-0 (#177) + G1.audit (#182) 全 merged; Gates G1.1/G1.2/G1.3/G1.5 ✅ (烈马本地 fresh DB SQL 直查 + 真实 HTTP register/agent E2E + 6 端点 leak-scan); G1.4 ⏸ 待 CM-3 写路径完成后补; Phase 概览改 🔄 4/5 + audit ✅ |
+
 ---

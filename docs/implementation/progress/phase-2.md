@@ -75,4 +75,11 @@
 
 **野马签字**: ___ (日期: ___) | 1 周 dogfood 反馈期截止: ___
 
+
+## 更新日志归档 (历史 changelog 迁入)
+
+| 日期 | 更新人 | 变化 |
+|------|--------|------|
+| 2026-04-28 | 飞马 | D1–D9 flip (audit #212 派活): Phase 1 改 ✅ DONE (G1.4 closed by #208 + #210, CM-3 closed by #208); Phase 2 解封前置 5/6 改 [x] (INFRA-2 #195, ADM-0.1 #197, ADM-0.2 #201, AP-0-bis #206, CM-onboarding #203); ADM-0 总括改 🔄 (ADM-0.3 #63 in progress); RT-0 留 ⏳; 配套 doc 工件 (#205 ADM-0 立场反查 / #211 ADM-1 隐私承诺 / #199 G2.4 截屏 plan) 落 Phase 2 后置区 |
+
 ---

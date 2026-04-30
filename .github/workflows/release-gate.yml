@@ -226,7 +226,13 @@ jobs:
             echo "::error::INFRA-3 立场 ② — PROGRESS.md 跳转锚 $jumpHits < 5 (5 phase 全锚)"
             exit 1
           fi
-          echo "::notice::progress-line-budget PASS — PROGRESS.md $totalLines 行 / 0 长行 / 0 checkbox / $jumpHits 跳转锚 / 5 子文件就位"
+          # ⑥ INFRA-4: phase-4.md 单文件 ≤200 行 (反 phase-4.md 历史 changelog 全堆 wrapper milestone)
+          phase4Lines=$(wc -l < docs/implementation/progress/phase-4.md)
+          if [ "$phase4Lines" -gt 200 ]; then
+            echo "::error::INFRA-4 立场 — progress/phase-4.md 总行 $phase4Lines > 200 (phase-4 wrapper 单文件锁); 历史 changelog 应按 milestone 归位 phase-{0,1,2,3}.md §更新日志归档"
+            exit 1
+          fi
+          echo "::notice::progress-line-budget PASS — PROGRESS.md $totalLines 行 / phase-4.md $phase4Lines 行 / 0 长行 / 0 checkbox / $jumpHits 跳转锚 / 5 子文件就位"
 
       # DL-1.2 (蓝图 data-layer.md §4 B): direct-store import budget.
       # 锁 internal/api/* 直接 import borgee-server/internal/store 文件数 ≤
