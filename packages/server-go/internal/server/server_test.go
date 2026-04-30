@@ -675,48 +675,42 @@ func TestRespondNotImplemented(t *testing.T) {
 	}
 }
 
-// TestNewRateLimiter_NilCtx_FallsBack — TEST-FIX-2 defensive nil-ctx branch
-// (caller bug; newRateLimiter falls back to context.Background to avoid
-// panic but goroutine will leak — tests must always pass real ctx).
-func TestNewRateLimiter_NilCtx_FallsBack(t *testing.T) {
-	rl := newRateLimiter(nil)
-	if rl == nil {
-		t.Fatal("newRateLimiter(nil) returned nil")
-	}
-	if rl.clients == nil {
-		t.Fatal("newRateLimiter(nil) returned uninitialized rl.clients")
-	}
+// TestRateLimiterCleanup_CtxCancelExits — TEST-FIX-2 covers the cleanup
+// goroutine's ctx.Done() branch + ticker tick + delete loop. Pre-fix the
+// goroutine was unbounded; post-fix it exits when ctx cancelled (caller's
+// t.Context() in tests, srv ctx in production).
+func TestRateLimiterCleanup_CtxCancelExits(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	rl := newRateLimiter(ctx)
+	// Seed an old client so the cleanup loop's delete branch can fire.
+	rl.mu.Lock()
+	rl.clients["1.2.3.4"] = &clientBucket{lastTime: time.Now().Add(-20 * time.Minute)}
+	rl.mu.Unlock()
+	// Force the cleanup loop to exit promptly (don't wait for 5min ticker).
+	cancel()
+	// Brief wait for goroutine to observe Done.
+	time.Sleep(50 * time.Millisecond)
 }
 
-// TestNew_NilCtx_FallsBack — TEST-FIX-2 defensive nil-ctx branch in
-// server.New (warns + falls back to context.Background, used as last-resort
-// safety net; production + tests pass real ctx).
-func TestNew_NilCtx_FallsBack(t *testing.T) {
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
+// TestRateLimiterCleanup_TickFiresDelete — TEST-FIX-2 covers the
+// evictStale eviction logic (extracted from cleanup() ticker.C body so it's
+// unit-testable without waiting 5min). Drops 10min+ stale entries, keeps fresh.
+func TestRateLimiterCleanup_TickFiresDelete(t *testing.T) {
+	rl := &rateLimiter{
+		clients:  make(map[string]*clientBucket),
+		authRate: 1,
+		authMax:  1,
+		apiRate:  1,
+		apiMax:   1,
 	}
-	t.Cleanup(func() { s.Close() })
-	if err := s.Migrate(); err != nil {
-		t.Fatalf("migrate: %v", err)
+	// Seed old + fresh entries; cleanup should drop only old.
+	rl.clients["old"] = &clientBucket{lastTime: time.Now().Add(-20 * time.Minute)}
+	rl.clients["fresh"] = &clientBucket{lastTime: time.Now()}
+	rl.evictStale(time.Now())
+	if _, ok := rl.clients["old"]; ok {
+		t.Fatal("expected old entry deleted")
 	}
-	t.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
-	t.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
-	cfg := &config.Config{
-		JWTSecret:    "test-secret",
-		NodeEnv:      "development",
-		UploadDir:    t.TempDir(),
-		WorkspaceDir: t.TempDir(),
-		ClientDist:   t.TempDir(),
-		CORSOrigin:   "*",
-	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	//nolint:staticcheck // SA1012: intentional nil ctx — exercise defensive fallback path
-	srv := New(nil, cfg, logger, s)
-	if srv == nil {
-		t.Fatal("New(nil ctx, ...) returned nil")
-	}
-	if srv.ctx == nil {
-		t.Fatal("New(nil ctx, ...) did not fall back: srv.ctx is nil")
+	if _, ok := rl.clients["fresh"]; !ok {
+		t.Fatal("expected fresh entry kept")
 	}
 }

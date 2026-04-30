@@ -62,15 +62,6 @@ func (s *Server) SetClock(c clock.Clock) {
 }
 
 func New(ctx context.Context, cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
-	if ctx == nil {
-		// Defensive: callers must pass ctx (TEST-FIX-2 — never nil).
-		// Fall back to context.Background() to avoid nil-deref panic but
-		// log a warning so misuse surfaces in dev.
-		if logger != nil {
-			logger.Warn("server.New: nil ctx — falling back to context.Background (TEST-FIX-2: caller should pass real ctx)")
-		}
-		ctx = context.Background()
-	}
 	hub := ws.NewHub(s, logger, cfg)
 
 	// AL-3.2: wire the presence write end so /ws lifecycle hooks can
