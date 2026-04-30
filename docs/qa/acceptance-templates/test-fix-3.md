@@ -1,78 +1,77 @@
-# Acceptance Template — TEST-FIX-3 (race-heavy 拆 + shared fixture + CI timeout, post TEST-FIX-1/2 残余)
+# Acceptance Template — TEST-FIX-3 (race-heavy build tag 隔离 + shared fixture ctx-aware + CI sub-job)
 
-> 跟 TEST-FIX-1 #596 (`t.Parallel()` sub-test 加速) + TEST-FIX-2 #608 (server.New ctx + 3 处 goroutine leak) 互补; TEST-FIX-3 = 残余 race-heavy 包拆 + 共用 fixture 单源 + CI timeout 真验三轨. Spec brief `test-fix-3-spec.md` (待飞马 v0). Owner: 战马C 实施 / 飞马 review / 烈马 验收.
+> 跟 TEST-FIX-1 #596 (`t.Parallel()` sub-test 加速) + TEST-FIX-2 #608 (server.New ctx + 3 处 goroutine leak) 互补; TEST-FIX-3 = race-heavy build tag 隔离 + 共用 fixture 单源 + CI sub-job 真验三轨. Spec brief `test-fix-3-spec.md` v0 (飞马 ✅ APPROVED 0 必修). Owner: 战马C 实施 / 飞马 review / 烈马 验收.
 >
-> **TEST-FIX-3 范围**: 真 production code refactor — 不 skip / 不 mask / 不降 cov, 走"真因修"立场承袭 TEST-FIX-1/2 路径.
+> **TEST-FIX-3 范围**: test infra refactor — 0 production code 改, 不 skip / 不 mask / 不降 cov, 走"真因隔离不吞下"立场承袭 TEST-FIX-1/2 路径.
 
 ## 验收清单
 
-### §1 数据契约 — race-heavy 包拆 + shared fixture 单源 + CI timeout 字面锁
+### §1 数据契约 — race-heavy build tag 隔离 + shared fixture 单源 + CI sub-job 字面锁
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 1.1 race-heavy 包拆段 — 现 `internal/api` 是 race target test 大本营 (TEST-FIX-2 实测 73.5s ≤120s budget); TEST-FIX-3 拆段把 reactions/dm/cv 三大段拆到独立 sub-package 各自 `t.Parallel()` 不打架 (反约束: 拆后 ≤40s race per package) | unit + race | 战马C / 烈马 | `internal/api/reactions/`, `internal/api/dm/`, `internal/api/cv/` 三 sub-package + `go test -race -timeout=60s` 各 ≤40s PASS |
-| 1.2 shared fixture 单源 `internal/testutil/fixture.go::NewTestEnv(t *testing.T) *TestEnv` 抽 5+ 处既有 testutil 散落 setup (反向 grep `testutil\\.NewServer\\|testutil\\.SetupDB\\|testutil\\.NewStore` 在 production test 路径 byte-identical 跟新 NewTestEnv 一致, 改 = 改两处单测锁) | unit + grep | 战马C / 烈马 | `TestTESTFIX3_FixtureByteIdentical` (旧 helper vs 新 NewTestEnv 字面行为对比) + 反向 grep 散落 helper 削减 ≥5 处 |
-| 1.3 CI timeout 字面锁 — `release-gate.yml::go-test-race` step 加 `-timeout=180s` 严守 (反 race CI 真实施 timeout 模糊) + `go-test-cov` 加 `-timeout=300s` (cov 跑全量, 时间宽) | CI yml | 战马C / 飞马 | release-gate.yml step 字面 byte-identical + CI run 真跑 ≤180s race PASS |
+| 1.1 race-heavy build tag 真挂 — TestClosedStoreInternalErrorBranches 11 sub-test 整段 byte-identical 迁到 `closed_store_race_test.go` 走 `//go:build race_heavy` (默认 `go test ./...` 不跑, 主 race job 不再贴近 120s ceiling) | unit + grep | 战马C / 烈马 | ✅ `grep -cE '^//go:build race_heavy' packages/server-go/internal/api/closed_store_race_test.go` ==1 + `grep -c "TestClosedStoreInternalErrorBranches" packages/server-go/internal/api/error_branches_test.go` ==0 + go test -tags=race_heavy 单测 6.6s PASS |
+| 1.2 shared fixture 单源 ctx-aware — `testfixture_test.go::closedStoreFixtureContext(t)` (t.Context() + WithCancel + t.Cleanup 双保险, #608 leak 不复发) | unit + grep | 战马C / 烈马 | ✅ `grep -c 'closedStoreFixtureContext' packages/server-go/internal/api/testfixture_test.go` ≥1 + `grep -cE 't\.Cleanup\(cancel\)' packages/server-go/internal/api/testfixture_test.go` ≥1 |
+| 1.3 CI 字面锁 — `ci.yml::go-test-race` 维持 `-timeout=120s` 不破 (反全局 bump mask) + 新 `go-test-race-heavy` sub-job 真加 `-tags 'sqlite_fts5 race_heavy' -timeout=180s` + `go-test-cov` 加 `race_heavy` tag (cov 路径不带 -race, 安全包含, 不破 84% 阈值) | CI yml | 战马C / 飞马 | ✅ `grep -cE '\-timeout=120s' .github/workflows/ci.yml` ≥1 (主 race 不破) + `grep -cE "tags 'sqlite_fts5 race_heavy'.*timeout=180s" .github/workflows/ci.yml` ≥1 (sub-job 真加) |
 
-### §2 行为不变量 — race fail 解 + race PASS + cov ≥84% 不降 + 全 26 packages 全绿
-
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 2.1 race fail 解 — TEST-FIX-2 #608 后残余 race-heavy 包真拆段 PASS, full server-go race ./... 全 26+ packages PASS (跟 TEST-FIX-2 实测 26 packages PASS 立场承袭 + TEST-FIX-3 拆段后 sub-package 计数 +N) | full race | 战马C / 烈马 | `go test -tags sqlite_fts5 -timeout=180s -race ./...` 全 26+ packages PASS, 各 sub-package ≤40s |
-| 2.2 race PASS ≤180s 严守 — full server-go race ./... 总耗时 ≤180s (跟 TEST-FIX-2 73.5s api 单包 + 拆后各 ≤40s 同级) | timeout enforce | 战马C / 飞马 / 烈马 | CI go-test-race step `-timeout=180s` PASS (run URL 链接) |
-| 2.3 cov ≥84.0% 不降 — coverage threshold byte-identical 不动 (跟 TEST-FIX-2 立场承袭 + 永不降测试覆盖度铁律) | go test -cover | 战马C / 烈马 | `go test -tags sqlite_fts5 -timeout=300s -coverprofile=coverage.out ./...` 出 cov ≥84.0% (CI go-test-cov 真验) |
-| 2.4 既有 558+ vitest + server-go non-race ./... 全绿不破 (Wrapper 立场 — TEST-FIX-3 是 test infra refactor 不动 production behavior) | full test | 战马C / 烈马 | `go test ./...` non-race PASS + `pnpm vitest run` 全 PASS |
-
-### §3 蓝图行为对照 — 不 skip / 不 mask + ctx-aware shutdown 立场承袭 + Go 1.25 t.Context()
+### §2 行为不变量 — race PASS + cov ≥84% 不降 + 主 race 不撞 ceiling
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 3.1 立场承袭 TEST-FIX-1/2 — 不 skip 任何 test (`t.Skip` body 在 production test 0 hit) + 不加 retry/sleep mask (`time.Sleep` mask retry 0 hit) + 不 cherry-pick subset (PR 跑全量 race ./...) | grep | 飞马 / 烈马 | reverse grep `t\\.Skip\\(\\)\\|time\\.Sleep` body 0 hit + spec §0 立场 ① ② ③ 字面承袭 TEST-FIX-2 三立场 |
-| 3.2 ctx-aware shutdown 立场承袭 (TEST-FIX-2 server.New(ctx) + 3 处 leak) — TEST-FIX-3 sub-package 各自 testutil 走 `t.Context()` 自动 cancel (Go 1.25+ pattern), 反 `context.Background()` test infra 散落 | grep | 飞马 / 烈马 | 反向 grep `context\\.Background\\(\\)` 在 testutil/ + sub-package _test.go 0 hit (除 nil-deref fallback wrap 跟 TEST-FIX-2 同精神) |
-| 3.3 race target test 单测保留 (TEST-FIX-1/2 既有 `TestClosedStoreInternalErrorBranches` 11 sub-test 不破) — TEST-FIX-3 拆段不动 target test 字面 byte-identical | inspect | 飞马 / 烈马 | git diff verify error_branches_test.go 0 行 (反约束 TEST-FIX-3 不重写 target test) |
+| 2.1 主 race job 不撞 120s ceiling — race-heavy 11 sub-test 隔离后, ./internal/api 主路径 race 49.8s ≤120s 余量充足 | full race | 战马C / 烈马 | ✅ 实测 `go test -tags=sqlite_fts5 -timeout=120s -race ./internal/api/` 49.8s PASS |
+| 2.2 race-heavy sub-job PASS ≤180s — `closed_store_race_test.go` 11 sub-test 走独立 sub-job timeout 180s | race+tag | 战马C / 飞马 | ✅ 实测 `go test -tags='sqlite_fts5 race_heavy' -timeout=180s -race -run TestClosedStoreInternalErrorBranches ./internal/api/` 6.6s PASS |
+| 2.3 cov ≥84.0% 不降 — go-test-cov 加 race_heavy tag 包含 11 sub-test 覆盖 (永不降测试覆盖度铁律) | go test -cover | 战马C / 烈马 | ✅ 实测 `go test -tags='sqlite_fts5 race_heavy' -timeout=180s -coverprofile=coverage.out ./...` cov 84.0% ≥84% |
+| 2.4 既有 server-go non-race ./... 全绿不破 (Wrapper 立场 — TEST-FIX-3 是 test infra refactor 0 production behavior 改) | full test | 战马C / 烈马 | ✅ `go test -tags='sqlite_fts5 race_heavy' ./...` PASS (cov run 已验) |
 
-### §4 反向断言 — 不 skip / 不 mask + drift 守门 + 跨 milestone 锁
+### §3 蓝图行为对照 — 不 skip / 不 mask + ctx-aware 立场承袭 + Go 1.25 t.Context()
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 4.1 反向 grep `t\\.Skip\\(\\)\\|t\\.Skipf\\(` body 在 production test 路径 count==0 (除 build-tag-per-platform skip 历史合规) | CI grep | 飞马 / 烈马 | `TestTESTFIX3_NoTestSkip` AST scan + CI step `test-fix-3-no-skip` 守门 |
-| 4.2 反向 grep `time\\.Sleep` 在 _test.go body 路径 count==0 (除真测时序断言路径合规列白) | CI grep | 飞马 / 烈马 | reverse grep test |
-| 4.3 反向 grep `-short\\|t\\.Short\\(\\)` body 0 hit (反 short-circuit cov 减) | CI grep | 飞马 / 烈马 | reverse grep test |
-| 4.4 反向 testutil 散落 helper 削减 ≥5 处 (替成 NewTestEnv 单源, 反平行 setup 漂) | grep | 飞马 / 烈马 | `git grep -c 'testutil\\.NewServer\\|testutil\\.SetupDB' packages/server-go/internal/` 削减 ≥5 + spec §0 立场 ④ |
+| 3.1 立场承袭 TEST-FIX-1/2 — 不 skip 任何 test (11 sub-test byte-identical 迁, 不缩) + 不加 retry/sleep mask + 不全局 bump race timeout (隔离不吞下) | grep | 飞马 / 烈马 | ✅ closed_store_race_test.go 11 sub-test 计数 ≥11 + 主 race timeout 维持 120s 字面不破 |
+| 3.2 ctx-aware shutdown 立场承袭 (TEST-FIX-2 server.New(ctx)) — fixture helper `closedStoreFixtureContext` 走 `t.Context() + WithCancel + t.Cleanup(cancel)` 双保险 (Go 1.25 自动 cancel + 显式 Cleanup) | grep | 飞马 / 烈马 | ✅ testfixture_test.go 内 `t.Context()` + `context.WithCancel` + `t.Cleanup(cancel)` 三件齐 |
+| 3.3 race target test byte-identical 迁 — 11 sub-test 字面 0 改, 仅文件名变 (closed_store_race_test.go) + build tag header 加 | inspect | 飞马 / 烈马 | ✅ `git diff origin/main...HEAD` 显示 closed_store_race_test.go 是新增 + error_branches_test.go 是删除该函数 (byte-identical 迁) |
 
-## REG-TESTFIX3-* 占号 (initial ⚪)
+### §4 反向断言 — 0 production code 改 + drift 守门 + 跨 milestone 锁
 
-- REG-TESTFIX3-001 ⚪ race-heavy 包拆段 (internal/api → reactions/dm/cv 三 sub-package + race per package ≤40s)
-- REG-TESTFIX3-002 ⚪ shared fixture 单源 (internal/testutil/fixture.go::NewTestEnv + 散落 helper 削减 ≥5 处 byte-identical)
-- REG-TESTFIX3-003 ⚪ CI timeout 字面锁 (release-gate.yml go-test-race -timeout=180s + go-test-cov -timeout=300s)
-- REG-TESTFIX3-004 ⚪ race fail 解 + full server-go race ./... 全 26+ packages PASS ≤180s
-- REG-TESTFIX3-005 ⚪ cov ≥84.0% 不降 (threshold byte-identical 不动) + non-race + 全 client vitest 不破
-- REG-TESTFIX3-006 ⚪ 反向 grep `t.Skip / time.Sleep / t.Short / -short / context.Background` 在 test 路径全 0 hit (除合规列白) + ctx-aware shutdown 立场承袭
+| 验收项 | 实施方式 | Owner | 实施证据 |
+|---|---|---|---|
+| 4.1 0 production code 改 (仅 *_test.go + ci.yml + docs) — `git diff origin/main...HEAD --stat` 0 production .go 文件改 | grep | 飞马 / 烈马 | ✅ diff stat 仅 _test.go + ci.yml + docs/qa/regression-registry.md + docs/implementation/progress/phase-4.md + docs/implementation/modules/test-fix-3-spec.md + docs/qa/acceptance-templates/test-fix-3.md |
+| 4.2 反向 grep 主 race job timeout 不破 — `grep -cE '\-timeout=120s' .github/workflows/ci.yml` ≥1 (反全局 bump 180s mask) | CI grep | 飞马 / 烈马 | ✅ ci.yml::go-test-race 仍 -timeout=120s |
+| 4.3 反向 grep 跨 PR 解锁验证 — #584 CHN-14 + #597 DM-10 race 共性债 post-merge rebase 后 race 自然过 | post-merge | 战马C / team-lead | post-merge verify 待 PR rebase 后 |
+
+## REG-TESTFIX3-* 占号 (initial ⚪ → 实施后 🟢)
+
+- REG-TESTFIX3-001 🟢 race-heavy build tag 真挂 (closed_store_race_test.go::`//go:build race_heavy` 1 处)
+- REG-TESTFIX3-002 🟢 主 race timeout 维持 120s (反全局 bump) + race_heavy sub-job 180s 真加 + cov 加 race_heavy tag (不降 84%)
+- REG-TESTFIX3-003 🟢 fixture 单源 ctx-aware (closedStoreFixtureContext 双保险) + cov ≥84.0%
+- REG-TESTFIX3-004 ⚪ 跨 PR 解锁: #584 + #597 race post-merge 自然过 (待 rebase verify)
+- REG-TESTFIX3-005 🟢 0 production code 改 (仅 *_test.go + ci.yml + docs)
 
 ## 边界
 
-- TEST-FIX-1 #596 t.Parallel() sub-test 加速 (跟 TEST-FIX-3 互补 — 不重复 sub-test 加速, TEST-FIX-3 是包拆 + fixture)
-- TEST-FIX-2 #608 server.New(ctx) + 3 处 goroutine leak 修 (调用方 ctx-aware shutdown 立场承袭)
-- AL-7 RetentionSweeper #533 + HB-5 HeartbeatRetentionSweeper #607 既有 ctx-aware shutdown (TEST-FIX-3 不动 sweeper 内部, 仅拆调用包)
-- Go 1.25+ `t.Context()` 自动 cancel pattern (TEST-FIX-2 引入, TEST-FIX-3 在新 sub-package 全推开)
-- 永不降测试覆盖度铁律 (CLAUDE.md `no_lower_test_coverage.md`)
-- 跑 test 必须加 timeout 铁律 (CLAUDE.md "硬规: 任何 go test 必须加 timeout")
-- 不允许 admin merge bypass / flaky retry mask (CLAUDE.md `no_admin_merge_bypass.md`)
+- TEST-FIX-1 #596 t.Parallel() sub-test 加速 (跟 TEST-FIX-3 互补 — 不重复 sub-test 加速, TEST-FIX-3 是 build tag 隔离 + fixture helper)
+- TEST-FIX-2 #608 server.New(ctx) + 3 处 goroutine leak 修 (调用方 ctx-aware shutdown 立场承袭, fixture helper 复用此 ctor)
+- AL-7 RetentionSweeper #533 + HB-5 HeartbeatRetentionSweeper #607 既有 ctx-aware shutdown (TEST-FIX-3 不动 sweeper 内部)
+- Go 1.25+ `t.Context()` 自动 cancel pattern (TEST-FIX-2 引入, TEST-FIX-3 在 fixture helper 显式 WithCancel + Cleanup 双保险)
+- 永不降测试覆盖度铁律 (CLAUDE.md `no_lower_test_coverage.md`) — cov 84.0% ≥84%
+- 跑 test 必须加 timeout 铁律 (主 race 120s / race_heavy 180s / cov 180s)
+- 不允许 admin merge bypass / flaky retry mask (CLAUDE.md `no_admin_merge_bypass.md`) — 真因隔离不 mask
 
 ## 退出条件
 
-- §1 (3) + §2 (4) + §3 (3) + §4 (4) 全绿 — 一票否决
-- race-heavy 包拆段 (internal/api → 三 sub-package + race per package ≤40s)
-- shared fixture 单源 + 散落 helper 削减 ≥5 处
-- CI timeout 字面锁 (race -timeout=180s + cov -timeout=300s)
-- race fail 解 + full server-go race ./... 全 26+ packages PASS
-- cov ≥84.0% 不降 (threshold byte-identical 不动)
-- 反向 grep `t.Skip / time.Sleep / t.Short / -short` body 全 0 hit (除合规列白)
-- 立场承袭 TEST-FIX-1/2 (不 skip / 不 mask / 不降 cov / 真因修)
-- 登记 REG-TESTFIX3-001..006
+- §1 (3) + §2 (4) + §3 (3) + §4 (3) 全绿 — 一票否决
+- race-heavy build tag 隔离 (closed_store_race_test.go 1 文件 + ci.yml sub-job 1 个)
+- shared fixture 单源 ctx-aware (testfixture_test.go::closedStoreFixtureContext 1 helper)
+- CI 字面锁 (主 race -timeout=120s 不破 + race_heavy sub-job -timeout=180s + cov 加 race_heavy tag)
+- 主 race ./internal/api PASS ≤120s (实测 49.8s 余量充足) + race_heavy sub-job PASS ≤180s (实测 6.6s)
+- cov ≥84.0% 不降 (实测 84.0% 阈值 byte-identical 不动)
+- 0 production code 改 (仅 *_test.go + ci.yml + docs)
+- 立场承袭 TEST-FIX-1/2 (不 skip / 不 mask / 不全局 bump / 真因隔离)
+- 登记 REG-TESTFIX3-001..005 (4 已 🟢, 1 待 post-merge verify)
 
 ## 更新日志
 
 | 日期 | 作者 | 变化 |
 |---|---|---|
-| 2026-04-30 | 烈马 | v0 — acceptance template 草稿 (4 选 1 验收框架 + REG-TESTFIX3-001..006 6 行占号 ⚪). 战马C worktree 起 base 1df15ddd, 飞马 spec brief 待落, 实施 PR 出来时直接验. **真因修立场承袭 TEST-FIX-1 #596 + TEST-FIX-2 #608** (不 skip / 不 mask / 不加 retry / 不降 cov). 跨 milestone byte-identical 锁链: ctx-aware shutdown 跟 AL-7 + HB-5 + TEST-FIX-2 立场承袭 + Go 1.25 t.Context() 自动 cancel pattern + 永不降测试覆盖度 + 跑 test 必须加 timeout 铁律. 拆段立场: race-heavy 包拆 (internal/api 三 sub-package) + shared fixture 单源 (NewTestEnv 抽散落 helper ≥5 处) + CI timeout 字面锁 (race 180s / cov 300s). |
+| 2026-04-30 | 烈马 | v0 — acceptance template 草稿 (4 选 1 验收框架 + REG-TESTFIX3-001..006 6 行占号 ⚪). |
+| 2026-04-30 | 战马C | v1 — 实施完毕 acceptance flip ⚪→🟢. 跟随 spec brief v0 (飞马 ✅ APPROVED) 实施: race-heavy build tag 隔离 (closed_store_race_test.go) + fixture helper ctx-aware (testfixture_test.go::closedStoreFixtureContext) + CI sub-job (go-test-race-heavy) + cov 加 race_heavy tag. 实测 (本地): 主 race 49.8s ≤120s + race_heavy 6.6s ≤180s + cov 84.0% ≥84%. 0 production code 改, 仅 *_test.go + ci.yml + docs. REG-TESTFIX3-001/002/003/005 🟢, REG-TESTFIX3-004 ⚪ post-merge verify (#584 + #597 rebase). |

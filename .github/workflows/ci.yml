@@ -49,7 +49,31 @@ jobs:
       - name: Install dependencies
         run: cd packages/server-go && go mod download
       - name: Run tests with race detector (no coverage)
+        # TEST-FIX-3 立场 ③: 主 race job 维持 120s timeout (反全局 bump mask).
+        # race-heavy sub-test (TestClosedStoreInternalErrorBranches) 已隔离到
+        # `//go:build race_heavy` tag, 走独立 sub-job (go-test-race-heavy)
+        # 不污染主 race job timeout 阈值. 主 race job 是 race regression 早期信号.
         run: cd packages/server-go && go test -tags sqlite_fts5 -timeout=120s -race ./...
+
+  go-test-race-heavy:
+    # TEST-FIX-3: race-heavy sub-job, 单独跑 `//go:build race_heavy` tag 文件
+    # (TestClosedStoreInternalErrorBranches 11 sub-test, race-heavy serialize 长).
+    # 跟主 go-test-race job 并行不互拖. timeout 180s (50% 余量, 不是 mask —
+    # 真因 race-heavy sub-test 本质需更长预算, 隔离 budget 是诚实做法,
+    # 不是吞下 timeout 阈值).
+    #
+    # 真因诊断 (#608 TEST-FIX-2 已修 goroutine leak; 主 race job 仍贴近 120s
+    # 间歇性 flake 因 race-heavy sub-test 集中. 隔离后主路径稳定).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Install dependencies
+        run: cd packages/server-go && go mod download
+      - name: Run race-heavy tests (build tag race_heavy)
+        run: cd packages/server-go && go test -tags 'sqlite_fts5 race_heavy' -timeout=180s -race -run TestClosedStoreInternalErrorBranches ./internal/api/...
 
   go-test-cov:
     # CI-SPLIT-RACE-COV: coverage-only job, no race. Deterministic coverage
@@ -67,7 +91,13 @@ jobs:
       - name: Install dependencies
         run: cd packages/server-go && go mod download
       - name: Run tests with coverage (no race)
-        run: cd packages/server-go && go test -tags sqlite_fts5 -timeout=120s -coverprofile=coverage.out -coverpkg=borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server ./...
+        # TEST-FIX-3: cov job 加 race_heavy build tag — race_heavy 文件
+        # (closed_store_race_test.go::TestClosedStoreInternalErrorBranches)
+        # 走此 tag 跑覆盖, 否则 11 sub-test 覆盖度丢 (≥0.3% 总 cov 跌破 84%
+        # 阈值). 不带 -race 所以 timing/leak 不复发, 安全包含.
+        # 立场 ②: 不降 cov 阈值铁律 — race_heavy 隔离仅针对 race detector
+        # serialize 长 (主 race job timeout), 不针对 cov 路径.
+        run: cd packages/server-go && go test -tags 'sqlite_fts5 race_heavy' -timeout=180s -coverprofile=coverage.out -coverpkg=borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server ./...
       - name: Check coverage threshold
         run: |
           COVERAGE=$(cd packages/server-go && go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
