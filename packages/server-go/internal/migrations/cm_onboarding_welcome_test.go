@@ -136,3 +136,45 @@ func TestCMOnboardingWelcome_IsIdempotent(t *testing.T) {
 		t.Fatalf("schema_migrations v7 rows = %d, want 1", n)
 	}
 }
+
+// TestShortPrefixUnit covers shortPrefix 2 branches (≥8 chars + <8 chars).
+func TestShortPrefixUnit(t *testing.T) {
+	t.Parallel()
+	if got := shortPrefix("abcdef1234567890"); got != "abcdef12" {
+		t.Errorf("shortPrefix long: got %q, want %q", got, "abcdef12")
+	}
+	if got := shortPrefix("short"); got != "short" {
+		t.Errorf("shortPrefix short: got %q, want %q", got, "short")
+	}
+	if got := shortPrefix(""); got != "" {
+		t.Errorf("shortPrefix empty: got %q, want empty", got)
+	}
+}
+
+// TestNowMillisUnit covers nowMillis happy path (returns positive epoch).
+func TestNowMillisUnit(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	if n := nowMillis(db); n <= 0 {
+		t.Errorf("nowMillis on real db = %d, want >0", n)
+	}
+}
+
+// TestHasColumnsUnit covers hasColumns missing-table + present-cols + missing-col.
+func TestHasColumnsUnit(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	// Missing table → false.
+	if hasColumns(db, "no_such_table", "x") {
+		t.Error("hasColumns missing table should be false")
+	}
+	if err := db.Exec(`CREATE TABLE t1 (a TEXT, b INTEGER)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !hasColumns(db, "t1", "a", "b") {
+		t.Error("hasColumns present cols should be true")
+	}
+	if hasColumns(db, "t1", "a", "c") {
+		t.Error("hasColumns missing col should be false")
+	}
+}

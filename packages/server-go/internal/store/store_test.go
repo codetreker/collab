@@ -75,3 +75,21 @@ func TestCreateAndGetUser(t *testing.T) {
 		t.Fatal("display name mismatch")
 	}
 }
+
+// TestMigrate_ClosedDBReturnsError covers the Migrate err-return branches
+// — closing the underlying SQL DB makes execMigrationSQL fail at the
+// first PRAGMA call (line 14 disable foreign keys err return).
+func TestMigrate_ClosedDBReturnsError(t *testing.T) {
+	t.Parallel()
+	s := testStore(t)
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Migrate(); err == nil {
+		t.Error("expected Migrate to fail after DB close")
+	}
+}

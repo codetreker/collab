@@ -255,3 +255,25 @@ func TestCHN11_ToleratesTrimmedSchema(t *testing.T) {
 		t.Fatalf("trimmed run: %v", err)
 	}
 }
+
+// TestCHN11_NameWithoutOrgID covers the "channels has name but missing
+// org_id" trimmed-schema branch (steps 1-3 skip but step 4-6 run).
+func TestCHN11_NameWithoutOrgID(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	if err := db.Exec(`CREATE TABLE channels (id TEXT PRIMARY KEY, name TEXT, created_by TEXT)`).Error; err != nil {
+		t.Fatalf("seed channels: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE channel_members (channel_id TEXT, user_id TEXT)`).Error; err != nil {
+		t.Fatalf("seed channel_members: %v", err)
+	}
+	e := New(db)
+	e.Register(chn11ChannelsOrgScoped)
+	if err := e.Run(0); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	// Step 4 added silent + org_id_at_join even without users table.
+	if !hasColumns(db, "channel_members", "silent", "org_id_at_join") {
+		t.Error("expected channel_members.silent + org_id_at_join")
+	}
+}
