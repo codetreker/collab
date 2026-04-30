@@ -8,6 +8,11 @@ import (
 
 type Store struct {
 	db *gorm.DB
+
+	// auditPusher (AL-9.2) — nil-safe fan-out seam to ws.Hub.PushAuditEvent.
+	// Wired via SetAuditPusher at server boot. nil = silent no-op (audit
+	// row still written; row is the SSOT, push is the live monitor surface).
+	auditPusher AuditPusher
 }
 
 func Open(dsn string) (*Store, error) {

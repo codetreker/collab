@@ -33,6 +33,26 @@ import (
 	"github.com/google/uuid"
 )
 
+// AuditPusher is the AL-9.2 nil-safe seam between Store.InsertAdminAction
+// and ws.Hub.PushAuditEvent. Wired at server boot (server.go) via
+// Store.SetAuditPusher; nil pusher = silent no-op (跟 ArtifactPusher /
+// IterationPusher / AnchorPusher 5+ 处 nil-safe seam 同模式).
+//
+// 立场 ② audit fan-out 锁链终结: 6 audit writer (ADM-2.1 / AL-1 /
+// BPP-4 / BPP-8 / AP-2 / AL-7) 全经 InsertAdminAction → 此 seam 自动
+// fan-out 推到 admin SPA SSE (改 = 改 InsertAdminAction 一处).
+type AuditPusher interface {
+	PushAuditEvent(actionID, actorID, action, targetUserID string, createdAt int64) (cursor int64, sent bool)
+}
+
+// SetAuditPusher wires the AL-9.2 audit fan-out seam. Safe to call once
+// at boot; if never called, InsertAdminAction silently skips the push
+// (audit row is still written — push is the live monitor surface, not
+// the 100% guarantee; the row itself is the SSOT).
+func (s *Store) SetAuditPusher(p AuditPusher) {
+	s.auditPusher = p
+}
+
 // AdminAction is one row of admin_actions table (ADM-2.1 schema v=22).
 type AdminAction struct {
 	ID           string `gorm:"column:id;primaryKey"`
@@ -74,6 +94,13 @@ func (s *Store) InsertAdminAction(actorID, targetUserID, action, metadata string
 	}
 	if err := s.db.Create(&row).Error; err != nil {
 		return "", err
+	}
+	// AL-9.2 audit fan-out seam (nil-safe, 跟 ArtifactPusher 5+ 处同
+	// 模式). Push to admin-rail SSE so live monitor sees this row in
+	// real time. Failure of push does NOT roll back the row (audit
+	// SSOT 优先). 立场 ② 改 = 改此一处, 6 audit writer 自动 fan-out.
+	if s.auditPusher != nil {
+		s.auditPusher.PushAuditEvent(row.ID, row.ActorID, row.Action, row.TargetUserID, row.CreatedAt)
 	}
 	return row.ID, nil
 }

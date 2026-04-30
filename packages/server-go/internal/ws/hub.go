@@ -58,6 +58,13 @@ type Hub struct {
 	// routing (kept for tests + early boot).
 	pluginFrameRouter PluginFrameRouter
 
+	// auditBuffer + auditMu (AL-9.1) front the admin-rail audit SSE
+	// stream (handleAuditEvents). PushAuditEvent appends, the SSE
+	// handler reads via SnapshotAuditBuffer + signal wakeup. 立场 ⑨
+	// backfill 限 50 行 enforced at handler; in-memory cap 200 frames.
+	auditBuffer []AuditEventFrame
+	auditMu     sync.Mutex
+
 	mu sync.RWMutex
 }
 

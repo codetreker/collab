@@ -186,3 +186,37 @@ export async function fetchAdminAuditLog(filters: AuditLogFilters = {}): Promise
   const data = await request<{ actions: AdminActionRow[] }>(path);
   return data.actions;
 }
+
+// AL-9.1 — admin SPA SSE audit live monitor 错码 toast 双向锁.
+// server const single-source: internal/api/audit_events.go::AuditErrCode*
+// 改 = 改三处: server const + 此 map + content-lock §3 (跟 CV-6 SEARCH_ERR_TOAST
+// / AP-2 / AP-3 / CV-2 v2 / CV-3 v2 同模式).
+export const AUDIT_ERR_TOAST: Record<string, string> = {
+  'audit.not_admin':           '需要管理员权限',
+  'audit.cursor_invalid':      'since cursor 不合法',
+  'audit.sse_unsupported':     '浏览器不支持 SSE',
+  'audit.cross_org_denied':    '跨组织 audit 被禁',
+  'audit.connection_dropped':  '连接已断, 正在重连',
+};
+
+// AL-9.1 SSE 状态文案 byte-identical (content-lock §1).
+// 改 = 改三处: 此 const + AuditLogStream data-state 渲染 + content-lock §1.
+export const AUDIT_SSE_STATUS = {
+  connected:     '已连接',
+  reconnecting:  '重连中…',
+  disconnected:  '断开',
+} as const;
+
+export type AuditSSEState = keyof typeof AUDIT_SSE_STATUS;
+
+// AuditEventFrame — 7 字段 byte-identical 跟 server
+// internal/ws/audit_event_frame.go::AuditEventFrame envelope.
+export interface AuditEventFrame {
+  type: 'audit_event';
+  cursor: number;
+  action_id: string;
+  actor_id: string;
+  action: string;
+  target_user_id: string;
+  created_at: number;
+}

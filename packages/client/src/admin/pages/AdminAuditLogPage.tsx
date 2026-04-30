@@ -25,6 +25,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { fetchAdminAuditLog, type AdminActionRow, type AuditLogFilters } from '../api';
+import AuditLogStream from '../components/AuditLogStream';
 
 // ACTION_ENUM — 英文 enum 字面跟 server CHECK constraint 字面 byte-identical
 // (admin_actions 表 CHECK (action IN ('delete_channel', 'suspend_user', ...))).
@@ -79,6 +80,11 @@ export default function AdminAuditLogPage() {
       <div className="admin-section-header">
         <h2>Audit Log</h2>
       </div>
+
+      {/* AL-9.3 — admin SPA live monitor (SSE) above the historical table.
+          Replaces poll-only view with real-time stream; table below is
+          retained for filter UX. 立场 ① admin-rail SSE only. */}
+      <AuditLogStream />
 
       <form
         className="admin-audit-filters"

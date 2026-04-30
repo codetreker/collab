@@ -312,6 +312,16 @@ func (s *Server) SetupRoutes() {
 	adm2Handler := &api.ADM2Handler{Store: s.store, Logger: s.logger}
 	adm2Handler.RegisterUserRoutes(s.mux, authMw)
 	adm2Handler.RegisterAdminRoutes(s.mux, adminMw)
+	// AL-9.1 admin-rail SSE — GET /admin-api/v1/audit-log/events 走
+	// adminMw, 跟 ADM-2.2 same path namespace + same mw. 立场 ① admin-
+	// rail SSE only (反向 grep `/api/v1/audit-log/events` count==0 in
+	// internal/api/).
+	auditEventsHandler := &api.AuditEventsHandler{Store: s.store, Hub: s.hub, Logger: s.logger}
+	auditEventsHandler.RegisterAdminRoutes(s.mux, adminMw)
+	// AL-9.2 audit fan-out seam — wire ws.Hub 作为 store.AuditPusher.
+	// 改 = 改 InsertAdminAction 一处, 6 audit writer 自动 fan-out
+	// (ADM-2.1 / AL-1 / BPP-4 / BPP-8 / AP-2 / AL-7).
+	s.store.SetAuditPusher(s.hub)
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
