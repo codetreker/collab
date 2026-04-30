@@ -313,6 +313,18 @@ func (s *Server) SetupRoutes() {
 	// (ADM-0 §1.3 红线 — pref 是 per-user preference).
 	channelHandler.RegisterCHN8Routes(s.mux, authMw)
 
+	// RT-4 channel presence indicator — member-only GET /channels/:id/presence;
+	// 0 schema (复用 AL-3.1 #277 presence_sessions). 0 新 WS frame (presence
+	// push 留 v3). admin god-mode 不挂 (ADM-0 §1.3 红线). 既有 RT-2 typing
+	// path byte-identical 不变.
+	rt4Tracker, _ := presence.NewSessionsTracker(s.store.DB())
+	rt4PresenceHandler := &api.RT4PresenceHandler{
+		Store:   s.store,
+		Tracker: rt4Tracker,
+		Logger:  s.logger,
+	}
+	rt4PresenceHandler.RegisterUserRoutes(s.mux, authMw)
+
 	// DMs
 	dmHandler := &api.DmHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
 	dmHandler.RegisterRoutes(s.mux, authMw)

@@ -1590,3 +1590,18 @@ export async function setChannelDescription(
   );
   return data.channel;
 }
+
+// RT-4: get channel presence (member-only — server filters channel.members
+// ∩ IsOnline). Returns array of online user_id; 0 client-side caching v0.
+export interface ChannelPresenceResponse {
+  online_user_ids: string[];
+  counted_at: number;
+}
+
+export async function getChannelPresence(
+  channelId: string,
+): Promise<ChannelPresenceResponse> {
+  return request<ChannelPresenceResponse>(
+    `/api/v1/channels/${encodeURIComponent(channelId)}/presence`,
+  );
+}
