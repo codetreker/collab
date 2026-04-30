@@ -1397,6 +1397,34 @@ export async function patchDMMessage(
   return (await resp.json()) as DM4EditResponse;
 }
 
+// ─── CV-8 Artifact comment thread reply ─────────────────────
+//
+// Spec: docs/implementation/modules/cv-8-spec.md §0 立场 ① — 走 messages
+// 表既有 endpoint POST /api/v1/channels/{channelId}/messages with
+// content_type='artifact_comment' + reply_to_id (既有 schema 字段).
+// CV-8 不开新 client api;  此函数仅是 sendMessage 的 thin wrapper,
+// 承担 errcode byte-identical surface (CV-5/CV-7 同字符).
+
+/** POST /api/v1/channels/:channelId/messages — artifact_comment + reply_to_id thread reply (CV-8). */
+export async function postArtifactCommentReply(
+  channelId: string,
+  parentCommentId: string,
+  body: string,
+): Promise<{ id: string }> {
+  const data = await request<{ message: { id: string } }>(
+    `/api/v1/channels/${channelId}/messages`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        content: body,
+        content_type: 'artifact_comment',
+        reply_to_id: parentCommentId,
+      }),
+    },
+  );
+  return { id: data.message.id };
+}
+
 // ─── CV-12 Artifact comment search ──────────────────────────
 //
 // Spec: docs/implementation/modules/cv-12-spec.md §0 立场 ① — 走既有
