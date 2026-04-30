@@ -896,12 +896,17 @@ Phase 1 退出 gate 全签: 见 `docs/qa/signoffs/g1-exit-gate.md` (2026-04-28).
 | AL-7 | 6 | 6 | 0 |
 | AL-8 | 6 | 6 | 0 |
 | DM-6 | 6 | 6 | 0 |
-| **总计** | **382** | **356** | **26** |
-| **总计** | **376** | **350** | **26** |
 | HB-3 v2 | 5 | 5 | 0 |
-| **总计** | **369** | **343** | **26** |
 | CHN-7 | 6 | 6 | 0 |
-| **总计** | **405** | **379** | **26** |
+
+**总计**: 不再硬编码 (避免每 PR rebase 撞 §5 totals 行 merge conflict — 改用 derived count)。
+
+实时统计可跑 `make registry-totals` 或:
+```
+grep -cE '^- REG-' docs/qa/regression-registry.md          # 总行数
+grep -cE '^- REG-.*🟢' docs/qa/regression-registry.md      # active
+grep -cE '^- REG-.*⚪' docs/qa/regression-registry.md      # pending
+```
 
 Phase 2 全部 milestone 落地后, 预计 active 55 行 — G2.audit 时全员检视一遍 + 翻态 + sign off。
 
