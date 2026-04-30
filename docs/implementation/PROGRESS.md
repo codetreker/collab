@@ -183,7 +183,7 @@
 - [x] G3.2 锚点对话 E2E — 战马/烈马 / ✅ SIGNED 烈马 2026-04-29 `docs/qa/signoffs/g3.2-cv2-liema-signoff.md` (5/5 验收通过, CV-2.1/2.2/2.3 + REG-CV2 #421 + 反约束三连永久锁 + AnchorCommentAdded 10 字段 byte-identical)
 - [x] G3.3 用户感知签字 (CV-1 ⭐) — **野马** / 截屏 3 张: artifact 列表 / 添加新版本 / v1↔v2 切换 / ✅ SIGNED 野马 2026-04-29 `docs/qa/signoffs/g3.3-cv1-yema-signoff.md` (锚 #403, 5/5 验收 + kindBadge 二元跨 milestone 五处单测锁源头)
 - [x] G3.4 协作场骨架 (CHN-4) E2E — 战马/烈马 / ✅ SIGNED 烈马 acceptance 2026-04-29 `docs/qa/signoffs/g3.4-chn4-liema-signoff.md` (5/5 验收通过, CHN-4 #411/#423/#428; **三签 2/3** 战马 e2e + 烈马 acceptance ✅, 野马双 tab 5 张 ⏸️ 截屏待 follow-up)
-- [ ] **G3.audit** v0 代码债 audit 行已登记 (artifacts 表 / artifact_versions / anchor_comments / RT-1 frame) — 飞马
+- [x] **G3.audit** v1 fill ✅ — 飞马 v1 fill `docs/implementation/00-foundation/g3-audit.md` (7 段齐: 11 milestone PR # 锚 / 5 链 byte-identical drift count==0 / 13 acceptance ✅ / 4 闸全 SIGNED / evidence #442 / 飞马 closure 占位 / 留账 8 项 A1-A6+B1-B2)
 
 **野马签字 (CV-1)**: ✅ SIGNED #403 (野马 PM, 2026-04-29) — `docs/qa/signoffs/g3.3-cv1-yema-signoff.md` 5/5 验收通过 (artifact 归属 channel / 单文档锁 30s + 409 conflict / 版本线性 + rollback DOM gate / kindBadge 二元 / ArtifactUpdated 7 字段)
 
