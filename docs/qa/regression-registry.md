@@ -874,6 +874,19 @@
 | REG-AP5-003 | ap-5-spec.md §0 立场 ① + DM-4 #549 cross-link — PATCH /api/v1/channels/{channelId}/messages/{messageId} (DM-4) 加同模式 gate; DM 场景 sender 被 remove 后 → 404; cross-org check 仍先于 channel-member (TestCrossOrgRead403 lock byte-identical 不破) | `TestAP5_PatchDM_PostRemovalReject` PASS + 既有 dm_4_message_edit_test.go 5 unit 不破 | 战马E / 烈马 | TBD | 🟢 active |
 | REG-AP5-004 | ap-5-spec.md §0 立场 ③ — 反向 sanity 既有 sender_id 403 不破 (channel member 但非 sender 仍 403, owner-only ACL 跟 AL-2a/BPP-3.2/AL-1/AL-5 owner-only 5 处同模式) + member 三动作 happy-path 200/204 既有不破 | `TestAP5_NonSenderMember_403` + `TestAP5_Member_PutDelete_OK` 双向锁 PASS + `error_branches_test.go::TestChannelsMessagesWorkspaceAdditionalBranches` update/delete-message-forbidden 翻 403 → 404 (post-leave-public 状态 channel-member gate 先 fire, gap fix 真生效) | 战马E / 烈马 | TBD | 🟢 active |
 | REG-AP5-005 | ap-5-spec.md §3 反向 grep 4 锚 + 跨 milestone byte-identical 链 — `git grep IsChannelMember` 在 messages.go + dm_4_message_edit.go ≥3 hit (3 handler 各加 gate); admin*.go 反向 `admin.*messages.*PUT\|admin.*messages.*DELETE\|admin.*messages.*PATCH` 0 hit (ADM-0 §1.3 红线); production 反向 `message_audit\|messages.*log` 0 hit (audit 不另起, 复用既有 events 表 op="edit" / 既有 message delete soft-delete 路径); 跨 milestone 链: AP-4 #551 reactions ACL gap 闭合 + DM-5 #549 REG-DM5-005 gap 锚 + REG-INV-002 fail-closed + ADM-0 §1.3 红线 + messages.go::handleCreateMessage "Channel not found" byte-identical | git grep `IsChannelMember.*=== handler ===` 4 hit (1 既有 + 3 AP-5 新) + git grep 3 反向 0 hit | 战马E / 飞马 / 烈马 | TBD | 🟢 active |
+### HB-6 heartbeat lag detection (一 milestone 一 PR — Phase 6, agent_runtimes.last_heartbeat_at 复用 + BPP-4 watchdog 30s 双向锁 + AL-1a reason 锁链第 19 处 + AST 锁链延伸第 16 处, 6 🟢, 0 schema / 0 sweeper goroutine / 0 client UI v1)
+
+> HB-6 范围 = §1 server lag aggregator (`internal/api/hb_6_lag.go::AggregateLag` + `SampleLagFromStore` — 30s 滚窗 SELECT lag_ms FROM agent_runtimes WHERE status='running' AND last_heartbeat_at IS NOT NULL AND last_heartbeat_at >= cutoff; 内存 sort + linear interpolation P50/P95/P99 + count + at_risk + reason_if_at_risk; WindowSeconds=30 const byte-identical 跟 BPP-4 BPP_HEARTBEAT_TIMEOUT_SECONDS 同源 + LagThresholdMs=15000 const) + §2 admin readonly endpoint GET /admin-api/v1/heartbeat-lag (跟 ADM-2.2 + AL-7.2 + AL-8 admin-rail 同模式; admin readonly 不挂 PATCH/POST/DELETE ADM-0 §1.3 红线) + §3 反约束 (0 schema / 0 sweeper goroutine / 0 client UI v1 / AST 锁链延伸第 16 处 forbidden 3 token `pendingLagSample / lagSampleQueue / deadLetterLag` 0 hit / admin god-mode 不挂 PATCH/POST/PUT/DELETE 反向 grep 0 hit / user-rail /api/v1/heartbeat-lag 0 hit). AL-1a reason 锁链 HB-6 = **第 19 处** (DM-7 第 18 + HB-5 第 17 + AL-8 第 16 + AL-7 第 15 承袭, lag at-risk reason 字面=reasons.NetworkUnreachable 跟 BPP-4 watchdog timeout 同源); AST 锁链延伸第 16 处.
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-HB6-001 | hb-6-spec.md §0 立场 ① — 0 schema 改 (复用 agent_runtimes.last_heartbeat_at + agent_id + status — AL-4.1 #398 v=16 既有列); 反向 grep `migrations/hb_6_\d+\|ALTER agent_runtimes.*lag` 0 hit + WindowSeconds=30 byte-identical 跟 BPP-4 BPP_HEARTBEAT_TIMEOUT_SECONDS 同源 (双向锁守门 — 改一处 = 改两处) | `internal/api/hb_6_lag_test.go::TestHB61_NoSchemaChange` (filepath.Walk migrations/ 反向断 hb_6_* 0 hit) + `TestHB61_WindowSecondsByteIdentical` (api.WindowSeconds==30 + 反向 grep BPP-4 watchdog source `BPP_HEARTBEAT_TIMEOUT_SECONDS = 30` 字面) 2 unit PASS | 战马D / 烈马 | TBD | 🟢 active |
+| REG-HB6-002 | hb-6-spec.md §1 HB-6.1 + spec §0 立场 ② — AggregateLag P50/P95/P99 linear interpolation 准 (5 sample 1k/5k/10k/15k/30k → P50≈10k / P95≈top); empty samples → count=0 / at_risk=false / reason_if_at_risk=""; ThresholdMs=15000 + WindowSeconds=30 字段 always 落 | `TestHB61_AggregateLag_PercentileCorrect` (5 sample HappyPath count==5 + P50 mid + P95 top + at_risk=true + reason='network_unreachable' 字面) + `TestHB61_AggregateLag_EmptyNoRisk` (空 samples 不 at_risk + ThresholdMs/WindowSeconds 字段 always 落) 2 unit PASS | 战马D / 烈马 | TBD | 🟢 active |
+| REG-HB6-003 | hb-6-spec.md §1 HB-6.1 + spec §0 立场 ② — SampleLagFromStore 30s window cutoff (last_heartbeat_at < nowMs-30000 排除) + status≠running 排除 (error/stopped/registered 行 不计入 lag sample) | `TestHB61_WindowCutoffExcludesStale` (3-row seed: in-window running / stale running / in-window error → 仅 1 行 lag=5000) PASS | 战马D / 烈马 | TBD | 🟢 active |
+| REG-HB6-004 | hb-6-spec.md §2 HB-6.2 + spec §0 立场 ③ — admin-rail only GET /admin-api/v1/heartbeat-lag (跟 ADM-2.2 + AL-7.2 + AL-8 admin-rail 同模式); non-admin 401 (admin cookie 缺失); user-rail /api/v1/heartbeat-lag 不挂 (404) | `TestHB62_AdminHappyPath` (admin 200 + 8 字段全落含 window_seconds=30 + threshold_ms=15000) + `TestHB62_NonAdmin401` (空 token 401) + `TestHB62_NoUserRailPath` (user-rail GET → 404) 3 unit PASS | 战马D / 烈马 | TBD | 🟢 active |
+| REG-HB6-005 | hb-6-spec.md §0 立场 ③ + AL-1a reason 锁链 HB-6 = 第 19 处 — at-risk reason 字面='network_unreachable' byte-identical 跟 reasons.NetworkUnreachable + BPP-4 watchdog timeout 同源 (DM-7 #18 + HB-5 #17 + AL-8 #16 + AL-7 #15 承袭锁链) | `TestHB62_AtRiskReasonByteIdentical` (seed 5 高 lag agent_runtimes 行 → P95 > 15000 → at_risk=true + reason_if_at_risk='network_unreachable' 字面对比) PASS | 战马D / 飞马 / 烈马 | TBD | 🟢 active |
+| REG-HB6-006 | hb-6-spec.md §0 立场 ④+⑥ + AST 锁链延伸第 16 处 — admin god-mode 不挂 PATCH/POST/PUT/DELETE 在 admin-api/v1/heartbeat-lag (反向 grep 0 hit) + 0 sweeper goroutine (反向 grep `HeartbeatLagSweeper\|hb6.*Ticker\|lag_ticker` 0 hit) + 0 client UI v1 (反向 grep `useHeartbeatLag\|HeartbeatLagPanel` 在 client/src/ 0 hit) + AST forbidden 3 token (`pendingLagSample / lagSampleQueue / deadLetterLag`) 0 hit | `TestHB63_NoAdminWritePath` (filepath.Walk + regex 反向 0 hit) + `TestHB63_NoLagSampleQueue` (AST ident scan 3 forbidden 0 hit) + `TestHB63_NoClientUIv1` (client/src/ 反向 grep 2 forbidden 0 hit) 3 unit PASS | 战马D / 飞马 / 烈马 | TBD | 🟢 active |
+
 
 ---
 
@@ -944,6 +957,7 @@ Phase 1 退出 gate 全签: 见 `docs/qa/signoffs/g1-exit-gate.md` (2026-04-28).
 | DM-4 | 5 | 5 | 0 |
 | AL-7 | 6 | 6 | 0 |
 | AL-8 | 6 | 6 | 0 |
+| HB-6 | 6 | 6 | 0 |
 | DM-6 | 6 | 6 | 0 |
 | HB-3 v2 | 5 | 5 | 0 |
 | CHN-7 | 6 | 6 | 0 |
@@ -961,6 +975,7 @@ grep -cE '^- REG-.*⚪' docs/qa/regression-registry.md      # pending
 | **总计** | **400** | **374** | **26** |
 | CHN-9 | 6 | 6 | 0 |
 | **总计** | **405** | **379** | **26** |
+| **总计** | **411** | **385** | **26** |
 
 Phase 2 全部 milestone 落地后, 预计 active 55 行 — G2.audit 时全员检视一遍 + 翻态 + sign off。
 
