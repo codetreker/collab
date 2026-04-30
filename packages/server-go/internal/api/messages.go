@@ -238,6 +238,18 @@ func (h *MessageHandler) handleCreateMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// CHN-15.2 readonly gate — readonly=true 时 non-creator 发消息 → 403
+	// `channel.readonly_no_send` 字面 byte-identical 跟 content-lock §3.
+	// creator 自己仍可发 (反向断言不误伤). admin god-mode 不入此路径
+	// (ADM-0 §1.3 红线; admin 无 user.ID 走 user-rail authMw).
+	if user.ID != ch.CreatedBy {
+		readonly, _ := h.Store.GetChannelReadonly(channelID)
+		if readonly {
+			writeJSONError(w, http.StatusForbidden, ChannelErrCodeReadonlyNoSend)
+			return
+		}
+	}
+
 	// DM-2.2 mention parser + cross-channel guard.
 	// 立场 ① parse `@<uuid>` token 拆死 raw UUID; 立场 ② cross-channel
 	// reject 400 (mention 仅在 channel 内, 跟 RT-1/CHN-1 留账边界对齐).

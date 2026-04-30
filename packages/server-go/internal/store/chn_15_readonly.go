@@ -1,0 +1,69 @@
+// Package store — chn_15_readonly.go: CHN-15 channel readonly helpers.
+//
+// Spec: docs/implementation/modules/chn-15-spec.md §1 拆段 CHN-15.1.
+//
+// Behaviour: readonly is channel-wide state stored on the **creator's**
+// user_channel_layout.collapsed row at bit 4 (=16). All members read
+// the same single row to determine the channel's readonly state; only
+// the creator can mutate it (handler-layer ACL).
+//
+// 反约束 (chn-15-spec.md §0 立场 ①+⑤):
+//   - 改 = 改此一处 — handler / api 层不直接 SQL touch bit 4.
+//   - GetChannelReadonly 走 channel.CreatedBy → user_channel_layout 单行查
+//     (反向断言: 不读 non-creator 行).
+//   - SetChannelReadonly wrap SetMuteBit (复用 #550 SSOT).
+package store
+
+import (
+	"errors"
+)
+
+// readonlyBitInternal mirrors api.ReadonlyBit (=16). Kept as an
+// unexported const here so the store package doesn't import internal/api.
+// Drift is caught by api.TestCHN151_ReadonlyBit_ByteIdentical which pins
+// the literal 16 from the api side.
+const readonlyBitInternal = 16
+
+// GetChannelReadonly reports whether channelID is currently flagged as
+// readonly. Reads the **creator's** user_channel_layout.collapsed row
+// (channel-wide state via creator-single-row SSOT, 立场 ⑤).
+//
+// Returns (false, nil) when the channel exists but the creator has no
+// layout row yet (NULL = no bits set = not readonly).
+func (s *Store) GetChannelReadonly(channelID string) (bool, error) {
+	if channelID == "" {
+		return false, errors.New("channelID required")
+	}
+	var ch Channel
+	if err := s.db.Select("id", "created_by").
+		Where("id = ?", channelID).First(&ch).Error; err != nil {
+		return false, err
+	}
+	var collapsed int64
+	if err := s.db.Raw(`SELECT COALESCE(collapsed, 0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND channel_id = ?`,
+		ch.CreatedBy, channelID).Row().Scan(&collapsed); err != nil {
+		// no row → not readonly
+		return false, nil
+	}
+	return collapsed&int64(readonlyBitInternal) != 0, nil
+}
+
+// SetChannelReadonly toggles bit 4 of the **creator's**
+// user_channel_layout.collapsed row for channelID. Wraps SetMuteBit
+// for the bitmask write — preserves bits 0/1/2-3.
+//
+// Caller MUST validate that the requesting user is channel.CreatedBy
+// before calling (handler-layer ACL, 立场 ②).
+func (s *Store) SetChannelReadonly(channelID string, readonly bool) (int64, error) {
+	if channelID == "" {
+		return 0, errors.New("channelID required")
+	}
+	var ch Channel
+	if err := s.db.Select("id", "created_by").
+		Where("id = ?", channelID).First(&ch).Error; err != nil {
+		return 0, err
+	}
+	return s.SetMuteBit(ch.CreatedBy, channelID, int64(readonlyBitInternal), readonly)
+}

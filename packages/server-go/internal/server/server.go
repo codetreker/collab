@@ -300,6 +300,10 @@ func (s *Server) SetupRoutes() {
 	// 改 (复用 CHN-3.1 user_channel_layout, collapsed bitmap bit 1 = mute).
 	// admin god-mode 不挂 (ADM-0 §1.3 红线 — mute 是 per-user preference).
 	channelHandler.RegisterCHN7Routes(s.mux, authMw)
+	// CHN-15 channel readonly toggle — owner-only user-rail PUT/DELETE; 0
+	// schema 改 (复用 user_channel_layout.collapsed bitmap bit 4 走
+	// channel.created_by 单行 SSOT). admin god-mode 不挂 (ADM-0 §1.3).
+	channelHandler.RegisterCHN15Routes(s.mux, authMw)
 	// CHN-10 channel description (owner-only PUT /channels/:id/description,
 	// 0 schema 改 复用 channels.topic 既有列, 500 字符上限 byte-identical
 	// 跟 GORM size:500 + client DESCRIPTION_MAX_LENGTH 同源 — 双向锁守门).
