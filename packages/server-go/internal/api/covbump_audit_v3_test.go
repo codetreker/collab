@@ -9,8 +9,8 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// REG-CHN_8-cov-bump v3 — AL-8 audit-log filter param branches.
-func TestCHN_8_CovBump_v3_AuditLogFilters(t *testing.T) {
+// REG-covbump v3 — AL-8 audit-log filter param branches.
+func TestCovBump_v3_AuditLogFilters(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -71,8 +71,8 @@ func TestCHN_8_CovBump_v3_AuditLogFilters(t *testing.T) {
 	}
 }
 
-// REG-CHN_8-cov-bump v3 — impersonation-grant lifecycle (create/get/revoke).
-func TestCHN_8_CovBump_v3_ImpersonateGrantLifecycle(t *testing.T) {
+// REG-covbump v3 — impersonation-grant lifecycle (create/get/revoke).
+func TestCovBump_v3_ImpersonateGrantLifecycle(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -115,8 +115,8 @@ func TestCHN_8_CovBump_v3_ImpersonateGrantLifecycle(t *testing.T) {
 	}
 }
 
-// REG-CHN_8-cov-bump v3 — AL-7 audit-retention/override branches.
-func TestCHN_8_CovBump_v3_AL7AuditRetentionOverride(t *testing.T) {
+// REG-covbump v3 — AL-7 audit-retention/override branches.
+func TestCovBump_v3_AL7AuditRetentionOverride(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
