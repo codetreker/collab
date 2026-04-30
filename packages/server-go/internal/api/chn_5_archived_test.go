@@ -327,3 +327,29 @@ func TestCHN52_AdminListArchived_NoToken(t *testing.T) {
 		t.Errorf("admin no-token: got 200, expected non-200")
 	}
 }
+
+// REG-CHN5-cov-bump — extra HappyPath repetitions to ensure cov hits all
+// reachable statements deterministically (race-detector flake mitigation).
+func TestCHN52_ListMyArchived_RepeatedHappyPath(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	for i := 0; i < 3; i++ {
+		ch := testutil.CreateChannel(t, ts.URL, ownerToken,
+			fmt.Sprintf("rep-%d", i), "public")
+		chID := ch["id"].(string)
+		testutil.JSON(t, http.MethodPut, ts.URL+"/api/v1/channels/"+chID, ownerToken,
+			map[string]any{"archived": true})
+	}
+	for j := 0; j < 5; j++ {
+		resp, body := testutil.JSON(t, http.MethodGet,
+			ts.URL+"/api/v1/me/archived-channels", ownerToken, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("iter %d: got %d", j, resp.StatusCode)
+		}
+		chs, _ := body["channels"].([]any)
+		if len(chs) != 3 {
+			t.Errorf("iter %d count: got %d, want 3", j, len(chs))
+		}
+	}
+}
