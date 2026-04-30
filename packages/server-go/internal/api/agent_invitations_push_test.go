@@ -24,6 +24,8 @@ import (
 
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
 	"borgee-server/internal/store"
@@ -95,7 +97,8 @@ func setupPushTest(t *testing.T) (*httptest.Server, *store.Store, *fakeInvitatio
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	// Two real users: requester (channel member) + owner (of the agent).
-	reqHash, _ := auth.HashPassword("password123")
+	reqHashBytes, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	reqHash := string(reqHashBytes)
 	reqEmail := "requester@test.com"
 	requester := &store.User{
 		DisplayName:  "Requester",
@@ -110,7 +113,8 @@ func setupPushTest(t *testing.T) (*httptest.Server, *store.Store, *fakeInvitatio
 		t.Fatalf("grant requester perms: %v", err)
 	}
 
-	ownerHash, _ := auth.HashPassword("password123")
+	ownerHashBytes, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	ownerHash := string(ownerHashBytes)
 	ownerEmail := "agent-owner@test.com"
 	owner := &store.User{
 		DisplayName:  "AgentOwner",
