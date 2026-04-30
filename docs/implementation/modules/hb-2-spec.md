@@ -133,6 +133,31 @@ LIMIT 1;
 | **BPP**     | host-bridge 仅给 BPP runtime (plugin) 用; 不给 server-go 直接调 | 单源 plugin → host-bridge IPC, server 不绕过 |
 | **anchor #360 owner-only** | cross-agent ACL 立场承袭到 host 层 — agent 持的 grants 是 owner 授的, 跨 agent 调用 reject | 反向断言同源 |
 
+## 5.5 Go 包结构 + sandbox build tag 拆 (HB stack Go 重审 飞马 #2+#3 必修)
+
+**包结构** (项目布局):
+```
+packages/borgee-helper/         # 独立 Go module (separate go.mod, 防 server-go binary bloat)
+├── go.mod                      # module borgee-helper
+├── install-butler/             # HB-1 daemon (短命)
+│   └── main.go
+└── host-bridge/                # HB-2 daemon (常驻)
+    ├── main.go
+    ├── sandbox_linux.go        # //go:build linux  — landlock LSM (go-landlock + AppArmor fallback)
+    ├── sandbox_darwin.go       # //go:build darwin — sandbox-exec profile
+    └── sandbox_other.go        # //go:build !linux && !darwin — Windows / 其他 (no-op + 警告日志, v1 不挂)
+```
+
+**反约束**:
+- 反向 grep `package server` 在 `packages/borgee-helper/` 0 hit (模块拆死, 不混 server-go binary)
+- 反向 grep `cgroups` 在 sandbox_linux.go 0 hit (改用 landlock LSM, cgroups 不限 mmap/exec 路径)
+- 反向 grep `syscall.CreateNamedPipe` 0 hit (Windows IPC 走 `github.com/Microsoft/go-winio` SSOT)
+
+**Borgee Helper 命名拆死** (yema #9 必修):
+- **daemon binary**: `borgee-helper` (CLI/系统服务命名, OS user `borgee-helper`, systemd unit `borgee-helper.service`)
+- **PWA UI**: 不复用 "Borgee Helper" 文案 (避混淆 — PWA = "Borgee" 主品牌 SPA, daemon = OS-level 后台服务)
+- **install.sh**: `curl -fsSL borgee.cloud/install.sh | bash` 装 daemon + 注册系统服务 (跟 HB-1 §6.5 一键安装脚本立场承袭)
+
 ## 6. 实施切入路线 (HB-1 落地后)
 
 1. HB-1 ship install-butler Go binary + audit log schema 锁.
