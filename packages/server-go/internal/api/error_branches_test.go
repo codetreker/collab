@@ -1084,7 +1084,7 @@ func TestSmallFallbackBranches(t *testing.T) {
 		t.Fatalf("expected fallback JSON, got %q", got)
 	}
 
-	t.Run("reaction closed store returns 500", func(t *testing.T) {
+	t.Run("reaction closed store returns 404 fail-closed (AP-4 ACL gate)", func(t *testing.T) {
 		ts, s, cfg := newClosedStoreTestServer(t)
 		token := loginAs(t, ts.URL, "owner@test.com", "password123")
 		generalID := getGeneralID(t, ts.URL, token)
@@ -1094,8 +1094,13 @@ func TestSmallFallbackBranches(t *testing.T) {
 			_ = s.Close()
 			h.handleGetReactions(w, r)
 		})
-		if rec.Code != http.StatusInternalServerError {
-			t.Fatalf("expected reaction 500, got %d", rec.Code)
+		// AP-4: handleGetReactions now runs canAccessMessage FIRST which
+		// hits the closed store at GetMessageByID and returns 404 (channel
+		// hidden, fail-closed). The error-path 500 from GetReactionsByMessage
+		// is now unreachable from this test seam — that's the correct
+		// security posture (fail-closed beats fail-loud here).
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("expected 404 fail-closed (was 500 pre-AP-4), got %d", rec.Code)
 		}
 	})
 }

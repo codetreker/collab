@@ -22,6 +22,23 @@ func (h *ReactionHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Ha
 	mux.Handle("GET /api/v1/messages/{messageId}/reactions", wrap(h.handleGetReactions))
 }
 
+// AP-4 立场 ①+③ — channel-member ACL gate (CV-7 #535 既存 gap 闭合).
+// Reuses Store.IsChannelMember + Store.CanAccessChannel (跟 messages.go
+// 既有 ACL 同源). Returns true iff caller may operate on reactions of
+// `messageID`. On false, caller MUST emit 404 "Channel not found"
+// byte-identical to messages.go::handleCreateMessage line 230-232 (channel
+// hidden from non-member, fail-closed).
+func (h *ReactionHandler) canAccessMessage(user *store.User, messageID string) (*store.Message, bool) {
+	msg, err := h.Store.GetMessageByID(messageID)
+	if err != nil {
+		return nil, false
+	}
+	if !h.Store.IsChannelMember(msg.ChannelID, user.ID) || !h.Store.CanAccessChannel(msg.ChannelID, user.ID) {
+		return nil, false
+	}
+	return msg, true
+}
+
 func (h *ReactionHandler) handleAddReaction(w http.ResponseWriter, r *http.Request) {
 	user := auth.UserFromContext(r.Context())
 	if user == nil {
@@ -30,8 +47,9 @@ func (h *ReactionHandler) handleAddReaction(w http.ResponseWriter, r *http.Reque
 	}
 
 	messageID := r.PathValue("messageId")
-	if _, err := h.Store.GetMessageByID(messageID); err != nil {
-		writeJSONError(w, http.StatusNotFound, "Message not found")
+	msg, ok := h.canAccessMessage(user, messageID)
+	if !ok {
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
@@ -49,15 +67,13 @@ func (h *ReactionHandler) handleAddReaction(w http.ResponseWriter, r *http.Reque
 
 	h.Store.AddReaction(messageID, user.ID, body.Emoji)
 
-	msg, _ := h.Store.GetMessageByID(messageID)
-
 	reactions, err := h.Store.GetReactionsByMessage(messageID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to get reactions")
 		return
 	}
 
-	if h.Hub != nil && msg != nil {
+	if h.Hub != nil {
 		h.Store.CreateEvent(&store.Event{
 			Kind:      "reaction_update",
 			ChannelID: msg.ChannelID,
@@ -77,6 +93,11 @@ func (h *ReactionHandler) handleRemoveReaction(w http.ResponseWriter, r *http.Re
 	}
 
 	messageID := r.PathValue("messageId")
+	msg, ok := h.canAccessMessage(user, messageID)
+	if !ok {
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
+		return
+	}
 
 	var body struct {
 		Emoji string `json:"emoji"`
@@ -92,15 +113,13 @@ func (h *ReactionHandler) handleRemoveReaction(w http.ResponseWriter, r *http.Re
 
 	h.Store.RemoveReaction(messageID, user.ID, body.Emoji)
 
-	msg, _ := h.Store.GetMessageByID(messageID)
-
 	reactions, err := h.Store.GetReactionsByMessage(messageID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to get reactions")
 		return
 	}
 
-	if h.Hub != nil && msg != nil {
+	if h.Hub != nil {
 		h.Store.CreateEvent(&store.Event{
 			Kind:      "reaction_update",
 			ChannelID: msg.ChannelID,
@@ -113,7 +132,17 @@ func (h *ReactionHandler) handleRemoveReaction(w http.ResponseWriter, r *http.Re
 }
 
 func (h *ReactionHandler) handleGetReactions(w http.ResponseWriter, r *http.Request) {
+	user := auth.UserFromContext(r.Context())
+	if user == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	messageID := r.PathValue("messageId")
+	if _, ok := h.canAccessMessage(user, messageID); !ok {
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
+		return
+	}
 
 	reactions, err := h.Store.GetReactionsByMessage(messageID)
 	if err != nil {
