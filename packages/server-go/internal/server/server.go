@@ -332,6 +332,13 @@ func (s *Server) SetupRoutes() {
 	// `audit_retention_override` 在 user-rail handler 0 hit.
 	al7RetentionHandler := &api.AL7AuditRetentionHandler{Store: s.store, Logger: s.logger}
 	al7RetentionHandler.RegisterAdminRoutes(s.mux, adminMw)
+	// HB-6 heartbeat lag percentile monitor — admin-rail readonly GET
+	// /admin-api/v1/heartbeat-lag (synchronous 30s rolling-window aggregate
+	// from agent_runtimes.last_heartbeat_at, 0 schema 改). admin readonly
+	// 不挂 PATCH/POST/DELETE (ADM-0 §1.3 红线). Reuses BPP-4 watchdog
+	// 30s threshold byte-identical via WindowSeconds const.
+	hb6LagHandler := &api.HB6LagHandler{Store: s.store, Logger: s.logger}
+	hb6LagHandler.RegisterAdminRoutes(s.mux, adminMw)
 	// AL-7.2 retention sweeper goroutine (1h ticker, ctx-aware shutdown). Same
 	// pattern as AP-2 ExpiresSweeper #525. Forward-only soft-archive via
 	// admin_actions.archived_at column (立场 ① 不真删 / 不裂表).
