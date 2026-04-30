@@ -158,6 +158,29 @@ packages/borgee-helper/         # 独立 Go module (separate go.mod, 防 server-
 - **PWA UI**: 不复用 "Borgee Helper" 文案 (避混淆 — PWA = "Borgee" 主品牌 SPA, daemon = OS-level 后台服务)
 - **install.sh**: `curl -fsSL borgee.cloud/install.sh | bash` 装 daemon + 注册系统服务 (跟 HB-1 §6.5 一键安装脚本立场承袭)
 
+## 5.6 HB-2.0 prerequisite — CI matrix + 3 IPC unit (HB stack Go 重审 飞马 #7 必修)
+
+**HB-2.0** (HB-2.1..HB-2.6 之前必跑) — CI matrix 跨平台 verify, 真挂 macOS + Windows runner:
+
+```yaml
+# .github/workflows/hb-stack-go.yml (HB-2.0 真实施 PR 加)
+strategy:
+  matrix:
+    os: [ubuntu-latest, macos-latest, windows-latest]
+runs-on: ${{ matrix.os }}
+steps:
+  - uses: actions/setup-go@v5
+    with: { go-version: '1.23' }
+  - run: cd packages/borgee-helper && go test -tags ${{ matrix.os == 'ubuntu-latest' && 'sandbox_linux' || matrix.os == 'macos-latest' && 'sandbox_darwin' || 'sandbox_other' }} ./...
+```
+
+**3 IPC unit** (HB-2.0 真实施 PR 加, 跨平台 byte-identical 反断):
+- `ipc_uds_test.go` (Linux + macOS UDS server start + JSON envelope round-trip)
+- `ipc_winpipe_test.go` (Windows Named Pipe via go-winio, 同 JSON envelope, byte-identical 跟 UDS 路径)
+- `ipc_dispatch_test.go` (跨平台 request_id 多路复用 + 11 reason 8-dict 字面 byte-identical)
+
+反约束: HB-2.1..HB-2.6 任一 PR merge 前, HB-2.0 CI matrix 跑过 3 OS × sandbox build tag 全 PASS (release-gate.yml step `hb-stack-go-matrix` 守门, 待 HB-2.0 PR 加).
+
 ## 6. 实施切入路线 (HB-1 落地后)
 
 > **HB-1 #589 cross-check (战马D 1 行 verify)**: HB-1 #589 PR 真落 Go binary skeleton 后, HB-2 §3 IPC contract + §5.5 包结构跟 HB-1 真实施 1:1 verify (Go module 共享 audit log JSON schema + sandbox build tag 命名跟 install-butler 同模式). 反向 grep `package install_butler` 在 HB-2 路径 0 hit (模块拆死), 但 audit log JSON 字段顺序 byte-identical (跟 HB-4 §1.5 第 4 行守门).
