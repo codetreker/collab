@@ -235,7 +235,7 @@ func TestCHN142_NoAdminPatchDeletePath(t *testing.T) {
 // UpdateChannelDescription 包装单字符串改, 其它 byte-identical).
 func TestCHN142_CHN10HandlePutByteIdentical(t *testing.T) {
 	t.Parallel()
-	body, err := os.ReadFile(filepath.Join("..", "api", "chn_10_description.go"))
+	body, err := os.ReadFile(filepath.Join("..", "api", "channel_description.go"))
 	if err != nil {
 		t.Fatalf("read chn_10_description.go: %v", err)
 	}

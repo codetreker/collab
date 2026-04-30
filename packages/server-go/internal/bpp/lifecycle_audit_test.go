@@ -171,7 +171,7 @@ func TestBPP82_LifecycleAuditor_SingleGate(t *testing.T) {
 	dirs := []string{".", "../api"}
 	whitelist := map[string]bool{
 		"lifecycle_audit.go":        true, // write-side single-gate
-		"bpp_8_lifecycle_list.go":   true, // read-only filter (isPluginLifecycleAction switch)
+		"plugin_list.go":   true, // read-only filter (isPluginLifecycleAction switch)
 	}
 	hits := []string{}
 	for _, dir := range dirs {

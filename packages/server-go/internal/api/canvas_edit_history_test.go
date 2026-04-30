@@ -71,7 +71,7 @@ func TestCV151_ReusesMessagesEditHistory(t *testing.T) {
 	t.Parallel()
 	// Verify DM-7.1 migration still defines edit_history on messages.
 	root := cv15RepoRoot(t)
-	dm71 := filepath.Join(root, "packages/server-go/internal/migrations/dm_7_1_messages_edit_history.go")
+	dm71 := filepath.Join(root, "packages/server-go/internal/migrations/messages_edit_history.go")
 	if _, err := os.Stat(dm71); err != nil {
 		t.Fatalf("dm_7_1 migration missing: %v", err)
 	}

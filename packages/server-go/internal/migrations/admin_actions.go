@@ -10,7 +10,7 @@ import (
 // §2 不变量 (L109-120 受影响者必感知 + Audit 100% 留痕 + 分层可见).
 // Acceptance: `docs/qa/acceptance-templates/adm-2.md` §数据契约 (admin_actions
 // schema 字段 + 索引 + action 类型枚举 DB CHECK).
-// Implementation: `docs/implementation/modules/admin-model.md` §ADM-2 (R2 取消
+// Implementation: `docs/architecture/admin-model.md` §ADM-2 (R2 取消
 // ⭐ 标志性 — 内部 milestone, 不进野马签字流; 但兑现 §4.1 ADM-1 隐私承诺页
 // "你能在设置看到 admin 影响记录" 文案).
 // 依赖: ADM-1 (PR #455+#459+#464) ✅ 已落.

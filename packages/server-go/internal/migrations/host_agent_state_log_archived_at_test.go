@@ -101,7 +101,7 @@ func TestHB51_Idempotent(t *testing.T) {
 // AL-7 chain — HB-5 reuses that action with metadata.target='heartbeat'.
 func TestHB51_NoAdminActionsEnumDrift(t *testing.T) {
 	t.Parallel()
-	body, err := os.ReadFile("hb_5_1_agent_state_log_archived_at.go")
+	body, err := os.ReadFile("host_agent_state_log_archived_at.go")
 	if err != nil {
 		t.Fatalf("read hb_5_1: %v", err)
 	}

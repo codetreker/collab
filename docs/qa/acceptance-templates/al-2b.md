@@ -1,7 +1,7 @@
 # Acceptance Template — AL-2b: `agent_config_update` BPP frame + ack 路径
 
 > 蓝图: `plugin-protocol.md` §1.5 (L93-107, 热更新分级 + 幂等 reload + runtime 不缓存) + §2.1 (L138-141, `agent_config_update` 控制面帧 server→plugin) + `agent-lifecycle.md` §2.1 (用户改完 PATCH → plugin 立即收 → 下条消息渲染就用新值)
-> Implementation: `docs/implementation/modules/agent-lifecycle.md` §AL-2 (AL-2b 拆段, 与 BPP-3 同合)
+> Implementation: `docs/architecture/agent-lifecycle.md` §AL-2 (AL-2b 拆段, 与 BPP-3 同合)
 > 配套: AL-2a #264/#447 (SSOT 表 v=20 + REST PATCH /api/v1/agents/:id/config + 轮询 reload **临时路径**, AL-2b 落地后下线) + BPP-1 envelope CI lint #304 (4724efa, frame envelope 顺序锁 reflect 自动覆盖)
 > Owner: 战马 实施 (跟 BPP-3 同 PR 入) / 烈马 验收
 

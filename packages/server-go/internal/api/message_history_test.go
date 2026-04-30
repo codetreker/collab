@@ -234,7 +234,7 @@ func TestDM72_NoAdminPatchDeletePath(t *testing.T) {
 // 反向断言 (反向 grep dm_7 在 dm_4*.go 0 hit).
 func TestDM72_DM4ProductionByteIdentical(t *testing.T) {
 	t.Parallel()
-	body, err := os.ReadFile(filepath.Join("..", "api", "dm_4_message_edit.go"))
+	body, err := os.ReadFile(filepath.Join("..", "api", "message_edit.go"))
 	if err != nil {
 		t.Fatalf("read dm_4: %v", err)
 	}
