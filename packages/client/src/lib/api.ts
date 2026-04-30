@@ -1396,3 +1396,28 @@ export async function patchDMMessage(
   }
   return (await resp.json()) as DM4EditResponse;
 }
+
+// ─── CV-12 Artifact comment search ──────────────────────────
+//
+// Spec: docs/implementation/modules/cv-12-spec.md §0 立场 ① — 走既有
+// GET /api/v1/channels/{channelId}/messages/search?q= endpoint 单源.
+// channelId 是 artifact: namespace channel UUID (CV-5 #530 立场 ①).
+// 0 server code; CV-12 仅这 1 函数 thin wrapper.
+
+export interface ArtifactCommentSearchHit {
+  id: string;
+  content: string;
+  sender_id: string;
+  created_at: number;
+}
+
+/** GET /api/v1/channels/:channelId/messages/search?q= — search messages
+ *  in a virtual artifact: namespace channel. Returns matching comments. */
+export async function searchArtifactComments(
+  channelId: string,
+  query: string,
+): Promise<{ messages: ArtifactCommentSearchHit[] }> {
+  return request<{ messages: ArtifactCommentSearchHit[] }>(
+    `/api/v1/channels/${encodeURIComponent(channelId)}/messages/search?q=${encodeURIComponent(query)}`,
+  );
+}
