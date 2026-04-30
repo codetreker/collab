@@ -23,6 +23,7 @@ func runCV3V2(t *testing.T, db *gorm.DB) {
 // REG-CV3V2-001 (acceptance §1.1) — schema adds nullable thumbnail_url
 // column (NULL = 未生成, 跟 preview_url + AP-1.1/AP-3/AP-2 五连同模式).
 func TestCV3V21_AddsThumbnailURLColumn(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV3V2(t, db)
 
@@ -39,6 +40,7 @@ func TestCV3V21_AddsThumbnailURLColumn(t *testing.T) {
 // REG-CV3V2-001b — legacy markdown rows preserve NULL thumbnail_url
 // (跟 preview_url 同精神, ALTER ADD COLUMN NULL 现网行为零变).
 func TestCV3V21_LegacyRowsNullPreserved(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	// Run pre-CV-3 v2 chain, seed a row, then run v=31.
 	e := New(db)
@@ -71,6 +73,7 @@ func TestCV3V21_LegacyRowsNullPreserved(t *testing.T) {
 
 // REG-CV3V2-001c — schema accepts explicit thumbnail_url assignment.
 func TestCV3V21_AcceptsExplicitThumbnailURL(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV3V2(t, db)
 
@@ -91,6 +94,7 @@ func TestCV3V21_AcceptsExplicitThumbnailURL(t *testing.T) {
 // REG-CV3V2-001d (spec §3 反约束 + 立场 ⑧) — does NOT create separate
 // thumbnail tables (CV-3.1 立场 ① "enum 扩不裂表" 同精神).
 func TestCV3V21_NoSeparateThumbnailTables(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV3V2(t, db)
 
@@ -108,6 +112,7 @@ func TestCV3V21_NoSeparateThumbnailTables(t *testing.T) {
 
 // REG-CV3V2-001e — registry.go 字面锁 v=31.
 func TestCV3V21_RegistryHasV32(t *testing.T) {
+	t.Parallel()
 	for _, m := range All {
 		if m.Version == 32 {
 			if m.Name != "cv_3_v2_artifact_thumbnail" {
@@ -121,6 +126,7 @@ func TestCV3V21_RegistryHasV32(t *testing.T) {
 
 // TestCV3V21_Idempotent — re-running v=31 on already-applied DB is no-op.
 func TestCV3V21_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV3V2(t, db)
 

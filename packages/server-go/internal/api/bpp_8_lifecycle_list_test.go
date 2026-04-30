@@ -17,6 +17,7 @@ import (
 
 // TestBPP82_LifecycleList_HappyPath — acceptance §2.3.
 func TestBPP82_LifecycleList_HappyPath(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -52,6 +53,7 @@ func TestBPP82_LifecycleList_HappyPath(t *testing.T) {
 
 // TestBPP82_LifecycleList_CrossOwnerReject — acceptance §2.3.
 func TestBPP82_LifecycleList_CrossOwnerReject(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	owner, _ := s.GetUserByEmail("owner@test.com")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -76,6 +78,7 @@ func TestBPP82_LifecycleList_CrossOwnerReject(t *testing.T) {
 
 // TestBPP82_LifecycleList_Unauthorized401 — acceptance §2.3.
 func TestBPP82_LifecycleList_Unauthorized401(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, "GET",
 		ts.URL+"/api/v1/agents/some-agent/lifecycle", "", nil)
@@ -86,6 +89,7 @@ func TestBPP82_LifecycleList_Unauthorized401(t *testing.T) {
 
 // TestBPP82_LifecycleList_AgentNotFound404 — acceptance §2.3.
 func TestBPP82_LifecycleList_AgentNotFound404(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	resp, _ := testutil.JSON(t, "GET",
@@ -97,6 +101,7 @@ func TestBPP82_LifecycleList_AgentNotFound404(t *testing.T) {
 
 // TestBPP82_LifecycleList_LimitClamp — limit query default/max bounds.
 func TestBPP82_LifecycleList_LimitClamp(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		raw  string
 		want int
@@ -122,6 +127,7 @@ func TestBPP82_LifecycleList_LimitClamp(t *testing.T) {
 // Audit rows for the same agent_id with non-plugin_* action (e.g.
 // 'permission_expired') must NOT appear in the lifecycle list response.
 func TestBPP82_LifecycleList_NonPluginActionsExcluded(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -157,6 +163,7 @@ func TestBPP82_LifecycleList_NonPluginActionsExcluded(t *testing.T) {
 
 // TestBPP83_NoAdminLifecyclePath — acceptance §3.2 立场 ⑦ ADM-0 §1.3 红线.
 func TestBPP83_NoAdminLifecyclePath(t *testing.T) {
+	t.Parallel()
 	dir := "../api"
 	// dir is relative to this test file location (internal/api/).
 	if _, err := os.Stat(dir); err != nil {

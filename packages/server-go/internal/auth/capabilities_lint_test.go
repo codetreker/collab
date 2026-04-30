@@ -22,6 +22,7 @@ import (
 // TestAP4E1_ALL_OrderedByteIdentical — ALL slice 顺序 byte-identical 跟
 // const 声明顺序 (channel scope → artifact scope → messaging → channel admin).
 func TestAP4E1_ALL_OrderedByteIdentical(t *testing.T) {
+	t.Parallel()
 	want := []string{
 		"read_channel", "write_channel", "delete_channel",
 		"read_artifact", "write_artifact", "commit_artifact", "iterate_artifact", "rollback_artifact",
@@ -40,6 +41,7 @@ func TestAP4E1_ALL_OrderedByteIdentical(t *testing.T) {
 
 // TestAP4E1_Capabilities_AutoBuildFromAll — init() 派生 map 双向 ⊂ ALL.
 func TestAP4E1_Capabilities_AutoBuildFromAll(t *testing.T) {
+	t.Parallel()
 	if len(Capabilities) != len(ALL) {
 		t.Fatalf("Capabilities len = %d, want %d", len(Capabilities), len(ALL))
 	}
@@ -67,6 +69,7 @@ func TestAP4E1_Capabilities_AutoBuildFromAll(t *testing.T) {
 
 // TestAP4E1_ALL_Length14 — 14 锁 (跟 AP-1 #493 同源).
 func TestAP4E1_ALL_Length14(t *testing.T) {
+	t.Parallel()
 	if len(ALL) != 14 {
 		t.Fatalf("len(ALL) = %d, want 14 (AP-1 #493 字面锁)", len(ALL))
 	}
@@ -75,6 +78,7 @@ func TestAP4E1_ALL_Length14(t *testing.T) {
 // TestAP4E1_reflect_lint_NoOrphanConst — capabilities.go const 字面 ⊂ ALL.
 // 走 go/ast 解析 capabilities.go const block, 验每个 string literal ∈ ALL.
 func TestAP4E1_reflect_lint_NoOrphanConst(t *testing.T) {
+	t.Parallel()
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "capabilities.go", nil, parser.ParseComments)
 	if err != nil {
@@ -110,6 +114,7 @@ func TestAP4E1_reflect_lint_NoOrphanConst(t *testing.T) {
 
 // TestAP4E1_reflect_lint_NoExtraInMap — Capabilities map ⊂ ALL (无 extra).
 func TestAP4E1_reflect_lint_NoExtraInMap(t *testing.T) {
+	t.Parallel()
 	allSet := make(map[string]bool, len(ALL))
 	for _, c := range ALL {
 		allSet[c] = true
@@ -123,6 +128,7 @@ func TestAP4E1_reflect_lint_NoExtraInMap(t *testing.T) {
 
 // TestAP4E1_NoAdminGodModeInALL — ADM-0 §1.3 红线 (admin 永久不挂).
 func TestAP4E1_NoAdminGodModeInALL(t *testing.T) {
+	t.Parallel()
 	banned := []string{"admin_", "godmode_", "impersonat"}
 	for _, c := range ALL {
 		for _, b := range banned {
@@ -135,6 +141,7 @@ func TestAP4E1_NoAdminGodModeInALL(t *testing.T) {
 
 // TestAP4E1_IsValidCapability_TruthTable — 14 true + 1 false.
 func TestAP4E1_IsValidCapability_TruthTable(t *testing.T) {
+	t.Parallel()
 	for _, c := range ALL {
 		if !IsValidCapability(c) {
 			t.Errorf("IsValidCapability(%q) = false, want true", c)

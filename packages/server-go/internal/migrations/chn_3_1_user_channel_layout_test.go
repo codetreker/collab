@@ -26,6 +26,7 @@ func runCHN31(t *testing.T, db *gorm.DB) {
 // 小数 implementation. 跟 CV-4.1 #399
 // TestCV41_CreatesArtifactIterationsTable 同模式.
 func TestCHN31_CreatesUserChannelLayoutTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
 
@@ -65,6 +66,7 @@ func TestCHN31_CreatesUserChannelLayoutTable(t *testing.T) {
 // hidden / muted / pinned / is_pinned / group_id / cursor 全无.
 // 字面承袭野马 #366 stance 7 立场 黑名单 ①②③ + 立场 ⑥.
 func TestCHN31_NoDomainBleed(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
 
@@ -99,6 +101,7 @@ func TestCHN31_NoDomainBleed(t *testing.T) {
 // TestCHN31_PKEnforcesUniqueRowPerUserChannel pins acceptance §1.2 +
 // 立场 ② — duplicate (user_id, channel_id) INSERT must reject.
 func TestCHN31_PKEnforcesUniqueRowPerUserChannel(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
 
@@ -130,6 +133,7 @@ func TestCHN31_PKEnforcesUniqueRowPerUserChannel(t *testing.T) {
 // 单调小数. INSERT REAL position values; schema 不挂 CHECK constraint
 // (留 server 校验 reasonable bound), 仅断言 REAL 列受值.
 func TestCHN31_AcceptsPositionMonotonicDecimals(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
 
@@ -169,6 +173,7 @@ func TestCHN31_AcceptsPositionMonotonicDecimals(t *testing.T) {
 // channel_layout_user_id (本人 GET /me/layout 热路径). 跟 AL-4.1 #398
 // TestAL41_HasAgentIDIndex 同模式.
 func TestCHN31_HasUserIDIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
 
@@ -184,6 +189,7 @@ func TestCHN31_HasUserIDIndex(t *testing.T) {
 // v=19 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
 // guards). Same as every migration body in the registry.
 func TestCHN31_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
 	e := New(db)

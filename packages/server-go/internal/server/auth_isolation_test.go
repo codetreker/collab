@@ -19,6 +19,7 @@ import (
 
 // 2.A: admin session token must NOT authenticate against the user-rail.
 func TestAuthIsolation_2A_AdminSessionRejectedByUserRail(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminSession := testutil.LoginAsAdmin(t, ts.URL)
 
@@ -56,6 +57,7 @@ func TestAuthIsolation_2A_AdminSessionRejectedByUserRail(t *testing.T) {
 // 2.B: user borgee_token cookie must NOT authenticate against the admin-rail.
 // All admin endpoints share admin.RequireAdmin; testing one is sufficient.
 func TestAuthIsolation_2B_UserTokenRejectedByAdminRail(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
 	adminUserToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
@@ -102,6 +104,7 @@ func TestAuthIsolation_2B_UserTokenRejectedByAdminRail(t *testing.T) {
 // 2.D: an existing users.role='admin' user with no (*, *) grant gets 403 on
 // gated user-API endpoints. Verifies the RequirePermission shortcut is gone.
 func TestAuthIsolation_2D_LegacyAdminRoleNoShortcut(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	// Create a fresh admin-role user with NO (*, *) row and only basic seed

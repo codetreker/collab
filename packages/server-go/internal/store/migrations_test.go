@@ -3,6 +3,7 @@ package store
 import "testing"
 
 func TestMigrateIdempotent(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -14,6 +15,7 @@ func TestMigrateIdempotent(t *testing.T) {
 }
 
 func TestMigrateWithoutAdminSeedIsIdempotent(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -36,6 +38,7 @@ func TestMigrateWithoutAdminSeedIsIdempotent(t *testing.T) {
 }
 
 func TestMigrateWithExistingData(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -59,6 +62,7 @@ func TestMigrateWithExistingData(t *testing.T) {
 }
 
 func TestMigrateWithDMChannel(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -77,6 +81,7 @@ func TestMigrateWithDMChannel(t *testing.T) {
 }
 
 func TestMigrateDefaultPermissions(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -101,6 +106,7 @@ func TestMigrateDefaultPermissions(t *testing.T) {
 }
 
 func TestMigrateCreatorPermissions(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)

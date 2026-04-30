@@ -8,6 +8,7 @@ import (
 // `messages.quick_action` (TEXT, nullable). The seed/backfill steps are
 // no-ops on the minimal scaffold, but the column-add must run.
 func TestCMOnboardingWelcome_AddsQuickActionColumn(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 
@@ -36,6 +37,7 @@ func TestCMOnboardingWelcome_AddsQuickActionColumn(t *testing.T) {
 // chain). Pre-existing users without a #welcome channel must get one
 // (channel + member + system message with quick_action).
 func TestCMOnboardingWelcome_SeedsSystemUserAndBackfills(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 
@@ -114,6 +116,7 @@ func TestCMOnboardingWelcome_SeedsSystemUserAndBackfills(t *testing.T) {
 // TestCMOnboardingWelcome_IsIdempotent — re-running v=7 must not create a
 // second welcome channel or duplicate the system user.
 func TestCMOnboardingWelcome_IsIdempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 
@@ -131,5 +134,47 @@ func TestCMOnboardingWelcome_IsIdempotent(t *testing.T) {
 	db.Raw("SELECT COUNT(*) FROM schema_migrations WHERE version=7").Row().Scan(&n)
 	if n != 1 {
 		t.Fatalf("schema_migrations v7 rows = %d, want 1", n)
+	}
+}
+
+// TestShortPrefixUnit covers shortPrefix 2 branches (≥8 chars + <8 chars).
+func TestShortPrefixUnit(t *testing.T) {
+	t.Parallel()
+	if got := shortPrefix("abcdef1234567890"); got != "abcdef12" {
+		t.Errorf("shortPrefix long: got %q, want %q", got, "abcdef12")
+	}
+	if got := shortPrefix("short"); got != "short" {
+		t.Errorf("shortPrefix short: got %q, want %q", got, "short")
+	}
+	if got := shortPrefix(""); got != "" {
+		t.Errorf("shortPrefix empty: got %q, want empty", got)
+	}
+}
+
+// TestNowMillisUnit covers nowMillis happy path (returns positive epoch).
+func TestNowMillisUnit(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	if n := nowMillis(db); n <= 0 {
+		t.Errorf("nowMillis on real db = %d, want >0", n)
+	}
+}
+
+// TestHasColumnsUnit covers hasColumns missing-table + present-cols + missing-col.
+func TestHasColumnsUnit(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	// Missing table → false.
+	if hasColumns(db, "no_such_table", "x") {
+		t.Error("hasColumns missing table should be false")
+	}
+	if err := db.Exec(`CREATE TABLE t1 (a TEXT, b INTEGER)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !hasColumns(db, "t1", "a", "b") {
+		t.Error("hasColumns present cols should be true")
+	}
+	if hasColumns(db, "t1", "a", "c") {
+		t.Error("hasColumns missing col should be false")
 	}
 }

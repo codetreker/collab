@@ -18,13 +18,7 @@ import (
 
 func newInternalHub(t *testing.T) (*Hub, *store.Store) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 	t.Cleanup(func() { s.Close() })
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -33,6 +27,7 @@ func newInternalHub(t *testing.T) (*Hub, *store.Store) {
 }
 
 func TestInternalClientSendAndAliveEdges(t *testing.T) {
+	t.Parallel()
 	c := &Client{
 		send:       make(chan []byte, 1),
 		done:       make(chan struct{}),
@@ -81,6 +76,7 @@ func TestInternalClientSendAndAliveEdges(t *testing.T) {
 }
 
 func TestInternalClientCloseWithWebSocket(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
 		if err != nil {
@@ -110,6 +106,7 @@ func TestInternalClientCloseWithWebSocket(t *testing.T) {
 }
 
 func TestInternalHubBroadcastBranches(t *testing.T) {
+	t.Parallel()
 	hub, _ := newInternalHub(t)
 	c1 := &Client{userID: "u1", send: make(chan []byte, 4), subscribed: map[string]bool{"ch": true}}
 	c2 := &Client{userID: "u1", send: make(chan []byte, 4), subscribed: map[string]bool{"ch": true}}
@@ -166,6 +163,7 @@ func TestInternalHubBroadcastBranches(t *testing.T) {
 }
 
 func TestInternalCommandStoreReplacementAndLimits(t *testing.T) {
+	t.Parallel()
 	cs := NewCommandStore()
 	cs.Register("conn-1", "agent-1", "Agent", []AgentCommand{{Name: "same"}, {Name: "old"}})
 	cs.Register("conn-1", "agent-1", "Agent", []AgentCommand{{Name: "same"}, {Name: "new"}})
@@ -192,6 +190,7 @@ func TestInternalCommandStoreReplacementAndLimits(t *testing.T) {
 }
 
 func TestInternalPluginConnRequestResponseBranches(t *testing.T) {
+	t.Parallel()
 	hub, _ := newInternalHub(t)
 	hub.SetHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/json" {
@@ -282,6 +281,7 @@ func readPluginSend(t *testing.T, pc *PluginConn) map[string]any {
 }
 
 func TestInternalRemoteConnRequestResponseBranches(t *testing.T) {
+	t.Parallel()
 	rc := &RemoteConn{
 		send:    make(chan []byte, 2),
 		done:    make(chan struct{}),
@@ -340,6 +340,7 @@ func readRemoteSend(t *testing.T, rc *RemoteConn) map[string]any {
 }
 
 func TestInternalAuthenticateWSDevFallbacksAndHelpers(t *testing.T) {
+	t.Parallel()
 	hub, s := newInternalHub(t)
 	email := "dev@example.com"
 	user := &store.User{ID: "dev-user", Email: &email, DisplayName: "Dev User", Role: "member"}

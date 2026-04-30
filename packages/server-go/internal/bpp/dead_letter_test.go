@@ -15,6 +15,7 @@ import (
 // TestBPP4_DeadLetter_LogKeyByteIdentical — content-lock §1.③ 单源锁
 // `bpp.frame_dropped_plugin_offline` 字面.
 func TestBPP4_DeadLetter_LogKeyByteIdentical(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
 
@@ -42,6 +43,7 @@ func TestBPP4_DeadLetter_LogKeyByteIdentical(t *testing.T) {
 
 // TestBPP4_DeadLetter_NilLoggerNoOp — defense-in-depth.
 func TestBPP4_DeadLetter_NilLoggerNoOp(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r != nil {
 			t.Errorf("nil logger should be no-op, got panic: %v", r)
@@ -54,6 +56,7 @@ func TestBPP4_DeadLetter_NilLoggerNoOp(t *testing.T) {
 // (actor/action/target/when/scope) 跟 HB-1/HB-2 audit 三处同源 (改 = 改
 // 三处单测锁). 用 reflect 锁字段名 + JSON tag.
 func TestBPP4_DeadLetter_AuditSchema5FieldsByteIdentical(t *testing.T) {
+	t.Parallel()
 	want := []struct {
 		name string
 		tag  string
@@ -90,6 +93,7 @@ func TestBPP4_DeadLetter_AuditSchema5FieldsByteIdentical(t *testing.T) {
 // 字面承袭 byte-identical: 4 forbidden id 跟 BPP-4 #499 原 inline scan
 // 同源 (BPP-5+/HB-3+ 后续 milestone reuse 同 helper).
 func TestBPP4_NoRetryQueueInBPPPackage(t *testing.T) {
+	t.Parallel()
 	astscan.AssertNoForbiddenIdentifiers(t, ".", []astscan.ForbiddenIdentifier{
 		{Name: "pendingAcks", Reason: "BPP-4 ack best-effort 不重发 (acceptance §4.3)"},
 		{Name: "retryQueue", Reason: "BPP-4 ack best-effort 不重发 (acceptance §4.3)"},

@@ -118,13 +118,7 @@ func (f *fakeHub) PushMentionPushed(messageID, channelID, senderID, mentionTarge
 // dispatcher with a fixed clock + the seeded IDs.
 func newDispatchFixture(t *testing.T, online map[string]bool, nowMs int64) (*MentionDispatcher, *store.Store, *fakeHub, fixtureIDs) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatalf("store.Open: %v", err)
-	}
-	if err := s.Migrate(); err != nil {
-		t.Fatalf("Migrate: %v", err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 
 	ownerID := uuid.NewString()
 	owner := &store.User{ID: ownerID, DisplayName: "Owner", Role: "member"}

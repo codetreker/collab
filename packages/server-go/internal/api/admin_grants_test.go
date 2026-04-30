@@ -9,8 +9,8 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// REG-RT_4-cov-bump v5 — AL-5 recover error branches.
-func TestRT_4_CovBump_v5_AL5RecoverErrors(t *testing.T) {
+// REG-covbump v5 — AL-5 recover error branches.
+func TestAL5RecoverErrors(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -32,8 +32,8 @@ func TestRT_4_CovBump_v5_AL5RecoverErrors(t *testing.T) {
 	// (skip — 404 from ServeMux already.)
 }
 
-// REG-RT_4-cov-bump v5 — sanitizeImpersonateGrant nil branch via JSON GET.
-func TestRT_4_CovBump_v5_ImpersonateGrantSanitizeNil(t *testing.T) {
+// REG-covbump v5 — sanitizeImpersonateGrant nil branch via JSON GET.
+func TestImpersonateGrantSanitizeNil(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -50,8 +50,8 @@ func TestRT_4_CovBump_v5_ImpersonateGrantSanitizeNil(t *testing.T) {
 	}
 }
 
-// REG-RT_4-cov-bump v5 — host-grants validation + lifecycle.
-func TestRT_4_CovBump_v5_HostGrantsLifecycle(t *testing.T) {
+// REG-covbump v5 — host-grants validation + lifecycle.
+func TestHostGrantsLifecycle(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

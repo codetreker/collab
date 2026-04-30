@@ -125,7 +125,16 @@ func (c *Client) setAlive() {
 }
 
 func (c *Client) Close() {
-	c.conn.Close(websocket.StatusNormalClosure, "closing")
+	// TEST-FIX-3-COV: nil-safe guard — production paths always set conn via
+	// newClient (real websocket from upgrader); test paths constructing
+	// bare *Client{send,done} (e.g. ws_internal_test.go +
+	// hub_heartbeat_test.go) leave conn==nil. Heartbeat dead-branch async
+	// Close goroutine panics on nil conn → test process kill. Guard
+	// preserves byte-identical production behavior (real conn always
+	// non-nil) while letting unit tests exercise the close-on-dead path.
+	if c.conn != nil {
+		c.conn.Close(websocket.StatusNormalClosure, "closing")
+	}
 	select {
 	case <-c.done:
 	default:

@@ -4,6 +4,7 @@ package bpp
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"strings"
 	"sync"
@@ -67,6 +68,7 @@ func (r *recordingErrorSink) callsSnapshot() []errorCall {
 
 // TestBPP4_Watchdog_ThresholdConstant — acceptance §1.1 单源 30s.
 func TestBPP4_Watchdog_ThresholdConstant(t *testing.T) {
+	t.Parallel()
 	if BPP_HEARTBEAT_TIMEOUT_SECONDS != 30 {
 		t.Errorf("BPP-4 single-source threshold drifted: got %d, want 30 "+
 			"(改 = 改三处: 此常量 + bpp-4-spec.md §0.2 + bpp-4-content-lock.md §1.①)",
@@ -77,6 +79,7 @@ func TestBPP4_Watchdog_ThresholdConstant(t *testing.T) {
 // TestBPP4_Watchdog_TriggersErrorOn30sTimeout — acceptance §1.2
 // (watchdog 触发路径 = 调 AgentErrorSink.SetError, 不下 cancel/abort).
 func TestBPP4_Watchdog_TriggersErrorOn30sTimeout(t *testing.T) {
+	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
 	w := NewHeartbeatWatchdog(src, sink, slog.Default())
@@ -104,6 +107,7 @@ func TestBPP4_Watchdog_TriggersErrorOn30sTimeout(t *testing.T) {
 
 // TestBPP4_Watchdog_NotSpammyOnRepeatedScan — markedErr 防重复 SetError.
 func TestBPP4_Watchdog_NotSpammyOnRepeatedScan(t *testing.T) {
+	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
 	w := NewHeartbeatWatchdog(src, sink, slog.Default())
@@ -127,6 +131,7 @@ func TestBPP4_Watchdog_NotSpammyOnRepeatedScan(t *testing.T) {
 // advances), watchdog removes from markedErr so the next disconnect
 // cycle re-flips. 跟 acceptance §1.3 同链.
 func TestBPP4_Watchdog_ReconnectClearsMarked(t *testing.T) {
+	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
 	w := NewHeartbeatWatchdog(src, sink, slog.Default())
@@ -162,6 +167,7 @@ func TestBPP4_Watchdog_ReconnectClearsMarked(t *testing.T) {
 // TestBPP4_Watchdog_MultiPluginIsolated — 多 plugin 隔离, 一个 stale
 // 不影响其他 fresh.
 func TestBPP4_Watchdog_MultiPluginIsolated(t *testing.T) {
+	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
 	w := NewHeartbeatWatchdog(src, sink, slog.Default())
@@ -195,6 +201,7 @@ func TestBPP4_Watchdog_MultiPluginIsolated(t *testing.T) {
 // 触发 log key `bpp.heartbeat_timeout` (跟 dead_letter `bpp.frame_dropped_*`
 // 同模式 — bpp.* prefix 锁).
 func TestBPP4_Watchdog_LogKeyOnTimeout(t *testing.T) {
+	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
 	var buf bytes.Buffer
@@ -218,6 +225,7 @@ func TestBPP4_Watchdog_LogKeyOnTimeout(t *testing.T) {
 
 // TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSource — defense-in-depth.
 func TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSource(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if recover() == nil {
 			t.Errorf("expected panic on nil source")
@@ -228,10 +236,34 @@ func TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSource(t *testing.T) {
 
 // TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSink — defense-in-depth.
 func TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSink(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if recover() == nil {
 			t.Errorf("expected panic on nil sink")
 		}
 	}()
 	NewHeartbeatWatchdog(&fakeLivenessSource{}, nil, nil)
+}
+
+// TestHeartbeatWatchdog_Run_CancelExits verifies Run returns when its ctx
+// is canceled (deterministic, no timer reliance — uses a closed done chan
+// pattern same as ws hub heartbeat tests).
+func TestHeartbeatWatchdog_Run_CancelExits(t *testing.T) {
+	t.Parallel()
+	src := &fakeLivenessSource{}
+	sink := &recordingErrorSink{}
+	w := NewHeartbeatWatchdog(src, sink, slog.Default())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		w.Run(ctx)
+		close(done)
+	}()
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Run did not exit on ctx cancel")
+	}
 }

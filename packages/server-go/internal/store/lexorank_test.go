@@ -5,6 +5,7 @@ import (
 )
 
 func TestGenerateRankBetween(t *testing.T) {
+	t.Parallel()
 	r := GenerateRankBetween("0|aaaaaa", "0|zzzzzz")
 	if r == "" {
 		t.Fatal("expected non-empty rank")
@@ -18,6 +19,7 @@ func TestGenerateRankBetween(t *testing.T) {
 }
 
 func TestGenerateRankBetween_EmptyBefore(t *testing.T) {
+	t.Parallel()
 	r := GenerateRankBetween("", "0|mmmmmm")
 	if r == "" {
 		t.Fatal("expected non-empty rank")
@@ -28,6 +30,7 @@ func TestGenerateRankBetween_EmptyBefore(t *testing.T) {
 }
 
 func TestGenerateRankBetween_EmptyAfter(t *testing.T) {
+	t.Parallel()
 	r := GenerateRankBetween("0|mmmmmm", "")
 	if r == "" {
 		t.Fatal("expected non-empty rank")
@@ -38,6 +41,7 @@ func TestGenerateRankBetween_EmptyAfter(t *testing.T) {
 }
 
 func TestRebalance(t *testing.T) {
+	t.Parallel()
 	items := []RankItem{
 		{ID: "a", Rank: "0|aaaa"},
 		{ID: "b", Rank: "0|aaab"},
@@ -55,6 +59,7 @@ func TestRebalance(t *testing.T) {
 }
 
 func TestCompareLexorank(t *testing.T) {
+	t.Parallel()
 	if CompareLexorank("0|aaa", "0|zzz") >= 0 {
 		t.Fatal("aaa should be < zzz")
 	}
@@ -67,6 +72,7 @@ func TestCompareLexorank(t *testing.T) {
 }
 
 func TestGenerateInitialRank(t *testing.T) {
+	t.Parallel()
 	r := GenerateInitialRank()
 	if r == "" {
 		t.Fatal("expected non-empty initial rank")

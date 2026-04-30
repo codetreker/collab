@@ -28,6 +28,7 @@ import (
 // 白名单 ≤30, 跟 spec §1 ③ + 蓝图 §1 byte-identical (改一处 = 改三处+:
 // spec + 蓝图 + acceptance + 此 const).
 func TestCapabilities_WhitelistByteIdentical(t *testing.T) {
+	t.Parallel()
 	want := map[string]bool{
 		"read_channel": true, "write_channel": true, "delete_channel": true,
 		"read_artifact": true, "write_artifact": true, "commit_artifact": true,
@@ -60,6 +61,7 @@ func TestCapabilities_WhitelistByteIdentical(t *testing.T) {
 // TestHasCapability_AgentExplicitScope_Pass — agent 持显式 (perm,
 // scope) 行 → true (正向通路).
 func TestHasCapability_AgentExplicitScope_Pass(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	agent := &store.User{ID: "ag-1", DisplayName: "Agent", Role: "agent"}
 	s.CreateUser(agent)
@@ -75,6 +77,7 @@ func TestHasCapability_AgentExplicitScope_Pass(t *testing.T) {
 // TestHasCapability_AgentNoWildcardShortcut — agent 即使有 (*,*) 行
 // 也 false (蓝图 §1.4 立场 字面承袭). REG-AP1-002 + spec §2 反约束精神.
 func TestHasCapability_AgentNoWildcardShortcut(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	agent := &store.User{ID: "ag-2", DisplayName: "Agent", Role: "agent"}
 	s.CreateUser(agent)
@@ -90,6 +93,7 @@ func TestHasCapability_AgentNoWildcardShortcut(t *testing.T) {
 // TestHasCapability_AgentCrossScope_False — agent 持 art-1 grant 访
 // art-2 → false (跨 scope 严格).
 func TestHasCapability_AgentCrossScope_False(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	agent := &store.User{ID: "ag-3", DisplayName: "Agent", Role: "agent"}
 	s.CreateUser(agent)
@@ -105,6 +109,7 @@ func TestHasCapability_AgentCrossScope_False(t *testing.T) {
 // TestHasCapability_HumanWildcard_Pass — human owner 享 (*,*) 短路
 // (立场 ④ 区分 agent/human).
 func TestHasCapability_HumanWildcard_Pass(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	human := &store.User{ID: "h-1", DisplayName: "Owner", Role: "member"}
 	s.CreateUser(human)
@@ -119,6 +124,7 @@ func TestHasCapability_HumanWildcard_Pass(t *testing.T) {
 
 // TestHasCapability_NilUser_False — 无 user context → false (defense).
 func TestHasCapability_NilUser_False(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if HasCapability(context.Background(), s, CommitArtifact, "artifact:art-1") {
 		t.Error("nil user 应 false")
@@ -128,6 +134,7 @@ func TestHasCapability_NilUser_False(t *testing.T) {
 // TestArtifactScope_ResolvesPathValue — `artifact:{artifactId}` (跟
 // channelScope() 同模式).
 func TestArtifactScope_ResolvesPathValue(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest("GET", "/api/v1/artifacts/art-foo", nil)
 	req.SetPathValue("artifactId", "art-foo")
 	if got := ArtifactScope(req); got != "artifact:art-foo" {
@@ -138,6 +145,7 @@ func TestArtifactScope_ResolvesPathValue(t *testing.T) {
 // TestScopeStr_Builders — 单源 scope-string builder (跟 channelScope
 // resolver 同模式 byte-identical).
 func TestScopeStr_Builders(t *testing.T) {
+	t.Parallel()
 	if got := ChannelScopeStr("ch-1"); got != "channel:ch-1" {
 		t.Errorf("ChannelScopeStr: got %q", got)
 	}
@@ -150,6 +158,7 @@ func TestScopeStr_Builders(t *testing.T) {
 // `git grep -nE 'HasCapability\("[a-z_]+"' packages/server-go/internal/api/`
 // 必 0 hit. 此测试是 CI lint 等价 — 防 future drift.
 func TestReverseGrep_NoHardcodedPermissionLiteral(t *testing.T) {
+	t.Parallel()
 	apiDir := filepath.Join("..", "api")
 	pat := regexp.MustCompile(`HasCapability\("[a-z_]+"`)
 	hits := []string{}

@@ -26,6 +26,7 @@ import (
 // REG-BPP32-301 (acceptance §3.4 + spec §1 三立场全闭环) — server-side
 // full flow integration: AP-1 abac 拒 → owner grant → agent 重试 200.
 func TestBPP32_FullFlow_AgentDeniedThenGrantedThenRetrySuccess(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	owner, agent := bpp32SeedOwnerAndAgent(t, s, "owner-bpp32-flow@test.com")
 

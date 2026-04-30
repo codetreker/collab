@@ -27,6 +27,7 @@ func runCV41(t *testing.T, db *gorm.DB) {
 // AL-1a #249 6 reason 复用. 跟 AL-4.1 #398
 // TestAL41_CreatesAgentRuntimesTable 同模式.
 func TestCV41_CreatesArtifactIterationsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
 
@@ -83,6 +84,7 @@ func TestCV41_CreatesArtifactIterationsTable(t *testing.T) {
 // retry_count 全无 (反约束 #380 ⑦ failed 不复用 + 立场 ③ server 不算
 // diff + RT-1 envelope cursor 拆死).
 func TestCV41_NoDomainBleed(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
 
@@ -111,6 +113,7 @@ func TestCV41_NoDomainBleed(t *testing.T) {
 // ('pending','running','completed','failed') byte-identical 跟 #380
 // 文案锁 ③ 同源.
 func TestCV41_AcceptsAll4States(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
 
@@ -131,6 +134,7 @@ func TestCV41_AcceptsAll4States(t *testing.T) {
 // reject 中间态 / 同义词 / 大小写 (跟 #380 文案锁 ③ 同源 + AL-4.1 #398
 // TestAL41_RejectsInvalidStatus 同模式 同义词漂防御).
 func TestCV41_RejectsUnknownState(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
 
@@ -160,6 +164,7 @@ func TestCV41_RejectsUnknownState(t *testing.T) {
 // TestAL41_HasAgentIDIndex 同模式 — 显式命名让 EXPLAIN QUERY PLAN 可读 +
 // 反查 grep 可断.
 func TestCV41_HasIndexes(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
 
@@ -182,6 +187,7 @@ func TestCV41_HasIndexes(t *testing.T) {
 // server 校验, 跟 AL-4.1 / 11 项 language 白名单同思路 — schema CHECK
 // 装不下产品级 enum), 此 test 仅断言 INSERT 全 OK.
 func TestCV41_AcceptsAL1aReasonValues(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
 
@@ -212,6 +218,7 @@ func TestCV41_AcceptsAL1aReasonValues(t *testing.T) {
 // v=18 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
 // guards). Same as every migration body in the registry.
 func TestCV41_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
 	e := New(db)

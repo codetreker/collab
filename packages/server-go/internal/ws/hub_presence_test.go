@@ -83,6 +83,7 @@ func (f *fakePresenceWriter) onlineCount() int {
 // TestPresenceLifecycle_HumanRegisterTrackOnline pins the human path:
 // Register fans into TrackOnline with sessionID set + agentID nil.
 func TestPresenceLifecycle_HumanRegisterTrackOnline(t *testing.T) {
+	t.Parallel()
 	hub, _ := newInternalHub(t)
 	pw := newFakeWriter()
 	hub.SetPresenceWriter(pw)
@@ -117,6 +118,7 @@ func TestPresenceLifecycle_HumanRegisterTrackOnline(t *testing.T) {
 // flows into TrackOnline so DM-2.2 fallback's IsOnline(agent.id) path
 // resolves via the partial index column.
 func TestPresenceLifecycle_AgentRoleSetsAgentID(t *testing.T) {
+	t.Parallel()
 	hub, _ := newInternalHub(t)
 	pw := newFakeWriter()
 	hub.SetPresenceWriter(pw)
@@ -147,6 +149,7 @@ func TestPresenceLifecycle_AgentRoleSetsAgentID(t *testing.T) {
 // closing all-but-one keeps the writer state non-empty for that user,
 // matching #302 §2.2 (multi-end users stay online while any tab lives).
 func TestPresenceLifecycle_MultiSessionLastWins(t *testing.T) {
+	t.Parallel()
 	hub, _ := newInternalHub(t)
 	pw := newFakeWriter()
 	hub.SetPresenceWriter(pw)
@@ -184,6 +187,7 @@ func TestPresenceLifecycle_MultiSessionLastWins(t *testing.T) {
 // acceptance §2.1 row — without it, a panic mid-handler would leak
 // presence_sessions rows until process restart.
 func TestPresenceLifecycle_DeferUntrackOnPanic(t *testing.T) {
+	t.Parallel()
 	hub, _ := newInternalHub(t)
 	pw := newFakeWriter()
 	hub.SetPresenceWriter(pw)
@@ -217,6 +221,7 @@ func TestPresenceLifecycle_DeferUntrackOnPanic(t *testing.T) {
 // client — live broadcast must keep working even if presence_sessions
 // has a hiccup. Otherwise a DB stall would deny WS service entirely.
 func TestPresenceLifecycle_TrackOnlineFailureDoesNotAbort(t *testing.T) {
+	t.Parallel()
 	hub, _ := newInternalHub(t)
 	pw := newFakeWriter()
 	pw.failNext = errors.New("transient db error")
@@ -247,6 +252,7 @@ func TestPresenceLifecycle_TrackOnlineFailureDoesNotAbort(t *testing.T) {
 // package construct Hub via newInternalHub without a writer — they
 // must keep passing.
 func TestPresenceLifecycle_NilWriterIsNoop(t *testing.T) {
+	t.Parallel()
 	hub, _ := newInternalHub(t)
 	// no SetPresenceWriter call
 

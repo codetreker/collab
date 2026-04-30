@@ -48,3 +48,26 @@ func TestPushArtifactCommentAdded_NilCursorsEarlyReturn(t *testing.T) {
 		t.Errorf("expected cursor=0 on nil cursors, got %d", cur)
 	}
 }
+
+// TestPushArtifactCommentAdded_BroadcastBranches exercises the broadcast
+// body for both channel-scoped (BroadcastToChannel) and channel-empty
+// (BroadcastToAll) paths. Pairs with the IterationStateChanged smoke.
+func TestPushArtifactCommentAdded_BroadcastBranches(t *testing.T) {
+	t.Parallel()
+	hub, _ := setupTestHub(t)
+
+	// channel-scoped fanout
+	c1, sent1 := hub.PushArtifactCommentAdded("c1", "a1", "ch1", "u1", "human", "preview", 1700000000000)
+	if !sent1 || c1 == 0 {
+		t.Fatalf("expected sent=true cursor>0 on scoped fanout; got sent=%v cursor=%d", sent1, c1)
+	}
+
+	// channel-empty fanout (BroadcastToAll path)
+	c2, sent2 := hub.PushArtifactCommentAdded("c2", "a1", "", "u1", "agent", "preview2", 1700000000001)
+	if !sent2 {
+		t.Fatalf("expected sent=true on empty channel fallback; got sent=%v cursor=%d", sent2, c2)
+	}
+	if c2 <= c1 {
+		t.Fatalf("cursor must monotonic; c1=%d c2=%d", c1, c2)
+	}
+}

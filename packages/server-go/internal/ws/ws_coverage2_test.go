@@ -7,6 +7,7 @@ import (
 )
 
 func TestHubPluginAndRemoteRegistration(t *testing.T) {
+	t.Parallel()
 	hub, s := setupTestHub(t)
 
 	user := &store.User{ID: "hub-reg-test", DisplayName: "HubRegTest", Role: "member"}
@@ -24,6 +25,7 @@ func TestHubPluginAndRemoteRegistration(t *testing.T) {
 }
 
 func TestHubUnsubscribeUserFromChannel(t *testing.T) {
+	t.Parallel()
 	hub, s := setupTestHub(t)
 
 	user := &store.User{ID: "unsub-test", DisplayName: "UnsubTest", Role: "member"}
@@ -34,6 +36,7 @@ func TestHubUnsubscribeUserFromChannel(t *testing.T) {
 }
 
 func TestHubAccessors(t *testing.T) {
+	t.Parallel()
 	hub, _ := setupTestHub(t)
 
 	if hub.Store() == nil {
@@ -48,6 +51,7 @@ func TestHubAccessors(t *testing.T) {
 }
 
 func TestHubEventBroadcastingExtended(t *testing.T) {
+	t.Parallel()
 	hub, s := setupTestHub(t)
 
 	user := &store.User{ID: "evt-broad2", DisplayName: "EvtBroad2", Role: "member"}

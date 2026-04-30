@@ -46,6 +46,7 @@ func extractPrefix(v any) dispatcherPrefix {
 }
 
 func TestBPPEnvelopeMatchesRT0Dispatcher(t *testing.T) {
+	t.Parallel()
 	rt0 := extractPrefix(ws.AgentInvitationPendingFrame{})
 	rt0Decided := extractPrefix(ws.AgentInvitationDecidedFrame{})
 	rt11 := extractPrefix(ws.ArtifactUpdatedFrame{})
@@ -75,6 +76,7 @@ func TestBPPEnvelopeMatchesRT0Dispatcher(t *testing.T) {
 // agent-runtime handshake, not a BPP-1 control/data envelope — but the
 // dispatcher contract still applies, so we pin them here too.
 func TestBPPEnvelopeAlsoMatchesRT13Resume(t *testing.T) {
+	t.Parallel()
 	want := extractPrefix(ws.AgentInvitationPendingFrame{})
 	for _, v := range []any{
 		bpp.SessionResumeRequest{},

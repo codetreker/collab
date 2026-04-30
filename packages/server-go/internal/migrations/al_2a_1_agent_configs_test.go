@@ -27,6 +27,7 @@ func runAL2A1(t *testing.T, db *gorm.DB) {
 // version 严格递增 implementation. 跟 CHN-3.1 #410
 // TestCHN31_CreatesUserChannelLayoutTable 同模式.
 func TestAL2A1_CreatesAgentConfigsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
 
@@ -63,6 +64,7 @@ func TestAL2A1_CreatesAgentConfigsTable(t *testing.T) {
 // (AL-2a 不含 BPP frame, 蓝图 §1.5); org_id 不重复持有 (走 users.org_id
 // 单源).
 func TestAL2A1_NoDomainBleed(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
 
@@ -96,6 +98,7 @@ func TestAL2A1_NoDomainBleed(t *testing.T) {
 // SSOT 立场 — duplicate agent_id INSERT must reject (single row per agent,
 // blob 整体替换 PATCH 语义).
 func TestAL2A1_PKEnforcesSingleRowPerAgent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
 
@@ -124,6 +127,7 @@ func TestAL2A1_PKEnforcesSingleRowPerAgent(t *testing.T) {
 // CHECK constraint (留 server 校验 server-stamp 递增, 跟 CHN-3.1 position
 // REAL 同模式 — schema 受值, server 算).
 func TestAL2A1_AcceptsMonotonicSchemaVersion(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
 
@@ -145,6 +149,7 @@ func TestAL2A1_AcceptsMonotonicSchemaVersion(t *testing.T) {
 // SSOT lookup). 跟 AL-4.1 #398 TestAL41_HasAgentIDIndex / CHN-3.1 #410
 // TestCHN31_HasUserIDIndex 同模式.
 func TestAL2A1_HasAgentIDIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
 
@@ -161,6 +166,7 @@ func TestAL2A1_HasAgentIDIndex(t *testing.T) {
 // as every migration body in the registry (跟 chn_3_1 / cv_4_1 / al_4_1
 // 同模式).
 func TestAL2A1_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
 	e := New(db)

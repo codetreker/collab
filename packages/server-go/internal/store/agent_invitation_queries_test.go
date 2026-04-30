@@ -33,6 +33,7 @@ func newPendingInv(id, channel, agent, requester string, ts int64) *AgentInvitat
 }
 
 func TestCreateAndGetAgentInvitation(t *testing.T) {
+	t.Parallel()
 	s := mustOpenStore(t)
 
 	inv := newPendingInv("inv-1", "ch-1", "ag-1", "u-1", 1000)
@@ -58,6 +59,7 @@ func TestCreateAndGetAgentInvitation(t *testing.T) {
 }
 
 func TestListAgentInvitationsForAgents(t *testing.T) {
+	t.Parallel()
 	s := mustOpenStore(t)
 
 	_ = s.CreateAgentInvitation(newPendingInv("a", "ch-1", "ag-1", "u-1", 1000))
@@ -84,6 +86,7 @@ func TestListAgentInvitationsForAgents(t *testing.T) {
 }
 
 func TestListAgentInvitationsByRequester(t *testing.T) {
+	t.Parallel()
 	s := mustOpenStore(t)
 
 	_ = s.CreateAgentInvitation(newPendingInv("a", "ch-1", "ag-1", "u-1", 1000))
@@ -100,6 +103,7 @@ func TestListAgentInvitationsByRequester(t *testing.T) {
 }
 
 func TestUpdateAgentInvitationState(t *testing.T) {
+	t.Parallel()
 	s := mustOpenStore(t)
 
 	inv := newPendingInv("inv-1", "ch", "ag", "u", 1000)

@@ -60,6 +60,7 @@ func scanGoFiles(t *testing.T, dir string, includeTests bool) []string {
 // TestAP4E2_HandlerHelperOnly — handler 路径不准直查 auth.Capabilities[
 // (走 IsValidCapability 单源, 立场 ③).
 func TestAP4E2_HandlerHelperOnly(t *testing.T) {
+	t.Parallel()
 	root := repoRoot(t)
 	apiDir := filepath.Join(root, "packages", "server-go", "internal", "api")
 	pat := regexp.MustCompile(`auth\.Capabilities\[`)
@@ -77,6 +78,7 @@ func TestAP4E2_HandlerHelperOnly(t *testing.T) {
 // TestAP4E2_ReverseGrep_HardcodeCapability — handler 不准 hardcode capability
 // 字面 (走 const, 立场 ②). 测试文件白名单允许.
 func TestAP4E2_ReverseGrep_HardcodeCapability(t *testing.T) {
+	t.Parallel()
 	root := repoRoot(t)
 	apiDir := filepath.Join(root, "packages", "server-go", "internal", "api")
 	pat := regexp.MustCompile(`HasCapability\("[a-z_]+"`)
@@ -94,6 +96,7 @@ func TestAP4E2_ReverseGrep_HardcodeCapability(t *testing.T) {
 // TestAP4E2_ReverseGrep_DirectMapAccess — Capabilities["..."] = ... 仅
 // init() 唯一写 (立场 ①). 扫 auth/*.go (排除 _test).
 func TestAP4E2_ReverseGrep_DirectMapAccess(t *testing.T) {
+	t.Parallel()
 	root := repoRoot(t)
 	authDir := filepath.Join(root, "packages", "server-go", "internal", "auth")
 	pat := regexp.MustCompile(`Capabilities\[".*"\]\s*=`)
@@ -118,6 +121,7 @@ func TestAP4E2_ReverseGrep_DirectMapAccess(t *testing.T) {
 // TestAP4E2_CIWorkflowStepExists — release-gate.yml 有 step
 // `ap4enum-no-hardcode-capability` (字面锚, 立场 ② + content-lock §3).
 func TestAP4E2_CIWorkflowStepExists(t *testing.T) {
+	t.Parallel()
 	root := repoRoot(t)
 	yml := filepath.Join(root, ".github", "workflows", "release-gate.yml")
 	b, err := os.ReadFile(yml)

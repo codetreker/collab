@@ -38,6 +38,7 @@ func (s *stubLifecycleStore) InsertAdminAction(actorID, targetUserID, action, me
 
 // TestBPP82_RecordConnect — acceptance §2.1.
 func TestBPP82_RecordConnect(t *testing.T) {
+	t.Parallel()
 	st := &stubLifecycleStore{}
 	a := NewAdminActionsLifecycleAuditor(st, nil)
 	a.RecordConnect("plugin-1", "agent-1")
@@ -61,6 +62,7 @@ func TestBPP82_RecordConnect(t *testing.T) {
 
 // TestBPP82_RecordDisconnect — acceptance §2.1.
 func TestBPP82_RecordDisconnect(t *testing.T) {
+	t.Parallel()
 	st := &stubLifecycleStore{}
 	a := NewAdminActionsLifecycleAuditor(st, nil)
 	a.RecordDisconnect("plugin-1", "agent-1", "client_close")
@@ -74,6 +76,7 @@ func TestBPP82_RecordDisconnect(t *testing.T) {
 
 // TestBPP82_RecordReconnect — acceptance §2.1.
 func TestBPP82_RecordReconnect(t *testing.T) {
+	t.Parallel()
 	st := &stubLifecycleStore{}
 	a := NewAdminActionsLifecycleAuditor(st, nil)
 	a.RecordReconnect("plugin-1", "agent-1", 12345)
@@ -92,6 +95,7 @@ func TestBPP82_RecordReconnect(t *testing.T) {
 // BPP-7 SDK ColdStart 同源). 反向断言 hardcode "runtime_crashed" 字符串
 // 0 hit (强制走 reasons.* 引用).
 func TestBPP82_RecordColdStart_ReasonRuntimeCrashed(t *testing.T) {
+	t.Parallel()
 	st := &stubLifecycleStore{}
 	a := NewAdminActionsLifecycleAuditor(st, nil)
 	// caller passes reasons.RuntimeCrashed (byte-identical 跟 BPP-6/BPP-7).
@@ -111,6 +115,7 @@ func TestBPP82_RecordColdStart_ReasonRuntimeCrashed(t *testing.T) {
 // TestBPP82_RecordHeartbeatTimeout_ReasonNetworkUnreachable — acceptance §2.1.
 // reason 字面 byte-identical=reasons.NetworkUnreachable (AL-1a 锁链第 13 处).
 func TestBPP82_RecordHeartbeatTimeout_ReasonNetworkUnreachable(t *testing.T) {
+	t.Parallel()
 	st := &stubLifecycleStore{}
 	a := NewAdminActionsLifecycleAuditor(st, nil)
 	a.RecordHeartbeatTimeout("plugin-1", "agent-1")
@@ -127,6 +132,7 @@ func TestBPP82_RecordHeartbeatTimeout_ReasonNetworkUnreachable(t *testing.T) {
 
 // TestBPP82_NilSafeCtor — boot bug (acceptance §2.2).
 func TestBPP82_NilSafeCtor(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if recover() == nil {
 			t.Error("expected panic on nil store")
@@ -140,6 +146,7 @@ func TestBPP82_NilSafeCtor(t *testing.T) {
 // On InsertAdminAction error, RecordX must log warn but NOT panic /
 // return error (handler must continue).
 func TestBPP82_BestEffort_FireAndForget(t *testing.T) {
+	t.Parallel()
 	st := &stubLifecycleStore{err: errors.New("db down")}
 	a := NewAdminActionsLifecycleAuditor(st, nil)
 	// All 5 methods must not panic.
@@ -160,6 +167,7 @@ func TestBPP82_BestEffort_FireAndForget(t *testing.T) {
 // 排除 lifecycle_audit.go (write path) + bpp_8_lifecycle_list.go (read-only
 // filter switch, 5 字面同源跟 migration v=31 CHECK + auditor const).
 func TestBPP82_LifecycleAuditor_SingleGate(t *testing.T) {
+	t.Parallel()
 	dirs := []string{".", "../api"}
 	whitelist := map[string]bool{
 		"lifecycle_audit.go":        true, // write-side single-gate
@@ -205,6 +213,7 @@ func TestBPP82_LifecycleAuditor_SingleGate(t *testing.T) {
 // TestBPP83_NoLifecycleQueueOrAuditTable — acceptance §3.1 立场 ⑥
 // best-effort 锁链延伸第 5 处.
 func TestBPP83_NoLifecycleQueueOrAuditTable(t *testing.T) {
+	t.Parallel()
 	forbidden := []string{
 		"pendingLifecycleAudit",
 		"lifecycleQueue",
@@ -250,6 +259,7 @@ func TestBPP83_NoLifecycleQueueOrAuditTable(t *testing.T) {
 
 // TestBPP83_LifecycleSystemActor_ByteIdentical — acceptance §3.2 立场 ⑦.
 func TestBPP83_LifecycleSystemActor_ByteIdentical(t *testing.T) {
+	t.Parallel()
 	if LifecycleSystemActor != "system" {
 		t.Errorf("LifecycleSystemActor drift: got %q, want system (跟 BPP-4 watchdog + AP-2 sweeper actor='system' 跨五 milestone byte-identical)",
 			LifecycleSystemActor)
@@ -258,6 +268,7 @@ func TestBPP83_LifecycleSystemActor_ByteIdentical(t *testing.T) {
 
 // TestBPP83_AdminGodModeNotMounted — acceptance §3.2 立场 ⑦ ADM-0 §1.3.
 func TestBPP83_AdminGodModeNotMounted(t *testing.T) {
+	t.Parallel()
 	dir := "../api"
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -298,6 +309,7 @@ func TestBPP83_AdminGodModeNotMounted(t *testing.T) {
 // Test surfaces the formatColdStartReason internal helper for direct
 // assertion (file-internal export, exercised once for coverage).
 func TestBPP82_FormatColdStartReason(t *testing.T) {
+	t.Parallel()
 	if got, want := formatColdStartReason(), "runtime_crashed"; got != want {
 		t.Errorf("formatColdStartReason drift: got %q, want %q", got, want)
 	}

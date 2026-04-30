@@ -11,4 +11,7 @@ data/
 *.tsbuildinfo
 .env
 coverage/
+# TEST-FIX-3-COV: scripts/lib/coverage/ is the haystack-derived coverage tool
+# (not a coverage output dir). Exempt from the coverage/ wildcard above.
+!packages/server-go/scripts/lib/coverage/
 node_modules

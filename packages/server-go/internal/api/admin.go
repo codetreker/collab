@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"borgee-server/internal/admin"
+	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AdminHandler struct {
@@ -160,12 +159,12 @@ func (h *AdminHandler) handleCreateUser(w http.ResponseWriter, r *http.Request) 
 		user.Email = &body.Email
 	}
 	if body.Password != "" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+		hash, err := auth.HashPassword(body.Password)
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to hash password")
 			return
 		}
-		user.PasswordHash = string(hash)
+		user.PasswordHash = hash
 	}
 
 	if err := h.Store.CreateUser(user); err != nil {
@@ -228,7 +227,7 @@ func (h *AdminHandler) handleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		updates["display_name"] = *body.DisplayName
 	}
 	if body.Password != nil {
-		hash, err := bcrypt.GenerateFromPassword([]byte(*body.Password), bcrypt.DefaultCost)
+		hash, err := auth.HashPassword(*body.Password)
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to hash password")
 			return

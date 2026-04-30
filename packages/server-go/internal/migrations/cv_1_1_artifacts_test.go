@@ -23,6 +23,7 @@ func runCV11(t *testing.T, db *gorm.DB) {
 // shape. Drift here breaks workspace tab list correctness or schema
 // equivalence with the CV-1.2 server API.
 func TestCV11_CreatesArtifactsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
 
@@ -84,6 +85,7 @@ func TestCV11_CreatesArtifactsTable(t *testing.T) {
 // is the v1 gate — 代码/图片/PDF/看板 留 v2+. Insert with any other type
 // must reject so the v0/v1 split stays enforced at schema layer.
 func TestCV11_RejectsNonMarkdownType(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
 
@@ -111,6 +113,7 @@ func TestCV11_RejectsNonMarkdownType(t *testing.T) {
 // for 立场 ⑥ system message 路径 + UNIQUE(artifact_id, version) for 立场 ③
 // 版本线性.
 func TestCV11_CreatesArtifactVersionsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
 
@@ -148,6 +151,7 @@ func TestCV11_CreatesArtifactVersionsTable(t *testing.T) {
 // CV-1.2 ArtifactUpdated frame 走 RT-1.1 cursor, 不是 PK; 但 PK 单调是
 // SQLite AUTOINCREMENT 显式契约, drift 会破坏 backfill 排序假设).
 func TestCV11_VersionsTablePKMonotonic(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
 
@@ -207,6 +211,7 @@ func TestCV11_VersionsTablePKMonotonic(t *testing.T) {
 // CHECK in ('agent','human'). Drift here breaks the agent-commit fanout
 // system message routing.
 func TestCV11_RejectsInvalidCommitterKind(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
 
@@ -234,6 +239,7 @@ func TestCV11_RejectsInvalidCommitterKind(t *testing.T) {
 // artifact. CV-1.2 commit 路径必须 transactional bump current_version
 // + insert new artifact_versions row; dup → reject.
 func TestCV11_RejectsDuplicateArtifactVersion(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
 
@@ -264,6 +270,7 @@ func TestCV11_RejectsDuplicateArtifactVersion(t *testing.T) {
 // TestCV11_HasIndexes pins acceptance §1.1 — channel-scoped list +
 // version sidebar lookup require both indexes.
 func TestCV11_HasIndexes(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
 
@@ -282,6 +289,7 @@ func TestCV11_HasIndexes(t *testing.T) {
 
 // TestCV11_Idempotent pins forward-only safety: re-running v=13 is no-op.
 func TestCV11_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
 	e := New(db)

@@ -33,6 +33,7 @@ func runCHN141(t *testing.T, db *gorm.DB) {
 
 // TestCHN141_AddsDescriptionEditHistoryColumn — acceptance §1.1.
 func TestCHN141_AddsDescriptionEditHistoryColumn(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCHN141(t, db)
 	cols := pragmaColumns(t, db, "channels")
@@ -47,6 +48,7 @@ func TestCHN141_AddsDescriptionEditHistoryColumn(t *testing.T) {
 
 // TestCHN141_VersionIs44 — registry literal lock.
 func TestCHN141_VersionIs44(t *testing.T) {
+	t.Parallel()
 	if got, want := chn141ChannelsDescriptionEditHistory.Version, 44; got != want {
 		t.Errorf("CHN-14.1 Version drift: got %d, want %d", got, want)
 	}
@@ -67,6 +69,7 @@ func TestCHN141_VersionIs44(t *testing.T) {
 
 // TestCHN141_Idempotent — re-run is no-op.
 func TestCHN141_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCHN141(t, db)
 	runCHN141(t, db) // second run no-op

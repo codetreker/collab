@@ -53,6 +53,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 }
 
 func TestTrackOnline_WritesRow(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	tr, err := NewSessionsTracker(db)
 	if err != nil {
@@ -75,6 +76,7 @@ func TestTrackOnline_WritesRow(t *testing.T) {
 // agent_id branch (the partial index covers it) and returns true.
 // This is the byte-level lock between AL-3.2 writes and DM-2.2 fallback.
 func TestTrackOnline_AgentIDPartialIndex(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	tr, _ := NewSessionsTracker(db)
 	agentID := "agent-bot"
@@ -96,6 +98,7 @@ func TestTrackOnline_AgentIDPartialIndex(t *testing.T) {
 // multi-end users (web tab + mobile + plugin) appear offline whenever
 // any tab closed.
 func TestTrackOffline_MultiSessionLastWins(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	tr, _ := NewSessionsTracker(db)
 	for _, sid := range []string{"sess-web", "sess-mobile", "sess-plugin"} {
@@ -130,6 +133,7 @@ func TestTrackOffline_MultiSessionLastWins(t *testing.T) {
 // inserted). Returning nil keeps the lifecycle hook simple — no
 // "did Register succeed?" branching needed.
 func TestTrackOffline_UnknownSessionIsSoftNoop(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	tr, _ := NewSessionsTracker(db)
 	if err := tr.TrackOffline("never-registered"); err != nil {
@@ -141,6 +145,7 @@ func TestTrackOffline_UnknownSessionIsSoftNoop(t *testing.T) {
 // the hub treats a duplicate insert as "already tracked" and continues.
 // This lets retries after transient blips stay idempotent.
 func TestTrackOnline_DuplicateSessionIDIsUnique(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	tr, _ := NewSessionsTracker(db)
 	if err := tr.TrackOnline("user-A", "sess-1", nil); err != nil {
@@ -160,6 +165,7 @@ func TestTrackOnline_DuplicateSessionIDIsUnique(t *testing.T) {
 // not a runtime condition — error rather than silent ignore so tests
 // trip immediately.
 func TestTrackOnline_RejectsEmptyArgs(t *testing.T) {
+	t.Parallel()
 	db := newTestDB(t)
 	tr, _ := NewSessionsTracker(db)
 	if err := tr.TrackOnline("", "sess-1", nil); err == nil {

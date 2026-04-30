@@ -24,6 +24,7 @@ import (
 // 跟 TestP1MultiDeviceWebSocket 同 pattern (phone + desktop / 2 ws conn /
 // both subscribe channel / both receive push).
 func TestRT3_MultiDeviceFanout_AgentTaskStateChanged(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	channelID := testutil.GetGeneralChannelID(t, ts.URL, token)

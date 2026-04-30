@@ -20,6 +20,7 @@ func runStoreWithMigrations(t *testing.T) *Store {
 // TestInsertAdminAction_HappyPath pins acceptance §行为不变量 4.1.a — INSERT
 // 1 行 (5 action 之一) successfully + 返非空 id.
 func TestInsertAdminAction_HappyPath(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	for _, action := range []string{
 		"delete_channel", "suspend_user", "change_role",
@@ -38,6 +39,7 @@ func TestInsertAdminAction_HappyPath(t *testing.T) {
 // TestInsertAdminAction_RejectsEmptyRequiredFields pins 立场 — actor_id /
 // target_user_id / action 三必填, server-side gate (跟 schema NOT NULL 双锁).
 func TestInsertAdminAction_RejectsEmptyRequiredFields(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	cases := []struct {
 		name                                 string
@@ -58,6 +60,7 @@ func TestInsertAdminAction_RejectsEmptyRequiredFields(t *testing.T) {
 // row 2 — schema CHECK 5 字面 enum + server insert path 复用 (反向: 同义词 /
 // 大小写漂移 / 字典外 全 reject).
 func TestInsertAdminAction_RejectsUnknownActionViaCHECK(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	for _, bad := range []string{
 		"Delete_Channel", "DELETE_CHANNEL",
@@ -73,6 +76,7 @@ func TestInsertAdminAction_RejectsUnknownActionViaCHECK(t *testing.T) {
 // TestListAdminActionsForTargetUser_ScopedToUser pins acceptance §行为不变量
 // 4.1.c — user 只见自己 (反向: 跨 user 的行不返).
 func TestListAdminActionsForTargetUser_ScopedToUser(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	// 3 行 for u1, 2 行 for u2.
 	for i := 0; i < 3; i++ {
@@ -108,6 +112,7 @@ func TestListAdminActionsForTargetUser_ScopedToUser(t *testing.T) {
 // TestListAdminActionsForAdmin_FullVisibility pins acceptance §行为不变量
 // 4.1.d — admin 之间互可见 (无 WHERE 默认).
 func TestListAdminActionsForAdmin_FullVisibility(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	s.InsertAdminAction("admin-A", "u1", "delete_channel", "")
 	s.InsertAdminAction("admin-B", "u2", "suspend_user", "")
@@ -137,6 +142,7 @@ func TestListAdminActionsForAdmin_FullVisibility(t *testing.T) {
 // byte-identical (蓝图 §1.4 红线 1 + admin-model.md §4.1 R3 admin_username
 // 非 UUID 兑现).
 func TestRenderAdminActionDMBody_ByteIdentical(t *testing.T) {
+	t.Parallel()
 	ts := time.Date(2026, 4, 29, 14, 32, 0, 0, time.Local)
 	cases := []struct {
 		action string
@@ -183,6 +189,7 @@ func TestRenderAdminActionDMBody_ByteIdentical(t *testing.T) {
 // ADM2-NEG-001 反向断言 — body 不渲染 raw UUID 字面 (admin_username 走
 // admins.Login 具体名).
 func TestRenderAdminActionDMBody_NeverContainsRawUUID(t *testing.T) {
+	t.Parallel()
 	ts := time.Now()
 	uuidLike := "deadbeef-1234-5678-90ab-cdef00112233"
 	for _, action := range []string{"delete_channel", "suspend_user", "change_role", "reset_password", "start_impersonation"} {
@@ -202,6 +209,7 @@ func TestRenderAdminActionDMBody_NeverContainsRawUUID(t *testing.T) {
 // TestGrantImpersonation_24hExpiry pins acceptance §4.2.a — expires_at =
 // granted_at + 24h, server 固定不接受 client 传.
 func TestGrantImpersonation_24hExpiry(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	g, err := s.GrantImpersonation("u1")
 	if err != nil {
@@ -219,6 +227,7 @@ func TestGrantImpersonation_24hExpiry(t *testing.T) {
 // TestGrantImpersonation_RejectsActiveDuplicate pins 立场 ⑦ — 业主 cooldown
 // 防重复 grant (24h 期内 grant 已存在 → 409).
 func TestGrantImpersonation_RejectsActiveDuplicate(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	if _, err := s.GrantImpersonation("u1"); err != nil {
 		t.Fatal(err)
@@ -236,6 +245,7 @@ func TestGrantImpersonation_RejectsActiveDuplicate(t *testing.T) {
 
 // TestRevokeImpersonation_ClearsActiveGrant pins acceptance §4.2.a 业主撤销.
 func TestRevokeImpersonation_ClearsActiveGrant(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	g, _ := s.GrantImpersonation("u1")
 	if err := s.RevokeImpersonation("u1"); err != nil {
@@ -263,6 +273,7 @@ func TestRevokeImpersonation_ClearsActiveGrant(t *testing.T) {
 // TestActiveImpersonationGrant_ReturnsNilWhenNone pins ActiveImpersonationGrant
 // 立场 — 无 grant 返 (nil, nil), 不返 sql.ErrNoRows.
 func TestActiveImpersonationGrant_ReturnsNilWhenNone(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	g, err := s.ActiveImpersonationGrant("u-no-grant")
 	if err != nil {
@@ -275,6 +286,7 @@ func TestActiveImpersonationGrant_ReturnsNilWhenNone(t *testing.T) {
 
 // TestRenderAdminActionDMBody_UnknownActionReturnsEmpty covers default branch.
 func TestRenderAdminActionDMBody_UnknownActionReturnsEmpty(t *testing.T) {
+	t.Parallel()
 	got := RenderAdminActionDMBody("alice", "unknown_action", time.Now(), AdminActionDMContext{})
 	if got != "" {
 		t.Errorf("unknown action should return empty, got %q", got)
@@ -284,6 +296,7 @@ func TestRenderAdminActionDMBody_UnknownActionReturnsEmpty(t *testing.T) {
 // TestRenderAdminActionDMBody_SuspendUserDefaultReason covers empty Reason
 // fallback "(未提供原因)".
 func TestRenderAdminActionDMBody_SuspendUserDefaultReason(t *testing.T) {
+	t.Parallel()
 	got := RenderAdminActionDMBody("alice", "suspend_user", time.Now(), AdminActionDMContext{})
 	if !strings.Contains(got, "(未提供原因)") {
 		t.Errorf("expected default reason fallback, got %q", got)
@@ -293,6 +306,7 @@ func TestRenderAdminActionDMBody_SuspendUserDefaultReason(t *testing.T) {
 // TestEmitAdminActionAudit_RejectsEmpty covers EmitAdminActionAudit error path
 // (delegated to InsertAdminAction).
 func TestEmitAdminActionAudit_RejectsEmpty(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	if _, err := s.EmitAdminActionAudit("", "alice", "u1", "delete_channel", "", AdminActionDMContext{}); err == nil {
 		t.Error("empty actor_id should reject")
@@ -301,6 +315,7 @@ func TestEmitAdminActionAudit_RejectsEmpty(t *testing.T) {
 
 // TestEmitAdminActionSystemDM_RejectsEmptyArgs covers RejectsEmpty branch.
 func TestEmitAdminActionSystemDM_RejectsEmptyArgs(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	if err := s.EmitAdminActionSystemDM("", "u1", "delete_channel", AdminActionDMContext{}); err == nil {
 		t.Error("empty actor_login should reject")
@@ -314,6 +329,7 @@ func TestEmitAdminActionSystemDM_RejectsEmptyArgs(t *testing.T) {
 // degradation when target user has no #welcome channel — returns nil err
 // (not failure) because audit row is the 100% guarantee.
 func TestEmitAdminActionSystemDM_NoSystemChannelDegrades(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	// User exists but has no #welcome channel.
 	err := s.EmitAdminActionSystemDM("alice", "u-no-channel", "delete_channel", AdminActionDMContext{ChannelName: "#x"})
@@ -325,6 +341,7 @@ func TestEmitAdminActionSystemDM_NoSystemChannelDegrades(t *testing.T) {
 // TestEmitAdminActionSystemDM_UnknownActionNoOp covers RenderAdminActionDMBody
 // returning empty for unknown action.
 func TestEmitAdminActionSystemDM_UnknownActionNoOp(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	err := s.EmitAdminActionSystemDM("alice", "u1", "unknown_action_name", AdminActionDMContext{})
 	if err != nil {
@@ -334,6 +351,7 @@ func TestEmitAdminActionSystemDM_UnknownActionNoOp(t *testing.T) {
 
 // TestListAdminActionsForTargetUser_RejectsEmpty covers error branch.
 func TestListAdminActionsForTargetUser_RejectsEmpty(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	if _, err := s.ListAdminActionsForTargetUser("", 50); err == nil {
 		t.Error("empty user_id should reject")
@@ -342,6 +360,7 @@ func TestListAdminActionsForTargetUser_RejectsEmpty(t *testing.T) {
 
 // TestListAdminActions_LimitDefaults covers limit clamping branches.
 func TestListAdminActions_LimitDefaults(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	// limit <= 0 → default 50; > 200 → 200.
 	rows, err := s.ListAdminActionsForTargetUser("u1", -1)
@@ -361,18 +380,21 @@ func TestListAdminActions_LimitDefaults(t *testing.T) {
 // TestGrantImpersonation_RejectsEmpty + TestRevokeImpersonation_RejectsEmpty
 // + TestActiveImpersonationGrant_RejectsEmpty cover error paths.
 func TestGrantImpersonation_RejectsEmpty(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	if _, err := s.GrantImpersonation(""); err == nil {
 		t.Error("empty user_id should reject")
 	}
 }
 func TestRevokeImpersonation_RejectsEmpty(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	if err := s.RevokeImpersonation(""); err == nil {
 		t.Error("empty user_id should reject")
 	}
 }
 func TestActiveImpersonationGrant_RejectsEmpty(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	if _, err := s.ActiveImpersonationGrant(""); err == nil {
 		t.Error("empty user_id should reject")

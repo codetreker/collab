@@ -7,8 +7,10 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// REG-CHN10-cov-bump — opportunistic cov bump for channels.go uncovered handlers.
-func TestCHN10_CovBump_ListChannelGroups(t *testing.T) {
+// channel_groups_test.go — GET /api/v1/channel-groups list endpoint
+// (empty + after-create paths). Single source for channels.go
+// handleListGroups branch coverage.
+func TestChannelGroups_ListChannelGroups(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -18,12 +20,12 @@ func TestCHN10_CovBump_ListChannelGroups(t *testing.T) {
 	}
 }
 
-func TestCHN10_CovBump_ListGroups_AfterCreate(t *testing.T) {
+func TestChannelGroups_ListGroups_AfterCreate(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	resp, _ := testutil.JSON(t, http.MethodPost, ts.URL+"/api/v1/channel-groups", ownerToken,
-		map[string]any{"name": "chn10-cov-grp"})
+		map[string]any{"name": "test-grp"})
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		t.Skipf("create group not 200/201")
 	}

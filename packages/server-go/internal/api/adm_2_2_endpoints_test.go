@@ -339,3 +339,20 @@ func TestADM22_AdminAuditLog_FilterByActionAndTarget(t *testing.T) {
 		t.Errorf("expected 1 row (delete_channel × owner), got %d", len(rows))
 	}
 }
+
+// TestADM22_RevokeMyImpersonate_StoreError covers handleRevokeMyImpersonateGrant
+// 500 path — dropping impersonation_grants forces store error.
+func TestADM22_RevokeMyImpersonate_StoreError(t *testing.T) {
+	ts, store, _ := testutil.NewTestServer(t)
+	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+
+	store.DB().Exec(`PRAGMA foreign_keys = OFF`)
+	if err := store.DB().Exec(`DROP TABLE impersonation_grants`).Error; err != nil {
+		t.Fatalf("drop impersonation_grants: %v", err)
+	}
+
+	resp, _ := testutil.JSON(t, "DELETE", ts.URL+"/api/v1/me/impersonation-grant", token, nil)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected 500 on store error, got %d", resp.StatusCode)
+	}
+}

@@ -10,6 +10,8 @@ import (
 	"os"
 	"testing"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
 	"borgee-server/internal/store"
@@ -17,14 +19,10 @@ import (
 
 func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { s.Close() })
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	// TEST-FIX-3-COV: 走 store.MigratedStoreFromTemplate (1.24ms) 替代
+	// store.Open(":memory:") + Migrate (26ms), ~20x 加速. 750+ tests 调用
+	// 此 setup, 估省 ~18s / 36s wall clock (>50%). byte-identical schema.
+	s := store.MigratedStoreFromTemplate(t)
 
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",
@@ -78,9 +76,12 @@ func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.
 	pollH.RegisterRoutes(mux, authMw)
 
 	// Seed data
-	ownerHash, _ := auth.HashPassword("password123")
+	// TEST-FIX-3-COV PERF: 用 bcrypt.MinCost (cost=4) 替代 auth.HashPassword
+	// (cost=10). Compare 1ms vs 65ms × 2 user × N test = 大头 setup 浪费.
+	// 跟 testutil/server.go::NewTestServer 同 idiom (MinCost for tests).
+	ownerHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
 	ownerEmail := "owner@test.com"
-	owner := &store.User{DisplayName: "Owner", Role: "admin", Email: &ownerEmail, PasswordHash: ownerHash}
+	owner := &store.User{DisplayName: "Owner", Role: "admin", Email: &ownerEmail, PasswordHash: string(ownerHash)}
 	s.CreateUser(owner)
 	s.GrantDefaultPermissions(owner.ID, "admin")
 	// ADM-0.2: legacy role=='admin' shortcut removed. Owner-as-admin needs
@@ -90,9 +91,9 @@ func setupFullTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.
 		s.GrantPermission(&store.UserPermission{UserID: owner.ID, Permission: permission, Scope: "*"})
 	}
 
-	memberHash, _ := auth.HashPassword("password123")
+	memberHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
 	memberEmail := "member@test.com"
-	member := &store.User{DisplayName: "Member", Role: "member", Email: &memberEmail, PasswordHash: memberHash}
+	member := &store.User{DisplayName: "Member", Role: "member", Email: &memberEmail, PasswordHash: string(memberHash)}
 	s.CreateUser(member)
 	s.GrantDefaultPermissions(member.ID, "member")
 

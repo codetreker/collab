@@ -8,6 +8,7 @@ import (
 // TestValidateTransition_ValidEdges pins the full state graph (蓝图 §2.3).
 // 跟 docs/blueprint/agent-lifecycle.md §2.3 字面对齐.
 func TestValidateTransition_ValidEdges(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		from, to AgentState
 		reason   string // for error transitions
@@ -43,6 +44,7 @@ func TestValidateTransition_ValidEdges(t *testing.T) {
 
 // TestValidateTransition_RejectsSameState pins reject no-op (立场 ②).
 func TestValidateTransition_RejectsSameState(t *testing.T) {
+	t.Parallel()
 	for _, s := range []AgentState{
 		AgentStateOnline, AgentStateBusy, AgentStateIdle, AgentStateError, AgentStateOffline,
 	} {
@@ -54,6 +56,7 @@ func TestValidateTransition_RejectsSameState(t *testing.T) {
 
 // TestValidateTransition_RejectsInvalidEdges pins blueprint §2.3 反向 graph.
 func TestValidateTransition_RejectsInvalidEdges(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		from, to AgentState
 		desc     string
@@ -84,6 +87,7 @@ func TestValidateTransition_RejectsInvalidEdges(t *testing.T) {
 // TestValidateTransition_ErrorRequiresReason pins 立场 ④ — error 转移 reason
 // 必带 + ∈ AL-1a 6 字面 byte-identical.
 func TestValidateTransition_ErrorRequiresReason(t *testing.T) {
+	t.Parallel()
 	// Empty reason → reject.
 	if err := ValidateTransition(AgentStateOnline, AgentStateError, ""); err == nil {
 		t.Error("error transition with empty reason should reject")
@@ -111,6 +115,7 @@ func TestValidateTransition_ErrorRequiresReason(t *testing.T) {
 // TestAppendAgentStateTransition_HappyPath pins helper INSERT path through
 // validator gate.
 func TestAppendAgentStateTransition_HappyPath(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 
 	// Initial → online.
@@ -153,6 +158,7 @@ func TestAppendAgentStateTransition_HappyPath(t *testing.T) {
 
 // TestAppendAgentStateTransition_RejectsInvalidViaValidator pins 立场 ②.
 func TestAppendAgentStateTransition_RejectsInvalidViaValidator(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 
 	// Empty agent_id rejected.
@@ -184,6 +190,7 @@ func TestAppendAgentStateTransition_RejectsInvalidViaValidator(t *testing.T) {
 // TestListAgentStateLog_OrderingAndScope pins acceptance §read path —
 // owner GET /api/v1/agents/:id/state-log returns DESC ts + scoped to agent.
 func TestListAgentStateLog_OrderingAndScope(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 
 	// Two agents, multiple transitions each.
@@ -219,6 +226,7 @@ func TestListAgentStateLog_OrderingAndScope(t *testing.T) {
 // TestValidateTransition_RecoveryPath pins error → online → busy/idle/error
 // recovery cycle (蓝图 §2.3 "故障可解释" + AL-1a Clear semantics).
 func TestValidateTransition_RecoveryPath(t *testing.T) {
+	t.Parallel()
 	s := runStoreWithMigrations(t)
 	// Simulate full lifecycle: initial → online → error → online → busy.
 	_, err := s.AppendAgentStateTransition("a1", AgentStateInitial, AgentStateOnline, "", "")
@@ -250,6 +258,7 @@ func TestValidateTransition_RecoveryPath(t *testing.T) {
 // the 8th lock in the chain (AL-1a #249 + #305 + #321 + #380 + #454 +
 // #458 + #481 + 此). 字面漂移 → CI 红.
 func TestValidateTransition_AllReasons5Pin(t *testing.T) {
+	t.Parallel()
 	want := []string{
 		"api_key_invalid", "quota_exceeded", "network_unreachable",
 		"runtime_crashed", "runtime_timeout", "unknown",

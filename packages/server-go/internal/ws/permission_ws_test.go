@@ -8,6 +8,7 @@ import (
 )
 
 func TestP1WebSocketPermissionChanges(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")

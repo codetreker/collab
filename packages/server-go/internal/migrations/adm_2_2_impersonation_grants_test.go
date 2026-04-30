@@ -22,6 +22,7 @@ func runADM22(t *testing.T, db *gorm.DB) {
 // 红横幅 4.2.a — schema 5 列 (id PK / user_id NOT NULL / granted_at /
 // expires_at / revoked_at NULL).
 func TestADM22_CreatesImpersonationGrantsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)
 
@@ -52,6 +53,7 @@ func TestADM22_CreatesImpersonationGrantsTable(t *testing.T) {
 // TestADM22_NoDomainBleed pins admin-model.md §3 字面 "由 user 创建, admin
 // 仅消费这条记录" — actor_id / cursor / token / etc 不在此表.
 func TestADM22_NoDomainBleed(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)
 
@@ -81,6 +83,7 @@ func TestADM22_NoDomainBleed(t *testing.T) {
 // TestADM22_HasIndex pins acceptance §4.2 — idx_impersonation_grants_user_id_
 // expires (ActiveGrant query 热路径).
 func TestADM22_HasIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)
 
@@ -94,6 +97,7 @@ func TestADM22_HasIndex(t *testing.T) {
 
 // TestADM22_PKEnforcesUniqueRowPerID pins UUID collision 兜底.
 func TestADM22_PKEnforcesUniqueRowPerID(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)
 
@@ -116,6 +120,7 @@ func TestADM22_PKEnforcesUniqueRowPerID(t *testing.T) {
 // NULL 表示有效 grant; UPDATE 走 RevokeImpersonation 唯一允许的写路径
 // (forward-only 立场 ⑤ 例外).
 func TestADM22_AcceptsRevokedAtNullable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)
 
@@ -134,6 +139,7 @@ func TestADM22_AcceptsRevokedAtNullable(t *testing.T) {
 
 // TestADM22_Idempotent pins forward-only safety: re-running v=23 is no-op.
 func TestADM22_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)
 	e := New(db)

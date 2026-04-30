@@ -11,7 +11,7 @@ import (
 )
 
 // REG-WORKTREE-cov-v7 — chn_5 archived list with rows.
-func TestRT_4_CovBump_v7_ChannelArchivedList(t *testing.T) {
+func TestChannelArchivedList(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -68,7 +68,7 @@ func TestRT_4_CovBump_v7_ChannelArchivedList(t *testing.T) {
 }
 
 // REG-WORKTREE-cov-v7 — chn_6 pin/unpin happy path (post #544 merge baseline).
-func TestRT_4_CovBump_v7_ChannelPinUnpin(t *testing.T) {
+func TestChannelPinUnpin(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -99,7 +99,7 @@ func TestRT_4_CovBump_v7_ChannelPinUnpin(t *testing.T) {
 }
 
 // REG-WORKTREE-cov-v7 — agent_runtimes / hb-6 lag derived sample paths.
-func TestRT_4_CovBump_v7_HeartbeatLagAdminGet(t *testing.T) {
+func TestHeartbeatLagAdminGet(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -122,7 +122,7 @@ func TestRT_4_CovBump_v7_HeartbeatLagAdminGet(t *testing.T) {
 }
 
 // REG-WORKTREE-cov-v7 — preview handler full branch coverage.
-func TestRT_4_CovBump_v7_PreviewBranches(t *testing.T) {
+func TestPreviewBranches(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -144,7 +144,7 @@ func TestRT_4_CovBump_v7_PreviewBranches(t *testing.T) {
 }
 
 // REG-WORKTREE-cov-v7 — thumbnail handler 401 + 404.
-func TestRT_4_CovBump_v7_ThumbnailBranches(t *testing.T) {
+func TestThumbnailBranches(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -164,7 +164,7 @@ func TestRT_4_CovBump_v7_ThumbnailBranches(t *testing.T) {
 }
 
 // REG-WORKTREE-cov-v7 — flexPermissions UnmarshalJSON both shapes via POST /agents.
-func TestRT_4_CovBump_v7_FlexPermissions(t *testing.T) {
+func TestFlexPermissions(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

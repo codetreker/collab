@@ -26,6 +26,7 @@ import (
 // 此处扫 server side production *.go 反向断言 — 客户端 7 源 byte-identical
 // 锁链由 client vitest 守 (chn-2-content-lock.test.ts 等).
 func TestCHN4_DMViewHasNoWorkspaceTab(t *testing.T) {
+	t.Parallel()
 	// 反向 forbidden identifiers — 7 源同根锁的硬条件.
 	forbidden := []string{
 		`dmShowsWorkspace`,
@@ -70,6 +71,7 @@ func TestCHN4_DMViewHasNoWorkspaceTab(t *testing.T) {
 // TestCHN4_NoDMSyncBypassEndpoint pins 立场 ② — DM 走普通 channel events
 // path, 不开 dm-only sync endpoint (跟 DM-3 wrapper 同精神).
 func TestCHN4_NoDMSyncBypassEndpoint(t *testing.T) {
+	t.Parallel()
 	forbidden := []string{
 		`"/api/v1/dm/sync"`,
 		`"/api/v1/dm/cursor"`,

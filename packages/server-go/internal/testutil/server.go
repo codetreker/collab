@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
 	"borgee-server/internal/server"
 	"borgee-server/internal/store"
@@ -32,18 +33,22 @@ import (
 func init() {
 	os.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
 	os.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
+	// TEST-FIX-3-COV PERF: lower bcrypt cost in tests to MinCost (4) so admin
+	// /users register paths run ~1ms instead of ~150ms (cost=10). Production
+	// keeps cost=10 (var BcryptCost defaults via env BORGEE_TEST_FAST_BCRYPT
+	// not set in production cmd/*). Direct override to bypass env-once init.
+	auth.BcryptCost = bcrypt.MinCost
 }
 
 func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
 	t.Helper()
 
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatalf("store.Open: %v", err)
-	}
-	if err := s.Migrate(); err != nil {
-		t.Fatalf("store.Migrate: %v", err)
-	}
+	// TEST-FIX-3-COV: 走 store.MigratedStoreFromTemplate 替代 store.Open(":memory:")
+	// + Migrate. ~26ms → ~7ms per call (3.7x). 120+ tests files 用此 helper,
+	// internal/api 750+ tests 估省 ~14s wall clock. byte-identical schema
+	// (template 跑同一份 Migrate); reproducible per-test isolation (各 test
+	// file-backed clone, single-conn SQLite, t.Cleanup 清盘).
+	s := store.MigratedStoreFromTemplate(t)
 
 	// PERF (was t.Setenv blocking parallel): admin env now in package init.
 

@@ -45,6 +45,7 @@ func ap2TestStore(t *testing.T) *store.Store {
 // REG-AP2-002b — const literal byte-identical 跟 spec + migration CHECK
 // + admin_actions 6-tuple 同源.
 func TestAP22_ReasonConstByteIdentical(t *testing.T) {
+	t.Parallel()
 	if ReasonPermissionExpired != "permission_expired" {
 		t.Errorf("ReasonPermissionExpired drift: got %q, want %q",
 			ReasonPermissionExpired, "permission_expired")
@@ -54,6 +55,7 @@ func TestAP22_ReasonConstByteIdentical(t *testing.T) {
 // REG-AP2-002c — actor='system' byte-identical 跟 BPP-4 watchdog 跨五
 // milestone 锁.
 func TestAP22_SystemActorByteIdentical(t *testing.T) {
+	t.Parallel()
 	if SystemActorID != "system" {
 		t.Errorf("SystemActorID drift: got %q, want %q",
 			SystemActorID, "system")
@@ -63,6 +65,7 @@ func TestAP22_SystemActorByteIdentical(t *testing.T) {
 // REG-AP2-001c (acceptance §1.4) — RunOnce finds expired-but-not-revoked
 // rows and returns count.
 func TestAP21_RunOnceFindsExpired(t *testing.T) {
+	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -87,6 +90,7 @@ func TestAP21_RunOnceFindsExpired(t *testing.T) {
 // REG-AP2-001d (acceptance §1.5) — soft-delete: row stays in table with
 // revoked_at set; not real DELETE.
 func TestAP21_RunOnceSoftDeletesNotRealDelete(t *testing.T) {
+	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -117,6 +121,7 @@ func TestAP21_RunOnceSoftDeletesNotRealDelete(t *testing.T) {
 // REG-AP2-001e (acceptance §1.5) — second tick is no-op (revoked rows
 // excluded by WHERE).
 func TestAP21_RunOnceIdempotentSecondTick(t *testing.T) {
+	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -134,6 +139,7 @@ func TestAP21_RunOnceIdempotentSecondTick(t *testing.T) {
 
 // REG-AP2-001b — Start ctx-aware shutdown.
 func TestAP21_StartCtxShutdown(t *testing.T) {
+	t.Parallel()
 	s := ap2TestStore(t)
 	sw := &ExpiresSweeper{Store: s, Interval: 100 * time.Millisecond}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -148,6 +154,7 @@ func TestAP21_StartCtxShutdown(t *testing.T) {
 // REG-AP2-002a (acceptance §2.1) — RunOnce writes one admin_actions row
 // per revocation (复用 ADM-2.1 既有 path).
 func TestAP22_RevokeWritesAuditEntry(t *testing.T) {
+	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -180,6 +187,7 @@ func TestAP22_RevokeWritesAuditEntry(t *testing.T) {
 // REG-AP2-002d (acceptance §2.3) — audit metadata JSON shape (3-key
 // byte-identical).
 func TestAP22_AuditPayloadShape(t *testing.T) {
+	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -213,6 +221,7 @@ func TestAP22_AuditPayloadShape(t *testing.T) {
 // → revoked + admin_actions row + HasCapability returns false (跟 AP-1
 // SSOT 同精神, ListUserPermissions 排除 revoked rows).
 func TestAP23_FullFlow_GrantExpired_ThenRevokedThenHasCapabilityFalse(t *testing.T) {
+	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -257,6 +266,7 @@ func TestAP23_FullFlow_GrantExpired_ThenRevokedThenHasCapabilityFalse(t *testing
 // internal/auth/+internal/api/+internal/migrations/ all count==0 (except
 // for sweeper file itself for the UPDATE pattern).
 func TestAP23_ReverseGrep_5Patterns_AllZeroHit(t *testing.T) {
+	t.Parallel()
 	patterns := []struct {
 		dir       string
 		pat       *regexp.Regexp

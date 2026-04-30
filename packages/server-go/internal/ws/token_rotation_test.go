@@ -8,6 +8,7 @@ import (
 )
 
 func TestP0TokenRotationKeepsWebSocketAlive(t *testing.T) {
+	t.Parallel()
 	// PERF-JWT-CLOCK: was time.Sleep(1100ms) — JWT iat 1s 秒级 granularity
 	// 真等. 改用 fake clock 跳 2s, 省 1.1s wall-clock × 该 test 跑次数.
 	// AuthHandler 走 server.SetClock(fake) 注入路径 — production 路径

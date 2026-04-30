@@ -13,6 +13,7 @@ import (
 )
 
 func TestIsCapabilityDisallowedSentinel(t *testing.T) {
+	t.Parallel()
 	if !IsCapabilityDisallowed(errCapabilityDisallowed) {
 		t.Fatalf("expected sentinel match for errCapabilityDisallowed")
 	}
@@ -25,6 +26,7 @@ func TestIsCapabilityDisallowedSentinel(t *testing.T) {
 }
 
 func TestIsMeGrantsActionUnknownSentinel(t *testing.T) {
+	t.Parallel()
 	if !IsMeGrantsActionUnknown(errMeGrantsActionUnknown) {
 		t.Fatalf("expected sentinel match")
 	}
@@ -34,6 +36,7 @@ func TestIsMeGrantsActionUnknownSentinel(t *testing.T) {
 }
 
 func TestIsMeGrantsScopeUnknownSentinel(t *testing.T) {
+	t.Parallel()
 	if !IsMeGrantsScopeUnknown(errMeGrantsScopeUnknown) {
 		t.Fatalf("expected sentinel match")
 	}
@@ -43,6 +46,7 @@ func TestIsMeGrantsScopeUnknownSentinel(t *testing.T) {
 }
 
 func TestSanitizeUserPublicMinimal(t *testing.T) {
+	t.Parallel()
 	u := &store.User{
 		ID:             "u1",
 		DisplayName:    "Alice",
@@ -64,6 +68,7 @@ func TestSanitizeUserPublicMinimal(t *testing.T) {
 }
 
 func TestSanitizeUserPublicWithOptionalFields(t *testing.T) {
+	t.Parallel()
 	owner := "owner-1"
 	seen := int64(2000)
 	u := &store.User{

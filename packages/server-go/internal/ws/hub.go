@@ -400,17 +400,30 @@ func (h *Hub) StartHeartbeat(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			h.mu.RLock()
-			for c := range h.clients {
-				if !c.CheckAlive() {
-					go func(cl *Client) {
-						cl.Close()
-					}(c)
-				} else {
-					c.SendPing()
-				}
-			}
-			h.mu.RUnlock()
+			h.heartbeatTick()
+		}
+	}
+}
+
+// heartbeatTick is the per-tick body extracted from StartHeartbeat for
+// deterministic unit-test coverage (TEST-FIX-3-COV: prior cov of
+// StartHeartbeat was 33.3-58.3% non-deterministic — race scheduler bumped
+// the inner branch, leading to flaky cov ratchet. Extracting the body
+// makes the dead-vs-alive branch testable without spinning a 30 s ticker).
+//
+// Walks current clients under read lock; dead clients (CheckAlive==false)
+// are async-Close'd, alive ones get a SendPing. Mirrors the original
+// inline body byte-for-byte (0 behavior change).
+func (h *Hub) heartbeatTick() {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.clients {
+		if !c.CheckAlive() {
+			go func(cl *Client) {
+				cl.Close()
+			}(c)
+		} else {
+			c.SendPing()
 		}
 	}
 }

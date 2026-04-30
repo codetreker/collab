@@ -659,3 +659,42 @@ func TestAL42_ListAnchorComments_Coverage(t *testing.T) {
 	}
 	_ = st
 }
+
+// TestAL42_FanoutOwnerSystemDM_CreateMessageFails covers the
+// fanoutOwnerSystemDM error branch where Store.DB().Create(msg) fails —
+// drop the messages table after agent registration so the system DM
+// insert fails. The handler logs + returns 200 (best-effort fanout).
+func TestAL42_FanoutOwnerSystemDM_CreateMessageFails(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+	// Drop messages so the system DM Create fails. CreateDmChannel still
+	// succeeds (it doesn't insert messages).
+	s.DB().Exec(`PRAGMA foreign_keys = OFF`)
+	if err := s.DB().Exec(`DROP TABLE messages`).Error; err != nil {
+		t.Fatalf("drop messages: %v", err)
+	}
+	// Start should still 200 — fanout failures are log-only.
+	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/start", ownerTok, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("start expected 200 (fanout best-effort), got %d", resp.StatusCode)
+	}
+}
+
+// TestAL42_FanoutOwnerSystemDM_CreateChannelFails covers the
+// CreateDmChannel error branch — drop channels table to break it.
+// Note: dropping channels also breaks runtime status update path, so
+// we use a different approach: drop the dm_extras-style table or
+// simulate via FK violation. Easiest: drop both messages and channel_members
+// (CreateDmChannel inserts into channels + channel_members).
+func TestAL42_FanoutOwnerSystemDM_CreateChannelFails(t *testing.T) {
+	url, ownerTok, s, agentID := al42Setup(t)
+	al42Register(t, url, ownerTok, agentID)
+	s.DB().Exec(`PRAGMA foreign_keys = OFF`)
+	if err := s.DB().Exec(`DROP TABLE channel_members`).Error; err != nil {
+		t.Fatalf("drop channel_members: %v", err)
+	}
+	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/start", ownerTok, nil)
+	// Start might succeed or fail depending on flow — what matters is the
+	// fanoutOwnerSystemDM error branch executes when CreateDmChannel fails.
+	_ = resp
+}

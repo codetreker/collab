@@ -73,6 +73,7 @@ func runADM03(t *testing.T, db *gorm.DB) {
 // 3.B: legacy admin lands in admins table (login = email, hash carried).
 // 3.C: orphan user_permissions for the admin user are gone.
 func TestADM03_BackfillAndCollapse(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)
 	seedAdmin(t, db, "u-legacy-1", "legacy@example.com", "$2a$10$abc")
@@ -109,6 +110,7 @@ func TestADM03_BackfillAndCollapse(t *testing.T) {
 
 // 3.D: idempotent — running the migration twice yields the same end state.
 func TestADM03_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)
 	seedAdmin(t, db, "u-legacy-2", "twice@example.com", "$2a$10$xyz")
@@ -129,6 +131,7 @@ func TestADM03_Idempotent(t *testing.T) {
 // 3.D bis: re-applying when an admins row already exists (env bootstrap path)
 // must not duplicate; ON CONFLICT(login) DO NOTHING is the gate.
 func TestADM03_PreexistingAdminLogin(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)
 	// Bootstrap already inserted this login with a different hash.
@@ -163,6 +166,7 @@ func TestADM03_PreexistingAdminLogin(t *testing.T) {
 // hasTable gate must skip cleanly when sessions / admins / user_permissions
 // don't exist in the schema (trimmed migration-test fixtures).
 func TestADM03_TolerantToTrimmedSchema(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	// Only the bare users table — no admins, no user_permissions, no sessions.
 	if err := db.Exec(`CREATE TABLE users (
@@ -188,9 +192,48 @@ func TestADM03_TolerantToTrimmedSchema(t *testing.T) {
 
 // hasTable gate must also skip when the users table itself is absent.
 func TestADM03_NoUsersTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	// No users table at all.
 	if err := adm03UsersRoleCollapse.Up(db); err != nil {
 		t.Fatalf("expected no-op on missing users table: %v", err)
+	}
+}
+
+// TestADM03_SessionsTablePresent_DeletesAdminSessions covers the
+// future-proof sessions branch (the hasTable gate returning true). When
+// a `sessions` table exists, all rows for admin users are swept.
+func TestADM03_SessionsTablePresent_DeletesAdminSessions(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	schemaForADM03(t, db)
+	if err := db.Exec(`CREATE TABLE sessions (
+  id      TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL
+)`).Error; err != nil {
+		t.Fatalf("seed sessions: %v", err)
+	}
+	seedAdmin(t, db, "u-admin-1", "admin@example.com", "hash1")
+	if err := db.Exec(`INSERT INTO sessions (id, user_id) VALUES ('s1', 'u-admin-1')`).Error; err != nil {
+		t.Fatalf("seed admin session: %v", err)
+	}
+	// non-admin session should survive.
+	if err := db.Exec(`INSERT INTO users (id, role) VALUES ('u-member-1', 'member')`).Error; err != nil {
+		t.Fatalf("seed member: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO sessions (id, user_id) VALUES ('s2', 'u-member-1')`).Error; err != nil {
+		t.Fatalf("seed member session: %v", err)
+	}
+
+	runADM03(t, db)
+
+	var n int64
+	db.Raw(`SELECT COUNT(*) FROM sessions WHERE user_id='u-admin-1'`).Row().Scan(&n)
+	if n != 0 {
+		t.Errorf("admin sessions not swept; got %d, want 0", n)
+	}
+	db.Raw(`SELECT COUNT(*) FROM sessions WHERE user_id='u-member-1'`).Row().Scan(&n)
+	if n != 1 {
+		t.Errorf("member session swept incorrectly; got %d, want 1", n)
 	}
 }

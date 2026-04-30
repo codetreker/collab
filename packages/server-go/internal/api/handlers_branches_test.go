@@ -15,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestCHN_11_CovBump_IsAgentStatusNotFound(t *testing.T) {
+func TestIsAgentStatusNotFound(t *testing.T) {
 	t.Parallel()
 	if !store.IsAgentStatusNotFound(gorm.ErrRecordNotFound) {
 		t.Error("ErrRecordNotFound should match")
@@ -28,7 +28,7 @@ func TestCHN_11_CovBump_IsAgentStatusNotFound(t *testing.T) {
 	}
 }
 
-func TestCHN_11_CovBump_ArchiveChannel(t *testing.T) {
+func TestArchiveChannel(t *testing.T) {
 	t.Parallel()
 	_, s, _ := testutil.NewTestServer(t)
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -62,7 +62,7 @@ func TestCHN_11_CovBump_ArchiveChannel(t *testing.T) {
 	}
 }
 
-func TestCHN_11_CovBump_ListChannelGroups_Empty(t *testing.T) {
+func TestListChannelGroups_Empty(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -76,7 +76,7 @@ func TestCHN_11_CovBump_ListChannelGroups_Empty(t *testing.T) {
 	}
 }
 
-func TestCHN_11_CovBump_ListChannelGroups_AfterCreate(t *testing.T) {
+func TestListChannelGroups_AfterCreate(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -98,7 +98,7 @@ func TestCHN_11_CovBump_ListChannelGroups_AfterCreate(t *testing.T) {
 }
 
 // REG-CHN6-cov-bump — agent_status upsert/getter/reaper chain (BPP-2 source).
-func TestCHN_11_CovBump_AgentStatusChain(t *testing.T) {
+func TestAgentStatusChain(t *testing.T) {
 	t.Parallel()
 	_, s, _ := testutil.NewTestServer(t)
 

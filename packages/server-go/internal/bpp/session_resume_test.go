@@ -74,6 +74,7 @@ func mkEvents(n int, channelID string) []store.Event {
 // (a) incremental — events strictly after `since`, server NEVER returns
 // cursor <= since. Default fallback when mode is empty also lands here.
 func TestResolveResumeIncremental(t *testing.T) {
+	t.Parallel()
 	lister := &fakeLister{
 		events:    mkEvents(5, "ch1"),
 		highWater: 5,
@@ -112,6 +113,7 @@ func TestResolveResumeIncremental(t *testing.T) {
 // (a') incremental fallback: empty / unknown mode — must take the
 // incremental branch (NOT the full branch).
 func TestResolveResumeUnknownModeFallsBackIncremental(t *testing.T) {
+	t.Parallel()
 	lister := &fakeLister{events: mkEvents(3, "ch1"), highWater: 3}
 	for _, raw := range []string{"", "garbage", "FULL", "Full", "INCREMENTAL"} {
 		l := *lister // shallow copy is OK; events slice is read-only here
@@ -139,6 +141,7 @@ func TestResolveResumeUnknownModeFallsBackIncremental(t *testing.T) {
 // (b) none — cold start. Resolver MUST NOT touch the event store; ack
 // carries the current high-water cursor and zero events.
 func TestResolveResumeNone(t *testing.T) {
+	t.Parallel()
 	lister := &fakeLister{events: mkEvents(7, "ch1"), highWater: 7}
 	req := bpp.SessionResumeRequest{Mode: bpp.ResumeModeNone, Since: 3}
 	ack, events, err := bpp.ResolveResume(lister, req, []string{"ch1"}, 0)
@@ -161,6 +164,7 @@ func TestResolveResumeNone(t *testing.T) {
 
 // (c) full — agent-explicit. Replays from cursor 0 within scope.
 func TestResolveResumeFull(t *testing.T) {
+	t.Parallel()
 	lister := &fakeLister{events: mkEvents(4, "ch1"), highWater: 4}
 	req := bpp.SessionResumeRequest{Mode: bpp.ResumeModeFull, Since: 99 /* ignored */}
 	ack, events, err := bpp.ResolveResume(lister, req, []string{"ch1"}, 0)
@@ -184,6 +188,7 @@ func TestResolveResumeFull(t *testing.T) {
 // (d) 反约束 — ParseResumeMode never resolves anything other than the
 // literal "full" string into ResumeModeFull.
 func TestParseResumeModeNeverDefaultsFull(t *testing.T) {
+	t.Parallel()
 	// The ONLY input that yields Full.
 	if got := bpp.ParseResumeMode("full"); got != bpp.ResumeModeFull {
 		t.Fatalf("ParseResumeMode(\"full\") = %q, want full", got)
@@ -213,6 +218,7 @@ func TestParseResumeModeNeverDefaultsFull(t *testing.T) {
 // flooded set of bogus modes and asserting none of them produce the
 // `full` branch's behaviour (replay from 0).
 func TestResolverNeverDefaultsToFullBranch(t *testing.T) {
+	t.Parallel()
 	lister := &fakeLister{events: mkEvents(10, "ch1"), highWater: 10}
 	for _, raw := range []string{"", "x", "FULL", "Full", "0", "1", "true"} {
 		l := *lister
@@ -238,6 +244,7 @@ func TestResolverNeverDefaultsToFullBranch(t *testing.T) {
 // blueprint. If the struct tags are reordered or renamed this test
 // flips red.
 func TestSessionResumeFrameFieldOrder(t *testing.T) {
+	t.Parallel()
 	req := bpp.SessionResumeRequest{
 		Type:  bpp.FrameTypeSessionResume,
 		Mode:  bpp.ResumeModeIncremental,
@@ -269,6 +276,7 @@ func TestSessionResumeFrameFieldOrder(t *testing.T) {
 
 // (f) limit clamp matches RT-1.2 REST endpoint: <=0 → 200, >500 → 500.
 func TestResolveResumeLimitClamp(t *testing.T) {
+	t.Parallel()
 	lister := &fakeLister{events: mkEvents(5, "ch1"), highWater: 5}
 	req := bpp.SessionResumeRequest{Mode: bpp.ResumeModeIncremental, Since: 0}
 
@@ -287,6 +295,7 @@ func TestResolveResumeLimitClamp(t *testing.T) {
 // ErrNoChannelScope, regardless of mode (except `none` which is already
 // short-circuited before the scope check).
 func TestResolveResumeEmptyScope(t *testing.T) {
+	t.Parallel()
 	lister := &fakeLister{highWater: 11}
 	for _, mode := range []bpp.ResumeMode{bpp.ResumeModeIncremental, bpp.ResumeModeFull} {
 		req := bpp.SessionResumeRequest{Mode: mode, Since: 0}

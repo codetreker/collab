@@ -21,6 +21,7 @@ import (
 // TestCV4V2_ListIterations_LimitClamp — acceptance §1.1 立场 ①
 // limit query default/clamp matrix: 0 / -1 / 999 / 100 / "" → 50/50/200/100/50.
 func TestCV4V2_ListIterations_LimitClamp(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		raw  string
 		want int
@@ -49,6 +50,7 @@ func TestCV4V2_ListIterations_LimitClamp(t *testing.T) {
 // Reverse-grep production migrations + bpp/api packages for forbidden
 // CV-4 v2 history table / event sequence literals.
 func TestCV4V2_NoSchemaChange(t *testing.T) {
+	t.Parallel()
 	forbidden := []string{
 		"ALTER TABLE artifact_iterations",
 		"CREATE TABLE iteration_history",
@@ -96,6 +98,7 @@ func TestCV4V2_NoSchemaChange(t *testing.T) {
 // TestCV4V2_AdminGodModeNotMounted — acceptance §1.3 立场 ③+§4 ADM-0
 // red-line. admin*.go must not reference iteration list endpoint.
 func TestCV4V2_AdminGodModeNotMounted(t *testing.T) {
+	t.Parallel()
 	forbidden := []string{
 		"admin.*iterations",
 		"admin.*CV4",

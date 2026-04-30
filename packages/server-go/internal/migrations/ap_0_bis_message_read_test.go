@@ -55,6 +55,7 @@ func countReadPerm(t *testing.T, db *gorm.DB, userID string) int {
 }
 
 func TestAP0Bis_BackfillsMessageReadForLegacyAgents(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedAgentMinimalSchema(t, db)
 	seedLegacyAgent(t, db, "agent-1")
@@ -71,6 +72,7 @@ func TestAP0Bis_BackfillsMessageReadForLegacyAgents(t *testing.T) {
 }
 
 func TestAP0Bis_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedAgentMinimalSchema(t, db)
 	seedLegacyAgent(t, db, "agent-1")
@@ -100,6 +102,7 @@ func TestAP0Bis_Idempotent(t *testing.T) {
 }
 
 func TestAP0Bis_SkipsNonAgentRoles(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedAgentMinimalSchema(t, db)
 	if err := db.Exec(`INSERT INTO users (id, display_name, role) VALUES ('member-1', 'Member', 'member')`).Error; err != nil {
@@ -124,6 +127,7 @@ func TestAP0Bis_SkipsNonAgentRoles(t *testing.T) {
 }
 
 func TestAP0Bis_SkipsSoftDeletedAgents(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedAgentMinimalSchema(t, db)
 	if err := db.Exec(`INSERT INTO users (id, display_name, role, deleted_at) VALUES ('zombie', 'Zombie', 'agent', 100)`).Error; err != nil {

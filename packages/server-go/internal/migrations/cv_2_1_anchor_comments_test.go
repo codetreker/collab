@@ -25,6 +25,7 @@ func runCV21(t *testing.T, db *gorm.DB) {
 // shape + the end_offset CHECK. Drift here breaks 立场 ② (锚钉死 version) or
 // the range invariant.
 func TestCV21_CreatesArtifactAnchorsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
 
@@ -87,6 +88,7 @@ func TestCV21_CreatesArtifactAnchorsTable(t *testing.T) {
 // start_offset. start>end → reject. spec §0 立场 ② anchor_range 字符索引,
 // invalid 范围让 review 跑偏.
 func TestCV21_RejectsInvalidEndOffsetRange(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
 
@@ -121,6 +123,7 @@ func TestCV21_RejectsInvalidEndOffsetRange(t *testing.T) {
 // 复用 CV-1.1 artifact_versions.committer_kind (commit 提交者) — spec v2
 // 字面锁.
 func TestCV21_CreatesAnchorCommentsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
 
@@ -160,6 +163,7 @@ func TestCV21_CreatesAnchorCommentsTable(t *testing.T) {
 // in ('agent','human'). 立场 ① 反 agent→agent thread 由 server 校验 (至少
 // 一 'human'), 但 schema 层先把 kind enum 锁死, drift 上去 server 也兜不住.
 func TestCV21_RejectsInvalidAuthorKind(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
 
@@ -189,6 +193,7 @@ func TestCV21_RejectsInvalidAuthorKind(t *testing.T) {
 // don't substitute (PK 是 cross-anchor 全局序; UNIQUE 这里没有, 同 anchor
 // 多 comment 合法).
 func TestCV21_CommentsTablePKMonotonic(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
 
@@ -234,6 +239,7 @@ func TestCV21_CommentsTablePKMonotonic(t *testing.T) {
 // TestCV21_HasIndexes pins acceptance §1.x — per-version anchor list +
 // thread comment lookup require both indexes.
 func TestCV21_HasIndexes(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
 
@@ -255,6 +261,7 @@ func TestCV21_HasIndexes(t *testing.T) {
 // (artifact_version_id FK 严格不同). 反向断言: 单 anchor 不会被 version 滚动
 // "携带" — schema 层完全分行, 没有任何 update_to_next_version 字段.
 func TestCV21_AnchorsAcrossVersionsCoexist(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
 
@@ -290,6 +297,7 @@ func TestCV21_AnchorsAcrossVersionsCoexist(t *testing.T) {
 
 // TestCV21_Idempotent pins forward-only safety: re-running v=14 is no-op.
 func TestCV21_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
 	e := New(db)

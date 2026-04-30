@@ -32,6 +32,7 @@ func runAP31(t *testing.T, db *gorm.DB) {
 // REG-AP3-001 (acceptance §1.1) — schema adds nullable org_id column
 // (NULL = legacy / inheritance, 跟 ap_1_1 expires_at 同模式).
 func TestAP31_AddsOrgIDColumn(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAP31(t, db)
 
@@ -48,6 +49,7 @@ func TestAP31_AddsOrgIDColumn(t *testing.T) {
 // REG-AP3-001b (acceptance §1.2) — sparse index covers org_id IS NOT NULL
 // rows (跟 ap_1_1 expires_at sparse 同模式).
 func TestAP31_HasOrgIDIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAP31(t, db)
 
@@ -65,6 +67,7 @@ func TestAP31_HasOrgIDIndex(t *testing.T) {
 // REG-AP3-001c (acceptance §1.1 + 立场 ⑥) — legacy rows preserve NULL
 // org_id (AP-1 现网行为零变).
 func TestAP31_LegacyRowsNullPreserved(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAP31(t, db)
 
@@ -85,6 +88,7 @@ func TestAP31_LegacyRowsNullPreserved(t *testing.T) {
 // REG-AP3-001d — schema accepts explicit org_id assignment (cross-org
 // enforce 路径 grant 时显式写, 立场 ②).
 func TestAP31_AcceptsExplicitOrgID(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAP31(t, db)
 
@@ -106,6 +110,7 @@ func TestAP31_AcceptsExplicitOrgID(t *testing.T) {
 // to organizations (跟 user.org_id 同精神, 业务校验 server 层做). 反向
 // grep `user_permissions.*FOREIGN KEY.*organizations` count==0.
 func TestAP31_NoFKToOrganizations(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAP31(t, db)
 
@@ -120,6 +125,7 @@ func TestAP31_NoFKToOrganizations(t *testing.T) {
 
 // REG-AP3-001f — registry.go 字面锁 v=29 sequencing.
 func TestAP31_RegistryHasV29(t *testing.T) {
+	t.Parallel()
 	for _, m := range All {
 		if m.Version == 29 {
 			if m.Name != "ap_3_1_user_permissions_org" {
@@ -134,6 +140,7 @@ func TestAP31_RegistryHasV29(t *testing.T) {
 // TestAP31_Idempotent — re-running v=29 on an already-applied DB is a
 // no-op (schema_migrations gate).
 func TestAP31_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAP31(t, db)
 

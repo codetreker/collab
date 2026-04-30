@@ -37,6 +37,7 @@ func runAL71(t *testing.T, db *gorm.DB) {
 // admin_actions.archived_at must exist as nullable INTEGER (NULL = active
 // row, sweeper UPDATE archived_at=now to archive).
 func TestAL71_AddsArchivedAtColumn(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
 	cols := pragmaColumns(t, db, "admin_actions")
@@ -54,6 +55,7 @@ func TestAL71_AddsArchivedAtColumn(t *testing.T) {
 // idx_admin_actions_archived_at must be created with WHERE archived_at IS
 // NOT NULL (sparse index 跟 ap_2_1 / ap_1_1 / ap_3_1 同模式).
 func TestAL71_HasSparseIdx(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
 	var sql string
@@ -74,6 +76,7 @@ func TestAL71_HasSparseIdx(t *testing.T) {
 // All 12 actions (6 ADM-2.1 legacy + 1 AP-2 + 5 BPP-8 + 1 AL-7) must
 // INSERT successfully.
 func TestAL71_AcceptsAuditRetentionOverride(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
 	actions := []string{
@@ -103,6 +106,7 @@ func TestAL71_AcceptsAuditRetentionOverride(t *testing.T) {
 //
 // 5 spec-外 audit_retention_* names must be rejected by CHECK.
 func TestAL71_RejectsUnknownAction(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
 	bad := []string{
@@ -125,6 +129,7 @@ func TestAL71_RejectsUnknownAction(t *testing.T) {
 
 // TestAL71_VersionIs33 — registry literal lock.
 func TestAL71_VersionIs33(t *testing.T) {
+	t.Parallel()
 	if got, want := al71AdminActionsArchivedAt.Version, 33; got != want {
 		t.Errorf("AL-7.1 Version drift: got %d, want %d (post CV-6 v=32 sequencing)", got, want)
 	}
@@ -146,6 +151,7 @@ func TestAL71_VersionIs33(t *testing.T) {
 // TestAL71_Idempotent — re-running chain against an already-applied DB
 // is a no-op (schema_migrations gate).
 func TestAL71_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
 	runAL71(t, db) // second run no-op
@@ -162,6 +168,7 @@ func TestAL71_Idempotent(t *testing.T) {
 // tables exist after migration chain runs (audit retention reuses
 // admin_actions.archived_at, 不裂表).
 func TestAL71_NoSeparateArchiveTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
 	forbidden := []string{

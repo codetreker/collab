@@ -28,21 +28,17 @@ func (r *flushResponseRecorder) Flush() {
 	r.flushed = true
 }
 
+func init() {
+	// TEST-FIX-3-COV: ADM-0.2 admin.Bootstrap fail-loud env, set once at
+	// package init so tests can use t.Parallel (t.Setenv blocks parallel).
+	os.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
+	os.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
+}
+
 func testServer(t *testing.T) (*Server, *store.Store) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 	t.Cleanup(func() { s.Close() })
-
-	// ADM-0.2: server.New → admin.Bootstrap is fail-loud on missing
-	// BORGEE_ADMIN_* env. Provide test-only literals here too.
-	t.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
-	t.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
 
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",
@@ -60,6 +56,7 @@ func testServer(t *testing.T) (*Server, *store.Store) {
 }
 
 func TestHealth(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -75,6 +72,7 @@ func TestHealth(t *testing.T) {
 }
 
 func TestStaticFallback(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 
 	indexPath := filepath.Join(srv.cfg.ClientDist, "index.html")
@@ -94,6 +92,7 @@ func TestStaticFallback(t *testing.T) {
 }
 
 func TestStaticFile(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 
 	os.WriteFile(filepath.Join(srv.cfg.ClientDist, "test.js"), []byte("var x=1;"), 0644)
@@ -112,6 +111,7 @@ func TestStaticFile(t *testing.T) {
 }
 
 func TestNotFoundAPI(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -127,6 +127,7 @@ func TestNotFoundAPI(t *testing.T) {
 }
 
 func TestCORSHeaders(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -146,6 +147,7 @@ func TestCORSHeaders(t *testing.T) {
 }
 
 func TestCORSProductionAllowedOrigin(t *testing.T) {
+	t.Parallel()
 	nextCalled := false
 	handler := corsMiddleware(false, "https://app.example", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextCalled = true
@@ -166,6 +168,7 @@ func TestCORSProductionAllowedOrigin(t *testing.T) {
 }
 
 func TestSecurityHeaders(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -182,6 +185,7 @@ func TestSecurityHeaders(t *testing.T) {
 }
 
 func TestWriteJSON(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	WriteJSON(rec, http.StatusOK, map[string]string{"test": "value"})
 	if rec.Code != http.StatusOK {
@@ -193,6 +197,7 @@ func TestWriteJSON(t *testing.T) {
 }
 
 func TestJSONError(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	JSONError(rec, http.StatusBadRequest, "bad request")
 	if rec.Code != http.StatusBadRequest {
@@ -201,6 +206,7 @@ func TestJSONError(t *testing.T) {
 }
 
 func TestReadJSON(t *testing.T) {
+	t.Parallel()
 	body := strings.NewReader(`{"key":"value"}`)
 	req := httptest.NewRequest("POST", "/", body)
 	var dst map[string]string
@@ -214,6 +220,7 @@ func TestReadJSON(t *testing.T) {
 }
 
 func TestReadJSON_Invalid(t *testing.T) {
+	t.Parallel()
 	body := strings.NewReader(`not json`)
 	req := httptest.NewRequest("POST", "/", body)
 	var dst map[string]string
@@ -224,6 +231,7 @@ func TestReadJSON_Invalid(t *testing.T) {
 }
 
 func TestReadJSON_TooLarge(t *testing.T) {
+	t.Parallel()
 	body := strings.NewReader(`{"payload":"` + strings.Repeat("x", 1<<20) + `"}`)
 	req := httptest.NewRequest("POST", "/", body)
 	var dst map[string]string
@@ -234,6 +242,7 @@ func TestReadJSON_TooLarge(t *testing.T) {
 }
 
 func TestParseIDParam(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest("GET", "/", nil)
 	id := ParseIDParam(req, "id")
 	if id != "" {
@@ -242,6 +251,7 @@ func TestParseIDParam(t *testing.T) {
 }
 
 func TestRequestIDMiddleware(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -259,12 +269,14 @@ func TestRequestIDMiddleware(t *testing.T) {
 }
 
 func TestRequestIDFromContextMissing(t *testing.T) {
+	t.Parallel()
 	if got := RequestIDFromContext(context.Background()); got != "" {
 		t.Fatalf("expected empty request id, got %q", got)
 	}
 }
 
 func TestRecoverMiddlewareWritesErrorOnPanic(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	handler := recoverMiddleware(logger, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("boom")
@@ -282,6 +294,7 @@ func TestRecoverMiddlewareWritesErrorOnPanic(t *testing.T) {
 }
 
 func TestStatusRecorderFlush(t *testing.T) {
+	t.Parallel()
 	base := &flushResponseRecorder{ResponseRecorder: httptest.NewRecorder()}
 	rec := &statusRecorder{ResponseWriter: base, status: http.StatusOK}
 	rec.WriteHeader(http.StatusCreated)
@@ -299,6 +312,7 @@ func TestStatusRecorderFlush(t *testing.T) {
 }
 
 func TestRateLimiter(t *testing.T) {
+	t.Parallel()
 	rl := newRateLimiter(t.Context())
 	ip := "127.0.0.1"
 
@@ -310,6 +324,7 @@ func TestRateLimiter(t *testing.T) {
 }
 
 func TestRateLimiterUsesAuthBucket(t *testing.T) {
+	t.Parallel()
 	rl := newRateLimiter(t.Context())
 	rl.authRate = 0
 	rl.authMax = 1
@@ -325,6 +340,7 @@ func TestRateLimiterUsesAuthBucket(t *testing.T) {
 }
 
 func TestRateLimitMiddlewareRejectsExhaustedClient(t *testing.T) {
+	t.Parallel()
 	rl := newRateLimiter(t.Context())
 	rl.apiRate = 0
 	rl.apiMax = 1
@@ -365,6 +381,7 @@ func TestRateLimitMiddlewareRejectsExhaustedClient(t *testing.T) {
 //
 // See middleware.go:rateLimitMiddleware doc comment for the full rationale.
 func TestRateLimitBypass_RequiresBothHeaderAndDevMode(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name          string
 		isDevelopment bool
@@ -425,6 +442,7 @@ func TestRateLimitBypass_RequiresBothHeaderAndDevMode(t *testing.T) {
 }
 
 func TestClientIPSources(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		setup  func(*http.Request)
@@ -468,6 +486,7 @@ func TestClientIPSources(t *testing.T) {
 }
 
 func TestRateLimiterRefills(t *testing.T) {
+	t.Parallel()
 	rl := newRateLimiter(t.Context())
 	rl.apiRate = 10
 	rl.apiMax = 2
@@ -490,6 +509,7 @@ func TestRateLimiterRefills(t *testing.T) {
 }
 
 func TestHandleStaticNotFoundBranches(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 
 	for _, path := range []string{"/ws/missing", "/missing.js", "/nested-route"} {
@@ -504,6 +524,7 @@ func TestHandleStaticNotFoundBranches(t *testing.T) {
 }
 
 func TestProtectedMessageRouteResolvesChannelScope(t *testing.T) {
+	t.Parallel()
 	srv, s := testServer(t)
 	srv.cfg.DevAuthBypass = true
 
@@ -535,6 +556,7 @@ func TestProtectedMessageRouteResolvesChannelScope(t *testing.T) {
 }
 
 func TestHub(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 	if srv.Hub() == nil {
 		t.Fatal("expected hub")
@@ -542,6 +564,7 @@ func TestHub(t *testing.T) {
 }
 
 func TestAdapters(t *testing.T) {
+	t.Parallel()
 	srv, _ := testServer(t)
 	hub := srv.Hub()
 	hub.CommandStore().Register("conn-1", "agent-1", "Agent One", []ws.AgentCommand{
@@ -584,6 +607,7 @@ func TestAdapters(t *testing.T) {
 }
 
 func TestHubPluginAdapterProxySuccess(t *testing.T) {
+	t.Parallel()
 	srv, s := testServer(t)
 	apiKey := "bgr_plugin_proxy_success"
 	agent := &store.User{DisplayName: "Proxy Bot", Role: "agent", APIKey: &apiKey}
@@ -660,6 +684,7 @@ func TestHubPluginAdapterProxySuccess(t *testing.T) {
 }
 
 func TestWriteErrorResponse(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	writeErrorResponse(rec, http.StatusInternalServerError, "test error")
 	if rec.Code != http.StatusInternalServerError {
@@ -668,6 +693,7 @@ func TestWriteErrorResponse(t *testing.T) {
 }
 
 func TestRespondNotImplemented(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	respondNotImplemented(rec, nil)
 	if rec.Code != http.StatusNotFound {
@@ -680,6 +706,7 @@ func TestRespondNotImplemented(t *testing.T) {
 // goroutine was unbounded; post-fix it exits when ctx cancelled (caller's
 // t.Context() in tests, srv ctx in production).
 func TestRateLimiterCleanup_CtxCancelExits(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	rl := newRateLimiter(ctx)
 	// Seed an old client so the cleanup loop's delete branch can fire.
@@ -696,6 +723,7 @@ func TestRateLimiterCleanup_CtxCancelExits(t *testing.T) {
 // evictStale eviction logic (extracted from cleanup() ticker.C body so it's
 // unit-testable without waiting 5min). Drops 10min+ stale entries, keeps fresh.
 func TestRateLimiterCleanup_TickFiresDelete(t *testing.T) {
+	t.Parallel()
 	rl := &rateLimiter{
 		clients:  make(map[string]*clientBucket),
 		authRate: 1,

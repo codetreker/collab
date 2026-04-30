@@ -24,6 +24,7 @@ func runDM21(t *testing.T, db *gorm.DB) {
 // message_mentions has the contract columns with the right NOT NULL /
 // PK shape. Drift here breaks mention routing or the dedup contract.
 func TestDM21_CreatesMessageMentionsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
 
@@ -56,6 +57,7 @@ func TestDM21_CreatesMessageMentionsTable(t *testing.T) {
 // target_kind / read_at must NOT exist. spec §0 立场 ③ (mention 永不
 // 抄送 owner) + 立场 ⑥ (user / agent 同语义, 不分叉 target_kind).
 func TestDM21_NoCursorOrFanoutOwnerColumns(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
 
@@ -80,6 +82,7 @@ func TestDM21_NoCursorOrFanoutOwnerColumns(t *testing.T) {
 // reject (dedup, 立场 ⑥ agent=同事 同语义). 重复 `@<id>` 同 message
 // 只持久化一行.
 func TestDM21_RejectsDuplicateMentionPerMessage(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
 
@@ -110,6 +113,7 @@ func TestDM21_RejectsDuplicateMentionPerMessage(t *testing.T) {
 // Phase 5+, 但 单 message 多 target 是基础语义). schema MUST NOT have
 // UNIQUE(message_id) — only the (message_id, target_user_id) pair.
 func TestDM21_AllowsMultiTargetPerMessage(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
 
@@ -139,6 +143,7 @@ func TestDM21_AllowsMultiTargetPerMessage(t *testing.T) {
 // Verified via sqlite_master rather than EXPLAIN QUERY PLAN to keep
 // the assertion deterministic (跟 #310 TestAL31_HasUserIDIndex 同模式).
 func TestDM21_HasTargetUserIDIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
 
@@ -156,6 +161,7 @@ func TestDM21_HasTargetUserIDIndex(t *testing.T) {
 // TestCV21_CommentsTablePKMonotonic for anchor_comments; gives audit
 // log a stable order assumption regardless of message_id grouping.
 func TestDM21_MentionsPKMonotonic(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
 
@@ -201,6 +207,7 @@ func TestDM21_MentionsPKMonotonic(t *testing.T) {
 // re-running v=15 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX
 // IF NOT EXISTS guards). Same as every migration body in the registry.
 func TestDM21_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
 	e := New(db)

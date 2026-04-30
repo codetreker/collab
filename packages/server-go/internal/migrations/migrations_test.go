@@ -17,6 +17,7 @@ func openMem(t *testing.T) *gorm.DB {
 }
 
 func TestEnsureSchemaCreatesTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	if err := e.EnsureSchema(); err != nil {
@@ -36,6 +37,7 @@ func TestEnsureSchemaCreatesTable(t *testing.T) {
 }
 
 func TestRunAppliesPendingInOrder(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	var calls []int
 	e := New(db)
@@ -61,6 +63,7 @@ func TestRunAppliesPendingInOrder(t *testing.T) {
 }
 
 func TestRunRecordsVersionAndName(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	e.Register(Migration{
@@ -95,6 +98,7 @@ func TestRunRecordsVersionAndName(t *testing.T) {
 }
 
 func TestRunTargetCaps(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	for _, v := range []int{1, 2, 3} {
@@ -121,6 +125,7 @@ func TestRunTargetCaps(t *testing.T) {
 }
 
 func TestRunRollsBackOnFailure(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	e.Register(Migration{
@@ -152,6 +157,7 @@ func TestRunRollsBackOnFailure(t *testing.T) {
 }
 
 func TestValidateRejectsDuplicates(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	e.Register(Migration{Version: 1, Name: "a", Up: func(tx *gorm.DB) error { return nil }})
@@ -162,6 +168,7 @@ func TestValidateRejectsDuplicates(t *testing.T) {
 }
 
 func TestValidateRejectsBadInput(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	cases := []Migration{
 		{Version: 0, Name: "zero", Up: func(tx *gorm.DB) error { return nil }},
@@ -178,6 +185,7 @@ func TestValidateRejectsBadInput(t *testing.T) {
 }
 
 func TestDefaultRegistryRunsClean(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	// CM-1.1 ALTERs five legacy tables that store.createSchema normally
 	// builds. Recreate the minimum surface here so the migration package
@@ -238,3 +246,86 @@ var errBoom = boomErr("boom")
 type boomErr string
 
 func (b boomErr) Error() string { return string(b) }
+
+// TestEnsureSchema_ExecError covers the err branch when the underlying
+// DB rejects DDL (closed connection forces ErrInvalidDB / similar).
+func TestEnsureSchema_ExecError(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	e := New(db)
+	if err := e.EnsureSchema(); err == nil {
+		t.Error("expected error from EnsureSchema after DB close")
+	}
+}
+
+// TestApplied_QueryError covers the query-failure branch (drop the
+// schema_migrations table after EnsureSchema records it the first time
+// — no, instead use closed DB to force query err).
+func TestApplied_QueryError(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	e := New(db)
+	if err := e.EnsureSchema(); err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, _ := db.DB()
+	sqlDB.Close()
+	if _, err := e.Applied(); err == nil {
+		t.Error("expected error from Applied after DB close")
+	}
+}
+
+// TestRun_ValidationDuplicate covers the validate() duplicate-version branch.
+func TestRun_ValidationDuplicate(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	e := New(db)
+	noop := func(tx *gorm.DB) error { return nil }
+	e.RegisterAll([]Migration{
+		{Version: 5, Name: "a", Up: noop},
+		{Version: 5, Name: "b", Up: noop},
+	})
+	if err := e.Run(0); err == nil {
+		t.Error("expected duplicate-version error")
+	}
+}
+
+// TestRun_ValidationZeroVersion covers the non-positive version branch.
+func TestRun_ValidationZeroVersion(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	e := New(db)
+	e.Register(Migration{Version: 0, Name: "x", Up: func(tx *gorm.DB) error { return nil }})
+	if err := e.Run(0); err == nil {
+		t.Error("expected zero-version error")
+	}
+}
+
+// TestRun_ValidationEmptyName covers empty-name branch.
+func TestRun_ValidationEmptyName(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	e := New(db)
+	e.Register(Migration{Version: 1, Name: "", Up: func(tx *gorm.DB) error { return nil }})
+	if err := e.Run(0); err == nil {
+		t.Error("expected empty-name error")
+	}
+}
+
+// TestRun_ValidationNilUp covers nil-Up branch.
+func TestRun_ValidationNilUp(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	e := New(db)
+	e.Register(Migration{Version: 1, Name: "x", Up: nil})
+	if err := e.Run(0); err == nil {
+		t.Error("expected nil-Up error")
+	}
+}

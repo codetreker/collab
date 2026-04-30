@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
 	"borgee-server/internal/store"
@@ -17,15 +19,7 @@ import (
 
 func setupTest(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
 	t.Helper()
-	s, err := store.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { s.Close() })
-
-	if err := s.Migrate(); err != nil {
-		t.Fatal(err)
-	}
+	s := store.MigratedStoreFromTemplate(t)
 
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",
@@ -50,7 +44,8 @@ func setupTest(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
 
 func createTestUser(t *testing.T, s *store.Store, email, password, role string) *store.User {
 	t.Helper()
-	hash, _ := auth.HashPassword(password)
+	hashBytes, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+	hash := string(hashBytes)
 	user := &store.User{
 		DisplayName:  "Test User",
 		Role:         role,

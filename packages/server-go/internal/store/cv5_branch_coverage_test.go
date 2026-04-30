@@ -15,12 +15,14 @@ import (
 )
 
 func TestIsAgentStatusNotFound_True(t *testing.T) {
+	t.Parallel()
 	if !IsAgentStatusNotFound(gorm.ErrRecordNotFound) {
 		t.Errorf("expected true for ErrRecordNotFound")
 	}
 }
 
 func TestIsAgentStatusNotFound_False(t *testing.T) {
+	t.Parallel()
 	if IsAgentStatusNotFound(errors.New("some other error")) {
 		t.Errorf("expected false for non-record-not-found error")
 	}
@@ -30,6 +32,7 @@ func TestIsAgentStatusNotFound_False(t *testing.T) {
 }
 
 func TestArchiveChannel_HappyPath(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -66,6 +69,7 @@ func TestArchiveChannel_HappyPath(t *testing.T) {
 }
 
 func TestArchiveChannel_NotFound(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
