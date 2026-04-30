@@ -838,6 +838,67 @@ func (s *Store) ListChannelsWithUnread(userID string) ([]ChannelWithCounts, erro
 	return results, err
 }
 
+// SetMuteBit toggles a single bit in user_channel_layout.collapsed for
+// (user, channel) without disturbing other bits. Returns the new
+// collapsed value so handlers can echo it. CHN-7 立场 ① (0 schema 改).
+//
+// bitMask is normally CHN-7 api.MuteBit (=2); other bits (CHN-3 collapse
+// state at bit 0) are preserved. Caller validates membership/DM in
+// the handler layer (this function only writes).
+func (s *Store) SetMuteBit(userID, channelID string, bitMask int64, set bool) (int64, error) {
+	// Read current collapsed; default to 0 if no row.
+	var current int64
+	if err := s.db.Raw(`SELECT COALESCE(collapsed, 0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND channel_id = ?`,
+		userID, channelID).Row().Scan(&current); err != nil {
+		// no row → start from 0 (the bit will be applied below).
+		current = 0
+	}
+	var next int64
+	if set {
+		next = current | bitMask
+	} else {
+		next = current &^ bitMask
+	}
+	// Read existing position so the upsert preserves it; default 0.
+	var pos float64
+	_ = s.db.Raw(`SELECT COALESCE(position, 0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND channel_id = ?`,
+		userID, channelID).Row().Scan(&pos)
+	now := time.Now().UnixMilli()
+	if err := s.db.Exec(`INSERT INTO user_channel_layout
+		(user_id, channel_id, collapsed, position, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(user_id, channel_id) DO UPDATE SET
+		  collapsed  = excluded.collapsed,
+		  updated_at = excluded.updated_at`,
+		userID, channelID, next, pos, now, now).Error; err != nil {
+		return 0, err
+	}
+	return next, nil
+}
+
+// IsMutedForUser reports whether (user, channel) has the CHN-7 mute bit
+// set. Used by DL-4 push notifier (best-effort skip) — not by RT-3
+// fan-out / WS frame / messages 表 (立场 ③ mute 不 drop messages).
+//
+// MuteBit is sourced from internal/api package to avoid a cycle; caller
+// must pass the const literal value (= 2 byte-identical 跟 client).
+func (s *Store) IsMutedForUser(userID, channelID string, muteBit int64) (bool, error) {
+	var collapsed int64
+	err := s.db.Raw(`SELECT COALESCE(collapsed, 0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND channel_id = ?`,
+		userID, channelID).Row().Scan(&collapsed)
+	if err != nil {
+		// no row → not muted (default 0).
+		return false, nil
+	}
+	return collapsed&muteBit != 0, nil
+}
+
 func (s *Store) ListAllChannelsForAdmin(userID string) ([]ChannelWithCounts, error) {
 	var results []ChannelWithCounts
 	err := s.db.Raw(`
