@@ -7,7 +7,7 @@
 > 跑) + plugin (BPP) 提需求方
 > Status: **🚧 spec brief v0** — code stub deferred until HB-1 lands.
 > 跟 HB-1 spec brief (#491 81a41fa) 同模式 — 锁住 IPC contract + 反约束防
-> drift, 真 Rust crate 实施等 HB-1 落.
+> drift, 真 Go binary 实施等 HB-1 落 (HB stack Go 重审拍板, 撤 Rust crate 路径).
 
 ## 1. 一句话定义
 
@@ -135,9 +135,9 @@ LIMIT 1;
 
 ## 6. 实施切入路线 (HB-1 落地后)
 
-1. HB-1 ship install-butler crate + audit log schema 锁.
-2. HB-2.1 daemon skeleton: Rust crate `packages/host-bridge/host-bridge/`
-   (跟 install-butler 同 workspace, 复用 cargo lockfile + audit log).
+1. HB-1 ship install-butler Go binary + audit log schema 锁.
+2. HB-2.1 daemon skeleton: Go binary `packages/borgee-helper/host-bridge/`
+   (独立 Go module, separate go.mod 防 server-go binary bloat; 跟 install-butler 同 mono-repo 但模块拆死, 复用 audit log JSON schema).
 3. HB-2.2 IPC server (UDS + serde JSON, request_id 多路复用).
 4. HB-2.3 文件读路径 + grants 校验 + 路径 normalization (anti-traversal).
 5. HB-2.4 网络出站白名单 + outbound proxy.
