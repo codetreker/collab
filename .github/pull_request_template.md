@@ -68,3 +68,11 @@ v0/v1 + word boundary passes the lint regex.
 -->
 
 Stage: v0
+
+## Test plan
+
+<!--
+Author 自验 checklist. 不强阻塞 push, 但 reviewer 会扫这一栏。
+-->
+
+- [ ] Local `make precheck` PASS (cov ≥ 85% + vitest + typecheck)
