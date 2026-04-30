@@ -87,6 +87,12 @@ type Message struct {
 	// UpdateMessage when the content changes. NULL = no edits (DM-7
 	// 立场 ①). Format: [{old_content, ts, reason}].
 	EditHistory *string `gorm:"column:edit_history" json:"edit_history,omitempty"`
+	// PinnedAt is Unix ms when the message was pinned (DM-10.1). NULL =
+	// unpinned. DM scope only — server REJECTS pin on non-DM channels
+	// (跟 chn_7_mute DM-only mirror, 立场 ②). Sparse partial idx
+	// `idx_messages_pinned_at WHERE pinned_at IS NOT NULL` (跟 AL-7.1
+	// archived_at + HB-5.1 archived_at sparse 同模式).
+	PinnedAt *int64 `gorm:"column:pinned_at;index:,where:pinned_at IS NOT NULL" json:"pinned_at,omitempty"`
 }
 
 type ChannelMember struct {

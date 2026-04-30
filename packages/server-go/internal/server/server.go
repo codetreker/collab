@@ -472,6 +472,10 @@ func (s *Server) SetupRoutes() {
 	dm11SearchHandler := &api.DM11SearchHandler{Store: s.store}
 	dm11SearchHandler.RegisterRoutes(s.mux, authMw)
 
+	// DM-10 message pin/unpin (DM-only scope)
+	dm10PinHandler := &api.DM10PinHandler{Store: s.store, Logger: s.logger}
+	dm10PinHandler.RegisterRoutes(s.mux, authMw)
+
 	// Commands
 	commandHandler := &api.CommandHandler{Store: s.store, DataLayer: s.dl, Logger: s.logger, Hub: &hubCommandAdapter{s.hub}}
 	commandHandler.RegisterRoutes(s.mux, authMw)
