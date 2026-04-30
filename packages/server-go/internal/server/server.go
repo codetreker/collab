@@ -413,6 +413,18 @@ func (s *Server) SetupRoutes() {
 	}
 	anchorHandler.RegisterRoutes(s.mux, authMw)
 
+	// CV-5 artifact comments (canvas-vision §0 L24 字面 "Linear issue +
+	// comment"). Comment row falls into messages table + virtual
+	// `artifact:<id>` namespace channel (跟 DM-2 dm: 同模式 — 立场 ①
+	// 单源不裂表). Pusher routes to ws.Hub which owns the
+	// ArtifactCommentAdded frame envelope (9 字段, RT-3 cursor 共序).
+	artifactCommentsHandler := &api.ArtifactCommentsHandler{
+		Store:  s.store,
+		Logger: s.logger,
+		Pusher: &hubArtifactCommentAdapter{s.hub},
+	}
+	artifactCommentsHandler.RegisterRoutes(s.mux, authMw)
+
 	// CV-4.2 iterations (canvas-vision §1.4 + §1.5; owner-only iterate
 	// orchestration + state machine + WS push). Pusher routes to ws.Hub
 	// which owns the IterationStateChanged frame envelope (9 字段
@@ -589,6 +601,24 @@ func (a *hubAnchorAdapter) PushAnchorCommentAdded(
 	createdAt int64,
 ) (cursor int64, sent bool) {
 	return a.hub.PushAnchorCommentAdded(anchorID, commentID, artifactID, artifactVersionID, channelID, authorID, authorKind, createdAt)
+}
+
+// hubArtifactCommentAdapter exposes ws.Hub.PushArtifactCommentAdded through
+// the api.ArtifactCommentPusher interface (CV-5, mirrors hubAnchorAdapter).
+type hubArtifactCommentAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubArtifactCommentAdapter) PushArtifactCommentAdded(
+	commentID string,
+	artifactID string,
+	channelID string,
+	senderID string,
+	senderRole string,
+	bodyPreview string,
+	createdAt int64,
+) (cursor int64, sent bool) {
+	return a.hub.PushArtifactCommentAdded(commentID, artifactID, channelID, senderID, senderRole, bodyPreview, createdAt)
 }
 
 // hubIterationAdapter exposes ws.Hub.PushIterationStateChanged through the

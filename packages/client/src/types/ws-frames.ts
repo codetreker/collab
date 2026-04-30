@@ -214,3 +214,41 @@ export interface IterationStateChangedFrame {
 
 export const ITERATION_STATE_CHANGED_EVENT = 'borgee:iteration-state-changed';
 export type IterationStateChangedEvent = CustomEvent<IterationStateChangedFrame>;
+
+// ─── CV-5 ArtifactCommentAdded frame ─────────────────────────
+//
+// Spec: docs/implementation/modules/cv-5-spec.md §0 立场 ② + §1.
+// Server lock: packages/server-go/internal/ws/artifact_comment_added_frame.go
+//   ArtifactCommentAddedFrame — 9 字段 byte-identical:
+//   {type, cursor, comment_id, artifact_id, channel_id,
+//    sender_id, sender_role, body_preview, created_at}
+//
+// channel_id 是虚拟 `artifact:<artifact_id>` namespace channel id (跟 DM-2
+// `dm:` 同模式 — 立场 ① comment 走 messages 表单源).
+//
+// body_preview 80 rune cap (隐私 §13). full body 走 GET /artifacts/:id/comments
+// (channel-member ACL).
+
+/**
+ * `artifact_comment_added` — server → client push fired when a comment
+ * lands on an artifact (CV-5). Cursor 共序 RT-3 #488 hub.cursors.
+ */
+export interface ArtifactCommentAddedFrame {
+  type: 'artifact_comment_added';
+  /** RT-3 monotonic server cursor; client must NOT sort by created_at. */
+  cursor: number;
+  comment_id: string;
+  artifact_id: string;
+  /** Virtual `artifact:<artifact_id>` namespace channel id. */
+  channel_id: string;
+  sender_id: string;
+  /** 'human' | 'agent' — naming aligned with users.role. */
+  sender_role: 'human' | 'agent';
+  /** 80-rune cap (server-truncated; 隐私 §13). client MUST NOT re-parse. */
+  body_preview: string;
+  /** Unix ms — 仅展示, 不可作排序键. */
+  created_at: number;
+}
+
+export const ARTIFACT_COMMENT_ADDED_EVENT = 'borgee:artifact-comment-added';
+export type ArtifactCommentAddedEvent = CustomEvent<ArtifactCommentAddedFrame>;

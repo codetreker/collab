@@ -1408,6 +1408,50 @@ export async function patchDMMessage(
   return (await resp.json()) as DM4EditResponse;
 }
 
+// ─── CV-5 Artifact comments ─────────────────────────────────
+//
+// Spec: docs/implementation/modules/cv-5-spec.md §0 立场 ① — comment row
+// lives in messages 表 with virtual `artifact:<id>` namespace channel
+// (跟 DM-2 dm: 同模式). Server-side path POST/GET
+// /api/v1/artifacts/{artifactId}/comments. body_preview 80 rune cap on
+// push frame; full body returned by these REST endpoints (channel-member ACL).
+
+export interface ArtifactComment {
+  id: string;
+  artifact_id: string;
+  channel_id: string;
+  sender_id: string;
+  /** 'human' | 'agent' — server-stamped from users.role. */
+  sender_role: 'human' | 'agent';
+  body: string;
+  created_at: number;
+  cursor?: number;
+}
+
+/** POST /api/v1/artifacts/:id/comments — channel members may comment. */
+export async function postArtifactComment(
+  artifactId: string,
+  body: string,
+  agentId?: string,
+): Promise<ArtifactComment> {
+  return request<ArtifactComment>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/comments`,
+    {
+      method: 'POST',
+      body: JSON.stringify(agentId ? { body, agent_id: agentId } : { body }),
+    },
+  );
+}
+
+/** GET /api/v1/artifacts/:id/comments — pull comment list after WS signal. */
+export async function listArtifactComments(
+  artifactId: string,
+): Promise<{ comments: ArtifactComment[] }> {
+  return request<{ comments: ArtifactComment[] }>(
+    `/api/v1/artifacts/${encodeURIComponent(artifactId)}/comments`,
+  );
+}
+
 // ─── CV-8 Artifact comment thread reply ─────────────────────
 //
 // Spec: docs/implementation/modules/cv-8-spec.md §0 立场 ① — 走 messages
