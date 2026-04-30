@@ -776,7 +776,7 @@ func TestChannelQueries(t *testing.T) {
 		t.Fatal("expected public channels")
 	}
 
-	withUnread, err := s.ListChannelsWithUnread(u.ID)
+	withUnread, err := s.ListChannelsWithUnread(u.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}

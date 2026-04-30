@@ -88,7 +88,10 @@ func (h *ChannelHandler) handleListChannels(w http.ResponseWriter, r *http.Reque
 
 	// ADM-0.3: user-rail lists membership-scoped channels only.
 	// Cross-user enumeration is admin-rail (/admin-api/v1/channels).
-	channels, err := h.Store.ListChannelsWithUnread(user.ID)
+	// CHN-13 立场 ②: optional ?q= 子串 filter (空 q 走既有 path
+	// byte-identical; q!="" 加 LIKE COLLATE NOCASE).
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	channels, err := h.Store.ListChannelsWithUnread(user.ID, q)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to list channels")
 		return

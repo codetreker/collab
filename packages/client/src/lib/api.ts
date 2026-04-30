@@ -69,8 +69,12 @@ export async function logout(): Promise<void> {
 
 // ─── Channels ───────────────────────────────────────────
 
-export async function fetchChannels(): Promise<{ channels: Channel[]; groups: ChannelGroup[] }> {
-  return request<{ channels: Channel[]; groups: ChannelGroup[] }>('/api/v1/channels');
+export async function fetchChannels(q?: string): Promise<{ channels: Channel[]; groups: ChannelGroup[] }> {
+  // CHN-13 立场 ②: optional `q` 子串 filter — 空 q (undefined / "") 走
+  // 既有 URL `/api/v1/channels` byte-identical (反向 grep 锚不漂 `?q=`);
+  // q 含特殊字符走 encodeURIComponent (server LIKE 走 prepared stmt).
+  const url = q ? `/api/v1/channels?q=${encodeURIComponent(q)}` : '/api/v1/channels';
+  return request<{ channels: Channel[]; groups: ChannelGroup[] }>(url);
 }
 
 export async function createChannel(
