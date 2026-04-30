@@ -41,8 +41,40 @@
 |--------|------|
 | `Hub.PushAgentTaskStateChanged(agentID, channelID, state, subject, reason, changedAt) (cursor int64, sent bool)` | RT-3 派生 push — 分配 cursor + BroadcastToChannel + SignalNewEvents; sent=false 仅当 hub 无 cursor allocator (test seam) |
 
-## 5. 锚
+## 5. RT-3.2 server派生 hook (PR #588 — TaskLifecycleHandler)
 
-- 实施: `internal/ws/agent_task_state_changed_frame.go` + `agent_task_state_changed_frame_test.go` (6 test 全绿) + `rt_3_multi_device_test.go` (live multi-device fanout)
+`internal/bpp/task_lifecycle_handler.go::TaskLifecycleHandler` — 走 BPP-2.2 `ValidateTaskStarted` / `ValidateTaskFinished` SSOT (BPP-2.2 #485 既有 validator), 验证通过后调 `AgentTaskPusher.PushAgentTaskStateChanged` (生产路径走 `internal/server/server.go::hubAgentTaskPusherAdapter` 跨 bpp↛ws 包边界胶水, 跟 hubLivenessAdapter / channelScopeAdapter 同模式).
+
+**派生映射**:
+
+| Plugin upstream frame | 派生 state | subject | reason |
+|---|---|---|---|
+| `task_started` (Subject 必带非空, ValidateTaskStarted 守) | `busy` | 透传 plugin Subject | 必空 |
+| `task_finished` outcome=`completed` (reason 必空, 字典污染防御) | `idle` | 必空 | 必空 |
+| `task_finished` outcome=`failed` + reason ∈ AL-1a 6-dict | `idle` | 必空 | 透传 plugin reason |
+| `task_finished` outcome=`cancelled` (reason 必空) | `idle` | 必空 | 必空 |
+
+**fail-closed 路径** (反 fallback push):
+
+- empty subject → `errSubjectEmpty` reject + pusher 0 calls (TestRT3_HandleStarted_EmptySubjectRejected 锁)
+- 中间态 outcome (`partial` / `paused` / `pending` / `starting`) → `errOutcomeUnknown` reject + 0 calls (TestRT3_HandleFinished_InvalidOutcome_Rejected)
+- completed/cancelled + non-empty reason → 字典污染 reject + 0 calls (TestRT3_HandleFinished_CompletedWithReason_RejectedDictPollution)
+
+**boot wire** (`internal/server/server.go`):
+
+```go
+taskLifecycleHandler := bpp.NewTaskLifecycleHandler(
+    &hubAgentTaskPusherAdapter{hub: hub}, logger)
+pfd.Register(bpp.FrameTypeBPPTaskStarted,  taskLifecycleHandler.StartedAdapter())
+pfd.Register(bpp.FrameTypeBPPTaskFinished, taskLifecycleHandler.FinishedAdapter())
+```
+
+11 TestRT3_* unit PASS (HandleStarted happy/empty + HandleFinished 4 case + 2 adapter raw decode + nil pusher panic + sentinel chain).
+
+## 6. 锚
+
+- 实施: `internal/ws/agent_task_state_changed_frame.go` + `agent_task_state_changed_frame_test.go` (6 test 全绿) + `rt_3_multi_device_test.go` (live multi-device fanout) + **`internal/bpp/task_lifecycle_handler.go` + `_test.go` (RT-3.2, PR #588, 11 test 全绿)** + `internal/server/server.go` 真挂 pfd.Register 2 frame
 - spec brief: [`docs/implementation/modules/rt-3-spec.md`](../../../implementation/modules/rt-3-spec.md)
-- deferred Phase 2 (等条件): RT-3.2 server派生 hook (待 BPP-2.2 plugin 上行落地) / RT-3.4 DL-4 Web Push fallback (待 DL-4 merge) / RT-3.3 client UI / RT-3.5 e2e
+- stance: [`docs/qa/rt-3-stance-checklist.md`](../../../qa/rt-3-stance-checklist.md)
+- acceptance: [`docs/qa/acceptance-templates/rt-3.md`](../../../qa/acceptance-templates/rt-3.md)
+- deferred (留 follow-up PR): RT-3.4 DL-4 Web Push fallback (DL-4 #490 已 merge 6/7) / RT-3.3 client UI / RT-3.5 e2e + ⭐ yema G4.x 5 张 signoff 截屏 demo
