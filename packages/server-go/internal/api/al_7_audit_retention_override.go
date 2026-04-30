@@ -20,11 +20,9 @@
 package api
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
-	"borgee-server/internal/admin"
 	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
@@ -46,62 +44,21 @@ func (h *AL7AuditRetentionHandler) RegisterAdminRoutes(mux *http.ServeMux, admin
 		adminMw(http.HandlerFunc(h.handleOverride)))
 }
 
-type al7OverrideRequest struct {
-	RetentionDays int    `json:"retention_days"`
-	TargetUserID  string `json:"target_user_id"` // optional — defaults to "system"
-}
+// (REFACTOR-1 R1.2: al7OverrideRequest 已合到 retentionOverrideRequest
+// SSOT in admin_retention_helper.go.)
 
 // handleOverride — POST /admin-api/v1/audit-retention/override.
 //
-// Validates retention_days ∈ [RetentionMinDays, RetentionMaxDays]; on
-// pass writes one admin_actions row with action='audit_retention_
-// override' (ADM-0 §1.3 红线). admin override is recorded as audit
-// metadata; the live RetentionSweeper window remains the compile-time
-// const RetentionDays (立场 ⑥ 字面单源 — runtime hot-mutate 留 v3, v0
-// 仅留痕).
+// REFACTOR-1 R1.2: 走 helper-3 SSOT writeRetentionOverride
+// (admin_retention_helper.go) — al_7 / hb_5 共享 5-step skeleton (admin
+// nil 401 → JSON decode → clamp → InsertAdminAction → response).
+// 立场 ⑥ 字面单源 — runtime hot-mutate 留 v3, v0 仅留痕 (RetentionSweeper
+// 窗口仍 compile-time const RetentionDays).
 func (h *AL7AuditRetentionHandler) handleOverride(w http.ResponseWriter, r *http.Request) {
-	a := admin.AdminFromContext(r.Context())
-	if a == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-	var req al7OverrideRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
-		return
-	}
-	// 立场 ⑥ clamp 1..365 — 反 0/负/非数/>365 reject. 0 = ZeroValue → reject
-	// (Go decoder defaults missing field to 0 — admin 必显式填).
-	if req.RetentionDays < auth.RetentionMinDays || req.RetentionDays > auth.RetentionMaxDays {
-		writeJSONError(w, http.StatusBadRequest, "retention_days must be in [1, 365]")
-		return
-	}
-	target := req.TargetUserID
-	if target == "" {
-		target = auth.SystemActorID
-	}
-	meta, err := json.Marshal(map[string]any{
-		"retention_days": req.RetentionDays,
-		"override_by":    a.ID,
-	})
-	if err != nil {
-		if h.Logger != nil {
-			h.Logger.Error("al7.override marshal", "error", err)
-		}
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	if _, err := h.Store.InsertAdminAction(
-		a.ID, target, auth.ActionAuditRetentionOverride, string(meta),
-	); err != nil {
-		if h.Logger != nil {
-			h.Logger.Error("al7.override audit insert", "error", err)
-		}
-		writeJSONError(w, http.StatusInternalServerError, "Failed to write audit")
-		return
-	}
-	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"retention_days": req.RetentionDays,
-		"recorded":       true,
-	})
+	writeRetentionOverride(w, r, h.Store, h.Logger,
+		"al7.override",
+		auth.ActionAuditRetentionOverride,
+		nil, // al_7 不附 metadata.target — hb_5 才用 (立场 ② 字面区分)
+		nil, // al_7 response 仅 retention_days + recorded — hb_5 加 target
+	)
 }

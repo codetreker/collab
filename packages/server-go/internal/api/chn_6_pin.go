@@ -5,15 +5,19 @@
 // user_channel_layout 列复用 CHN-3.1 #410 既有, pin 状态走 position < 0
 // 字面约定 + PinThreshold=0 双向锁 (server + client byte-identical).
 //
+// REFACTOR-1 R1.1: thin wrapper 模式跟 chn_7_mute.go / chn_15_readonly.go
+// 对齐 — handlePinChannel / handleUnpinChannel ≤4 行 thin wrapper, 真活
+// 走 handlePinToggle 单 handler + requireChannelMember helper-1 SSOT
+// preamble (chn_6/7/8/15/layout 5 处 4-step preamble 单源).
+//
 // Public surface:
 //   - (h *ChannelHandler) RegisterCHN6Routes(mux, authMw)
 //
-// 反约束 (chn-6-spec.md §0):
+// 反约束 (chn-6-spec.md §0 + refactor-1-spec.md §0):
 //   - 立场 ② owner-only — POST/DELETE /api/v1/channels/{channelId}/pin
-//     user-rail authMw 必经; per-user (cm.user_id 跟 CHN-3.2 同精神);
-//     admin god-mode **不挂 PATCH/POST** (反向 grep `admin.*pin\|
-//     /admin-api/.*pin` 在 admin*.go 0 hit) — owner-only ACL 锁链
-//     第 14 处.
+//     user-rail authMw 必经; admin god-mode 不挂 (反向 grep
+//     `admin.*pin\|/admin-api/.*pin` 在 admin*.go 0 hit) — owner-only ACL
+//     锁链第 14 处.
 //   - 立场 ③ pin 状态双源 — server PinThreshold=0 const + client
 //     POSITION_PIN_THRESHOLD=0 byte-identical 双向锁.
 //   - 立场 ⑥ AST 锁链延伸第 11 处 forbidden 3 token 0 hit.
@@ -22,8 +26,6 @@ package api
 import (
 	"net/http"
 	"time"
-
-	"borgee-server/internal/auth"
 )
 
 // PinThreshold is the byte-identical const that segregates pinned vs
@@ -52,79 +54,50 @@ func (h *ChannelHandler) RegisterCHN6Routes(mux *http.ServeMux, authMw func(http
 		authMw(http.HandlerFunc(h.handleUnpinChannel)))
 }
 
-// handlePinChannel — POST /api/v1/channels/{channelId}/pin.
-//
-// Stamps user_channel_layout.position = -(nowMs) for (user, channel).
-// 立场 ② owner-only (cm.user_id 走 IsChannelMember + DM reject byte-
-// identical 跟 CHN-3.2 layout endpoint 同源).
+// handlePinChannel — POST /api/v1/channels/{channelId}/pin (thin wrapper).
 func (h *ChannelHandler) handlePinChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-	channelID := r.PathValue("channelId")
-	ch, err := h.Store.GetChannelByID(channelID)
-	if err != nil || ch == nil {
-		writeJSONError(w, http.StatusNotFound, "Channel not found")
-		return
-	}
-	// DM 反 — DM 永不参与 layout 分组 (跟 CHN-3.2 错码 byte-identical).
-	if ch.Type == "dm" {
-		writeJSONErrorCode(w, http.StatusBadRequest, "layout.dm_not_grouped",
-			"DM 不参与个人分组")
-		return
-	}
-	if !h.Store.IsChannelMember(channelID, user.ID) {
-		writeJSONError(w, http.StatusForbidden, "Forbidden")
-		return
-	}
-	nowMs := time.Now().UnixMilli()
-	// position = -(nowMs) — ASC asc 排序使最近 pin 在最顶 (跟 CHN-3.3
-	// #415 单调小数模式互补).
-	position := -float64(nowMs)
-	if err := h.Store.PinChannelLayout(user.ID, channelID, position, nowMs); err != nil {
-		if h.Logger != nil {
-			h.Logger.Error("chn6.pin upsert", "error", err)
-		}
-		writeJSONError(w, http.StatusInternalServerError, "Failed to pin channel")
-		return
-	}
-	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"channel_id": channelID,
-		"position":   position,
-		"pinned":     true,
-	})
+	h.handlePinToggle(w, r, true)
 }
 
-// handleUnpinChannel — DELETE /api/v1/channels/{channelId}/pin.
-//
-// Stamps user_channel_layout.position = max(positive)+1.0 (跟 CHN-3.3
-// #415 client MIN-1.0 单调小数模式互补) so the channel returns to the
-// non-pinned section. Idempotent — second call within the same instant
-// returns 200 + position > 0.
+// handleUnpinChannel — DELETE /api/v1/channels/{channelId}/pin (thin wrapper).
 func (h *ChannelHandler) handleUnpinChannel(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
+	h.handlePinToggle(w, r, false)
+}
+
+// handlePinToggle — pin/unpin 单 handler, 跟 chn_7 handleMuteToggle /
+// chn_15 handleReadonlyToggle 同模式承袭 (REFACTOR-1 R1.1).
+//
+// 立场 ② owner-only: 走 requireChannelMember helper-1 (RejectDM=true +
+// member-only) — DM-gate 字面 byte-identical 跟 CHN-3.2 / CHN-7 / CHN-8
+// 同源.
+func (h *ChannelHandler) handlePinToggle(w http.ResponseWriter, r *http.Request, pin bool) {
 	channelID := r.PathValue("channelId")
-	ch, err := h.Store.GetChannelByID(channelID)
-	if err != nil || ch == nil {
-		writeJSONError(w, http.StatusNotFound, "Channel not found")
-		return
-	}
-	if ch.Type == "dm" {
-		writeJSONErrorCode(w, http.StatusBadRequest, "layout.dm_not_grouped",
-			"DM 不参与个人分组")
-		return
-	}
-	if !h.Store.IsChannelMember(channelID, user.ID) {
-		writeJSONError(w, http.StatusForbidden, "Forbidden")
+	user, _, ok := requireChannelMember(w, r, h.Store, channelID, ChannelACLOpts{RejectDM: true})
+	if !ok {
 		return
 	}
 	nowMs := time.Now().UnixMilli()
+	if pin {
+		// position = -(nowMs) — ASC asc 排序使最近 pin 在最顶 (跟 CHN-3.3
+		// #415 单调小数模式互补).
+		position := -float64(nowMs)
+		if err := h.Store.PinChannelLayout(user.ID, channelID, position, nowMs); err != nil {
+			if h.Logger != nil {
+				h.Logger.Error("chn6.pin upsert", "error", err)
+			}
+			writeJSONError(w, http.StatusInternalServerError, "Failed to pin channel")
+			return
+		}
+		writeJSONResponse(w, http.StatusOK, map[string]any{
+			"channel_id": channelID,
+			"position":   position,
+			"pinned":     true,
+		})
+		return
+	}
+	// Unpin: position = max(positive)+1.0 (跟 CHN-3.3 #415 client MIN-1.0
+	// 单调小数模式互补) so the channel returns to the non-pinned section.
+	// Idempotent — second call within the same instant returns 200 + position > 0.
 	position, err := h.Store.UnpinChannelLayout(user.ID, channelID, nowMs)
 	if err != nil {
 		if h.Logger != nil {

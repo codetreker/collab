@@ -161,27 +161,15 @@ func (h *LayoutHandler) handlePutMyLayout(w http.ResponseWriter, r *http.Request
 
 	// Pre-validate every row BEFORE writing — atomic accept-or-reject so
 	// partial writes don't leak cross-row drift. acceptance §2.4 字面.
+	// REFACTOR-1 R1.1: per-row 4-step preamble 走 requireChannelMember
+	// helper-1 (RejectDM=true + member-only). channel_id="" 仍 user-rail
+	// 直查 (helper 不接 empty path; layout PUT 立场 ⑤ invalid_payload 字面).
 	for _, row := range req.Layout {
 		if row.ChannelID == "" {
 			writeJSONErrorCode(w, http.StatusBadRequest, "layout.invalid_payload", "channel_id required")
 			return
 		}
-		ch, err := h.Store.GetChannelByID(row.ChannelID)
-		if err != nil {
-			writeJSONError(w, http.StatusNotFound, "Channel not found")
-			return
-		}
-		// 立场 ④ DM 永不参与分组. byte-identical 跟 #357 / #353 / #366 / #402
-		// 5 源 错码字面 `layout.dm_not_grouped` 反向 grep 锚.
-		if ch.Type == "dm" {
-			writeJSONErrorCode(w, http.StatusBadRequest, "layout.dm_not_grouped",
-				"DM 不参与个人分组")
-			return
-		}
-		// CHN-1 channel ACL 同源 — non-member 不能写偏好 (反约束: 不允许
-		// 给非成员 channel 装 layout 行, 否则 GET 返不可见 channel).
-		if !h.Store.IsChannelMember(row.ChannelID, user.ID) {
-			writeJSONError(w, http.StatusForbidden, "Forbidden")
+		if _, _, ok := requireChannelMember(w, r, h.Store, row.ChannelID, ChannelACLOpts{RejectDM: true}); !ok {
 			return
 		}
 	}

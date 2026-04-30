@@ -18,7 +18,6 @@
 package api
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -73,7 +72,7 @@ func (h *DM7EditHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Req
 		return
 	}
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"history": parseEditHistoryEntries(msg.EditHistory),
+		"history": parseMessageEditHistory(msg.EditHistory),
 	})
 }
 
@@ -93,19 +92,6 @@ func (h *DM7EditHistoryHandler) handleAdminGet(w http.ResponseWriter, r *http.Re
 		return
 	}
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"history": parseEditHistoryEntries(msg.EditHistory),
+		"history": parseMessageEditHistory(msg.EditHistory),
 	})
-}
-
-// parseEditHistoryEntries decodes the stored JSON array, returning an
-// empty slice if NULL/empty (so the client always sees `[]`).
-func parseEditHistoryEntries(raw *string) []map[string]any {
-	if raw == nil || *raw == "" {
-		return []map[string]any{}
-	}
-	var arr []map[string]any
-	if err := json.Unmarshal([]byte(*raw), &arr); err != nil {
-		return []map[string]any{}
-	}
-	return arr
 }
