@@ -39,7 +39,7 @@
 
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
-| 3.1 ⏸️ 留账: non-owner PATCH /channels/:id → 严格 403 (当前 AP-0 grants member (\*,\*) 仅 guard 5xx, AP-1 落时回填严格断言) | unit (待 AP-1) | 烈马 | 当前: `TestCHN12_NonOwnerPATCH403` (注释明示 AP-0 partial); AP-1 落 → flip 改断 status==403 |
+| 3.1 ✅ 全闭: non-owner PATCH /channels/:id → 严格 403 (post AP-1 #493 ABAC SSOT 真落地, AP-0 grants member (\*,\*) 已被 AP-1 严格 403 替代) | unit (post AP-1) | 烈马 | ✅ #493 严格 403 已落地 + REG-CHN1-007 ⏸️→🟢 兑现 |
 
 ## 退出条件
 

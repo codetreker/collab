@@ -38,9 +38,9 @@
 
 ## 退出条件
 
-- 上表 11 项中 9 项 ✅ + 2 项 ⏸️ deferred (ADM-2 真实施时翻); ADM-0 REG-ADM0-001/002 回归不破; drift CI 拦实测 (vite `?raw` import 真挂, `pnpm --filter @borgee/client test` 全绿)
+- 上表 11 项 ✅ 全闭 (post ADM-2 #484 真实施兑现 deferred 2 项); ADM-0 REG-ADM0-001/002 回归不破; drift CI 拦实测 ✅
 - REG-ADM1-001..006 落 6 行 🟢 (drift / promise literal / table byte-identical / 三色锁 / details-element 反约束 / admin-user 路径分叉)
-- 野马 `docs/qa/signoffs/adm-1-yema-signoff.md` 签 ⏸️ pending (三签流程: 战马B 实施 ✅ #455 + 烈马 acceptance 双截屏 ✅ #459 + 野马 G4.1 demo 签字 pending)
+- 野马 `docs/qa/signoffs/adm-1-yema-signoff.md` ✅ SIGNED (三签机制全签: 战马B 实施 ✅ #455 + 烈马 acceptance 双截屏 ✅ #459 + 野马 G4.1 demo ✅)
 - G2.4 demo #6 闸 → 5/6 → 6/6 (#257 §2 留账闭, ADM-1 落地后野马补一行)
 
 ## 更新日志
@@ -48,4 +48,4 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-28 | 烈马 | v0 — Phase 4 ADM-1 11 验收项 (al-1b.md 同模板) |
-| 2026-04-29 | 战马D | flip 9/11 ⚪→✅ (#455 PrivacyPromise + SettingsPage 实施 + #459 e2e + G4.1 双截屏); 联签 2 项 (admin 写动作 system DM) ⏸️ deferred 给 ADM-2 真实施 |
+| 2026-04-29 | 战马D | flip 9/11 ⚪→✅ (#455 PrivacyPromise + SettingsPage 实施 + #459 e2e + G4.1 双截屏); 联签 2 项 (admin 写动作 system DM) ✅ ADM-2 #484 真实施兑现 |

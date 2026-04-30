@@ -17,7 +17,7 @@
 ## 3. Registry 最终行数
 
 - [ ] 总计 64 行 (CM-4.x 8 + INFRA-2 7 + ADM-0 10 + AP-0-bis 6 + RT-0 8 + CM-onboarding 13 + 不变量 3 + CM-3 4 + AL-1a 5)
-- [ ] active 51 / pending 13 / [ ] REG-RT0-008 #239 merged 后烈马独立小 PR ⚪→🟢
+- [x] active 51 / pending 13 / [x] REG-RT0-008 ✅ #270 (post-merged 已翻 🟢, 历史 evidence)
 
 ## 4. 留账明文 (Phase 4 接, announcement 须列)
 

@@ -4,7 +4,7 @@
 > Spec: `docs/implementation/modules/cv-1-spec.md` (飞马 #306, 3 立场 + 3 拆段 + 7 grep 反查 + 6 反约束)
 > 立场反查: `docs/qa/cv-1-stance-checklist.md` v0 (野马 #282, 7 项立场 + 5 黑名单 grep + v0/v1 切换三条件) + `docs/qa/cv-1-stance-v1-supplement.md` v1 (野马 #307, ②③⑤⑦ 字段/边界/反断细化)
 > v1 解封三条件 (#295 §5): RT-1 三段 ✅ (#290+#292+#296) + AL-3 三轨 ✅ (#301+#302+#303+#305) + BPP-1 envelope CI lint ✅ (#304, G2.6 ⏸️→✅ DONE commit `4724efa`) — 全满足
-> 拆 PR: **CV-1.1** schema (`artifacts` + `artifact_versions` 表 + migration v=13) — ✅ #334 (cd7e12a) merged / **CV-1.2** server API (POST 创 + commit + rollback + WS push) — ✅ #342 (b2ed5c0) merged / **CV-1.3** client SPA canvas UI — ✅ #346 (623c1bb) merged (e2e `cv-1-3-canvas.spec.ts` ⏸️ follow-up)
+> 拆 PR: **CV-1.1** schema (`artifacts` + `artifact_versions` 表 + migration v=13) — ✅ #334 (cd7e12a) merged / **CV-1.2** server API (POST 创 + commit + rollback + WS push) — ✅ #342 (b2ed5c0) merged / **CV-1.3** client SPA canvas UI — ✅ #346 (623c1bb) merged (e2e `cv-1-3-canvas.spec.ts` ✅ #348 merged)
 > Owner: 战马A 实施 / 烈马 验收
 
 ## 验收清单
