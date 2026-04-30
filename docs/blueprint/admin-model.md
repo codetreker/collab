@@ -79,6 +79,8 @@
 
 这条边界跟 [host-bridge §1.3](host-bridge.md) 的"装时轻、用时问、问时有理由"同范式——Borgee 默认信任用户的隐私。
 
+> **ADM-3 #570 立场扩展 (audit-forward-only 全 actor type)**: audit 单表 (`audit_events`, ADM-3.1 v=43 RENAME 自 `admin_actions`) 装所有 actor type — admin / system / plugin lifecycle / 未来类型, forward-only **不可 DELETE/UPDATE** (sweeper archive 走 `archived_at`); admin 仍走 `/admin-api/*` 单独路径 (god-mode endpoint). 别名 view `admin_actions` 留 backward compat 至 Phase 5+ deprecation.
+
 ### 1.4 可见性：分层透明（A + C 组合）
 
 > 实质方案：**100% 留痕** + **按受众分层**——既杜绝 admin 滥用，又不在跨 org 场景泄漏隐私。
