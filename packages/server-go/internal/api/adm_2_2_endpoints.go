@@ -18,6 +18,7 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -81,16 +82,59 @@ func (h *ADM2Handler) handleListMyAdminActions(w http.ResponseWriter, r *http.Re
 // 立场 ③ admin 之间互可见: 默认无 WHERE; ?actor_id / ?action / ?target_user_id
 // 三 filter 是 UI 收敛, 不是分桶. user cookie 走 admin-rail → admin.RequireAdmin
 // middleware 已 401 (REG-ADM0-002 共享底线, 立场 ⑥ admin/user 二轨拆死).
+//
+// AL-8 additive filter (al-8-spec.md §0): ?since / ?until int64 ms epoch
+// BETWEEN created_at; ?archived 三态 ("" or "active" 默认 / "archived" /
+// "all"); ?action 多值 (重复 query param) 走 IN slice. 既有 3-filter
+// (actor_id/action/target_user_id) byte-identical 不动 (立场 ①).
 func (h *ADM2Handler) handleAdminAuditLog(w http.ResponseWriter, r *http.Request) {
 	a := admin.AdminFromContext(r.Context())
 	if a == nil {
 		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
+	q := r.URL.Query()
 	filters := store.AdminActionListFilters{
-		ActorID:      r.URL.Query().Get("actor_id"),
-		Action:       r.URL.Query().Get("action"),
-		TargetUserID: r.URL.Query().Get("target_user_id"),
+		ActorID:      q.Get("actor_id"),
+		Action:       q.Get("action"), // ADM-2.2 single-value backward-compat
+		TargetUserID: q.Get("target_user_id"),
+	}
+	// AL-8 §0 立场 ⑤ — actions 多值 (重复 ?action=a&action=b). 走 IN slice;
+	// 单值 ADM-2.2 既有 path byte-identical 走 filters.Action 单字段.
+	if actions := q["action"]; len(actions) > 1 {
+		filters.Actions = actions
+		filters.Action = "" // mutex — Actions 优先
+	}
+	// AL-8 §0 立场 ④ — since/until int64 ms epoch; reject negative / non-int.
+	if v := q.Get("since"); v != "" {
+		ms, err := al8ParseEpochMs(v)
+		if err != nil {
+			writeJSONError(w, http.StatusBadRequest, "audit_log.time_range_invalid")
+			return
+		}
+		filters.Since = &ms
+	}
+	if v := q.Get("until"); v != "" {
+		ms, err := al8ParseEpochMs(v)
+		if err != nil {
+			writeJSONError(w, http.StatusBadRequest, "audit_log.time_range_invalid")
+			return
+		}
+		filters.Until = &ms
+	}
+	if filters.Since != nil && filters.Until != nil && *filters.Since > *filters.Until {
+		writeJSONError(w, http.StatusBadRequest, "audit_log.time_range_inverted")
+		return
+	}
+	// AL-8 §0 立场 ③ — archived 三态 (active 默认 / archived / all).
+	if v := q.Get("archived"); v != "" {
+		switch v {
+		case "active", "archived", "all":
+			filters.ArchivedView = v
+		default:
+			writeJSONError(w, http.StatusBadRequest, "audit_log.archived_view_invalid")
+			return
+		}
 	}
 	limit := parseLimit(r, 100, 500)
 	rows, err := h.Store.ListAdminActionsForAdmin(filters, limit)
@@ -105,6 +149,22 @@ func (h *ADM2Handler) handleAdminAuditLog(w http.ResponseWriter, r *http.Request
 	}
 	writeJSONResponse(w, http.StatusOK, map[string]any{"actions": out})
 }
+
+// al8ParseEpochMs parses int64 ms epoch from a query string. Rejects
+// negative + non-int + empty (caller must guard "" vs zero). 立场 ④
+// time_range_invalid 单源.
+func al8ParseEpochMs(s string) (int64, error) {
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	if n < 0 {
+		return 0, errAL8NegativeMs
+	}
+	return n, nil
+}
+
+var errAL8NegativeMs = errors.New("al8: negative ms epoch")
 
 // handleGetMyImpersonateGrant — GET /api/v1/me/impersonation-grant.
 //

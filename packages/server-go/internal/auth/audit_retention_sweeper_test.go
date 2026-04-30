@@ -1,0 +1,227 @@
+// Package auth — audit_retention_sweeper_test.go: AL-7.2 sweeper unit
+// tests + reverse grep 反约束 守 (跟 ap-2 expires_sweeper_test.go 同模式).
+//
+// Pins:
+//   REG-AL7-001 TestAL72_RunOnceArchivesExpired — 3 expired + 2 fresh → archived count=3
+//   REG-AL7-002 TestAL72_RunOnceSoftArchiveNotRealDelete — UPDATE archived_at, row stays
+//   REG-AL7-003 TestAL72_RunOnceIdempotent — second tick count==0
+//   REG-AL7-004 TestAL72_StartCtxShutdown — Start goroutine ctx-aware
+//   REG-AL7-005 TestAL72_NilSafeCtor — Store nil = no-op
+//   REG-AL7-006 TestAL72_SweeperReason_ByteIdentical — reasons.Unknown
+package auth
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+	"time"
+
+	"borgee-server/internal/agent/reasons"
+	"borgee-server/internal/store"
+)
+
+// al7TestStore builds a memory store with admin_actions table including
+// archived_at column (跟 al_7_1 migration v=33 shape match).
+func al7TestStore(t *testing.T) *store.Store {
+	t.Helper()
+	s, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Close() })
+	if err := s.DB().AutoMigrate(&store.AdminAction{}); err != nil {
+		t.Fatal(err)
+	}
+	// AutoMigrate from the AdminAction model does not include archived_at
+	// (struct is shared with ADM-2.1 era). Add the column manually to mirror
+	// post-AL-7.1 migration shape.
+	if err := s.DB().Exec(`ALTER TABLE admin_actions ADD COLUMN archived_at INTEGER`).Error; err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+// seedAction inserts an admin_actions row with the given created_at (ms).
+func seedAction(t *testing.T, s *store.Store, id string, createdAtMs int64) {
+	t.Helper()
+	if err := s.DB().Exec(`INSERT INTO admin_actions
+		(id, actor_id, target_user_id, action, metadata, created_at)
+		VALUES (?, 'system', 'u-1', 'permission_expired', '', ?)`,
+		id, createdAtMs).Error; err != nil {
+		t.Fatalf("seed action %s: %v", id, err)
+	}
+}
+
+// REG-AL7-001 — RunOnce archives rows older than RetentionDays cutoff.
+func TestAL72_RunOnceArchivesExpired(t *testing.T) {
+	s := al7TestStore(t)
+	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
+	clk := func() time.Time { return now }
+	dayMs := int64(24 * 60 * 60 * 1000)
+
+	// 3 expired (>14d old), 2 fresh (<14d).
+	seedAction(t, s, "old-1", now.UnixMilli()-15*dayMs)
+	seedAction(t, s, "old-2", now.UnixMilli()-30*dayMs)
+	seedAction(t, s, "old-3", now.UnixMilli()-100*dayMs)
+	seedAction(t, s, "fresh-1", now.UnixMilli()-1*dayMs)
+	seedAction(t, s, "fresh-2", now.UnixMilli()-7*dayMs)
+
+	sw := &RetentionSweeper{Store: s, Now: clk}
+	count, err := sw.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+	if count != 3 {
+		t.Errorf("count: got %d, want 3 (3 expired, 2 fresh)", count)
+	}
+}
+
+// REG-AL7-002 — soft-archive: row stays in table, archived_at set;
+// not real DELETE. 立场 ①.
+func TestAL72_RunOnceSoftArchiveNotRealDelete(t *testing.T) {
+	s := al7TestStore(t)
+	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
+	clk := func() time.Time { return now }
+	dayMs := int64(24 * 60 * 60 * 1000)
+	seedAction(t, s, "old-soft", now.UnixMilli()-30*dayMs)
+
+	sw := &RetentionSweeper{Store: s, Now: clk}
+	if _, err := sw.RunOnce(context.Background()); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+
+	// Row still in table.
+	var n int64
+	s.DB().Raw(`SELECT COUNT(*) FROM admin_actions WHERE id='old-soft'`).Row().Scan(&n)
+	if n != 1 {
+		t.Errorf("row deleted (got count=%d, want 1) — must be soft-archive (UPDATE)", n)
+	}
+
+	// archived_at set to current 'now'.
+	var archived *int64
+	s.DB().Raw(`SELECT archived_at FROM admin_actions WHERE id='old-soft'`).Row().Scan(&archived)
+	if archived == nil || *archived != now.UnixMilli() {
+		t.Errorf("archived_at: got %v, want %d (now)", archived, now.UnixMilli())
+	}
+}
+
+// REG-AL7-003 — second tick is no-op (already-archived rows excluded
+// by WHERE archived_at IS NULL).
+func TestAL72_RunOnceIdempotent(t *testing.T) {
+	s := al7TestStore(t)
+	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
+	clk := func() time.Time { return now }
+	dayMs := int64(24 * 60 * 60 * 1000)
+	seedAction(t, s, "old-idem", now.UnixMilli()-30*dayMs)
+
+	sw := &RetentionSweeper{Store: s, Now: clk}
+	if c, _ := sw.RunOnce(context.Background()); c != 1 {
+		t.Fatalf("first tick: got %d, want 1", c)
+	}
+	if c, _ := sw.RunOnce(context.Background()); c != 0 {
+		t.Errorf("second tick: got %d, want 0 (already-archived rows excluded)", c)
+	}
+}
+
+// REG-AL7-004 — Start ctx-aware shutdown (smoke).
+func TestAL72_StartCtxShutdown(t *testing.T) {
+	s := al7TestStore(t)
+	sw := &RetentionSweeper{Store: s, Interval: 100 * time.Millisecond}
+	ctx, cancel := context.WithCancel(context.Background())
+	sw.Start(ctx)
+	cancel()
+	time.Sleep(50 * time.Millisecond)
+	// no panic = ctx-aware shutdown healthy.
+}
+
+// REG-AL7-005 — nil-safe ctor (Store nil = no-op).
+func TestAL72_NilSafeCtor(t *testing.T) {
+	var sw *RetentionSweeper
+	sw.Start(context.Background())
+	if c, err := sw.RunOnce(context.Background()); c != 0 || err != nil {
+		t.Errorf("nil sweeper: got count=%d err=%v, want 0/nil", c, err)
+	}
+	sw2 := &RetentionSweeper{}
+	sw2.Start(context.Background())
+	if c, err := sw2.RunOnce(context.Background()); c != 0 || err != nil {
+		t.Errorf("nil-Store sweeper: got count=%d err=%v, want 0/nil", c, err)
+	}
+}
+
+// REG-AL7-006 — SweeperReason byte-identical 跟 reasons.Unknown 同源.
+// AL-1a reason 锁链第 15 处 (改 = 改 reasons.go + 此处 + 14 处 byte-
+// identical 站点).
+func TestAL72_SweeperReason_ByteIdentical(t *testing.T) {
+	if SweeperReason != reasons.Unknown {
+		t.Errorf("SweeperReason drift: got %q, want %q (= reasons.Unknown)",
+			SweeperReason, reasons.Unknown)
+	}
+	if SweeperReason != "unknown" {
+		t.Errorf("SweeperReason 字面 drift: got %q, want %q", SweeperReason, "unknown")
+	}
+	if RetentionDays != 14 {
+		t.Errorf("RetentionDays drift: got %d, want 14 (蓝图 admin-model.md §3 字面单源)", RetentionDays)
+	}
+	if ActionAuditRetentionOverride != "audit_retention_override" {
+		t.Errorf("ActionAuditRetentionOverride drift: got %q, want %q",
+			ActionAuditRetentionOverride, "audit_retention_override")
+	}
+}
+
+// REG-AL7-007 — 立场 ④ + 立场 ⑤ 反向 grep: cron framework + retention
+// queue tokens 0 hit in this file.
+func TestAL72_NoCronFrameworkImport(t *testing.T) {
+	body, err := os.ReadFile("audit_retention_sweeper.go")
+	if err != nil {
+		t.Fatalf("read sweeper: %v", err)
+	}
+	for _, pat := range []string{
+		`"github.com/robfig/cron`,
+		`"github.com/go-co-op/gocron`,
+		`gocron.`,
+	} {
+		if regexp.MustCompile(pat).Match(body) {
+			t.Errorf("反约束 broken — cron import %q in audit_retention_sweeper.go", pat)
+		}
+	}
+}
+
+// REG-AL7-008 — 立场 ⑤ AST 锁链延伸第 7 处 forbidden-token 0 hit.
+//
+// Scans internal/auth + internal/api production *.go (excluding tests)
+// for retention-queue / dead-letter tokens (跟 BPP-4/5/6/7/8 + HB-3 v2
+// 同模式). Tokens are runtime queue patterns 战马D rejects in spec.
+func TestAL73_NoRetentionQueueOrCronImport(t *testing.T) {
+	forbidden := []string{
+		"pendingRetentionQueue",
+		"retentionRetryQueue",
+		"deadLetterRetention",
+	}
+	dirs := []string{
+		filepath.Join("..", "auth"),
+		filepath.Join("..", "api"),
+	}
+	for _, dir := range dirs {
+		_ = filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			if !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
+				return nil
+			}
+			body, err := os.ReadFile(p)
+			if err != nil {
+				return nil
+			}
+			for _, tok := range forbidden {
+				if strings.Contains(string(body), tok) {
+					t.Errorf("AST 锁链延伸第 7 处 broken — forbidden token %q in %s", tok, p)
+				}
+			}
+			return nil
+		})
+	}
+}

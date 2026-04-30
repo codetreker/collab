@@ -312,6 +312,15 @@ func (s *Server) SetupRoutes() {
 	adm2Handler := &api.ADM2Handler{Store: s.store, Logger: s.logger}
 	adm2Handler.RegisterUserRoutes(s.mux, authMw)
 	adm2Handler.RegisterAdminRoutes(s.mux, adminMw)
+	// AL-7.2 admin-rail audit retention override (admin-model.md §3 retention
+	// + ADM-0 §1.3 红线 admin 操作必走 audit row). admin-rail only — 反向 grep
+	// `audit_retention_override` 在 user-rail handler 0 hit.
+	al7RetentionHandler := &api.AL7AuditRetentionHandler{Store: s.store, Logger: s.logger}
+	al7RetentionHandler.RegisterAdminRoutes(s.mux, adminMw)
+	// AL-7.2 retention sweeper goroutine (1h ticker, ctx-aware shutdown). Same
+	// pattern as AP-2 ExpiresSweeper #525. Forward-only soft-archive via
+	// admin_actions.archived_at column (立场 ① 不真删 / 不裂表).
+	(&auth.RetentionSweeper{Store: s.store, Logger: s.logger}).Start(context.Background())
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).

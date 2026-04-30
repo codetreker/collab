@@ -49,10 +49,25 @@ func (AdminAction) TableName() string { return "admin_actions" }
 
 // AdminActionListFilters narrows the admin-side audit log query.
 // All fields optional. Empty string = no filter on that axis.
+//
+// AL-8 additive filter (跟 ADM-2.2 既有 3 字段 byte-identical 不动, 顺位
+// append 新字段): Since/Until int64 ms epoch (BETWEEN created_at, nil =
+// no filter); ArchivedView 三态 ("" or "active" = archived_at IS NULL 默认
+// / "archived" = archived_at IS NOT NULL 走 AL-7.1 sparse idx /
+// "all" = 无 WHERE on archived_at); Actions 多值 (IN slice, 跟 单值 Action
+// 二选一 — 调用方先 collect Actions slice 再单字段 backward-compat).
+//
+// 反约束 (al-8-spec.md §0 立场 ①): 既有 3 字段顺序不动 (ActorID/Action/
+// TargetUserID), AL-8 新字段顺位 append.
 type AdminActionListFilters struct {
 	ActorID      string
 	Action       string
 	TargetUserID string
+	// AL-8 additive filter — 顺位 append, 既有 3 字段不动.
+	Since        *int64
+	Until        *int64
+	ArchivedView string // "" / "active" / "archived" / "all"
+	Actions      []string
 }
 
 // InsertAdminAction writes one audit row. action must be in the 5-字面
@@ -102,6 +117,12 @@ func (s *Store) ListAdminActionsForTargetUser(userID string, limit int) ([]Admin
 // ListAdminActionsForAdmin returns the most recent admin_actions rows,
 // optionally filtered. Used by GET /admin-api/v1/audit-log (admin cookie).
 // 立场 ③ admin 之间互可见: 默认无 WHERE 全可见, filter 只是 UI 收敛.
+//
+// AL-8 additive filter (al-8-spec.md §0 立场 ③④⑤): Since/Until int64 ms
+// epoch BETWEEN; ArchivedView 三态 ("" or "active" = archived_at IS NULL
+// 默认 / "archived" 走 AL-7.1 sparse idx / "all" 无 WHERE on archived_at);
+// Actions 多值 IN slice — 跟单值 Action 二选一 (Actions 优先, 反向 reject
+// 由 handler 层做).
 func (s *Store) ListAdminActionsForAdmin(f AdminActionListFilters, limit int) ([]AdminAction, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
@@ -110,11 +131,28 @@ func (s *Store) ListAdminActionsForAdmin(f AdminActionListFilters, limit int) ([
 	if f.ActorID != "" {
 		q = q.Where("actor_id = ?", f.ActorID)
 	}
-	if f.Action != "" {
+	if len(f.Actions) > 0 {
+		q = q.Where("action IN ?", f.Actions)
+	} else if f.Action != "" {
 		q = q.Where("action = ?", f.Action)
 	}
 	if f.TargetUserID != "" {
 		q = q.Where("target_user_id = ?", f.TargetUserID)
+	}
+	if f.Since != nil {
+		q = q.Where("created_at >= ?", *f.Since)
+	}
+	if f.Until != nil {
+		q = q.Where("created_at <= ?", *f.Until)
+	}
+	// 立场 ③ archived 三态 — 默认 active (跟 AL-7.1 sparse idx 反向同源).
+	switch f.ArchivedView {
+	case "", "active":
+		q = q.Where("archived_at IS NULL")
+	case "archived":
+		q = q.Where("archived_at IS NOT NULL")
+	case "all":
+		// no WHERE on archived_at
 	}
 	var rows []AdminAction
 	err := q.Order("created_at DESC").Limit(limit).Find(&rows).Error
