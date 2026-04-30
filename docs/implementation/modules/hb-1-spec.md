@@ -155,12 +155,21 @@ Content-Type: application/json
 
 1. DL-4 ship `/api/v1/plugin-manifest` endpoint (interface §3.2 byte-
    identical) + GPG signing 服务.
-2. HB-1.1 daemon skeleton: Rust crate `packages/host-bridge/install-butler/`
-   (跟 packages/remote-agent Tauri shell 同 workspace, 复用 cargo lockfile).
+2. HB-1.1 daemon skeleton: Go binary `packages/borgee-helper/install-butler/`
+   (独立 Go module, separate go.mod 防 server-go binary bloat; 跟 packages/server-go 同 mono-repo 但模块拆死).
 3. HB-1.2 IPC contract impl (UDS server + serde JSON).
 4. HB-1.3 manifest fetch + GPG verify + SHA256.
 5. HB-1.4 install/uninstall + audit log.
 6. HB-1.5 acceptance (反约束 grep + 合约测试 + e2e 7 reason × 3 plugin).
+
+## 6.5 一键安装脚本 (PM #10 必修立场)
+
+**用户路径**: `curl -fsSL borgee.cloud/install.sh | bash` 一键装 borgee-helper daemon (Go binary + systemd/launchd unit + 默认 grants schema 创建).
+
+- **域名锁**: `borgee.cloud` (PM 拍板, **非 borgee.io** — 跟 manifest_url `api.borgee.cloud` 同源, 反向 grep `borgee\.io` count==0 立场守门)
+- **install.sh 内容**: bash 脚本下载 binary + verify GPG 签名 + 注册 systemd unit (Linux) / launchd plist (macOS) + 启 daemon
+- **反约束**: 反向 grep `borgee\.io|github\.com/codetreker/borgee/releases` 在 install 文档 0 hit (域名单源 borgee.cloud)
+- **CI 守门**: release-gate.yml 加 step `install-script-domain-lock` (待 HB-1 真实施 PR 加)
 
 ## 7. 退出条件 (HB-1 v0 close)
 
@@ -176,6 +185,6 @@ Content-Type: application/json
 - ✅ spec brief 锁
 - ✅ §3 IPC contract + DL-4 manifest contract 字面锁 (drift 防御)
 - ✅ §4 反约束 7 项 acceptance v0
-- ⏸️ Rust crate skeleton — 等 DL-4 落地真启
+- ⏸️ Go binary skeleton — 等 DL-4 落地真启 (HB stack Go 重审拍板, 撤 Rust crate 路径)
 - ⏸️ acceptance template `docs/qa/acceptance-templates/hb-1.md` v0 —
   本 brief §4 升级为正式 acceptance template 时同步起
