@@ -37,9 +37,8 @@ func (h *WorkspaceHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.H
 }
 
 func (h *WorkspaceHandler) handleListFiles(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -66,9 +65,8 @@ func (h *WorkspaceHandler) handleListFiles(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *WorkspaceHandler) handleUploadFile(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -292,9 +290,8 @@ func (h *WorkspaceHandler) handleDeleteFile(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *WorkspaceHandler) handleMkdir(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -354,9 +351,8 @@ func (h *WorkspaceHandler) handleMoveFile(w http.ResponseWriter, r *http.Request
 }
 
 func (h *WorkspaceHandler) handleListAllWorkspaces(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

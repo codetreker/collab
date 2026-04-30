@@ -13,10 +13,10 @@
 //
 // Endpoint surface:
 //   - GET /api/v1/me/layout            return [{channel_id, collapsed,
-//                                       position, updated_at}]
+//     position, updated_at}]
 //   - PUT /api/v1/me/layout            batch upsert body:
-//                                       {layout: [{channel_id, collapsed,
-//                                                  position}, ...]}
+//     {layout: [{channel_id, collapsed,
+//     position}, ...]}
 //
 // Stance reverse-grep targets:
 //   - 立场 ① 物理拆死: 不动 channels / channel_groups (此文件不 import
@@ -46,7 +46,6 @@ import (
 	"net/http"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -89,9 +88,8 @@ type userChannelLayoutRow struct {
 // Acceptance §2.1: 200 with `{"layout": [...]}` (空数组 if 无偏好);
 // fallback ordering 是 client 端事 (立场 ⑥), server 不补全缺失行.
 func (h *LayoutHandler) handleGetMyLayout(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	var rows []userChannelLayoutRow
@@ -113,7 +111,8 @@ func (h *LayoutHandler) handleGetMyLayout(w http.ResponseWriter, r *http.Request
 // ----- PUT /api/v1/me/layout -----
 //
 // Batch upsert. Body shape:
-//   {"layout": [{channel_id, collapsed, position}, ...]}
+//
+//	{"layout": [{channel_id, collapsed, position}, ...]}
 //
 // 反约束 grep 锚 (#402 ⑤ + #366 ④ + #357 §1 立场 ② + #353 acceptance
 // §2.3 5 源 byte-identical):
@@ -144,9 +143,8 @@ type layoutPutRequest struct {
 }
 
 func (h *LayoutHandler) handlePutMyLayout(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	var req layoutPutRequest

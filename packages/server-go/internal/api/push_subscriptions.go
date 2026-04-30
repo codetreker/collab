@@ -7,9 +7,9 @@
 //
 // Endpoint surface:
 //   - POST   /api/v1/push/subscribe       UPSERT subscription by endpoint
-//                                         (body: {endpoint, p256dh, auth})
+//     (body: {endpoint, p256dh, auth})
 //   - DELETE /api/v1/push/subscribe       remove by endpoint query param
-//                                         (?endpoint=...)
+//     (?endpoint=...)
 //
 // Stance reverse-grep targets (蓝图 L22 + spec §0 立场 ①②③):
 //   - 立场 ①: secret 在 server env (BORGEE_VAPID_PRIVATE_KEY), 不入此
@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 
 	"github.com/google/uuid"
@@ -77,9 +76,8 @@ type pushSubscribeRequest struct {
 // same endpoint; if a row exists with a different user_id, 409 reject
 // (跟 REG-INV-002 fail-closed 同源).
 func (h *PushSubscriptionsHandler) handleSubscribe(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -138,9 +136,8 @@ func (h *PushSubscriptionsHandler) handleSubscribe(w http.ResponseWriter, r *htt
 // 不存在 endpoint → 204 (idempotent: 重复退订不报错, 跟 layout DELETE
 // 同模式).
 func (h *PushSubscriptionsHandler) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	endpoint := r.URL.Query().Get("endpoint")

@@ -187,9 +187,8 @@ func (h *MessageHandler) handleCreateMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -199,8 +198,7 @@ func (h *MessageHandler) handleCreateMessage(w http.ResponseWriter, r *http.Requ
 		ReplyToID   *string  `json:"reply_to_id"`
 		Mentions    []string `json:"mentions"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid JSON")
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 
@@ -334,17 +332,15 @@ func (h *MessageHandler) handleUpdateMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
 	var body struct {
 		Content string `json:"content"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid JSON")
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 
@@ -430,9 +426,8 @@ func (h *MessageHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

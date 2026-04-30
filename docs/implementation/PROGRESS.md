@@ -28,10 +28,7 @@
 
 ## In-flight 当前状态 (≤10 行)
 
-- **CV-15** #592 — artifact comment edit history audit (rebased, CI race retry 中)
-- **HB-1** #589 — install-butler crate (rebase scope)
-- **INFRA-3** (本 PR) — PROGRESS.md 拆分 (主 ≤100 行 + 5 phase 子文件 + CI line-budget 守门)
-- **CS-1** — 三栏 + Artifact 分级 (worktree 已建, 占位待 INFRA-3 后接)
+- (none — REFACTOR-2 ✅ 落 phase-4.md, 等下一 milestone)
 
 ---
 

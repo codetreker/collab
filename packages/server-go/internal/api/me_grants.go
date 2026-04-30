@@ -90,9 +90,8 @@ type meGrantsRequest struct {
 }
 
 func (h *MeGrantsHandler) handleGrant(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
@@ -17,7 +16,7 @@ type RemoteProxy interface {
 }
 
 type RemoteHandler struct {
-	Store  *store.Store
+	Store *store.Store
 	// DataLayer — DL-1.2 SSOT 4-interface bundle (nil-safe; see UserHandler).
 	DataLayer *datalayer.DataLayer
 	Logger    *slog.Logger
@@ -40,9 +39,8 @@ func (h *RemoteHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Hand
 }
 
 func (h *RemoteHandler) handleListNodes(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -58,9 +56,8 @@ func (h *RemoteHandler) handleListNodes(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *RemoteHandler) handleCreateNode(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -86,9 +83,8 @@ func (h *RemoteHandler) handleCreateNode(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *RemoteHandler) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -112,9 +108,8 @@ func (h *RemoteHandler) handleDeleteNode(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *RemoteHandler) handleListBindings(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -141,9 +136,8 @@ func (h *RemoteHandler) handleListBindings(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *RemoteHandler) handleCreateBinding(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -182,9 +176,8 @@ func (h *RemoteHandler) handleCreateBinding(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *RemoteHandler) handleDeleteBinding(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -209,9 +202,8 @@ func (h *RemoteHandler) handleDeleteBinding(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *RemoteHandler) handleListChannelBindings(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -228,9 +220,8 @@ func (h *RemoteHandler) handleListChannelBindings(w http.ResponseWriter, r *http
 }
 
 func (h *RemoteHandler) handleNodeStatus(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -250,9 +241,8 @@ func (h *RemoteHandler) handleNodeStatus(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *RemoteHandler) handleNodeLs(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -287,9 +277,8 @@ func (h *RemoteHandler) handleNodeLs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RemoteHandler) handleNodeRead(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

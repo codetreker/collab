@@ -27,7 +27,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -62,9 +61,8 @@ type chn10DescriptionRequest struct {
 // (DescriptionMaxLength const byte-identical 跟 client). Writes via
 // store.UpdateChannel single-source (same column as 既有 PUT /topic).
 func (h *CHN10DescriptionHandler) handlePut(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	channelID := r.PathValue("channelId")

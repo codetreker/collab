@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"time"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/presence"
 	"borgee-server/internal/store"
 )
@@ -52,9 +51,8 @@ type PresenceSnapshot struct {
 // Returns the subset of channel members whose IsOnline predicate holds,
 // computed synchronously at request time (no caching / no background job).
 func (h *RT4PresenceHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	channelID := r.PathValue("channelId")

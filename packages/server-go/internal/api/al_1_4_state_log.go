@@ -14,7 +14,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -35,9 +34,8 @@ func (h *AL14Handler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handle
 // 立场 ② sanitizer: 反向不返 raw FK (跟 ADM-2 sanitizeAdminAction 同模式 —
 // agent_id 已是 path param caller 知道, 不重复返).
 func (h *AL14Handler) handleListStateLog(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	agentID := r.PathValue("id")

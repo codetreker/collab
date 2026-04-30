@@ -5,14 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
 
 // UserHandler handles user-related endpoints.
 type UserHandler struct {
-	Store  *store.Store
+	Store *store.Store
 	// DataLayer — DL-1.2 SSOT 4-interface bundle (Storage / Presence /
 	// EventBus / 3 Repository). Optional in v1 (nil-safe; legacy paths
 	// still walk Store directly until ArtifactRepo + remaining surface
@@ -29,9 +28,8 @@ func (h *UserHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handle
 
 // GET /api/v1/me/permissions
 func (h *UserHandler) handleMyPermissions(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

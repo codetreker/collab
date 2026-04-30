@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
 
 	"github.com/google/uuid"
@@ -40,9 +39,8 @@ var mimeToExt = map[string]string{
 }
 
 func (h *UploadHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	_, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

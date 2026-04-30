@@ -80,9 +80,8 @@ type searchResult struct {
 //   - server-side snippet `<mark>...</mark>` 字面 byte-identical (跟
 //     content-lock §3 ResultList row 同精神).
 func (h *ArtifactHandler) handleArtifactSearch(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

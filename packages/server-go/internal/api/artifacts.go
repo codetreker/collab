@@ -230,9 +230,8 @@ type createArtifactRequest struct {
 }
 
 func (h *ArtifactHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	channelID := r.PathValue("channelId")
@@ -344,9 +343,8 @@ func (h *ArtifactHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
 // ----- GET /api/v1/artifacts/{artifactId} -----
 
 func (h *ArtifactHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	id := r.PathValue("artifactId")
@@ -374,9 +372,8 @@ FROM artifact_versions WHERE artifact_id = ? AND version = ?`,
 // ----- GET /api/v1/artifacts/{artifactId}/versions -----
 
 func (h *ArtifactHandler) handleListVersions(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	id := r.PathValue("artifactId")
@@ -413,9 +410,8 @@ type commitRequest struct {
 }
 
 func (h *ArtifactHandler) handleCommit(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	id := r.PathValue("artifactId")

@@ -35,7 +35,6 @@ import (
 	"net/http"
 
 	"borgee-server/internal/admin"
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -76,15 +75,14 @@ func (h *CV15CommentEditHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux, 
 // handleUserGet — GET /api/v1/channels/{channelId}/messages/{messageId}/comment-edit-history.
 //
 // Validation order (acceptance §2.1):
-//   1. Auth (user-rail).
-//   2. Message exists (else 404 comment.message_not_found).
-//   3. content_type == "artifact_comment" (else 404 comment.not_artifact_comment).
-//   4. Owner-only — sender == current user (else 403 comment.not_owner).
-//   5. Returns {history: [...]} with [] for empty/null.
+//  1. Auth (user-rail).
+//  2. Message exists (else 404 comment.message_not_found).
+//  3. content_type == "artifact_comment" (else 404 comment.not_artifact_comment).
+//  4. Owner-only — sender == current user (else 403 comment.not_owner).
+//  5. Returns {history: [...]} with [] for empty/null.
 func (h *CV15CommentEditHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	messageID := r.PathValue("messageId")

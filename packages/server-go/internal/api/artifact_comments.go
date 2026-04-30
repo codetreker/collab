@@ -40,7 +40,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -64,11 +63,11 @@ const (
 // thinking 5-pattern reverse-grep 第 4 处链 (RT-3 / BPP-2.2 / AL-1b / CV-5
 // byte-identical). server-side body validator: agent sender body 字面命中
 // 任一 → reject. 5 patterns:
-//   1. body 末 "thinking$" — body trimmed ends with literal "thinking"
-//   2. defaultSubject literal — sentinel marker (placeholder leak)
-//   3. fallbackSubject literal — sentinel marker (placeholder leak)
-//   4. "AI is thinking" — well-known fallback string
-//   5. subject="" 空字符串 — empty body / whitespace-only body
+//  1. body 末 "thinking$" — body trimmed ends with literal "thinking"
+//  2. defaultSubject literal — sentinel marker (placeholder leak)
+//  3. fallbackSubject literal — sentinel marker (placeholder leak)
+//  4. "AI is thinking" — well-known fallback string
+//  5. subject="" 空字符串 — empty body / whitespace-only body
 //
 // 反约束: 改 5-pattern 字面 = 同步改 4 处 (RT-3 + BPP-2.2 + AL-1b + CV-5).
 var thinkingSubjectSentinels = []*regexp.Regexp{
@@ -162,6 +161,7 @@ func (h *ArtifactCommentsHandler) loadArtifact(id string) (*artifactCommentArtif
 // prefix, id 仍是 UUID). On first call:
 //   - INSERT channels row name="artifact:<artifactId>" type="artifact" visibility="private" created_by=hostChannel.CreatedBy
 //   - Copy host channel members (artifact channel 自动 ACL = host members).
+//
 // Subsequent calls return the existing row.
 func (h *ArtifactCommentsHandler) ensureArtifactChannel(artifactID, hostChannelID string) (*store.Channel, error) {
 	wantName := ArtifactCommentChannelNamePrefix + artifactID
@@ -245,9 +245,8 @@ type artifactCommentResponse struct {
 }
 
 func (h *ArtifactCommentsHandler) handleCreateComment(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	artifactID := r.PathValue("artifactId")
@@ -261,7 +260,7 @@ func (h *ArtifactCommentsHandler) handleCreateComment(w http.ResponseWriter, r *
 		return
 	}
 	// 立场 ④ cross-channel reject — caller must be member of the host channel.
-	if !h.Store.IsChannelMember(art.ChannelID, user.ID) && !h.Store.CanAccessChannel(art.ChannelID, user.ID) {
+	if !h.Store.CanAccessChannel(art.ChannelID, user.ID) {
 		writeJSONErrorCode(w, http.StatusForbidden, ArtifactCommentErrCrossChannelReject, "not a member of artifact's channel")
 		return
 	}
@@ -335,9 +334,8 @@ func (h *ArtifactCommentsHandler) handleCreateComment(w http.ResponseWriter, r *
 // ----- GET /api/v1/artifacts/{artifactId}/comments -----
 
 func (h *ArtifactCommentsHandler) handleListComments(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	artifactID := r.PathValue("artifactId")
@@ -346,7 +344,7 @@ func (h *ArtifactCommentsHandler) handleListComments(w http.ResponseWriter, r *h
 		writeJSONErrorCode(w, http.StatusNotFound, ArtifactCommentErrTargetNotFound, "artifact not found")
 		return
 	}
-	if !h.Store.IsChannelMember(art.ChannelID, user.ID) && !h.Store.CanAccessChannel(art.ChannelID, user.ID) {
+	if !h.Store.CanAccessChannel(art.ChannelID, user.ID) {
 		writeJSONErrorCode(w, http.StatusForbidden, ArtifactCommentErrCrossChannelReject, "not a member of artifact's channel")
 		return
 	}

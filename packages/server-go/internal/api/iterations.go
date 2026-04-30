@@ -55,7 +55,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -194,9 +193,8 @@ type iterateRequest struct {
 }
 
 func (h *IterationHandler) handleIterate(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	artifactID := r.PathValue("artifactId")
@@ -288,15 +286,15 @@ func (h *IterationHandler) handleIterate(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		writeJSONResponse(w, http.StatusCreated, map[string]any{
-			"id":               id,
-			"artifact_id":      art.ID,
-			"requested_by":     user.ID,
-			"intent_text":      intent,
-			"target_agent_id":  req.TargetAgentID,
-			"state":            IterationStateFailed,
-			"error_reason":     IterationErrorReasonRuntimeNotRegistered,
-			"created_at":       nowMs,
-			"completed_at":     failedAt,
+			"id":              id,
+			"artifact_id":     art.ID,
+			"requested_by":    user.ID,
+			"intent_text":     intent,
+			"target_agent_id": req.TargetAgentID,
+			"state":           IterationStateFailed,
+			"error_reason":    IterationErrorReasonRuntimeNotRegistered,
+			"created_at":      nowMs,
+			"completed_at":    failedAt,
 		})
 		return
 	}
@@ -328,9 +326,8 @@ func (h *IterationHandler) handleIterate(w http.ResponseWriter, r *http.Request)
 // ----- GET /api/v1/artifacts/{artifactId}/iterations -----
 
 func (h *IterationHandler) handleListIterations(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	artifactID := r.PathValue("artifactId")

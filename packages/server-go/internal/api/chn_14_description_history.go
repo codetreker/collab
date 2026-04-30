@@ -23,7 +23,6 @@ import (
 	"net/http"
 
 	"borgee-server/internal/admin"
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -55,9 +54,8 @@ func (h *CHN14DescriptionHistoryHandler) RegisterAdminRoutes(mux *http.ServeMux,
 // 立场 ②: caller ≠ channel.CreatedBy → 403 (member-level reject). 历史空时
 // 返 `[]`. HappyPath 返 JSON array (server-side store 层 pre-normalized).
 func (h *CHN14DescriptionHistoryHandler) handleUserGet(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	channelID := r.PathValue("channelId")

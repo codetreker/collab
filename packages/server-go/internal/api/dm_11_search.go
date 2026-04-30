@@ -36,13 +36,12 @@ import (
 	"strconv"
 	"strings"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
 const (
-	dm11MinQueryLen = 2
-	dm11MaxQueryLen = 200
+	dm11MinQueryLen  = 2
+	dm11MaxQueryLen  = 200
 	dm11DefaultLimit = 30
 	dm11MaxLimit     = 50
 )
@@ -61,14 +60,13 @@ func (h *DM11SearchHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.
 // handleSearch — GET /api/v1/dm/search?q=<query>&limit=<N>.
 //
 // Validation order:
-//   1. Auth (user-rail).
-//   2. q query param required + 2..200 char (反 DoS, 反空查询全表扫).
-//   3. limit clamp default 30 / max 50.
-//   4. Store.SearchDMMessages (DM-only + channel-member ACL JOIN).
+//  1. Auth (user-rail).
+//  2. q query param required + 2..200 char (反 DoS, 反空查询全表扫).
+//  3. limit clamp default 30 / max 50.
+//  4. Store.SearchDMMessages (DM-only + channel-member ACL JOIN).
 func (h *DM11SearchHandler) handleSearch(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))

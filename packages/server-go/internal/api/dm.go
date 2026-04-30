@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
 	"borgee-server/internal/store"
 )
@@ -23,9 +22,8 @@ func (h *DmHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler)
 }
 
 func (h *DmHandler) handleCreateDm(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -58,9 +56,8 @@ func (h *DmHandler) handleCreateDm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *DmHandler) handleListDms(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

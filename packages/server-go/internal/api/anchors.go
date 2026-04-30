@@ -41,7 +41,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -109,14 +108,14 @@ func (h *AnchorHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Hand
 // ----- raw row shapes (private to handler) -----
 
 type anchorRow struct {
-	ID                string  `gorm:"column:id"`
-	ArtifactID        string  `gorm:"column:artifact_id"`
-	ArtifactVersionID int64   `gorm:"column:artifact_version_id"`
-	StartOffset       int64   `gorm:"column:start_offset"`
-	EndOffset         int64   `gorm:"column:end_offset"`
-	CreatedBy         string  `gorm:"column:created_by"`
-	CreatedAt         int64   `gorm:"column:created_at"`
-	ResolvedAt        *int64  `gorm:"column:resolved_at"`
+	ID                string `gorm:"column:id"`
+	ArtifactID        string `gorm:"column:artifact_id"`
+	ArtifactVersionID int64  `gorm:"column:artifact_version_id"`
+	StartOffset       int64  `gorm:"column:start_offset"`
+	EndOffset         int64  `gorm:"column:end_offset"`
+	CreatedBy         string `gorm:"column:created_by"`
+	CreatedAt         int64  `gorm:"column:created_at"`
+	ResolvedAt        *int64 `gorm:"column:resolved_at"`
 }
 
 type anchorCommentRow struct {
@@ -247,9 +246,8 @@ type createAnchorRequest struct {
 }
 
 func (h *AnchorHandler) handleCreateAnchor(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	// 立场 ① owner-only: agent role 创锚 → 403 anchor.create_owner_only.
@@ -326,9 +324,8 @@ func (h *AnchorHandler) handleCreateAnchor(w http.ResponseWriter, r *http.Reques
 // ----- GET /api/v1/artifacts/{artifactId}/anchors -----
 
 func (h *AnchorHandler) handleListAnchors(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	artifactID := r.PathValue("artifactId")
@@ -364,9 +361,8 @@ type addCommentRequest struct {
 }
 
 func (h *AnchorHandler) handleAddComment(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	anchorID := r.PathValue("anchorId")
@@ -465,9 +461,8 @@ func (h *AnchorHandler) handleAddComment(w http.ResponseWriter, r *http.Request)
 // hydrate the thread body. channel-scoped ACL same as create/list anchors.
 
 func (h *AnchorHandler) handleListComments(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	anchorID := r.PathValue("anchorId")
@@ -505,9 +500,8 @@ ORDER BY id ASC`, anchorID).Scan(&rows).Error; err != nil {
 // ----- POST /api/v1/anchors/{anchorId}/resolve -----
 
 func (h *AnchorHandler) handleResolveAnchor(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 	anchorID := r.PathValue("anchorId")

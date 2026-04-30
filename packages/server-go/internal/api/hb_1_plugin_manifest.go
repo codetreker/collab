@@ -42,8 +42,6 @@ import (
 	"net/http"
 	"sort"
 	"time"
-
-	"borgee-server/internal/auth"
 )
 
 // HB-1 v0 [A] 7-reason 字典字面锁 byte-identical 跟 spec §3.2 + 战马A v0
@@ -135,9 +133,8 @@ func (h *HB1PluginManifestHandler) RegisterRoutes(mux *http.ServeMux, authMw fun
 // handleGet — GET /api/v1/plugin-manifest. Bearer api-key (authMw 已守).
 // Returns signed manifest payload byte-identical 跟 content-lock §1 shape.
 func (h *HB1PluginManifestHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 

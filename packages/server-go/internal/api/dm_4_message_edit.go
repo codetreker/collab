@@ -29,12 +29,10 @@
 package api
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
 
-	"borgee-server/internal/auth"
 	"borgee-server/internal/store"
 )
 
@@ -58,22 +56,21 @@ func (h *DM4MessageEditHandler) RegisterRoutes(mux *http.ServeMux,
 // handleEdit — DM-4.1 PATCH /api/v1/channels/{channelId}/messages/{messageId}.
 //
 // Validation order:
-//   1. Auth (user-rail).
-//   2. Path ids present.
-//   3. Channel exists + channel.Type == "dm" (else 403 `dm.edit_only_in_dm`).
-//   4. Body schema {content} — empty content 400.
-//   5. Message exists + not deleted + channel id matches path.
-//   6. cross-org 403 (REG-INV-002 fail-closed, 跟 messages.go 既有同模式).
-//   7. owner-only ACL: existing.SenderID == user.ID (else 403).
-//   8. Store.UpdateMessage(messageID, content).
-//   9. CreateEvent kind="message_edited" + Hub.BroadcastEventToChannel —
-//      RT-3 fan-out 自动多端覆盖.
+//  1. Auth (user-rail).
+//  2. Path ids present.
+//  3. Channel exists + channel.Type == "dm" (else 403 `dm.edit_only_in_dm`).
+//  4. Body schema {content} — empty content 400.
+//  5. Message exists + not deleted + channel id matches path.
+//  6. cross-org 403 (REG-INV-002 fail-closed, 跟 messages.go 既有同模式).
+//  7. owner-only ACL: existing.SenderID == user.ID (else 403).
+//  8. Store.UpdateMessage(messageID, content).
+//  9. CreateEvent kind="message_edited" + Hub.BroadcastEventToChannel —
+//     RT-3 fan-out 自动多端覆盖.
 //
 // Returns 200 with {message} on success.
 func (h *DM4MessageEditHandler) handleEdit(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+	user, ok := mustUser(w, r)
+	if !ok {
 		return
 	}
 
@@ -101,8 +98,7 @@ func (h *DM4MessageEditHandler) handleEdit(w http.ResponseWriter, r *http.Reques
 	var body struct {
 		Content string `json:"content"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid JSON")
+	if !decodeJSON(w, r, &body) {
 		return
 	}
 	content := strings.TrimSpace(body.Content)
