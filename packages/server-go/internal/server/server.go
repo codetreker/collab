@@ -444,6 +444,11 @@ func (s *Server) SetupRoutes() {
 	hb5HeartbeatRetentionHandler := &api.HostRetentionOverrideHandler{Store: s.store, Logger: s.logger}
 	hb5HeartbeatRetentionHandler.RegisterAdminRoutes(s.mux, adminMw)
 	(&auth.HeartbeatRetentionSweeper{Store: s.store, Logger: s.logger}).Start(s.ctx)
+	// DL-2 events retention sweeper (1h ticker, ctx-aware shutdown). Reaps
+	// expired rows from channel_events + global_events per per-kind retention
+	// (must-persist 4 类永久 / channel/message 30d / agent_task/artifact 60d /
+	// 默认 90d). 跟 AL-7 / HB-5 retention sweeper 同精神承袭.
+	datalayer.NewEventsRetentionSweeper(s.store.DB(), s.logger, time.Hour).Start(s.ctx)
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
