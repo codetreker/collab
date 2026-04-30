@@ -151,6 +151,16 @@ Content-Type: application/json
 | **HB-4** ⭐ | 5 行 release gate 第 3/4 行 (签名校验失败率 / 审计日志) | gate 数字字面 byte-identical       |
 | **AL-1a**   | reason 字典分立 (HB-1 7-dict 是 install 路径, AL-1a 6-dict 是 runtime 路径); 不混 | 字典分立反约束 |
 
+## 5.5 Go 三方包锁 (HB stack Go 重审 飞马 #1+#4+#5 必修)
+
+| 用途 | 包名 | 立场 |
+|---|---|---|
+| GPG 签名 verify | `github.com/ProtonMail/go-crypto/openpgp` | 反 `golang.org/x/crypto/openpgp` (deprecated 2022 + 不维护). 反向 grep `golang.org/x/crypto/openpgp` 0 hit (CI 守门待 HB-1 真实施加) |
+| Linux sandbox | `github.com/landlock-lsm/go-landlock` | landlock LSM (kernel ≥5.13); 反 cgroups (cgroups 不限 mmap/exec 路径). fallback: AppArmor profile (kernel <5.13 或非 landlock 内核) |
+| Windows IPC pipe | `github.com/Microsoft/go-winio` | Named Pipe SSOT, 反 syscall raw CreateNamedPipe (跨版本 ABI 漂移) |
+
+build tag 拆 (HB-2 sandbox 同模式): `sandbox_linux.go` + `sandbox_darwin.go` + `sandbox_other.go` (Windows + 其他, 跟 install-butler 同模式).
+
 ## 6. 实施切入路线 (DL-4 落地后)
 
 1. DL-4 ship `/api/v1/plugin-manifest` endpoint (interface §3.2 byte-
