@@ -20,6 +20,12 @@ type Channel struct {
 	// non-nil = archived (channel is read-only, hidden from default lists).
 	// Distinct from DeletedAt — archive preserves history per channel-model §2 不变量。
 	ArchivedAt *int64 `gorm:"column:archived_at" json:"archived_at,omitempty"`
+	// DescriptionEditHistory is a JSON array of edit-history entries appended
+	// by UpdateChannelDescription each time channel.topic changes via CHN-10
+	// owner-only PUT path (CHN-14.2 SSOT 跟 DM-7 messages.edit_history 同模式
+	// byte-identical). NULL = 无历史 / 老 channel 行 byte-identical 不动.
+	// Migration v=36 (chn_14_1_channels_description_edit_history).
+	DescriptionEditHistory *string `gorm:"column:description_edit_history" json:"description_edit_history,omitempty"`
 }
 
 type ChannelGroup struct {

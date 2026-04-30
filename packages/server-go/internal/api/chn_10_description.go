@@ -89,7 +89,7 @@ func (h *CHN10DescriptionHandler) handlePut(w http.ResponseWriter, r *http.Reque
 			"Description must be 500 characters or less")
 		return
 	}
-	if err := h.Store.UpdateChannel(channelID, map[string]any{"topic": req.Description}); err != nil {
+	if err := h.Store.UpdateChannelDescription(channelID, req.Description); err != nil {
 		if h.Logger != nil {
 			h.Logger.Error("chn10.update", "error", err)
 		}
