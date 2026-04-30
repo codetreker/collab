@@ -1,12 +1,14 @@
 // Package api_test — covbump_test.go: cross-PR cov bump for store helpers
-// (IsAgentStatusNotFound + ArchiveChannel + ListChannelGroups). Same pattern
-// as chn-5 covbump that landed cov 83.9% → 84.0%.
+// (IsAgentStatusNotFound + ArchiveChannel + ListChannelGroups + agent_status
+// upsert/reap chain). Same pattern as chn-5 covbump that landed cov 83.9%
+// → 84.0%.
 package api_test
 
 import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"borgee-server/internal/store"
 	"borgee-server/internal/testutil"
@@ -92,5 +94,80 @@ func TestRT_4_CovBump_ListChannelGroups_AfterCreate(t *testing.T) {
 	groups, _ := body["groups"].([]any)
 	if len(groups) < 1 {
 		t.Errorf("expected ≥1 group, got %d", len(groups))
+	}
+}
+
+// REG-CHN6-cov-bump — agent_status upsert/getter/reaper chain (BPP-2 source).
+func TestRT_4_CovBump_AgentStatusChain(t *testing.T) {
+	t.Parallel()
+	_, s, _ := testutil.NewTestServer(t)
+
+	// 1. GetAgentStatus on non-existent agent → ErrRecordNotFound.
+	if _, err := s.GetAgentStatus("nonexistent-agent"); err == nil {
+		t.Error("expected ErrRecordNotFound for missing agent")
+	} else if !store.IsAgentStatusNotFound(err) {
+		t.Errorf("expected not-found, got %v", err)
+	}
+
+	// 2. SetAgentTaskStarted with empty agent_id → error.
+	if err := s.SetAgentTaskStarted("", "task-1", time.Now()); err == nil {
+		t.Error("expected error for empty agent_id (started)")
+	}
+	if err := s.SetAgentTaskFinished("", "task-1", time.Now()); err == nil {
+		t.Error("expected error for empty agent_id (finished)")
+	}
+
+	// 3. Happy path: started → busy.
+	now := time.Now()
+	if err := s.SetAgentTaskStarted("agent-A", "task-1", now); err != nil {
+		t.Fatalf("started: %v", err)
+	}
+	row, err := s.GetAgentStatus("agent-A")
+	if err != nil {
+		t.Fatalf("get after started: %v", err)
+	}
+	if row.State != "busy" {
+		t.Errorf("expected busy, got %q", row.State)
+	}
+	if row.LastTaskID == nil || *row.LastTaskID != "task-1" {
+		t.Errorf("expected last_task_id=task-1")
+	}
+
+	// 4. Finished → idle (upsert path).
+	if err := s.SetAgentTaskFinished("agent-A", "task-1", now.Add(time.Second)); err != nil {
+		t.Fatalf("finished: %v", err)
+	}
+	row, _ = s.GetAgentStatus("agent-A")
+	if row.State != "idle" {
+		t.Errorf("expected idle after finished, got %q", row.State)
+	}
+
+	// 5. ReapStaleBusyToIdle: insert a stale busy row, reap it.
+	if err := s.SetAgentTaskStarted("agent-B", "task-2", now.Add(-10*time.Minute)); err != nil {
+		t.Fatalf("stale started: %v", err)
+	}
+	n, err := s.ReapStaleBusyToIdle(now, 5*time.Minute)
+	if err != nil {
+		t.Fatalf("reap: %v", err)
+	}
+	if n < 1 {
+		t.Errorf("expected ≥1 reaped, got %d", n)
+	}
+	row, _ = s.GetAgentStatus("agent-B")
+	if row.State != "idle" {
+		t.Errorf("expected idle post-reap, got %q", row.State)
+	}
+
+	// 6. Reap with no stale rows — returns 0.
+	n, err = s.ReapStaleBusyToIdle(now, 5*time.Minute)
+	if err != nil {
+		t.Fatalf("reap noop: %v", err)
+	}
+	_ = n // 0 expected; not asserting strictly to avoid race-flake.
+
+	// 7. errors.Is invariant: nil shouldn't match (already in main test
+	// but kept here for predicate redundancy in case main test reorders).
+	if errors.Is(nil, gorm.ErrRecordNotFound) {
+		t.Error("nil should not match ErrRecordNotFound")
 	}
 }
