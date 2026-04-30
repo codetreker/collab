@@ -611,10 +611,41 @@ func (s *Store) CreateMessageFull(channelID, senderID, content, contentType stri
 // UpdateMessage updates a message's content and sets edited_at.
 func (s *Store) UpdateMessage(messageID, content string) (*MessageWithSender, error) {
 	now := time.Now().UnixMilli()
-	if err := s.db.Model(&Message{}).Where("id = ?", messageID).Updates(map[string]any{
+	// DM-7.2 立场 ②: SELECT old content + edit_history FIRST so we can
+	// append a new history entry. UpdateMessage SSOT — DM-4 #553 既有
+	// PATCH path 调用方 byte-identical 不动. AL-1a reason 锁链第 18 处
+	// (复用 reasons.Unknown byte-identical 跟 AL-7 SweeperReason / HB-5
+	// HeartbeatSweeperReason 同源 — DM-7 不另起 reason 字典).
+	var existing Message
+	if err := s.db.Select("content", "edit_history").
+		Where("id = ?", messageID).First(&existing).Error; err != nil {
+		return nil, err
+	}
+	updates := map[string]any{
 		"content":   content,
 		"edited_at": now,
-	}).Error; err != nil {
+	}
+	// Skip history append when content is byte-identical (idempotent
+	// PATCH — 立场 ② "重复 PATCH 同 content 不重复入 history").
+	if existing.Content != content {
+		entry := map[string]any{
+			"old_content": existing.Content,
+			"ts":          now,
+			// AL-1a reason 锁链第 18 处 — 字面 "unknown" byte-identical
+			// 跟 reasons.Unknown / AL-7 SweeperReason / HB-5 同源.
+			"reason": "unknown",
+		}
+		var arr []map[string]any
+		if existing.EditHistory != nil && *existing.EditHistory != "" {
+			_ = json.Unmarshal([]byte(*existing.EditHistory), &arr)
+		}
+		arr = append(arr, entry)
+		if jsonBytes, err := json.Marshal(arr); err == nil {
+			updates["edit_history"] = string(jsonBytes)
+		}
+	}
+	if err := s.db.Model(&Message{}).Where("id = ?", messageID).
+		Updates(updates).Error; err != nil {
 		return nil, err
 	}
 
