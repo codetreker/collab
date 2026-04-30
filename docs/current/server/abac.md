@@ -119,10 +119,31 @@ CI lint runs equivalent unit tests via `filepath.Walk` (`abac_ap3_test.go::
 TestAP32_ReverseGrep_NoCrossOrgBypass` + `TestAP31_ReverseGrep_
 NoFKOrganizations`).
 
+## capabilities-enum (AP-4-enum #TBD)
+
+`internal/auth/capabilities.go` 14 字面 const 单源外, 加 `var ALL = []string{
+ReadChannel, WriteChannel, DeleteChannel, ReadArtifact, WriteArtifact,
+CommitArtifact, IterateArtifact, RollbackArtifact, MentionUser, ReadDM,
+SendDM, ManageMembers, InviteUser, ChangeRole}` ordered slice (顺序
+byte-identical 跟 const 声明) + `func init()` 自动 rebuild Capabilities map
+(`for _, c := range ALL { Capabilities[c] = true }`) — 改 capability =
+改 ALL **一处**, reflect-lint 单测自动守 ALL ↔ const 双向 ⊂.
+
+Handler 不准直查 `auth.Capabilities[name]` map; 走 `auth.IsValidCapability(
+name) bool` helper 单源 (跟 reasons.IsValid #496 SSOT 包同模式). CI step
+`ap4enum-no-hardcode-capability` (`.github/workflows/release-gate.yml`)
+跑 4 反向 grep — `HasCapability("...")` hardcode in api/ count==0 +
+`auth.Capabilities[` direct in api/ count==0 + `Capabilities["..."] =`
+literal mutate in auth/ count==0 (init 走变量 c) + `admin_|godmode_|
+impersonat` in capabilities.go count==0 (ADM-0 §1.3 红线).
+
 ## 跨 milestone byte-identical 锁
 
 - AP-1 #493 `HasCapability` SSOT — AP-3 仅扩 helper 内部 (改 = 改
   abac.go 一处, endpoint 0 行改, capabilities.go 14 const 不动).
+- AP-4-enum #TBD ALL slice + init + IsValidCapability — 复用 AP-1
+  14 const byte-identical 不动, 仅加 wrapper SSOT (跟 reasons.IsValid
+  #496 SSOT 包同精神, BPP-4 / HB-3 release-gate 同模式).
 - AP-1.1 #493 `user_permissions.expires_at` ALTER ADD COLUMN NULL 模式
   — AP-3.1 schema 同模式, 跟 AP-2.1 #ap-2 `revoked_at` 同模式三连.
 - CM-3 #208 cross-org 资源归属 + CHN-1 #286 channel-org membership —
