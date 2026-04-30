@@ -7,6 +7,7 @@ import (
 
 	agentpkg "borgee-server/internal/agent"
 	"borgee-server/internal/auth"
+	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
 
@@ -40,8 +41,10 @@ func (fp *flexPermissions) UnmarshalJSON(data []byte) error {
 
 type AgentHandler struct {
 	Store  *store.Store
-	Logger *slog.Logger
-	Hub    AgentFileProxy
+	// DataLayer — DL-1.2 SSOT 4-interface bundle (nil-safe; see UserHandler).
+	DataLayer *datalayer.DataLayer
+	Logger    *slog.Logger
+	Hub       AgentFileProxy
 	// State — AL-1a (#R3 Phase 2): runtime 三态查询. 提供 online/offline +
 	// error 旁路 (蓝图 agent-lifecycle §2.3). nil 时 GET 返回退化 offline.
 	State AgentRuntimeProvider
@@ -171,7 +174,15 @@ func (h *AgentHandler) handleCreateAgent(w http.ResponseWriter, r *http.Request)
 		OrgID: user.OrgID,
 	}
 
-	if err := h.Store.CreateUser(agent); err != nil {
+	// DL-1.2: prefer UserRepo.Create (interface seam) when DataLayer wired;
+	// fall back to legacy store.CreateUser (nil-safe, byte-identical).
+	var createErr error
+	if h.DataLayer != nil {
+		createErr = h.DataLayer.UserRepo.Create(r.Context(), agent)
+	} else {
+		createErr = h.Store.CreateUser(agent)
+	}
+	if createErr != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to create agent")
 		return
 	}
