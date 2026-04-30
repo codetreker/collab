@@ -817,7 +817,9 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc // capture loop var for parallel sub-test
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel() // TEST-FIX-2: 11 sub-test 各启独立 in-memory store + httptest, 互不依赖, 走 parallel 把 race 总耗时从 ~30s 串行降到 ~3s 并发 (CI runner 慢需要双重加速). 跟 TEST-FIX-1 #596 同精神, 与 ctx-aware leak fix 互补.
 			ts, s, cfg := newClosedStoreTestServer(t)
 			token := loginAs(t, ts.URL, "owner@test.com", "password123")
 			var body io.Reader
