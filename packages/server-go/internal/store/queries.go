@@ -1211,6 +1211,69 @@ func (s *Store) UpdateChannel(id string, updates map[string]any) error {
 	return s.db.Model(&Channel{}).Where("id = ?", id).Updates(updates).Error
 }
 
+// UpdateChannelDescription is the CHN-14.2 SSOT wrapper for description
+// edits — SELECT old topic + edit_history → JSON append `{old_content, ts,
+// reason='unknown'}` → UPDATE topic + description_edit_history. CHN-10
+// #561 owner-only PUT /channels/:id/description path (chn_10_description.
+// go::handlePut) 调用此包装代替泛通用 UpdateChannel; 同 owner-only ACL +
+// length cap 500 路径 byte-identical 不变.
+//
+// 立场 (chn-14-spec.md §0):
+//   - ② SSOT: SELECT old → JSON append → UPDATE 单源 (反向 grep inline
+//     UPDATE channels.*topic 在 chn_10/chn_14 之外 production 0 hit).
+//   - ⑤ AL-1a reason 锁链停在 HB-6 #19 — reason='unknown' 字面 byte-identical
+//     跟 DM-7 #558 / AL-7 SweeperReason / HB-5 HeartbeatSweeperReason 同源.
+//   - ② idempotent — same-content PUT 不重复入 history (跟 DM-7 同精神).
+func (s *Store) UpdateChannelDescription(channelID, newDescription string) error {
+	now := time.Now().UnixMilli()
+	var existing Channel
+	if err := s.db.Select("topic", "description_edit_history").
+		Where("id = ?", channelID).First(&existing).Error; err != nil {
+		return err
+	}
+	updates := map[string]any{"topic": newDescription}
+	// Skip history append when description is byte-identical (idempotent
+	// PUT — 立场 ② "重复 PUT 同 description 不重复入 history").
+	if existing.Topic != newDescription {
+		entry := map[string]any{
+			"old_content": existing.Topic,
+			"ts":          now,
+			// AL-1a reason 锁链停在 HB-6 #19 — 字面 "unknown" byte-identical
+			// 跟 DM-7 #558 reasons.Unknown / AL-7 SweeperReason / HB-5 同源.
+			"reason": "unknown",
+		}
+		var arr []map[string]any
+		if existing.DescriptionEditHistory != nil && *existing.DescriptionEditHistory != "" {
+			_ = json.Unmarshal([]byte(*existing.DescriptionEditHistory), &arr)
+		}
+		arr = append(arr, entry)
+		if jsonBytes, err := json.Marshal(arr); err == nil {
+			updates["description_edit_history"] = string(jsonBytes)
+		}
+	}
+	return s.db.Model(&Channel{}).Where("id = ?", channelID).Updates(updates).Error
+}
+
+// GetChannelDescriptionHistory returns the parsed JSON history array.
+// Returns empty slice when description_edit_history is NULL / empty.
+func (s *Store) GetChannelDescriptionHistory(channelID string) ([]map[string]any, error) {
+	var ch Channel
+	if err := s.db.Select("description_edit_history").
+		Where("id = ?", channelID).First(&ch).Error; err != nil {
+		return nil, err
+	}
+	var arr []map[string]any
+	if ch.DescriptionEditHistory != nil && *ch.DescriptionEditHistory != "" {
+		if err := json.Unmarshal([]byte(*ch.DescriptionEditHistory), &arr); err != nil {
+			return nil, err
+		}
+	}
+	if arr == nil {
+		arr = []map[string]any{}
+	}
+	return arr, nil
+}
+
 func (s *Store) SoftDeleteChannel(id string) error {
 	now := time.Now().UnixMilli()
 	return s.db.Transaction(func(tx *gorm.DB) error {

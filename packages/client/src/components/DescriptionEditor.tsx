@@ -1,7 +1,9 @@
 // DescriptionEditor — CHN-10.3 channel description editor modal.
 // 文案 byte-identical 跟 docs/qa/chn-10-content-lock.md §1.
+// CHN-14.3 加历史按钮 (跟 chn-14-content-lock.md §5 byte-identical).
 import React, { useState } from 'react';
 import { setChannelDescription, DESCRIPTION_MAX_LENGTH } from '../lib/api';
+import { DescriptionHistoryModal } from './DescriptionHistoryModal';
 
 interface Props {
   channelID: string;
@@ -14,6 +16,8 @@ export function DescriptionEditor({ channelID, initial, onSaved, onCancel }: Pro
   const [value, setValue] = useState<string>(initial);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
+  // CHN-14.3 — 编辑历史 modal trigger.
+  const [showHistory, setShowHistory] = useState<boolean>(false);
 
   async function handleSave() {
     if (value.length > DESCRIPTION_MAX_LENGTH) {
@@ -79,7 +83,21 @@ export function DescriptionEditor({ channelID, initial, onSaved, onCancel }: Pro
         >
           取消
         </button>
+        <button
+          type="button"
+          data-testid="description-history-trigger"
+          onClick={() => setShowHistory(true)}
+          disabled={busy}
+        >
+          查看编辑历史
+        </button>
       </div>
+      {showHistory && (
+        <DescriptionHistoryModal
+          channelID={channelID}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 }

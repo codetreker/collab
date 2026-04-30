@@ -1575,6 +1575,37 @@ export async function getEditHistory(
   return (await resp.json()) as DM7EditHistoryResponse;
 }
 
+// CHN-14.3 — channel description edit history GET (owner-only user-rail).
+// Server: GET /api/v1/channels/{channelId}/description/history
+// (跟 DM-7 #558 EditHistoryEntry 同模式 byte-identical: old_content/ts/reason).
+export interface CHN14DescriptionHistoryEntry {
+  old_content: string;
+  ts: number;
+  reason: string;
+}
+
+export interface CHN14DescriptionHistoryResponse {
+  history: CHN14DescriptionHistoryEntry[];
+}
+
+export async function getChannelDescriptionHistory(
+  channelID: string,
+): Promise<CHN14DescriptionHistoryResponse> {
+  const resp = await fetch(
+    `${BASE}/api/v1/channels/${encodeURIComponent(channelID)}/description/history`,
+    { method: 'GET', credentials: 'include' },
+  );
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body?.error) detail = body.error;
+    } catch { /* ignore */ }
+    throw new Error(`chn14/description-history ${detail}`);
+  }
+  return (await resp.json()) as CHN14DescriptionHistoryResponse;
+}
+
 // CHN-10: set channel description (owner-only). Server: PUT
 // /api/v1/channels/{channelId}/description body {description}; 500 char
 // upper bound (DESCRIPTION_MAX_LENGTH byte-identical 跟 server const +

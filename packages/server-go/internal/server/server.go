@@ -350,6 +350,14 @@ func (s *Server) SetupRoutes() {
 	// path byte-identical 不变 (CHN-2 #406 既有 path 不破).
 	chn10DescHandler := &api.CHN10DescriptionHandler{Store: s.store, Logger: s.logger}
 	chn10DescHandler.RegisterUserRoutes(s.mux, authMw)
+	// CHN-14 channel description edit history audit — owner-only user-rail GET.
+	// schema v=44 ALTER channels ADD COLUMN description_edit_history TEXT NULL
+	// (跟 DM-7.1 #558 messages.edit_history 同模式; 跨八 milestone ALTER ADD
+	// nullable). UpdateChannelDescription SSOT 包装 SELECT old + JSON append
+	// + UPDATE; CHN-10 #561 既有 PUT path 调用此包装 byte-identical (length
+	// cap 500 + owner-only ACL 不变). admin readonly GET 在 adminMw 段挂.
+	chn14HistoryHandler := &api.CHN14DescriptionHistoryHandler{Store: s.store, Logger: s.logger}
+	chn14HistoryHandler.RegisterUserRoutes(s.mux, authMw)
 	// CHN-8 channel notification preferences — owner-only PUT three states
 	// (`all`/`mention`/`none`). 0 schema 改 (复用 user_channel_layout.collapsed
 	// bits 2-3 跟 CHN-3 bit 0 + CHN-7 bit 1 拆死). admin god-mode 不挂
@@ -388,6 +396,9 @@ func (s *Server) SetupRoutes() {
 	// CHN-5 admin-rail readonly archived channels GET (无 PATCH/PUT/DELETE
 	// — admin god-mode ADM-0 §1.3 红线 — admin 只观察 audit, 不直接改).
 	channelHandler.RegisterCHN5AdminRoutes(s.mux, adminMw)
+	// CHN-14 description edit history admin readonly GET — admin god-mode
+	// 不挂 PATCH/DELETE (ADM-0 §1.3 红线 — admin 看 audit 不直接改).
+	chn14HistoryHandler.RegisterAdminRoutes(s.mux, adminMw)
 	// AL-4.2 admin god-mode metadata read for agent_runtimes (acceptance
 	// §2.6 — read-only white-list, last_error_reason omitted; ADM-0 §1.3
 	// rail isolation + 立场 ⑦ same source).
