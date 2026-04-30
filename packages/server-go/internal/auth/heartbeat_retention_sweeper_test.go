@@ -221,3 +221,23 @@ func TestHB53_NoHeartbeatRetentionQueue(t *testing.T) {
 		})
 	}
 }
+
+// REG-HB5-cov — explicit-set retentionDays/interval/now branches.
+func TestHB52_SweeperFieldOverrides(t *testing.T) {
+	t.Parallel()
+	customNow := func() time.Time { return time.UnixMilli(1700000000000) }
+	s := &HeartbeatRetentionSweeper{
+		Interval:      5 * time.Hour,
+		RetentionDays: 60,
+		Now:           customNow,
+	}
+	if got := s.interval(); got != 5*time.Hour {
+		t.Errorf("interval override: got %v, want 5h", got)
+	}
+	if got := s.retentionDays(); got != 60 {
+		t.Errorf("retentionDays override: got %d, want 60", got)
+	}
+	if got := s.now(); got.UnixMilli() != 1700000000000 {
+		t.Errorf("now override: got %v, want 1700000000000", got.UnixMilli())
+	}
+}
