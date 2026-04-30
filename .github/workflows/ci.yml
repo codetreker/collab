@@ -132,3 +132,21 @@ jobs:
           name: playwright-report
           path: packages/e2e/playwright-report/
           retention-days: 14
+
+  hb20-ipc-prereq:
+    # HB-2.0 prerequisite — IPC primitive smoke per OS (Linux UDS / macOS UDS
+    # / Windows Named Pipe). Build-tag-per-platform; matrix runs each smoke
+    # test on its native runner. Gates HB-2 v0(C) host-bridge daemon
+    # (packages/borgee-helper/ Go cmd 真启 IPC server 反约束 build-tag drift).
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: HB-2.0 IPC primitive smoke (build tag per OS)
+        run: cd packages/server-go && go test ./internal/helper/...
