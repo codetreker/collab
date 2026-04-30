@@ -1,13 +1,22 @@
-# HB-2 host-bridge daemon — spec brief v0 (read-only IPC contract lock)
+# HB-2 host-bridge daemon — spec brief v1 (read-only IPC contract lock)
 
-> Owner: 战马A 起 v0 spec / 飞马 review 安全模型 / 烈马 acceptance
+> Owner: 战马 起 v0 spec → v1 升级 (本 PR) / 飞马 review 安全模型 / 野马 PM 立场 / 烈马 acceptance
 > Blueprint锚: `docs/blueprint/host-bridge.md` §1.4 + §2 信任五支柱
 > Module ref: `docs/implementation/modules/host-bridge.md` §HB-2
 > 依赖: **HB-1 install-butler** (装好 plugin runtime 后才有 host-bridge
 > 跑) + plugin (BPP) 提需求方
-> Status: **🚧 spec brief v0** — code stub deferred until HB-1 lands.
+> Status: **✅ spec brief v1 + 4 件套** (本 PR) — Rust crate 真实施 stub
+> deferred until HB-1 #589 lands (HB-2.1..HB-2.6 follow-up PR).
 > 跟 HB-1 spec brief (#491 81a41fa) 同模式 — 锁住 IPC contract + 反约束防
 > drift, 真 Rust crate 实施等 HB-1 落.
+
+## v0 → v1 升级笔记 (本 PR)
+
+- v0 = 仅 spec brief stub.
+- v1 = spec brief + PM stance checklist (`docs/qa/hb-2-stance-checklist.md`)
+  + acceptance template (`docs/qa/acceptance-templates/hb-2.md`) + REG-HB2-001..007 占号 ⚪ pending impl.
+- content-lock 不适用 (HB-2 无用户 UI; 仅 daemon IPC contract).
+- 实施 (Rust crate) 拆 follow-up PR HB-2.1..HB-2.6, 待 HB-1 #589 ship 后启.
 
 ## 1. 一句话定义
 
@@ -153,16 +162,15 @@ LIMIT 1;
 - HB-4 release gate 第 6 行 (写类 IPC 100% reject) 反向枚举单测 PASS
 - 合约测试: 路径 traversal (../, symlink, Unicode normalization) 全 reject
 
-## 8. 现状 (本 stub v0)
+## 8. 现状 (v1 本 PR)
 
-- ✅ spec brief 锁
+- ✅ spec brief v1 锁
 - ✅ §3 IPC contract + HB-3 grants store contract 字面锁 (drift 防御)
-- ✅ §4 反约束 7 项 acceptance v0
-- ⏸️ Rust crate skeleton — 等 HB-1 落地真启
-- ⏸️ acceptance template `docs/qa/acceptance-templates/hb-2.md` v0 —
-  本 brief §4 升级为正式 acceptance template 时同步起
-- ⏸️ HB-3 grants schema 真定义 — HB-3 spec brief 待起 (跟 HB-1/HB-2 同
-  模式)
+- ✅ §4 反约束 7 项 acceptance v0 → v1 升级 (acceptance template 落地)
+- ✅ PM stance checklist `docs/qa/hb-2-stance-checklist.md` (7 立场 + 黑名单 grep)
+- ✅ acceptance template `docs/qa/acceptance-templates/hb-2.md` (REG-HB2-001..007 占号 ⚪ pending impl)
+- ⏸️ Rust crate skeleton `packages/host-bridge/host-bridge/` — 等 HB-1 #589 ship 后真启 (HB-2.1..HB-2.6 follow-up)
+- ⏸️ HB-3 grants schema 真定义 — HB-3 spec brief 待起 (跟 HB-1/HB-2 同模式)
 
 ## 9. 跨 spec 反查 (跟 HB-1 + DL-4 spec 锁互校)
 
