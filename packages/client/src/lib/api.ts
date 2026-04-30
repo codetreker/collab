@@ -1480,3 +1480,95 @@ export async function getEditHistory(
   }
   return (await resp.json()) as DM7EditHistoryResponse;
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// DM-8 (#dm-8): message bookmark — per-user owner-only toggle.
+// ──────────────────────────────────────────────────────────────────────
+
+/**
+ * BOOKMARK_ERR_TOAST — byte-identical 跟 server `internal/api/dm_8_bookmark.go::
+ * BookmarkErrCode*` const + `docs/qa/dm-8-content-lock.md` §3 同源.
+ *
+ * 改 = 改三处: server const + 此 map + content-lock §3.
+ */
+export const BOOKMARK_ERR_TOAST: Record<string, string> = {
+  'bookmark.not_found':         '消息不存在',
+  'bookmark.not_member':        '无权访问此频道',
+  'bookmark.not_owner':         '无权操作他人收藏',
+  'bookmark.cross_org_denied':  '跨组织收藏被禁',
+  'bookmark.invalid_request':   '请求格式不合法',
+};
+
+/** BookmarkLabel — 4 文案 byte-identical (content-lock §1). */
+export const BOOKMARK_LABEL = {
+  off:         '收藏',
+  on:          '已收藏',
+  hover_off:   '取消收藏',  // shown when bookmarked, hover hint to remove
+  panel_title: '我的收藏',
+} as const;
+
+export interface BookmarkToggleResponse {
+  message_id: string;
+  is_bookmarked: boolean;
+}
+
+/** POST /api/v1/messages/{id}/bookmark — add bookmark (idempotent). */
+export async function addMessageBookmark(messageID: string): Promise<BookmarkToggleResponse> {
+  const resp = await fetch(`${BASE}/api/v1/messages/${encodeURIComponent(messageID)}/bookmark`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!resp.ok) {
+    let errCode = 'unknown';
+    try {
+      const body = await resp.json();
+      errCode = (body?.error as string) || errCode;
+    } catch { /* ignore */ }
+    throw new Error(errCode);
+  }
+  return (await resp.json()) as BookmarkToggleResponse;
+}
+
+/** DELETE /api/v1/messages/{id}/bookmark — remove bookmark (idempotent). */
+export async function removeMessageBookmark(messageID: string): Promise<BookmarkToggleResponse> {
+  const resp = await fetch(`${BASE}/api/v1/messages/${encodeURIComponent(messageID)}/bookmark`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!resp.ok) {
+    let errCode = 'unknown';
+    try {
+      const body = await resp.json();
+      errCode = (body?.error as string) || errCode;
+    } catch { /* ignore */ }
+    throw new Error(errCode);
+  }
+  return (await resp.json()) as BookmarkToggleResponse;
+}
+
+export interface BookmarkRow {
+  id: string;
+  channel_id: string;
+  sender_id: string;
+  content: string;
+  content_type: string;
+  created_at: number;
+  is_bookmarked: true;
+}
+
+/** GET /api/v1/me/bookmarks — list current user's bookmarks. */
+export async function listMyBookmarks(limit?: number): Promise<{ bookmarks: BookmarkRow[] }> {
+  const u = limit !== undefined
+    ? `${BASE}/api/v1/me/bookmarks?limit=${limit}`
+    : `${BASE}/api/v1/me/bookmarks`;
+  const resp = await fetch(u, { credentials: 'include' });
+  if (!resp.ok) {
+    let errCode = 'unknown';
+    try {
+      const body = await resp.json();
+      errCode = (body?.error as string) || errCode;
+    } catch { /* ignore */ }
+    throw new Error(errCode);
+  }
+  return (await resp.json()) as { bookmarks: BookmarkRow[] };
+}

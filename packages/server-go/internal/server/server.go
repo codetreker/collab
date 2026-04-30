@@ -201,6 +201,13 @@ func (s *Server) SetupRoutes() {
 	dm4EditHandler := &api.DM4MessageEditHandler{Store: s.store, Hub: broadcaster, Logger: s.logger}
 	dm4EditHandler.RegisterRoutes(s.mux, authMw)
 
+	// DM-8.2 message bookmark — POST/DELETE /api/v1/messages/{id}/bookmark
+	// + GET /api/v1/me/bookmarks. user-rail only (admin god-mode 不挂,
+	// ADM-0 §1.3 + ADM-1 §4.1 隐私承诺第 4 行同源). 立场 ③ per-user
+	// owner-only ACL.
+	dm8BookmarkHandler := &api.DM8BookmarkHandler{Store: s.store, Logger: s.logger}
+	dm8BookmarkHandler.RegisterRoutes(s.mux, authMw)
+
 	// Users
 	userHandler := &api.UserHandler{
 		Store:  s.store,

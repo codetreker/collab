@@ -81,6 +81,12 @@ type Message struct {
 	// UpdateMessage when the content changes. NULL = no edits (DM-7
 	// 立场 ①). Format: [{old_content, ts, reason}].
 	EditHistory *string `gorm:"column:edit_history" json:"edit_history,omitempty"`
+	// BookmarkedBy is a JSON array of user UUIDs who have bookmarked
+	// this message. NULL = no bookmarks (DM-8 立场 ①). RMW via
+	// Store.ToggleMessageBookmark single-source. Per-user owner-only —
+	// 反向 sanitize 不暴露 raw array to other users (handler returns
+	// `is_bookmarked` bool only via DM-8.2 立场 ⑤).
+	BookmarkedBy *string `gorm:"column:bookmarked_by" json:"-"`
 }
 
 type ChannelMember struct {

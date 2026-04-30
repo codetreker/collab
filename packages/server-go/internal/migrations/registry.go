@@ -63,6 +63,7 @@ var All = []Migration{
 	cv3v2ArtifactThumbnail,
 	al71AdminActionsArchivedAt,
 	dm71MessagesEditHistory,
+	dm81MessagesBookmarkedBy,
 }
 
 // Default returns an Engine wired to db with All registered.
