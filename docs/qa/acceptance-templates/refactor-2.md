@@ -1,62 +1,65 @@
-# Acceptance Template — REFACTOR-2 (handler boilerplate 全清 + DM-gate 三错码归一 + ACL 双 helper 收单源)
+# Acceptance Template — REFACTOR-2 (handler boilerplate 收口, **v1 audit 反转**)
 
-> Spec brief `refactor-2-spec.md` (飞马 v0). Owner: 战马C 实施 / 飞马 review / 烈马 验收.
+> Spec brief `refactor-2-spec.md` v1 (飞马 audit 反转修订). Owner: 战马C 实施 / 飞马 review / 烈马 验收.
 >
-> **REFACTOR-2 范围**: handler-level 全清 — 4 helper 抽出 (mustUser / decodeJSON / loadAgent / cursor wrapper) + caller boilerplate 100+ 处 0 残留 + DM-gate 三错码归一 (`pin.dm_only_path` / `dm.edit_only_in_dm` / `dm_search.q_required` ↔ DM-only path 单源) + IsChannelMember / CanAccessChannel 双 ACL helper 收单源. 立场承袭 REFACTOR-1 #611 (CHN 4 helper) + 跨九 milestone const SSOT 锁链. **0 endpoint 行为改 + 0 migration / 0 schema + LoC 净减 ≥500 行**.
+> **REFACTOR-2 真 scope (v1 校准)**: handler-level 4 helper SSOT 抽出 (mustUser / decodeJSON / loadAgentByPath / fanoutChannelStateMessage) + caller boilerplate 100+ 处 collapse + ACL drift #11 部分收口 (artifact_comments OR 折叠) + #12 fanout 字面差收口. **撤** v0 的 helper-3 (DM-gate 三错码归一 — 字面归一不可能, 语义反向) + helper-4 (双 ACL 收单源 — security correctness 设计不是 drift) + helper-5 (admin-list — 净减 0). 立场承袭 REFACTOR-1 #611 (CHN 4 helper) + post-#612 haystack gate. **0 endpoint 行为改 + 0 migration / 0 schema + LoC 净减 -137 行 (实测真值; spec v0 错估 500-700)**.
 
 ## 验收清单
 
-### §1 helper 抽出验收 (4 helper 全单源)
+### §1 helper 抽出验收 (4 helper 单源)
 
 | 验收项 | 实施方式 | 实施证据 |
 |---|---|---|
-| 1.1 `mustUser(ctx) (User, ok)` 单源 (反约束: handler 不再 inline `userFromContext`); 反向 grep `user, ok := userFromContext` body count==0 | grep | reverse grep test PASS |
-| 1.2 `decodeJSON(r, &v) error` 单源 (反约束: handler 不再 inline `json.NewDecoder(r.Body).Decode`); 反向 grep `json\.NewDecoder.*Decode` 在 handler/ body count==0 (除 helper 单源 + _test.go) | grep | reverse grep test PASS |
-| 1.3 `loadAgent(ctx, agentID) (*Agent, error)` 单源 (反约束: handler 不再 inline `store.GetAgentByID + nil 检查`); 反向 grep `store\.GetAgentByID` 在 handler/ body count==0 (除 helper 单源) | grep | reverse grep test PASS |
-| 1.4 cursor wrapper helper 单源 (`encodeCursor` / `decodeCursor` 抽到 internal/api/cursor/); 反向 grep `base64\.StdEncoding\.EncodeToString.*Cursor` body 在 handler/ count==0 (除 helper 单源) | grep | reverse grep test PASS |
+| 1.1 `mustUser(w, r) (*User, bool)` 单源在 `internal/api/auth_helpers.go` (反约束: 反向 grep `^func mustUser\(` ==1 hit) | grep | `grep -cE '^func mustUser\(' packages/server-go/internal/api/auth_helpers.go` ==1 |
+| 1.2 `decodeJSON(w, r, &v) bool` 单源在 `internal/api/request_helpers.go` (canonical-shape only — custom-error-code callers 保留 inline 反约束 reason 字面 byte-identical) | grep | `grep -cE '^func decodeJSON\(' packages/server-go/internal/api/request_helpers.go` ==1 |
+| 1.3 `loadAgentByPath(w, r, store) (*User, string, bool)` 单源在 `internal/api/agent_helpers.go` (path-id pattern only; body.AgentID 路径不收) | grep | `grep -cE '^func loadAgentByPath\(' packages/server-go/internal/api/agent_helpers.go` ==1 |
+| 1.4 `fanoutChannelStateMessage(args)` 单源在 `internal/api/chn_5_archived.go` 内 (fanoutArchive ↔ fanoutUnarchive collapse, 5 字段 caller 传字面严守) | grep | `grep -cE 'func.*fanoutChannelStateMessage\(' packages/server-go/internal/api/chn_5_archived.go` ==1 |
 
-### §2 caller 跟随验收 (boilerplate 100+ 处 0 残留)
-
-| 验收项 | 实施方式 | 实施证据 |
-|---|---|---|
-| 2.1 `user, ok := userFromContext` body count==0 (除 helper 单源 + _test.go); before≥100 hits, after=0 | grep | `git grep -c 'user, ok := userFromContext' packages/server-go/internal/api/ -- ':!*helpers.go' ':!*_test.go'` ==0 |
-| 2.2 `mustUser(` call site count ≥100 (替换前 100+ 处 inline 全走 helper) | grep | `git grep -c 'mustUser(' packages/server-go/internal/api/` ≥100 |
-| 2.3 LoC 净减 ≥500 行 | git diff --stat | `git diff origin/main...HEAD --stat packages/server-go/internal/api/` 净减 ≥500 行 |
-
-### §3 drift 统一验收 (DM-gate 三错码归一 + ACL 双 helper 收单源)
+### §2 caller 跟随验收
 
 | 验收项 | 实施方式 | 实施证据 |
 |---|---|---|
-| 3.1 DM-gate 三错码归一 — `pin.dm_only_path` / `dm.edit_only_in_dm` / `dm_search.q_required` 跟 DM-only path 走 `chn.GateDM(channel)` 单源 (REFACTOR-1 #611 chn helper 复用); 字面 byte-identical 不变 | grep + unit | 三错码字面 byte-identical 跟 main 对比 + chn.GateDM call site count ≥3 (DM-only 3 endpoint) |
-| 3.2 IsChannelMember / CanAccessChannel 双 ACL helper 收单源 — handler 不再两选一/各调一次, 走 `chn.GateChannelMember` 单 helper 内部组合 (反约束: 反向 grep `IsChannelMember\|CanAccessChannel` 在 handler body 除 chn/helpers.go count==0) | grep | reverse grep test PASS |
-| 3.3 飞马 audit #4-#13 全清 (10 项 drift) — 0 留 v2 (反 G4.audit 长尾) | inspect | spec §4-§13 各项跟实施 PR 1:1 verify, audit checklist 全 ✅ |
+| 2.1 mustUser callsites ≥100 (替换 100+ 处 inline `if user == nil { writeJSONError 401 }` boilerplate) | grep | `grep -rE 'mustUser\(' packages/server-go/internal/api/*.go \| grep -v _test.go \| wc -l` ≥100 |
+| 2.2 残留 `if user == nil` ≤15 (variants — comment 在中间 / authenticate* helper / preview public / dm_10_pin 3-return / err shape 不一致) | grep | `grep -rE 'if user == nil' packages/server-go/internal/api/*.go \| grep -v _test.go \| grep -v helpers.go \| wc -l` ≤15 |
+| 2.3 decodeJSON callsites ≥5 (canonical-shape callers replaced) + custom-error-code callers (≥6) 保留 inline | grep | `grep -rE 'decodeJSON\(' packages/server-go/internal/api/*.go \| grep -v _test.go \| wc -l` ≥5 + `grep -rE 'json\.NewDecoder.*Decode' packages/server-go/internal/api/*.go \| grep -v _test.go \| wc -l` ~8 (custom-error-code 保留) |
+| 2.4 loadAgentByPath callsites ≥8 (path-id pattern replaced) | grep | `grep -rE 'loadAgentByPath\(' packages/server-go/internal/api/*.go \| grep -v _test.go \| wc -l` ≥8 |
+| 2.5 LoC 净减 ≥100 行 (实测 -137; spec v0 错估 500-700) | git diff --stat | `git diff origin/main --shortstat packages/server-go/internal/api/` 净减 ≥100 行 |
 
-### §4 全清不留账验收 (反约束 + drift 守门)
+### §3 drift 收口验收 (audit 反转后真 scope)
 
 | 验收项 | 实施方式 | 实施证据 |
 |---|---|---|
-| 4.1 0 endpoint 行为改 — 既有 server-go ./... + client vitest + e2e Playwright 全绿不破 (Wrapper 立场, helper 抽出不动 endpoint shape) | full test | `go test -tags sqlite_fts5 -timeout=180s ./...` 全 PASS + `pnpm exec vitest run --testTimeout=10000` 全 PASS + `pnpm exec playwright test --timeout=30000` 全 PASS |
+| 3.1 DM-gate 双向各自单源 byte-identical (audit 反转: **不归一**, RejectDM/RequireDM 立场目标已达成) — `layout.dm_not_grouped` ≥19 hits (REFACTOR-1 baseline RejectDM 组单源在 channel_helpers.go) + `dm.edit_only_in_dm` ==7 hits (RequireDM 组单源在 dm_4_message_edit.go, byte-identical 不动) | grep | `grep -rcE 'layout\.dm_not_grouped' packages/server-go/internal/api/*.go \| awk -F: '{s+=$NF}END{print s}'` ≥19 + `grep -rcE 'dm\.edit_only_in_dm' packages/server-go/internal/api/*.go \| awk -F: '{s+=$NF}END{print s}'` ==7 |
+| 3.2 ACL drift #11 部分收口 (audit 反转: **双层 fail-closed AND 保留**, security correctness 设计不是 drift) — `artifact_comments.go` ×2 处 OR 折叠 (`!IsChannelMember && !CanAccessChannel` → `!CanAccessChannel`); messages/dm_4/reactions write 路径双层 AND 保留 (TestAP5_*PostRemovalReject 真守) | grep | `grep -nE 'IsChannelMember.*&&.*CanAccessChannel\|CanAccessChannel.*&&.*IsChannelMember' packages/server-go/internal/api/*.go \| grep -v _test.go` 0 hit + `grep -nE '!.*IsChannelMember.*\|\|.*!.*CanAccessChannel' packages/server-go/internal/api/*.go \| grep -v _test.go \| wc -l` ==3 (messages/dm_4/reactions write 路径) |
+| 3.3 #12 fanoutArchive ↔ fanoutUnarchive 字面差收口 — fanoutChannelStateMessage 单源 helper, channel_archived/channel_unarchived event 名 + verb `关闭于`/`恢复于` + payload key `archived_at`/`unarchived_at` byte-identical caller 传 | grep | `grep -rE 'fanoutChannelStateMessage\(' packages/server-go/internal/api/*.go \| grep -v _test.go \| wc -l` ==2 (archive + unarchive 各 1 调用) |
+| 3.4 飞马 audit #4 / #5 / #9 / #11 部分 / #12 闭; #6 / #11 双层 / #7 audit 反转**撤** spec — 一次做干净不留尾 (用户铁律) | inspect | spec v1 §0 + §3 反向断言 audit 反转 3 处校准 + helper-7 推 REFACTOR-3 新 audit 范畴 (scope 在 internal/ws 不在 internal/api) |
+
+### §4 全清不留账验收 (反约束 + 行为不变量守门)
+
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 4.1 0 endpoint 行为改 — 既有 server-go ./... 全绿 byte-identical (含 TestAP5_*PostRemovalReject 双层 ACL 真守) | full test | `go test -tags sqlite_fts5 -timeout=300s ./...` 24 packages 全 PASS |
 | 4.2 0 migration / 0 schema 改 (`git diff main -- internal/migrations/` 0 行) | git diff | 0 行 |
-| 4.3 0 race-flake — go-test-race + go-test-race-heavy 双轨 PASS, cov ≥85.0% 不降 (TEST-FIX-3-COV #612 立场承袭) | CI verify | go-test-race / go-test-race-heavy / go-test-cov 三 SUCCESS |
-| 4.4 反平行 helper / 反 admin god-mode bypass — 反向 grep `func mustUser\|func decodeJSON\|func loadAgent\|func encodeCursor\|func decodeCursor` 在 internal/api/ 除 chn/+helpers.go count==0 + admin god-mode 反向 grep `admin.*chn\\.GateDM\|admin.*mustUser` 在 admin*.go 0 hit (ADM-0 §1.3 红线) | CI grep | reverse grep tests PASS |
+| 4.3 post-#612 haystack gate 三轨过 — Func=50 / Pkg=70 / Total=85 (TEST-FIX-3-COV #612 立场承袭) | CI verify | `THRESHOLD_FUNC=50 THRESHOLD_PACKAGE=70 THRESHOLD_TOTAL=85 go run ./scripts/lib/coverage/` TOTAL ≥85% no func<50% no pkg<70% |
+| 4.4 反平行 helper / 反 admin god-mode bypass — 4 helper 单源各==1 hit + admin god-mode 反向 grep `admin.*mustUser\|admin.*loadAgentByPath` 在 admin*.go 0 hit (ADM-0 §1.3 红线) | CI grep | 反向 grep tests PASS |
 
-## REG-REFACTOR2-* 占号 (initial ⚪)
+## REG-REFACTOR2-* 占号 (audit 反转后修订)
 
-- REG-REFACTOR2-001 🟢 4 helper 抽出 (mustUser / decodeJSON / loadAgent / cursor wrapper) 全单源, 反向 grep `userFromContext\|json.NewDecoder...Decode\|store.GetAgentByID\|base64...EncodeToString.*Cursor` 在 handler body 除 helper 单源 0 hit
-- REG-REFACTOR2-002 🟢 caller 跟随 boilerplate 100+ 处 0 残留 (`user, ok := userFromContext` body 0, `mustUser(` ≥100 call site) + LoC 净减 ≥500 行
-- REG-REFACTOR2-003 🟢 DM-gate 三错码归一 (`pin.dm_only_path` / `dm.edit_only_in_dm` / `dm_search.q_required` 字面 byte-identical) + chn.GateDM 单源复用 REFACTOR-1 #611 锁链
-- REG-REFACTOR2-004 🟢 IsChannelMember / CanAccessChannel 双 ACL helper 收单源 (chn.GateChannelMember 内部组合, handler body 反向 grep 0 hit) + 飞马 audit #4-#13 全清 (0 留 v2)
-- REG-REFACTOR2-005 🟢 0 endpoint 行为改 + 0 migration / 0 schema + 既有 unit + e2e + vitest 全绿不破 + 0 race-flake (race + race-heavy + cov 三轨 PASS)
-- REG-REFACTOR2-006 🟢 反平行 helper + 反 admin god-mode bypass (ADM-0 §1.3) + 跨 milestone const SSOT 锁链承袭跨九 milestone (BPP-2 + REFACTOR-REASONS + DM-9 + CHN-15 + AP-4-enum + DL-1 + REFACTOR-1 + REFACTOR-2)
+- REG-REFACTOR2-001 🟢 4 helper 抽出 (mustUser / decodeJSON / loadAgentByPath / fanoutChannelStateMessage) 全单源各==1 hit
+- REG-REFACTOR2-002 🟢 caller 跟随 boilerplate (mustUser ≥100 callsites + decodeJSON canonical-shape ≥5 + loadAgentByPath ≥8) + LoC 净减 -137 行 (40 文件 +509 -495)
+- REG-REFACTOR2-003 🟢 DM-gate 双向各自单源 byte-identical (`layout.dm_not_grouped` ≥19 baseline + `dm.edit_only_in_dm` ==7, **audit 反转: 不归一字面**)
+- REG-REFACTOR2-004 🟢 ACL drift #11 部分收口 (artifact_comments OR 折叠, messages/dm_4/reactions write 双层 fail-closed AND 保留 — **audit 反转: 双层是 security correctness 设计不是 drift, TestAP5_*PostRemovalReject 真守**) + #12 fanout 字面差收口
+- REG-REFACTOR2-005 🟢 0 endpoint 行为改 + 0 migration / 0 schema + 既有 24 包 test 全绿不破 (含 TestAP5_*PostRemovalReject)
+- REG-REFACTOR2-006 🟢 post-#612 haystack gate Func=50/Pkg=70/Total=85 三轨 PASS (TOTAL 85.5%) + 反平行 helper + 反 admin god-mode bypass (ADM-0 §1.3) + 跨 milestone const SSOT 锁链承袭
 
 ## 退出条件
 
-- §1 (4) + §2 (3) + §3 (3) + §4 (4) 全绿 — 一票否决
-- 4 helper 全单源 (mustUser / decodeJSON / loadAgent / cursor wrapper)
-- caller boilerplate 100+ 处 0 残留 + LoC 净减 ≥500 行
-- DM-gate 三错码归一 (字面 byte-identical) + ACL 双 helper 收单源 (chn.GateChannelMember)
-- 飞马 audit #4-#13 全清 (0 留 v2)
-- 既有全包 unit + e2e + vitest 全绿不破 + 0 race-flake (race + race-heavy + cov 三轨 PASS)
+- §1 (4) + §2 (5) + §3 (4) + §4 (4) 全绿 — 一票否决
+- 4 helper 全单源 (mustUser / decodeJSON / loadAgentByPath / fanoutChannelStateMessage)
+- caller boilerplate 替换 (mustUser ≥100 + decodeJSON ≥5 canonical-shape + loadAgentByPath ≥8) + LoC 净减 ≥100 行 (实测 -137)
+- DM-gate 双向各自单源 byte-identical (audit 反转: 不归一) + ACL drift #11 部分收口 (audit 反转: 双层保留 fail-closed)
+- 飞马 audit #4 / #5 / #9 / #11 部分 / #12 闭; #6 / #11 双层 / #7 audit 反转**撤** spec (用户拍板批准)
+- 既有全包 unit 全绿不破 + post-#612 haystack gate 三轨 PASS
 - 0 endpoint 行为改 + 0 migration / 0 schema
 - 登记 REG-REFACTOR2-001..006
 
@@ -64,5 +67,6 @@
 
 | 日期 | 作者 | 变化 |
 |---|---|---|
-| 2026-05-01 | 烈马 | v0 — acceptance template 草稿 (4 选 1 验收框架 + REG-REFACTOR2-001..006 6 行占号 ⚪). 立场承袭 REFACTOR-1 #611 (CHN 4 helper 抽取) + 跨九 milestone const SSOT 锁链 (BPP-2 + REFACTOR-REASONS + DM-9 + CHN-15 + AP-4-enum + DL-1 + REFACTOR-1 + REFACTOR-2). 关键: 0 endpoint 行为改 + 0 migration / 0 schema + LoC 净减 ≥500 行 + 飞马 audit #4-#13 全清不留 v2. |
-| 2026-05-01 | 战马C | flip — REG-REFACTOR2-001..006 6 ⚪→🟢 实施验收 PASS. 实测: 4 helper 单源 (mustUser/decodeJSON/loadAgentByPath/fanoutChannelStateMessage 各==1 hit) + 100 mustUser callsites + 5 decodeJSON callsites (canonical-shape only) + 8 loadAgentByPath callsites + ACL drift 部分收口 (artifact_comments OR 折叠, 其他 AND 保留 fail-closed 真守) + LoC 净减 -137 行 (40 文件 +509 -495) + 既有 24 包 test 全 PASS + post-#612 haystack gate TOTAL 85.5% no func<50% no pkg<70%. 留账透明: helper-3 DM-gate 三错码归一 (语义冲突) + helper-5 admin-list (净减 0) + helper-7 cursor-envelope (跨包边界) 留 REFACTOR-3. |
+| 2026-05-01 | 烈马 | v0 — acceptance template 草稿 (4 选 1 验收框架 + REG-REFACTOR2-001..006 6 行占号 ⚪). |
+| 2026-05-01 | 战马C | flip — REG-REFACTOR2-001..006 6 ⚪→🟢 实施验收 PASS. |
+| 2026-05-01 | 烈马 (audit 反转后修订) | v1 — 撤"DM-gate 三错码归一" + "双 ACL 收单源" 立场 (audit 反转 spec 错估 3 处), 改 "DM-gate 双向各自单源 byte-identical 不归一" + "ACL 双层 fail-closed AND 是 security correctness 设计不是 drift". 验收清单 §3 重写 (drift 收口 #11 部分 + #12 fanout). LoC 真值 -137 行 (spec v0 错估 500-700 因 #4 audit 算"5→0"实际"3→1"). helper-7 cursor envelope 推 REFACTOR-3 新 audit 范畴. 退出条件按 v1 真 scope 校准. |
