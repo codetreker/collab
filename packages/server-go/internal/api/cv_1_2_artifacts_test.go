@@ -519,8 +519,12 @@ func mustOrgID(t *testing.T, s *store.Store, email string) string {
 
 func mustHash(t *testing.T, _ string) string {
 	t.Helper()
-	// Reuse a known hash; tests don't validate password content here.
-	return "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6"
+	// TEST-FIX-3-COV PERF: use bcrypt MinCost (cost=4) hash so login compare
+	// runs ~1ms instead of ~65ms (cost=10). Hash for "password123" — same
+	// content, just lower cost factor; tests pass identically. Major slow-test
+	// perf win: cm52SetupTwoAgents seeds 2 agents → 2 login compares = saves
+	// ~130ms per setup, applies to 100+ tests calling seedAgentInChannel.
+	return "$2a$04$vJibaj091YLuvewe7JFGNeaHCbz48jAxzCNmSXVJlwaLESIFs/zSW"
 }
 
 func channelHasSystemMessage(t *testing.T, s *store.Store, channelID, want string) bool {

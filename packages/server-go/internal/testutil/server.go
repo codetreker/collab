@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
 	"borgee-server/internal/server"
 	"borgee-server/internal/store"
@@ -32,6 +33,11 @@ import (
 func init() {
 	os.Setenv("BORGEE_ADMIN_LOGIN", "test-admin")
 	os.Setenv("BORGEE_ADMIN_PASSWORD_HASH", "$2a$10$1TyjYX4YfwjnX5EpcGsH2uY5IUVuZZm4HFZBtMz1m5yBO4qM9Ulr6")
+	// TEST-FIX-3-COV PERF: lower bcrypt cost in tests to MinCost (4) so admin
+	// /users register paths run ~1ms instead of ~150ms (cost=10). Production
+	// keeps cost=10 (var BcryptCost defaults via env BORGEE_TEST_FAST_BCRYPT
+	// not set in production cmd/*). Direct override to bypass env-once init.
+	auth.BcryptCost = bcrypt.MinCost
 }
 
 func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config) {
