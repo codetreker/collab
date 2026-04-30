@@ -10,6 +10,7 @@ package api_test
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"borgee-server/internal/store"
@@ -106,5 +107,53 @@ func TestHB52_OverrideClampsRetention(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("boundary %d: expected 200, got %d", days, resp.StatusCode)
 		}
+	}
+}
+
+// REG-HB5-cov — 401 unauthorized branch.
+func TestHB52_Override_NoAdmin401(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	resp, _ := testutil.JSON(t, http.MethodPost,
+		ts.URL+"/admin-api/v1/heartbeat-retention/override", "",
+		map[string]any{"retention_days": 30})
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("no-token: got 200, want non-200")
+	}
+}
+
+// REG-HB5-cov — invalid JSON body 400.
+func TestHB52_Override_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+	req, _ := http.NewRequest(http.MethodPost,
+		ts.URL+"/admin-api/v1/heartbeat-retention/override",
+		strings.NewReader("not json {"))
+	req.AddCookie(&http.Cookie{Name: "borgee_admin_session", Value: adminToken})
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("invalid-json: got %d, want 400", resp.StatusCode)
+	}
+}
+
+// REG-HB5-cov — TargetUserID specified (covers non-default target branch).
+func TestHB52_Override_WithTargetUserID(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+	resp, _ := testutil.JSON(t, http.MethodPost,
+		ts.URL+"/admin-api/v1/heartbeat-retention/override", adminToken,
+		map[string]any{
+			"retention_days":  30,
+			"target_user_id":  "specific-user-123",
+		})
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("with target: got %d, want 200", resp.StatusCode)
 	}
 }
