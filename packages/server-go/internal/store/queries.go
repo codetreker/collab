@@ -877,7 +877,6 @@ func (s *Store) ListChannelsWithUnread(userID string) ([]ChannelWithCounts, erro
 // state at bit 0) are preserved. Caller validates membership/DM in
 // the handler layer (this function only writes).
 func (s *Store) SetMuteBit(userID, channelID string, bitMask int64, set bool) (int64, error) {
-	// Read current collapsed; default to 0 if no row.
 	var current int64
 	if err := s.db.Raw(`SELECT COALESCE(collapsed, 0)
 		FROM user_channel_layout
@@ -892,7 +891,40 @@ func (s *Store) SetMuteBit(userID, channelID string, bitMask int64, set bool) (i
 	} else {
 		next = current &^ bitMask
 	}
-	// Read existing position so the upsert preserves it; default 0.
+	var pos float64
+	_ = s.db.Raw(`SELECT COALESCE(position, 0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND channel_id = ?`,
+		userID, channelID).Row().Scan(&pos)
+	now := time.Now().UnixMilli()
+	if err := s.db.Exec(`INSERT INTO user_channel_layout
+		(user_id, channel_id, collapsed, position, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(user_id, channel_id) DO UPDATE SET
+		  collapsed  = excluded.collapsed,
+		  updated_at = excluded.updated_at`,
+		userID, channelID, next, pos, now, now).Error; err != nil {
+		return 0, err
+	}
+	return next, nil
+}
+
+// SetNotifPrefBits writes the notification preference for (user, channel)
+// into user_channel_layout.collapsed bits at the given shift/mask, while
+// preserving every other bit. Returns the new collapsed value so handlers
+// can echo it. CHN-8 立场 ① + ③.
+//
+// Caller validates membership/DM in the handler layer.
+func (s *Store) SetNotifPrefBits(userID, channelID string, shift, mask, pref int64) (int64, error) {
+	var current int64
+	if err := s.db.Raw(`SELECT COALESCE(collapsed, 0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND channel_id = ?`,
+		userID, channelID).Row().Scan(&current); err != nil {
+		current = 0
+	}
+	// Clear the pref slot, then OR in the new pref shifted into position.
+	next := (current &^ (mask << shift)) | ((pref & mask) << shift)
 	var pos float64
 	_ = s.db.Raw(`SELECT COALESCE(position, 0)
 		FROM user_channel_layout
@@ -1011,6 +1043,36 @@ func (s *Store) UnpinChannelLayout(userID, channelID string, nowMs int64) (float
 		return 0, err
 	}
 	return newPos, nil
+}
+
+// GetNotifPrefForUser returns the current notification preference for
+// (user, channel) as a int (0/1/2). Used by DL-4 push notifier (立场 ③
+// best-effort skip). No row → returns 0 (NotifPrefAll = 现网行为零变).
+func (s *Store) GetNotifPrefForUser(userID, channelID string, shift, mask int64) (int64, error) {
+	var collapsed int64
+	err := s.db.Raw(`SELECT COALESCE(collapsed, 0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND channel_id = ?`,
+		userID, channelID).Row().Scan(&collapsed)
+	if err != nil {
+		return 0, nil
+	}
+	return (collapsed >> shift) & mask, nil
+}
+
+// GetCollapsedForUser returns the raw collapsed bitmap for a user/channel
+// pair (used by acceptance tests to verify bitmap isolation across CHN-3
+// + CHN-7 + CHN-8 bits without coupling to internal/api package consts).
+func (s *Store) GetCollapsedForUser(userID, channelID string) (int64, error) {
+	var collapsed int64
+	err := s.db.Raw(`SELECT COALESCE(collapsed, 0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND channel_id = ?`,
+		userID, channelID).Row().Scan(&collapsed)
+	if err != nil {
+		return 0, nil
+	}
+	return collapsed, nil
 }
 
 func (s *Store) ListAllChannelsForAdmin(userID string) ([]ChannelWithCounts, error) {

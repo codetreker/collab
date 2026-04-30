@@ -307,6 +307,11 @@ func (s *Server) SetupRoutes() {
 	// path byte-identical 不变 (CHN-2 #406 既有 path 不破).
 	chn10DescHandler := &api.CHN10DescriptionHandler{Store: s.store, Logger: s.logger}
 	chn10DescHandler.RegisterUserRoutes(s.mux, authMw)
+	// CHN-8 channel notification preferences — owner-only PUT three states
+	// (`all`/`mention`/`none`). 0 schema 改 (复用 user_channel_layout.collapsed
+	// bits 2-3 跟 CHN-3 bit 0 + CHN-7 bit 1 拆死). admin god-mode 不挂
+	// (ADM-0 §1.3 红线 — pref 是 per-user preference).
+	channelHandler.RegisterCHN8Routes(s.mux, authMw)
 
 	// DMs
 	dmHandler := &api.DmHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
