@@ -1,73 +1,102 @@
-# PROGRESS — 实施进度打勾
+# Phase 4+ — 剩余模块 (detail)
 
-> **单一进度真相**。任何 milestone / PR / gate 状态变化都更新此文件 (概览) 或对应 `progress/phase-*.md` 子文件 (detail).
->
-> 形式: ✅ DONE / 🔄 IN PROGRESS / ⏳ PENDING (依赖未就绪) / ⏸️ BLOCKED (有阻塞需处理) / TODO (未开工)。
->
-> 更新规则:
-> - PR 合并 → 在对应 `progress/phase-*.md` 子文件行打 ✅, 提交注明 PR 号; 概览表同步翻 (主文件本表)
-> - Phase gate 通过 → 在子文件 gate 行打 ✅, 注明证据 (PR / 截屏路径 / SQL 输出)
-> - 标志性 milestone (⭐) 关闭 → 野马签字一行 (姓名缩写 + 日期) + 关键截屏 3-5 张存 `docs/evidence/<milestone>/`
-> - 每周一由飞马 review 一遍, 落后项标 ⚠️ 并加备注
->
-> **签字回滚条款 (野马 P3 弱采纳)**: ⭐ milestone 关闭后 1 周内, 野马在 dogfood 发现立场稀释可作废重做; 仅 reopen 该 milestone, 不阻塞下一 Phase (飞马 R2). 产品立场底线, 工程节奏不被反复打断.
+> 引自 [PROGRESS.md](../PROGRESS.md) 概览表 Phase 4+ 行 — milestone 翻牌点单源在此. 含 AL/BPP/HB/RT/AP/CM/ADM/DL/CS 9 模块组.
+
+## Phase 4+ — 剩余模块
+
+按需排序。**已知依赖锁紧 (绘制成依赖箭头, 不允许颠倒)**:
+
+```
+DL-4 ──→ HB-1  (plugin manifest API)
+DL-4 ──→ CS-3  (Web Push gateway)
+       (DL-4 必须先于 HB-1/CS-3, 飞马 R2)
+
+BPP-1 ──→ AL-2a ──→ AL-2b ╲
+   │                       ╲
+   ╰──→ ─────────────→ BPP-3 (AL-2b 与 BPP-3 同 PR 合)
+
+CM-4 ─┬→ CM-5 (agent↔agent, 新增, 依赖 CM-4 + AP-3)
+      │
+AP-3 ─┘
+```
+
+### agent-lifecycle
+- [x] **AL-2 wrapper** ⭐ agent lifecycle release gate ✅ 4.1 (PR feat/al-2-wrapper): 4 件套 docs (spec ≤80 行 + stance 70 + acceptance 65) + `docs/release/agent-lifecycle-release-gate.md` ≥10 硬条件清单 (5-state graph reflect + reason 字典锁链 ≥10 处 byte-identical 跨 milestone + 不另起第 7 reason + 不挂 connecting 持久态 BPP-5 立场承袭 + AL-1.4/AL-2a/AL-2b 真测复用 + busy/idle BPP source 锁 + AL/HB 字典分立 + no-bypass + no-admin-godmode-al + AL/HB yml 拆独立) + `.github/workflows/al-release-gate.yml` ≥12 step CI workflow (跟 HB-4 release-gate.yml **拆独立 yml** — host 层 vs runtime 层守门拆死, 跟 HB-3 字典分立同立场承袭); **drift 防御链 release-time 收口** (reason 字典锁链跨 10+ milestone 真守门 + BPP-5 立场承袭 release 前 verify + AL/HB stack audit 字典分立). 4.2 野马签字 ⏸️ deferred 留账 release 前补 3 张截屏 (5-state UI / error→online 反向链 / busy/idle BPP frame 触发).
+- [x] **AL-1** 状态四态扩展 ✅ Phase 4 wrapper milestone — 战马D 实施 (一 milestone 一 PR 整闭): schema agent_state_log v=25 + state machine validator (5-state graph + 6 reason 第 8 处单测锁链 byte-identical 跟 AL-1a 同源) + AppendAgentStateTransition single-gate helper (立场 ② state machine 单源) + GET /api/v1/agents/:id/state-log owner-only endpoint + 20 unit tests + 11 acceptance items 全 ✅; AL-1a (#249 三态+6 reason) ✅ + AL-1b (#453/#457/#462 5-state busy/idle) ✅ + BPP-2.2 (#485 task lifecycle frame) ✅ 前置就位; ⏸️ follow-up: dispatcher wire (BPP-2.2 frame → audit 自动写) + presence wire + client UI + e2e
+  - [x] **AL-1a** online/offline + error 旁路 + 6 reason codes (PR #249, Phase 2 起步, 蓝图 §2.3 R3 锁)
+  - [x] **AL-1b** busy/idle 三段全闭 ✅ (#453 schema v=21 + #457 server 5-state 合并 GET + BPP 单源 PATCH 405 + #462 client SPA PresenceDot 5-state describeAgentState, 跟 BPP-2 #460 同期 stub — task_started/task_finished frame 真接管 BPP-2.2 落地后切)
+  - [x] **AL-1.4 wrapper** state machine validator + agent_state_log v=25 + GET /api/v1/agents/:id/state-log owner-only — 本 PR 整闭 ✅
+- [x] **AL-2a** config 表 + update API ✅ 三段全闭 (PR #480 merged 7a0c69b): schema v=20 #447 (agent_configs PK 单 agent_id + blob TEXT JSON SSOT) + 4 件套 #264 acceptance / #454 stance+content-lock + AL-2a.2 server PATCH /api/v1/agents/:id/config + AgentConfigPusher interface (nil-safe, 跟 AL-2b 跨 milestone 依赖 schema 锁) + AL-2a.3 client AgentConfigPanel mount + REG-AL2A-001..007 7🟢 + 八处单测锁 sync (#481 ack 加入 7+8); production wiring `Pusher: s.hub` 在 #481 AL-2b merge 时自然落
+- [x] **AL-2b** BPP agent_config 双向 frame ✅ 五段全闭 (PR #481 merged 225e739): frame schema 7+7 字段 byte-identical (status CHECK 三态 + direction lock) + hub.PushAgentConfigUpdate (server→plugin) + ack dispatcher (interface seam + 4-step validation + reason 第 8 处链) + api PATCH fanout (idempotency_key deterministic) + spec sync byte-identical; plugin read loop ack ingress ⏸️ deferred → BPP-3 (调研结论: plugin.go RPC envelope vs BPP frame 不同 wire, 需 BPP-3 plugin connection lifecycle 建统一 dispatcher 边界)
+- [x] **AL-3** presence 完整版 ✅ (复用 PresenceTracker IsOnline + Sessions 接口, #277 stub → 真实施)
+  - [x] **AL-3.1** schema (presence_sessions 表, v=12) (PR #310 merged)
+  - [x] **AL-3.2** server hub WS lifecycle hook (PR #317 merged)
+  - [x] **AL-3.3** client UI presence dot (PR #324 + #327 follow-up merged)
+- [x] **AL-4** runtime registry — 4 件套全 merged + 三段全闭: spec #313 v0/#379 v2 / acceptance #318 / stance #319 / 文案锁 #321; AL-4.1 ✅ #398 (1327c82) schema v=16 / AL-4.2 ✅ #414 (ef7d124) server registry + start/stop API + heartbeat / AL-4.3 ✅ #417 (275dfb8) client SPA agent settings runtime 启停 UI + #427 acceptance §3 + G2.7 demo screenshot follow-up
+  - [x] **AL-4.1** schema (agent_runtimes 表, v=16) (PR #398 merged 1327c82)
+  - [x] **AL-4.2** server start/stop API + heartbeat hook + admin god-mode (PR #414 merged ef7d124)
+  - [x] **AL-4.3** client SPA agent settings 启停 UI (PR #417 merged 275dfb8 + #427 follow-up)
+
+### plugin-protocol (BPP)
+- [ ] **BPP-1** 协议骨架 + 直连 flag + grep no-runtime + thinking subject 反约束 (工期 2 周)
+- [x] **BPP-2** 抽象语义层 — 4 件套 ✅ (spec `bpp-2-spec.md` + acceptance `bpp-2.md` + 文案锁 `bpp-2-content-lock.md` + stance `bpp-2-stance-checklist.md` 战马E v0 #460 全 land); 实施 PR #485 `feat/bpp-2` 整三段一次合 (新协议 "一 milestone = 一 worktree = 一 PR" #479): BPP-2.1 dispatch 层 + 7 op 白名单 + ActionHandler interface + BPP-2.2 task lifecycle reverse-channel (TaskStarted/TaskFinished + subject 空 reject + outcome 3 态 + reason AL-1a 6 字典 byte-identical 同源) + BPP-2.3 agent_config_update validation + 6 fields 白名单 + ConfigRevTracker 幂等 reload — 三段四件全闭 ⭐ (REG-BPP2-001..017 全 🟢; 26 单测全绿; 7 反约束 grep count==0; bppEnvelopeWhitelist 9→11 扩 BPP-1 #304 reflect lint 自动覆盖); AL-1b busy/idle source 真接管 + AL-2b/BPP-3 SSOT 推送触发留 BPP-3 起步时同期合
+- [x] **BPP-3** plugin 上行 BPP frame 统一 dispatcher 边界 ✅ (PR #489 feat/bpp-3): `internal/bpp/plugin_frame_dispatcher.go` 新 `PluginFrameDispatcher` (Register direction-lock + envelope-whitelist 守 / Route 软跳未知 type 前向兼容) + `AckFrameAdapter` 接 AL-2b `AckDispatcher` (deferred from #481, plugin.go RPC envelope vs BPP frame 拆死) + `internal/api/agent_config_ack_handler.go` 真接 `AgentConfigAckHandlerImpl` (3 status × log path) + `AgentOwnerResolver` (跟 anchor #360 owner-only 同源 store.GetAgent) + `internal/ws/hub.go` 加 `pluginFrameRouter` 字段 + `PluginFrameRouter` interface (跟 ws→bpp 反向 import 守, 同 BPP-2.1 ActionHandler 模式) + `internal/ws/plugin.go` read loop default case 路由 + `internal/server/server.go` 启动 wire-up (`pluginFrameRouterAdapter` ws/bpp PluginSessionContext bridge); 15 dispatcher unit + 5 handler unit 全绿; AL-2b ack 入站三态 (applied/rejected/stale) plugin → server 通路开闸闭环
+  - [x] **BPP-3.1** `permission_denied` frame (server→plugin) — 战马C 一 milestone 一 PR ✅: PermissionDeniedFrame 8 字段 byte-identical 跟蓝图 auth-permissions.md §4.1 row + AP-1 #493 abac.go 403 body (`required_capability` + `current_scope` 跨 PR drift 守); envelope whitelist 12→13 扩; PushPermissionDenied hub method (跟 PushAgentConfigUpdate 同模式 + cursor 共序 跟 RT-1/AL-2b 共一根 sequence); PermissionDeniedPusher interface seam (api 包不 import ws, AP-1 wiring deferred 1-line follow-up); 6 unit + frame_schemas_test count 自动覆盖. REG-BPP31-001..006 全 🟢; AP-1 留账 ⏸️→ in-progress (wiring 待 AP-1 + BPP-3.1 任一 merge 后接).
+  - [x] **BPP-3.2** permission_denied plugin UX 流 — 战马C 一 milestone 一 PR ✅ (4 件套 spec 全闭 c8e37a4 + 77488a0; 三段实施 e61a411 / e47f33d / 本 commit; 蓝图 §1.3 主入口闭环): **3.2.1 server DM dispatch** (`SemanticOpRequestCapabilityGrant` ValidSemanticOps 7→8 + `CapabilityGrantHandler` 调既有 type='system' DM channel + DM body 字面 `"{agent_name} 想 {attempted_action} 但缺权限 {required_capability}"` byte-identical 跟 content-lock §1 + quick_action JSON 5 字段 + capability AP-1 14 const 校验, 5 unit + 反向 grep 守 DM 不另起 channel 类型 + capability hardcode 0 hit) + **3.2.2 owner DM UI 一键 grant** (`POST /api/v1/me/grants` owner-only ACL + scope v1 三层 + action 3-enum {grant, reject, snooze} + reject/snooze v1 audit-only 不持久化 deny list, 5 server unit; `SystemMessageBubble.tsx` 三按钮 DOM 字面 byte-identical 跟 content-lock §3 "授权"/"拒绝"/"稍后" + data-action + data-bpp32-button + 12 同义词反向 grep 禁词 + isBPP32GrantPayload type guard, 10 vitest) + **3.2.3 plugin retry cache** (`RequestRetryCache` in-memory TTL 5min + `MaxPermissionRetries=3` const + `RetryBackoff=30s` 固定退避 + `bpp.retry_exhausted` 错码 byte-identical 跟 content-lock §4, 5 unit + 反向 grep 不复用 BPP-4 watchdog 队列 — 拆三路径) + **server-side full-flow integration test** (agent commit_artifact 无权 → 403 + body BPP routing → owner POST /me/grants → user_permissions 真改 → agent 重试 200, 替代 Playwright e2e 主菜留 plugin SDK 真接入时落). REG-BPP32-001..012 + REG-BPP32-201..205 + REG-BPP32-301 共 17 行 🟢 + REG-BPP32-401 ⏸️ Playwright follow-up. docs/current sync (server/bpp/dispatcher.md §2.1 + server/system-dm.md §4 + client/ui/message.md §4f).
+- [x] **BPP-4** 失联检测 + dead-letter audit log ✅ (PR feat/bpp-4): `internal/bpp/heartbeat_watchdog.go` 新 (30s 单源阈值锁 + 10s ticker + AgentErrorSink interface seam 走 agent.Tracker.SetError; 触发 reason=`network_unreachable` 复用 AL-1a 6-dict **第 9 处单测锁链**承袭, 不另起 reason; markedErr 防重复 spammy + 重连自动清) + `internal/bpp/dead_letter.go` 新 (`bpp.frame_dropped_plugin_offline` log key + DeadLetterAuditEntry 5 字段 schema byte-identical 跟 HB-1/HB-2 audit 三处同源, **不入持久队列** RT-1.3 cursor replay 兜底) + `internal/ws/hub.go` 加 `SnapshotPluginLastSeen` (跟 PluginFrameRouter interface seam 同模式) + `internal/ws/plugin.go` 加 `lastSeenAt` mutex-guarded + `touchLastSeen` 每 inbound frame 刷 + `internal/ws/al_2b_2_agent_config_push.go` 改 (plugin offline → LogFrameDroppedPluginOffline) + `internal/server/server.go` 启动 wire-up `hubLivenessAdapter` ws/bpp 桥; **8 watchdog unit + 4 dead-letter unit 全绿** 含 AST 反向断言 `pendingAcks|retryQueue|deadLetterQueue|ackTimeout` 0 hit (best-effort 立场代码层守); 反约束: 不取消 in-flight + 不动 envelope whitelist + admin god-mode 不入
+- [x] **BPP-5** plugin reconnect handshake + cursor resume 协议化 ✅ (PR feat/bpp-5): `internal/bpp/envelope.go` 改 (FrameTypeBPPReconnectHandshake + ReconnectHandshakeFrame 6 字段 byte-identical `{type, plugin_id, agent_id, last_known_cursor, disconnect_at, reconnect_at}` direction lock plugin→server, **whitelist 13→14**, BPP-1 #304 reflect lint 自动覆盖) + `internal/bpp/reconnect_handler.go` 新 (PluginFrameDispatcher 复用注册; 调 `bpp.ResolveResume(SessionResumeRequest{Mode: incremental, Since: LastKnownCursor}, …)` **复用 RT-1.3 #296 既有 mechanism**, 不另起 sequence; cross-owner reject + cursor 倒退 trust-but-log warn `bpp.reconnect_cursor_regression` (严格 reject 留 v2); 调 `agent.Tracker.Clear` 触发 AL-1 5-state error→online 反向 valid edge, 不另起 connecting 持久态) + `internal/server/server.go` 启动 wire-up (channelScopeAdapter store→bpp 桥, 复用 ownerResolver + agent.Tracker); **9 unit 全绿** (frame schema 3 项 + handler 5 项 + AST scan 反约束 1 项) — AST scan forbidden tokens 锁链延伸 (BPP-4 dead_letter `pendingAcks|retryQueue|deadLetterQueue|ackTimeout` + BPP-5 加 `pendingReconnects|reconnectQueue|deadLetterReconnect`); reason 字典锁链 BPP-5 = **第 10 处** (BPP-2.2 #485 第 7 + AL-2b #481 第 8 + BPP-4 #499 第 9 + BPP-5 第 10, connecting 中间态 reason-less, 不扩第 7 reason 复用 6-dict)
+
+### host-bridge (Borgee Helper)
+- [ ] **HB-1** install-butler (依赖 DL-4)
+- [ ] **HB-2** host-bridge daemon (仅读)
+- [x] **HB-3** 情境化授权 4 类 ✅ (PR feat/hb-3 9b97809+95f3dfa+本 commit): 4 件套 docs (spec ≤80 行 / stance 68 行 / acceptance 64 行 / content-lock 53 行) + `internal/migrations/hb_3_1_host_grants.go` v=27 (host_grants 9 列 / grant_type 4-enum CHECK 跟蓝图 §1.3 字面 byte-identical / ttl_kind 2-enum 跟弹窗 UX 双向锁 / forward-only revoke 不真删行) + `internal/api/host_grants.go` POST/GET/DELETE owner-only ACL (anchor #360) + audit log 5 字段 byte-identical 跟 HB-1/HB-2/BPP-4 dead-letter **跨四 milestone 同源** (改 = 改四处单测锁) + `packages/client/src/components/HostGrantsPanel.tsx` 弹窗 DOM 三按钮 byte-identical (data-action="deny|grant_one_shot|grant_always" + data-hb3-button="danger|primary"); **7 migration unit + 8 server REST unit + 5 client vitest 全绿** 含 AST scan `pendingGrants/grantQueue/deadLetterGrants` 0 hit (best-effort 立场代码层守, BPP-4/5 锁链延伸第 3 处) + AST scan user_permissions reference 0 hit (字典分立反约束); 反约束: 撤销 → revoked_at + daemon 不缓存 (HB-4 §1.5 release gate 第 5 行 < 100ms v1 实现) + admin god-mode 不入 grant (用户主权 蓝图 §1.3 字面). HB-3.2 daemon Rust crate 跟 HB-2 同 PR 真接入 (本 PR 仅锁 contract).
+- [x] **HB-4** ⭐ 4.1 行为不变量 ✅ + 4.2 demo 签字 ⏸️ deferred (PR feat/hb-4): 4 件套 docs (spec a02f1d6 ≤80 行 + stance 67 + acceptance 63) + `docs/release/host-bridge-release-gate.md` ≥10 硬条件清单 (蓝图 §1.5 6 行 byte-identical + 跨 milestone 反约束 4 项 + 反约束守门 4 项 + 信任五支柱 UI 5 项) + `.github/workflows/release-gate.yml` (≥10 step CI workflow, 任一 fail → release block; 含 audit-schema-cross-milestone reflect lint + AST scan 锁链跨三 milestone BPP-4/BPP-5/HB-3 + revoke-latency 真测 + dict-isolation host vs runtime + numeric-singletons BPP-4 30s heartbeat 单源 + no-bypass 反向 grep + no-admin-godmode + startup/dogfood/signature 三 placeholder 留账); audit schema 锁链 HB-4 = **第 5 处** (HB-1+HB-2+BPP-4+HB-3+HB-4 跨五 milestone byte-identical, 改 = 改五处单测锁); ⭐ drift 防御链至 release 收口. 4.2 野马签字 ⏸️ deferred 留账 release 前补 3 张截屏 (五支柱状态页 / 情境授权弹窗 / 撤销后行为).
+
+### realtime
+- [ ] RT-1 (已在 Phase 3)
+- [ ] **RT-2** 离线回放人/agent 拆 (取消 ⭐)
+- [ ] **RT-3** ⭐ 多端全推 + 活物感 + thinking subject 反约束 (升 ⭐, 取代 RT-2)
+
+### auth-permissions (剩余, AP-0 在 Phase 1)
+- [x] **AP-1** ABAC 单 SSOT + capability 白名单 + 严格 403 — 战马C 一 milestone 一 PR ✅ (按 `docs/implementation/modules/ap-1-spec.md` 飞马 v0 spec 三立场对齐): ① **REG-CHN1-007 ⏸️→🟢** `internal/api/channels.go::handleGetChannel` 404→403 flip (非 member 严格 403, 不再 404 隐藏存在性, 跟 GitHub repo 私有路径同模式) + 3 处 e2e flip; ② `internal/auth/abac.go::HasCapability(ctx, perm, scope) bool` 单 SSOT helper (agent 不享 (*,*) 短路 / human 享 wildcard / 跨 scope 严格); ③ `internal/auth/capabilities.go` const 白名单 14 项 byte-identical 跟 spec §1 ③; 真路由 wired POST /api/v1/artifacts/{id}/commits 用 `auth.HasCapability(ctx, auth.CommitArtifact, ...)` (POC); 反约束 grep 单测守 spec §2 #1 (`HasCapability("..."` hardcode 0 hit). 不在范围 (spec §5): expires_at runtime check (schema slot 留 v=24 migration, 业务化 v2+) / bundle UI / cross-org AP-3 / permission_denied BPP frame. REG-CHN1-007 + REG-AP1-001..007 + REG-AP1-101..104 共 11 行 🟢 + 1 flip ⏸️→🟢.
+- [ ] **AP-2** UI bundle (无角色名)
+- [x] **AP-3** 跨 org owner-only 强制 (PR #521 merged)
+- [x] **AP-4-enum** capability 清单 enum 化 + reflect-lint 单源 — 战马 / 飞马 / 烈马 一 milestone 一 PR ✅ (按 `docs/implementation/modules/ap-4-enum-spec.md` v0 三立场对齐, wrapper milestone 复用 AP-1 #493 capabilities.go 14 const byte-identical 不动, **0 schema 改 + 0 endpoint 加**): 4 件套 spec/stance/acceptance/content-lock 全闭 + AP-4-enum.1 `var ALL = []string{...}` ordered slice + `func init()` 自动 rebuild Capabilities map + `IsValidCapability(name)` helper 单源 (reasons.IsValid #496 SSOT 包同精神, 7 unit `capabilities_lint_test.go` PASS — TestAP4E1_ALL_OrderedByteIdentical + Capabilities_AutoBuildFromAll + ALL_Length14 + reflect_lint_NoOrphanConst + reflect_lint_NoExtraInMap + NoAdminGodModeInALL + IsValidCapability_TruthTable) + AP-4-enum.2 handler 路径替换 (capability_grant.go + me_grants.go 既有 `auth.Capabilities[name]` → `auth.IsValidCapability(name)` 走 helper 单源) + `.github/workflows/release-gate.yml` 加 step `ap4enum-no-hardcode-capability` (跟 BPP-4 AST scan / HB-3 dict-isolation 同模式, 4 反向 grep CI 守门: HasCapability hardcode 0 hit + auth.Capabilities[ direct 0 hit + Capabilities map literal mutate 0 hit + admin god-mode 字面禁) + 4 unit `ap_4_enum_reverse_grep_test.go` PASS — TestAP4E2_HandlerHelperOnly + ReverseGrep_HardcodeCapability + ReverseGrep_DirectMapAccess + CIWorkflowStepExists. 立场 3 项: ① ALL slice + init 自动 rebuild SSOT (改 capability = 改 ALL 一处, reflect-lint 单测立刻 fail) + ② 反向 grep CI 守门 hardcode 0 hit (production code 必走 const, _test.go 白名单) + ③ IsValidCapability helper 单源 (handler 不准直查 map). 命名澄清: 跟 AP-4 #551 reactions ACL 共用 AP-4 标号双义解锁, 文件名 ap-4-enum-*.md 避漂. 不在范围: enum schema migration (string SSOT 不入 DB enum) / capability bundle UI (留 AP-N) / generic auth analyzer (v3+) / admin god-mode capability (永久不挂 ADM-0 §1.3 红线) / ABAC condition time/ip (v2+). 跨 milestone byte-identical 锁链: AP-1 #493 14 const 字面 unchanged + reasons.IsValid #496 SSOT 包同模式 + BPP-4 / HB-3 release-gate AST scan + ADM-0 §1.3 红线. REG-AP4ENUM-001..006 共 **6 行 🟢**. docs/current sync (server/auth.md §capabilities-enum + ALL slice 字面引用).
+
+### concept-model 补
+- [x] **CM-5** agent 间独立协作 (新增, X2 冲突裁决) — Phase 4 第二个 milestone, 三段全闭 ✅: spec #463 (5 立场 + 3 拆段 + 4 行黑名单) + CM-5.1 反约束 grep #473 (cm5stance/cm_5_1_anti_constraints_test.go 5 cases AST walk + go/parser) + CM-5.2 server 端到端 #476 (cm_5_2_agent_to_agent_test.go 5 cases) + CM-5.3 client SPA stacked into #476 (lib/cm5-toast.ts X2 toast 字面锁 byte-identical `正在被 agent {name} 处理` + `data-cm5-collab-link` DOM hover anchor + 6 cm-5-content-lock.test.ts cases + e2e cm-5-x2-collab.spec.ts + screenshot). 立场关键: **0 行 server 实施代码新增** (走人协作 path 不裂表). REG-CM5-001..005 全 🟢.
+
+### admin-model
+- [x] **ADM-1** 用户隐私承诺页 ✅ Phase 4 启动 milestone — 战马B 实施 #455 + 战马D e2e/截屏 #459 (3 cases PASS, `g4.1-adm1-{privacy-promise,privacy-table}.png` 入 git, REG-ADM1-001..006 6 🟢; 联签 ADM-2 留账)
+- [x] **ADM-2** 分层透明 audit + impersonate ✅ (取消 ⭐, 野马 R2 — 普通用户无感; 内部 milestone 烈马代签) — 战马D 实施 #484 (一 milestone 一 PR 整闭): admin_actions schema v=22 + impersonation_grants schema v=23 + 5 REST endpoints (双 GET + 业主授权 CRUD) + 4/5 admin handler audit hook (start_impersonation 留 follow-up) + system DM 5 模板字面 byte-identical + client UI (BannerImpersonate.tsx + AdminActionsList.tsx + ImpersonateGrantSection.tsx) + 71 unit tests PASS + coverage 85.1%; REG-ADM2-001..009 9 🟢; ADM-1 #464 deferred 2 行 (admin 写动作 system DM admin_name 非 raw UUID) ⏸️→✅ 兑现; ⏸️ follow-up: REG-ADM2-010 (grant 校验 wire) + REG-ADM2-011 (admin SPA audit-log 页 + e2e + G4.2 双截屏)
+- [ ] **ADM-3** 来源 C 混合
+
+### data-layer (剩余, INFRA-1 在 Phase 0)
+- [ ] **DL-1** 接口抽象 (A 必修)
+- [ ] **DL-2** events 双流 + retention
+- [ ] **DL-3** 阈值哨
+- [x] **DL-4** server-side services (PWA Web App Manifest + Web Push subscriptions + VAPID gateway + mention fan-out hook) — must-fix 收口 (PR #490, 一 milestone 一 PR; 7 段 6/7 实施 + 1 ⏸️ AgentTaskNotifier RT-3.2 派生 hook 待 BPP-2.2 plugin 上行落地)
+
+### client-shape
+- [ ] **CS-1** 三栏 + Artifact 分级
+- [ ] **CS-2** 故障三态 + 乐观缓存
+- [ ] **CS-3** Mobile PWA (依赖 DL-4)
+
+### infra (元 milestone, Phase 4+ wrapper)
+- [x] **INFRA-3** PROGRESS.md 拆分 ✅ 整 milestone 一 PR (4 件套 + 5 子文件实拆 + CI line-budget 守门): spec `infra-3-spec.md` v1 (3 立场 + 5 反向 grep + 3 段) + stance + acceptance + content-lock 不适用 (非 UI). INFRA-3.1 主 PROGRESS.md 359→73 行 (≤100) + 5 phase 子文件实拆 (`progress/phase-{0,1,2,3,4}.md` 27/29/78/63/148 行 含 phase-4.md §更新日志归档 56 行历史 changelog 全量迁) + INFRA-3.2 .gitattributes merge=union 扩 5 子文件 (跟 regression-registry #560 + PROGRESS.md 既有同精神扩) + release-gate.yml 加 step `progress-line-budget` 5 sub-check (单行 ≤200 字符 / 总行 ≤100 / 5 子文件存在 / 主文件 0 checkbox / 跳转锚 ≥5) + INFRA-3.3 closure (REG-INFRA3-001..005 5 🟢). 立场 5 项: ① 主 ≤100 行 + 行 ≤200 字符 (反战马 1500+ 字符 commit 塞主) + ② 5 子文件每 Phase 一文件 (用户拍板 byte-identical, 不裂 changelog/ 子目录) + ③ 翻牌机制不变 (单源切路径, 主文件 0 checkbox) + ④ .gitattributes merge=union 扩 (并发翻牌不撞 conflict) + ⑤ CI 守门链第 5 处 (跟 BPP-4 AST scan / HB-3 dict-isolation / AP-4-enum / HB-4 audit-schema 同模式). 跨 milestone byte-identical 锁链: regression-registry merge=union (#560) + 既有 PROGRESS.md merge=union 扩 5 行 + release-gate.yml step 链第 5 处. 不在范围: changelog/<milestone>.md 外迁 (用户拍板) / 翻牌机制改 / regression-registry 拆 / 模块组目录 (用户拒绝). 0 server / 0 schema / 0 endpoint, **真 infra refactor** (5 子文件实拆 + CI step 加锁 + .gitattributes 5 行扩 — 非 docs-only).
+
+**G4.audit (滚动)**: 每个模块完成时更新 v0 代码债 audit 行; 全部完成时总表无 TODO — 飞马
 
 ---
 
-## Phase 概览
-
-| Phase | 状态 | 退出条件 | 备注 |
-|-------|------|---------|------|
-| Phase 0 基建闭环 | ✅ DONE | G0.1+G0.2+G0.3+G0.audit 全过 (G0.4/G0.5 软 gate, 不卡退出) | 起步; 含 INFRA-1a/1b 拆分; 实际 5 PR (#169-#173) 一日完成. detail → [`progress/phase-0.md`](progress/phase-0.md) |
-| Phase 1 身份闭环 | ✅ DONE | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 + CM-3 全 merged; G1 全签 #210, G1.4 closed by #208 + #210. detail → [`progress/phase-1.md`](progress/phase-1.md) |
-| Phase 2 协作闭环 ⭐ | ✅ DONE | 4 角色联签 + 5+1 闸 SIGNED | closure #284; 锚 `phase-2-exit-announcement.md`. → [`phase-2.md`](progress/phase-2.md) |
-| Phase 3 第二维度产品 | ✅ DONE | 11 milestone + G3.1-G3.4 + G3.audit | RT-1/CHN-1/AL-3/CV-1/CV-2/3/4/CHN-2/3/4/DM-2/AL-4 全 ✅; G3 evidence #442. → [`phase-3.md`](progress/phase-3.md) |
-| Phase 4+ 剩余模块 | 🔄 IN PROGRESS | 各模块自身完成判定 + G4.audit | Phase 4/5/6 同期推; **in-flight**: HB-1 #589 / CV-15 #592 / INFRA-3 (本 PR) / CS-1 占位. detail → [`progress/phase-4.md`](progress/phase-4.md) |
-
 ---
 
-## In-flight 当前状态 (≤10 行)
+## 更新日志归档 (历史 changelog 全量迁移自 PROGRESS.md §更新日志)
 
-- **CV-15** #592 — artifact comment edit history audit (rebased, CI race retry 中)
-- **HB-1** #589 — install-butler crate (rebase scope)
-- **INFRA-3** (本 PR) — PROGRESS.md 拆分 (主 ≤100 行 + 5 phase 子文件 + CI line-budget 守门)
-- **CS-1** — 三栏 + Artifact 分级 (worktree 已建, 占位待 INFRA-3 后接)
-
----
-
-## 子文件跳转
-
-- Phase 0 detail → [`progress/phase-0.md`](progress/phase-0.md) — INFRA-1a/1b + G0.* 闸
-- Phase 1 detail → [`progress/phase-1.md`](progress/phase-1.md) — CM-1 / AP-0 / CM-3 + G1.* 闸
-- Phase 2 detail → [`progress/phase-2.md`](progress/phase-2.md) — 解封前置 + CM-4 + G2.* 闸 + closure #284
-- Phase 3 detail → [`progress/phase-3.md`](progress/phase-3.md) — 11 milestone + G3.* 闸 + 野马 CV-1 签字
-- Phase 4+ detail → [`progress/phase-4.md`](progress/phase-4.md) — AL/BPP/HB/RT/AP/CM/ADM/DL/CS 9 模块组 + 历史 changelog 归档
-
----
-
-## v0 → v1 切换
-
-参见 [`README.md`](README.md) 切换 checklist。完成日期: ___
-
----
-
-## 更新日志 (近期 ≤20 行, 历史归档见 [`progress/phase-4.md`](progress/phase-4.md) §更新日志归档)
+## 更新日志 (本文件)
 
 | 日期 | 更新人 | 变化 |
 |------|--------|------|
-| 2026-04-30 | 战马C | INFRA-3 PROGRESS 拆分 (本 PR) — 359 → ≤100 行 + 5 phase 子文件 + CI line-budget. |
-| 2026-04-30 | 战马 | CV-15 #592 artifact comment edit history audit ✅ (架构发现: 0 schema 改 复用 messages.edit_history DM-7.1 v=34, 反 v=45). |
-| 2026-04-30 | 战马C | CHN-15 channel readonly toggle ✅ (PR #587, bitmap bit 4 复用 user_channel_layout.collapsed 0 schema, owner-only ACL 锁链第 21 处). |
-| 2026-04-30 | 战马D | AL-8 audit retention 互补 ✅ (PR #538, 0 schema / 0 新 endpoint, AL-7 archived_at 复用). |
-| 2026-04-30 | 战马D | AL-7 audit retention + archive ✅ (PR #536, 14d retention sweeper + admin override, audit forward-only 锁链第 6 处). |
-| 2026-04-30 | 战马D | BPP-7/BPP-8/CV-4 v2 系列 (Phase 6 plugin SDK + lifecycle audit + canvas iteration history). |
-| 2026-04-29 | 战马D | DM-3/DM-4 多端同步 + REFACTOR-REASONS AL-1a 6 错误码 SSOT (PR #492). |
-| 2026-04-29 | 烈马 | G3.1/G3.2/G3.4 acceptance signoff ✅ + G3.3 ⭐ 野马签字 (#403). |
-| 2026-04-29 | 飞马 | Phase 3 详细段 stale flip — CHN-1/RT-1/CV-1/AL-3/AL-4 全 ✅ 翻牌. |
-| 2026-04-29 | 战马A | CV-1 三段四件全闭 (#334+#342+#346+#348). |
-| 2026-04-28 | 飞马 | Phase 概览 flip: Phase 2 → ✅ DONE (closure #284). |
-| 2026-04-28 | 烈马 | Phase 0 闭环 + Phase 1 收口. |
-| 2026-04-27 | team-lead | R2 review 落 20 项. |
 | (init) | team-lead | 初版打勾 skeleton 建立 |
 | 2026-04-27 | team-lead | 4 人 review 后改: 加 CM-5 / AL-2 拆 a/b / RT-1 移 Phase 3 / RT-3 升 ⭐ / DL-4 收口 / 每 Phase audit gate / 签字回滚条款 / 4.1+4.2 双挂规则 |
 | 2026-04-27 | team-lead | R2 review 落 20 项: Phase 0 工期 2 周 / G2.5 触发点 stub / 闸 5 覆盖率收紧 / 跨模块 PR 拆契约+实现 / CM-4.4 PR 与签字解耦 / Sessions 多端压测留 AL-3 / thinking subject 挪 BPP-2 / DL-4 头部排序锁 / ADM-2 取消 ⭐ / G3.4 加 chat+artifact 双 tab / G2.4 加 subject 文案 + agent↔agent 口播 / HB-4 测量基准锁 / CV-4 timer 单测 + 5s 不刷新 / blueprint §1.3 加协作语义边界 / presence 路径 internal/presence/contract.go / 签字回滚仅 reopen milestone |
@@ -120,6 +149,3 @@
 | 2026-04-30 | 战马E | CV-14 整 milestone 一 PR (Phase 5+ — artifact comment unread count badge, **0 server production code** 复用 useArtifactCommentAdded CV-5 #530 既有 WS hook; 跟 CV-9..13 / DM-5..6 / AP-4 / AP-5 0-server client-only 同模式): spec brief `cv-14-spec.md` 60 行 (≤80) + stance `cv-14-stance-checklist.md` 60 行 + acceptance `cv-14.md` 41 行 + content-lock `cv-14-content-lock.md` (文案 + DOM SSOT 单源). CV-14.1 server 反向断言 0 production diff (复用 ws.ArtifactCommentAddedFrame CV-5 #530 + useArtifactCommentAdded WS hook) + CV-14.2 client (`packages/client/src/components/CommentUnreadBadge.tsx` 新组件 — 订阅 useArtifactCommentAdded + filter `sender_id !== currentUserId` 不计自己 + count > 99 → "99+" overflow + click reset; 7 vitest PASS — ZeroNotRendered + OtherSenderIncrements + SelfSenderNotCounted + Overflow99Plus + ClickResets + DOMAttrs + NoStorageWrite) + CV-14.3 closure (REG-CV14-001..005 5 🟢; 总计 387→392 / active 361→366 / pending 26 不变). 立场 5 项: ① 0 server production code (反向断言 git diff 0 行) + ② 跟 CV-9 mention badge 共存 (mention 走 CV-9 既有, mention=更强 signal, mention comment 同时计入两 badge 是预期行为) + ③ thinking 5-pattern 锁链第 10 处 (RT-3+DM-3+DM-4+CV-7+CV-8+CV-9+CV-11+CV-12+CV-13+CV-14) + ④ 文案 byte-identical 3 字面 (${N} 条新评论 中文模板 + 99+ overflow + zero-state null) + ⑤ DOM 2 data-attr (data-cv14-comment-unread-badge + data-cv14-unread-count). 跨 milestone byte-identical 锁链: CV-5 #530 ArtifactCommentAddedFrame WS hook + CV-9 #539 ArtifactCommentsMentionBadge 共存 + CV-13 #557 props-driven 同模式 + Sidebar.tsx unread-badge 99+ overflow 同精神 + thinking 锁链第 10 处 + ADM-0 §1.3 红线. 不在范围: persistent unread 跨 reload (留 v2 复用 channel.unread_count) / admin god-mode unread (永久不挂) / desktop notification (DL-4 路径) / schema 改 / 新 endpoint / unread per-comment highlight (留 v3). vitest 64 files / 477 tests 全 PASS + typecheck 全绿 + git diff origin/main -- packages/server-go/ 0 行验证. |
 | 2026-04-30 | 战马E | DM-9 整 milestone 一 PR (Phase 5+ — DM message emoji picker, **0 server production code + 0 schema 改 反 v=39 硬锁** 复用 CV-7 #535 PUT /api/v1/messages/{id}/reactions + AP-4 #551 ACL gate; 跟 CV-9..14 / DM-5..6 / AP-4..5 同模式): spec brief `dm-9-spec.md` 70 行 + stance + acceptance + content-lock (5 emoji preset + 文案 + DOM SSOT 三轨字面). DM-9.1 server 反向断言 0 行 + 反 v=39 schema 硬锁 + DM-9.2 client (`packages/client/src/components/EmojiPickerPopover.tsx` 新组件 — 5 emoji preset 顺序 byte-identical 👍 ❤️ 😄 🎉 🚀 + toggle + Escape/outside-click 关 popover + click → addReaction + onChanged callback; 8 vitest PASS — ToggleByteIdentical + DefaultClosed + OpenAndPresetOrder + EmojiClickTriggersAddReaction + EscapeCloses + OutsideClickCloses + DOMAttrs + NoStorageWrite) + DM-9.3 closure (REG-DM9-001..005 5 🟢; 总计 392→397). 立场 5 项: ① 0 server production code (反 v=39 schema 硬锁, 既有 reactions 表 + endpoint 已盖) + ② 5-emoji preset byte-identical 顺序 + ③ thinking 5-pattern 锁链第 11 处 (RT-3+DM-3+DM-4+CV-7+CV-8+CV-9+CV-11+CV-12+CV-13+CV-14+DM-9) + ④ DOM 4 data-attr (toggle + popover + 5 option + open 状态) + ⑤ 跟 DM-5 ReactionSummary 互斥共存 (picker=加新, ReactionSummary=显示+toggle, click 后 onChanged callback). 跨 milestone byte-identical 锁链: CV-7 #535 PUT reactions endpoint + AP-4 #551 ACL gate + DM-5 #549 ReactionSummary 视觉互补 + CV-7 ArtifactCommentItem 不另起 picker 反约束 (DM-9 今天补) + thinking 锁链第 11 处 + ADM-0 §1.3 红线. 不在范围: custom emoji upload (v3) / search filter / admin god-mode (永久) / schema 改 / v=39 migration (反硬锁) / skin tone (v2). vitest 70 files / 510 tests 全 PASS + typecheck 全绿 + git diff origin/main -- packages/server-go/ 0 行 + 反 v=39 grep 0 hit 验证. |
 | 2026-04-30 | 战马E | ADM-3 整 milestone 一 PR (Phase 4 admin-model 收尾, BPP-8 #532 名实不符 follow-up, **元数据 RENAME 0 数据迁移 + view backward compat**): spec brief `adm-3-spec.md` 80 行 (飞马 v0 #570 起草) + stance `adm-3-stance-checklist.md` 60 行 + acceptance `adm-3.md` 38 行 + content-lock 不需 (server-only schema). ADM-3.1 schema migration v=43 (`internal/migrations/adm_3_1_audit_events_rename.go` ALTER admin_actions RENAME TO audit_events 元数据 0 数据迁移 + CREATE VIEW admin_actions AS SELECT * FROM audit_events alias backward compat + INSTEAD OF INSERT/UPDATE triggers 路由 view → table; v=43 sequencing post-cv-6 v=36 跟 team-lead 占号 reservation 一致) + ADM-3.2 backward compat 验证 (既有 ADM-2 + BPP-8 + AL-7 + AL-8 unit tests 全 PASS via alias view; AuditEventsTableExists + AdminActionsViewExists + ViewSelectRoundtrip + ViewInsertRoutedToTable + VersionIs43 + Idempotent 6 unit PASS) + ADM-3.3 closure (REG-ADM3-001..005 5 🟢; ADM-0 §1.3 红线扩展段落 ≤5 行 audit-forward-only 单表跨全 actor type 立场写进 docs/blueprint/admin-model.md 实施 PR 顺手). 立场 3 项: ① 表名改 audit_events 单表跨全 actor type (admin + plugin_system + system) + ② alias view backward compat 战马原代码 0 改 (gorm AdminAction.TableName == admin_actions 写通过 INSTEAD OF trigger 路由 audit_events table) + ③ ADM-0 §1.3 红线扩展 audit-forward-only 不可 DELETE/UPDATE + admin 仍走 /admin-api/*. 跨 milestone byte-identical 锁链: ADM-2.1 #484 起源 + BPP-8 #532 plugin lifecycle 名实不符今修 + AL-7.1 archived_at 跟随 RENAME 自动 + AL-7.2 sweeper UPDATE archived_at 走 audit_events 直接 + audit-forward-only 锁链跨 11 处. 不在范围: 字段重设计 (留 v3+) / 函数名 RENAME (留 Phase 5+) / view 删除 (留 Phase 5+ deprecation). server-go TestADM31_* 6 PASS + 全 25 packages 全绿 (+sqlite_fts5 tag) 含 ADM-2/BPP-8/AL-7 backward compat 验证. |
-| 2026-04-30 | 战马E | RT-3 ⭐ 整 milestone 一 PR (Phase 4 退出闸阻塞项 — multi-device fanout + 活物感 + thinking subject 反约束; RT-3.1 frame schema 已在 main + RT-3.2 server派生 hook 本 PR 落地; RT-3.3 client / RT-3.4 DL-4 fallback / RT-3.5 e2e + 5 截屏 demo 留 follow-up): spec brief `rt-3-spec.md` 39 行 (v0 已就位 ≤200) + stance `rt-3-stance-checklist.md` 60 行 + acceptance `rt-3.md` 50 行 + content-lock 不需 (server-only hook). RT-3.2 server派生 hook (`internal/bpp/task_lifecycle_handler.go` 新, BPP-2.2 #485 ValidateTask* SSOT first consumer + AgentTaskPusher 接口 seam 跨 bpp↛ws 包边界 + `internal/server/server.go` HubAgentTaskPusherAdapter 胶水跟 hubLivenessAdapter/channelScopeAdapter 同模式 + pfd.Register FrameTypeBPPTaskStarted/Finished 2 frame 真挂 boot wire). 立场 3 项: ① multi-device fanout 单源 hub.onlineUsers (BroadcastToChannel 自动多端 + cursor RT-3 第 6 个 frame 共序 RT-1.1+CV-2.2+DM-2.2+CV-4.2+AL-2b+RT-3) + ② thinking subject 必带非空 5-pattern 反向 grep 守门 (RT-3 = 锁链第 11 处 源头落地, server 派生侧 fail-closed empty subject reject + 不 push 任何 fallback 字面) + ③ task_started→busy/task_finished outcome 3-enum 透传 reason AL-1a 6-dict (字典污染防御 completed+reason reject; 中间态 partial/paused/pending/starting reject). 跨 milestone byte-identical 锁链: BPP-2.2 #485 ValidateTask* SSOT (RT-3 first consumer) + BPP-3 #489 PluginFrameDispatcher boundary + AL-1a #249 6-dict + RT-1.1 #290 hub.cursors 共序 + P1MultiDeviceWebSocket #197 fanout 模式 + thinking 5-pattern 锁链 RT-3 = 第 11 处 + ADM-0 §1.3 红线. 不在范围: RT-3.3 client UI (wsClient.ts switch + AgentActivityDot.tsx) / RT-3.4 DL-4 Web Push fallback / RT-3.5 e2e 5 case / yema G4.x 5 张 signoff 截屏 demo. server-go ./internal/bpp/ TestRT3_* 11 unit PASS + ./internal/ws/ TestRT3_* 6 既有 unit PASS + ./... 全 25 packages 全绿 (+sqlite_fts5 tag). |
-
-> 完整 changelog 历史 → [`progress/phase-4.md`](progress/phase-4.md) §更新日志归档.
