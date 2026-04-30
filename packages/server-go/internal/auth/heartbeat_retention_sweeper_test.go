@@ -241,3 +241,31 @@ func TestHB52_SweeperFieldOverrides(t *testing.T) {
 		t.Errorf("now override: got %v, want 1700000000000", got.UnixMilli())
 	}
 }
+
+// REG-HB5-cov v3 — Now=nil branch (covers default time.Now() path).
+func TestHB52_NowDefaultBranch(t *testing.T) {
+	t.Parallel()
+	s := &HeartbeatRetentionSweeper{} // Now=nil
+	got := s.now()
+	if got.IsZero() {
+		t.Error("default now() should return non-zero time")
+	}
+}
+
+// REG-HB5-cov v3 — Start with nil store (early return covers nil-safe path).
+func TestHB52_StartNilStoreReturns(t *testing.T) {
+	t.Parallel()
+	s := &HeartbeatRetentionSweeper{} // Store=nil
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	s.Start(ctx) // should return immediately, not panic
+}
+
+// REG-HB5-cov v3 — Start nil receiver (covers s==nil branch).
+func TestHB52_StartNilReceiver(t *testing.T) {
+	t.Parallel()
+	var s *HeartbeatRetentionSweeper
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	s.Start(ctx) // should return immediately
+}
