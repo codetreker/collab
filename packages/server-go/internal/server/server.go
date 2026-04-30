@@ -289,6 +289,9 @@ func (s *Server) SetupRoutes() {
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
 	channelHandler.RegisterRoutes(s.mux, authMw)
+	// CHN-5 archived channels — owner-only user-rail GET + admin-rail readonly
+	// GET (no PATCH/PUT/DELETE on admin path; admin god-mode ADM-0 §1.3 红线).
+	channelHandler.RegisterCHN5Routes(s.mux, authMw)
 	// CHN-7 channel mute/unmute — owner-only user-rail POST/DELETE; 0 schema
 	// 改 (复用 CHN-3.1 user_channel_layout, collapsed bitmap bit 1 = mute).
 	// admin god-mode 不挂 (ADM-0 §1.3 红线 — mute 是 per-user preference).
@@ -318,6 +321,9 @@ func (s *Server) SetupRoutes() {
 	adminMw := admin.RequireAdmin(s.store.DB(), nil)
 	adminHandler := &api.AdminHandler{Store: s.store, Logger: s.logger}
 	adminHandler.RegisterRoutes(s.mux, adminMw)
+	// CHN-5 admin-rail readonly archived channels GET (无 PATCH/PUT/DELETE
+	// — admin god-mode ADM-0 §1.3 红线 — admin 只观察 audit, 不直接改).
+	channelHandler.RegisterCHN5AdminRoutes(s.mux, adminMw)
 	// AL-4.2 admin god-mode metadata read for agent_runtimes (acceptance
 	// §2.6 — read-only white-list, last_error_reason omitted; ADM-0 §1.3
 	// rail isolation + 立场 ⑦ same source).

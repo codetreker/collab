@@ -131,6 +131,14 @@ export async function setChannelVisibility(
   return updateChannel(channelId, { visibility });
 }
 
+// CHN-5: list the user's archived channels (owner-only — server filters
+// to the caller's membership). Single-source API client; components
+// must NOT inline fetch this path (反向 grep守, content-lock §3 立场 ⑤).
+export async function listArchivedChannels(): Promise<Channel[]> {
+  const data = await request<{ channels: Channel[] }>('/api/v1/me/archived-channels');
+  return data.channels;
+}
+
 export async function joinChannel(channelId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/join`, {
     method: 'POST',

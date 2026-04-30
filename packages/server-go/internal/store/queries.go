@@ -930,6 +930,48 @@ func (s *Store) IsMutedForUser(userID, channelID string, muteBit int64) (bool, e
 	return collapsed&muteBit != 0, nil
 }
 
+// ListArchivedChannelsForUser returns the user's archived channels —
+// only channels where the user is a member AND archived_at IS NOT NULL.
+// CHN-5 立场 ② owner-only (cm.user_id = ? 跟 ListChannelsWithUnread 同精
+// 神 + 跨 org 不可见 立场承袭 CM-3 #208). 无 admin god-mode 路径.
+func (s *Store) ListArchivedChannelsForUser(userID string) ([]ChannelWithCounts, error) {
+	var results []ChannelWithCounts
+	err := s.db.Raw(`
+		SELECT c.*,
+			(SELECT COUNT(*) FROM channel_members cm2 WHERE cm2.channel_id = c.id) AS member_count,
+			0 AS unread_count,
+			(SELECT MAX(m2.created_at) FROM messages m2 WHERE m2.channel_id = c.id AND m2.deleted_at IS NULL) AS last_message_at,
+			1 AS is_member
+		FROM channels c
+		INNER JOIN channel_members cm ON cm.channel_id = c.id AND cm.user_id = ?
+		WHERE c.deleted_at IS NULL
+			AND c.archived_at IS NOT NULL
+			AND c.type IN ('channel', 'system')
+		ORDER BY c.archived_at DESC
+	`, userID).Scan(&results).Error
+	return results, err
+}
+
+// ListAllArchivedChannelsForAdmin returns every archived channel across
+// all orgs — admin-rail readonly 视图 (CHN-5 立场 ④). No PATCH/PUT/DELETE
+// path on admin handler — admin god-mode 不挂直接改 (ADM-0 §1.3 红线).
+func (s *Store) ListAllArchivedChannelsForAdmin() ([]ChannelWithCounts, error) {
+	var results []ChannelWithCounts
+	err := s.db.Raw(`
+		SELECT c.*,
+			(SELECT COUNT(*) FROM channel_members cm2 WHERE cm2.channel_id = c.id) AS member_count,
+			0 AS unread_count,
+			(SELECT MAX(m2.created_at) FROM messages m2 WHERE m2.channel_id = c.id AND m2.deleted_at IS NULL) AS last_message_at,
+			0 AS is_member
+		FROM channels c
+		WHERE c.deleted_at IS NULL
+			AND c.archived_at IS NOT NULL
+			AND c.type IN ('channel', 'system')
+		ORDER BY c.archived_at DESC
+	`).Scan(&results).Error
+	return results, err
+}
+
 func (s *Store) ListAllChannelsForAdmin(userID string) ([]ChannelWithCounts, error) {
 	var results []ChannelWithCounts
 	err := s.db.Raw(`
