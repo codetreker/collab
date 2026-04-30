@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies
         run: cd packages/server-go && go mod download
       - name: Run tests with race detector (no coverage)
-        run: cd packages/server-go && go test -timeout=120s -race ./...
+        run: cd packages/server-go && go test -tags sqlite_fts5 -timeout=120s -race ./...
 
   go-test-cov:
     # CI-SPLIT-RACE-COV: coverage-only job, no race. Deterministic coverage
@@ -67,7 +67,7 @@ jobs:
       - name: Install dependencies
         run: cd packages/server-go && go mod download
       - name: Run tests with coverage (no race)
-        run: cd packages/server-go && go test -timeout=120s -coverprofile=coverage.out -coverpkg=borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server ./...
+        run: cd packages/server-go && go test -tags sqlite_fts5 -timeout=120s -coverprofile=coverage.out -coverpkg=borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server ./...
       - name: Check coverage threshold
         run: |
           COVERAGE=$(cd packages/server-go && go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')

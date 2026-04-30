@@ -81,7 +81,7 @@ export default defineConfig({
     {
       // server-go binary: rebuild on each run is cheap (incremental go
       // build is sub-second). Avoids stale binaries on schema changes.
-      command: `go run ./cmd/collab`,
+      command: `go run -tags sqlite_fts5 ./cmd/collab`,
       cwd: path.join(repoRoot, 'packages/server-go'),
       url: `${SERVER_URL}/health`,
       timeout: 60_000,

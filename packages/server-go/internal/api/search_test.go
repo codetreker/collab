@@ -132,6 +132,44 @@ func TestCV62_QueryTooLong400(t *testing.T) {
 	}
 }
 
+// REG-CV6-005b — missing channel_id → 400 (v0 is channel-scoped only).
+func TestCV62_MissingChannelID400(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+
+	resp, data := testutil.JSON(t, "GET", ts.URL+"/api/v1/artifacts/search?q=hello", tok, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("missing channel_id: got %d, want 400 (%v)", resp.StatusCode, data)
+	}
+	errStr, _ := data["error"].(string)
+	if !strings.Contains(errStr, "channel_id") {
+		t.Errorf("error: got %q, want mention of channel_id", errStr)
+	}
+}
+
+// REG-CV6-005c — ?limit= clamp + parse (default 50, cap 200, ignore invalid).
+func TestCV62_LimitClampAndParse(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	chID := cv12General(t, ts.URL, tok)
+
+	// Seed one artifact so query has a hit.
+	testutil.JSON(t, "POST", ts.URL+"/api/v1/channels/"+chID+"/artifacts", tok, map[string]any{
+		"title": "limittoken", "body": "limittoken body",
+	})
+
+	cases := []string{"5", "999", "not_a_number", "0", "-1"}
+	for _, v := range cases {
+		u := searchURL(ts.URL, "limittoken", chID) + "&limit=" + v
+		resp, _ := testutil.JSON(t, "GET", u, tok, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("limit=%q: got %d, want 200", v, resp.StatusCode)
+		}
+	}
+}
+
 // REG-CV6-006 (acceptance §1.6 + 立场 ⑥) — archived artifacts excluded.
 func TestCV62_ArchivedNotInResults(t *testing.T) {
 	t.Parallel()
