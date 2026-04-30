@@ -350,6 +350,12 @@ func (s *Server) SetupRoutes() {
 	// pattern as AP-2 ExpiresSweeper #525. Forward-only soft-archive via
 	// admin_actions.archived_at column (立场 ① 不真删 / 不裂表).
 	(&auth.RetentionSweeper{Store: s.store, Logger: s.logger}).Start(context.Background())
+	// HB-5.2 heartbeat retention sweeper + admin override (复用 AL-7 既有
+	// audit retention override action; metadata target='heartbeat' 字面区分,
+	// 立场 ② 不挂 admin_actions CHECK 第 13 项 enum).
+	hb5HeartbeatRetentionHandler := &api.HB5HeartbeatRetentionHandler{Store: s.store, Logger: s.logger}
+	hb5HeartbeatRetentionHandler.RegisterAdminRoutes(s.mux, adminMw)
+	(&auth.HeartbeatRetentionSweeper{Store: s.store, Logger: s.logger}).Start(context.Background())
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
