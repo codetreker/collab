@@ -1406,6 +1406,8 @@ export async function patchDMMessage(
     throw new Error(`dm/edit ${detail}`);
   }
   return (await resp.json()) as DM4EditResponse;
+}
+
 // ─── CV-5 Artifact comments ─────────────────────────────────
 //
 // Spec: docs/implementation/modules/cv-5-spec.md §0 立场 ① — comment row
