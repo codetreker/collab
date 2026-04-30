@@ -1,0 +1,85 @@
+// DescriptionEditor — CHN-10.3 channel description editor modal.
+// 文案 byte-identical 跟 docs/qa/chn-10-content-lock.md §1.
+import React, { useState } from 'react';
+import { setChannelDescription, DESCRIPTION_MAX_LENGTH } from '../lib/api';
+
+interface Props {
+  channelID: string;
+  initial: string;
+  onSaved: (description: string) => void;
+  onCancel: () => void;
+}
+
+export function DescriptionEditor({ channelID, initial, onSaved, onCancel }: Props) {
+  const [value, setValue] = useState<string>(initial);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<boolean>(false);
+
+  async function handleSave() {
+    if (value.length > DESCRIPTION_MAX_LENGTH) {
+      setError(`频道说明不能超过 ${DESCRIPTION_MAX_LENGTH} 字符`);
+      return;
+    }
+    setBusy(true);
+    try {
+      await setChannelDescription(channelID, value);
+      onSaved(value);
+    } catch {
+      setError('保存频道说明失败');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="description-editor"
+      data-testid="description-editor"
+      role="dialog"
+    >
+      <header className="description-editor-header">
+        <h3>频道说明</h3>
+      </header>
+      <textarea
+        className="description-editor-textarea"
+        data-testid="description-editor-input"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setError(null);
+        }}
+        maxLength={DESCRIPTION_MAX_LENGTH}
+      />
+      <span className="description-editor-counter">
+        {value.length}/{DESCRIPTION_MAX_LENGTH}
+      </span>
+      {error && (
+        <div
+          className="description-editor-error"
+          data-testid="description-editor-error"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+      <div className="description-editor-actions">
+        <button
+          type="button"
+          data-testid="description-save"
+          onClick={handleSave}
+          disabled={busy}
+        >
+          保存
+        </button>
+        <button
+          type="button"
+          data-testid="description-cancel"
+          onClick={onCancel}
+          disabled={busy}
+        >
+          取消
+        </button>
+      </div>
+    </div>
+  );
+}
