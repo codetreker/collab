@@ -132,6 +132,15 @@ func (h *DM4MessageEditHandler) handleEdit(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// AP-5 立场 ① — channel-member ACL gate (跟 AP-4 + messages.go 同模式).
+	// Closes post-removal gap: sender removed from DM channel cannot
+	// PATCH-edit prior messages there. byte-identical "Channel not found"
+	// 404 fail-closed.
+	if !h.Store.IsChannelMember(existing.ChannelID, user.ID) || !h.Store.CanAccessChannel(existing.ChannelID, user.ID) {
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
+		return
+	}
+
 	// 7. owner-only ACL — sender matches caller.
 	if existing.SenderID != user.ID {
 		// 立场 ⑤ owner-only — 跟 AL-2a/BPP-3.2/AL-1/AL-5 owner-only 5 处
