@@ -954,6 +954,17 @@
 | REG-TESTFIX2-002 | test-fix-2-spec §6 — race CI 真兑现 (本地 target test 31s, full api 73.5s, server-go ./... 全 26 packages PASS); 反向 grep `context\.Background\(\)` 在 server.go::New body 0 hit (Background 仅 production main wrap) | `gh pr checks` go-test-race PASS ≤180s + `git grep -n 'context.Background' packages/server-go/internal/server/server.go` 0 hit | 战马C / 飞马 | TBD | 🟢 active |
 | REG-TESTFIX2-003 | test-fix-2-spec §6 — 跨 PR 解锁: 7 卡住 PR (#584/#595/#597/#598/#600/#601/#605) rebase 后 race 自然过 | 7 PR rebase + race PASS (post-merge verify) | 战马C / team-lead | TBD | 🟢 active |
 
+### INFRA-4 phase-4.md 历史 changelog 按 milestone 归位 + 单文件 ≤200 行硬限 (INFRA-3 #594 续作 wrapper milestone, **0 server / 0 schema / 0 endpoint** 真 infra refactor — byte-identical 历史迁移 + CI sub-check ⑥)
+
+> INFRA-4 范围 = §1 phase-4.md line 100-151 历史 changelog 共 51 行 (含 init) 按 milestone 归位 phase-{0,1,2,3}.md §更新日志归档 段 (Phase 0 烈马闭环 → phase-0 / Phase 1 烈马收口 → phase-1 / Phase 2 飞马 D1-D9 → phase-2 / Phase 3 多条 CHN-1/CV-1/RT-1/CHN-3/G3.* → phase-3 / cross-Phase 单条留最晚 Phase / 其他 Phase 4+ 模块组留 phase-4) + §2 phase-4.md 151→143 行 (≤200) + §3 release-gate.yml `progress-line-budget` 加 sub-check ⑥ phase-4.md 单文件 ≤200 行硬限 + §4 closure (REG-INFRA4-001..005). 跨 milestone byte-identical 锁链: 反向 grep 守每行字面在新位置 ≥1 hit (0 missing) + 不破既有外锚 (phase-2-exit-announcement / acceptance-templates 等). CI 守门链第 6 处 (跟 INFRA-3 progress-line-budget 同 step 共 6 sub-check 扩).
+
+| Reg ID | Source | Test path / grep | Owner | Trigger PR | Status |
+|---|---|---|---|---|---|
+| REG-INFRA4-001 | infra-4 立场 ① — phase-4.md 单文件 ≤200 行 (反 phase-4 wrapper milestone 历史 changelog 全堆撑爆) | `release-gate.yml::progress-line-budget` step ⑥ sub-check (`wc -l docs/implementation/progress/phase-4.md ≤ 200`) | 战马 / 飞马 | TBD | 🟢 active |
+| REG-INFRA4-002 | infra-4 立场 ② — 历史 changelog byte-identical 迁移 (不改字面, 只移位置; 反向 grep 守每行字面在新位置 ≥1 hit) | git show HEAD~:phase-4.md line 100-151 每行 grep -F 在 phase-{0,1,2,3,4}.md ≥1 hit (0 missing) | 战马 / 飞马 | TBD | 🟢 active |
+| REG-INFRA4-003 | infra-4 立场 ③ — phase-{0,1,2,3}.md 各加 §更新日志归档 段 (跟 phase-4.md §更新日志归档 同模式, 表头 `\| 日期 \| 更新人 \| 变化 \|` byte-identical) | `grep -c '更新日志归档' docs/implementation/progress/phase-{0,1,2,3}.md` 各 ≥1 | 战马 / 烈马 | TBD | 🟢 active |
+| REG-INFRA4-004 | infra-4 立场 ④ — 跨 Phase 单条 log 选最晚 Phase, 不复制到多 Phase (Phase 概览 flip Phase 2→✅ + Phase 3→🔄 留 phase-3.md / D1-D9 Phase 1+2 flip 留 phase-2.md / Phase 3+Phase 4+ AL-3/4 flip 留 phase-4.md) | grep `Phase 概览 flip: Phase 2 → ✅ DONE` 在 phase-3.md ≥1 + 在 phase-2.md/phase-4.md 0 hit | 战马 / 飞马 | TBD | 🟢 active |
+| REG-INFRA4-005 | infra-4 立场 ⑤ — 不破既有外锚 (phase-2-exit-announcement.md / acceptance-templates/cv-1.md / G3.x signoff 等; 锚到 phase-{0..4}.md 的外链不变) | git diff origin/main -- docs/qa/ docs/release/ docs/blueprint/ 0 行变更 (本 PR 仅改 progress/ + release-gate.yml + regression-registry §INFRA-4 段 + PROGRESS.md 1 行) | 战马 / 飞马 | TBD | 🟢 active |
 
 ### CV-15 artifact comment edit history audit (一 milestone 一 PR — Phase 6+, **0 schema 改**, 复用 messages.edit_history 列 DM-7.1 v=34 既有 + content_type='artifact_comment' filter, 6 🟢)
 
