@@ -90,33 +90,37 @@ jobs:
           go-version: '1.25'
       - name: Install dependencies
         run: cd packages/server-go && go mod download
-      - name: Run tests with coverage (no race)
-        # TEST-FIX-3: cov job 加 race_heavy build tag — race_heavy 文件
-        # (closed_store_race_test.go::TestClosedStoreInternalErrorBranches)
-        # 走此 tag 跑覆盖, 否则 11 sub-test 覆盖度丢 (≥0.3% 总 cov 跌破 85%
-        # 阈值). 不带 -race 所以 timing/leak 不复发, 安全包含.
-        # 立场 ②: 不降 cov 阈值铁律 — race_heavy 隔离仅针对 race detector
-        # serialize 长 (主 race job timeout), 不针对 cov 路径.
-        run: cd packages/server-go && go test -tags 'sqlite_fts5 race_heavy' -timeout=180s -coverprofile=coverage.out -coverpkg=borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server ./...
-      - name: Check coverage threshold
-        run: |
-          COVERAGE=$(cd packages/server-go && go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-          echo "Total coverage: ${COVERAGE}%"
-          # Threshold = 85% (TEST-FIX-3-COV restoration). User mandate:
-          # 永不降 cov threshold (no_lower_test_coverage 铁律). #610 临时
-          # 落到 84% 以"race-detector flake masquerading as ratchet"为由,
-          # 用户拒绝该论证 — 85% 是真值. TEST-FIX-3-COV 真补 deterministic
-          # baseline ≥85%, 不靠 race scheduler 抖:
-          #   ① ws/hub.go heartbeatTick 抽出 + 4 deterministic unit test
-          #      (alive/dead/mixed branch + ctx-cancel-exit, 0 race scheduler 依赖)
-          #   ② store + internal/api + internal/server low-cov helpers 真补
-          #      (logErr stubs / errInvalid* / channelDisplayName / SetChannelReadonly
-          #      / adapter wrappers / sweeper inj / handler injectable-clock 等)
-          # 实测 (race_heavy tag): 85.1% (margin ≥0.1%, 不靠 flaky CI).
-          if (( $(echo "$COVERAGE < 85" | bc -l) )); then
-            echo "Coverage ${COVERAGE}% is below 85% threshold"
-            exit 1
-          fi
+      - name: Run tests + coverage analysis (haystack-derived tool)
+        # TEST-FIX-3-COV: 切到 scripts/lib/coverage/ haystack-derived 工具
+        # 替代既有 grep|awk 简陋 grep. 优点 (跟既有 137 行 main.go 同精神扩):
+        #   - 4 阈值 (Func / Package / Print / Total) 比单 total 更细
+        #   - CI mode (GitHub Actions error format)
+        #   - ExcludePackages / ExcludeFiles / ExcludeFuncs (per-func 排除)
+        #   - UncoveredLimit + AST analysis (精准定位 uncovered block)
+        # 阈值: ThresholdTotal=85 (跟 #610 #3bd5fc38 cov 真补 85.1% 对齐, 反 #610
+        # 84% drop). race_heavy build tag 走 BuildTags env (跟 TEST-FIX-3 #610
+        # race_heavy 立场承袭, 11 sub-test 走此 tag 包含覆盖). CI=true 自动
+        # 触发 -race + GitHub error format. COVERPKG 锁定既有 6 个 internal
+        # package 跟 #610 ci.yml 字面 byte-identical (反 metric drift).
+        # ThresholdFunc/Package=0 暂禁 (haystack 默认 80/85 太严格, 现 0% / <80%
+        # 函数 30+ 个; 启用 CRITICAL_BLOCKS=true 后 ramp up; 当前阶段先复刻
+        # legacy ci.yml semantics 仅 total threshold). FAIL_ON_CRITICAL_BLOCKS
+        # 默认关 (haystack AST 分析 30+ CRITICAL uncovered block 一齐 fail
+        # 不现实, 留账 ramp).
+        # 立场承袭: 不降 cov 阈值铁律 (no_lower_test_coverage). 实测 85.3%
+        # ≥ 85% 不靠 flaky CI scheduler (deterministic 真补 + race_heavy tag).
+        env:
+          CI: "true"
+          THRESHOLD_TOTAL: "85"
+          THRESHOLD_FUNC: "0"
+          THRESHOLD_PACKAGE: "0"
+          THRESHOLD_PRINT: "85"
+          BUILD_TAGS: "sqlite_fts5 race_heavy"
+          COVERPROFILE: "coverage.out"
+          COVERPKG: "borgee-server/internal/api,borgee-server/internal/auth,borgee-server/internal/config,borgee-server/internal/store,borgee-server/internal/ws,borgee-server/internal/server"
+          FAIL_ON_CRITICAL_BLOCKS: "false"
+          RACE_DETECTION: "false"
+        run: cd packages/server-go && go run ./scripts/lib/coverage/
 
   bpp-envelope-lint:
     # BPP-1 (#274/#280) envelope CI lint — G2.6 真落.

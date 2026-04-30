@@ -1,62 +1,82 @@
 package main
 
+// TEST-FIX-3-COV smoke test for haystack-derived coverage tool.
+//
+// Don't actually run `go test` (that would recurse infinitely). Just verify
+// parseConfig honors our env var contract (THRESHOLD_TOTAL / BUILD_TAGS / etc).
+
 import (
-	"strings"
+	"os"
 	"testing"
 )
 
-func TestParseCoverFunc(t *testing.T) {
-	input := strings.NewReader(`collab-server/internal/api/auth.go:35: handleLogin 75.0%
-collab-server/internal/store/queries.go:12: ListUsers 100.0%
-total: (statements) 88.4%
-`)
+func TestParseConfig_DefaultsAndEnvOverrides(t *testing.T) {
+	// Save then restore env to avoid bleeding into other tests.
+	saved := map[string]string{}
+	for _, k := range []string{
+		"CI", "THRESHOLD_FUNC", "THRESHOLD_PACKAGE", "THRESHOLD_PRINT",
+		"THRESHOLD_TOTAL", "UNCOVERED_LIMIT", "EXCLUDE_FUNCS", "BUILD_TAGS",
+		"COVERPROFILE",
+	} {
+		saved[k] = os.Getenv(k)
+		os.Unsetenv(k)
+	}
+	t.Cleanup(func() {
+		for k, v := range saved {
+			if v == "" {
+				os.Unsetenv(k)
+			} else {
+				os.Setenv(k, v)
+			}
+		}
+	})
 
-	funcs, total, err := parseCoverFunc(input)
-	if err != nil {
-		t.Fatalf("parseCoverFunc: %v", err)
+	// Default (CI not set)
+	c := parseConfig()
+	if c.ThresholdTotal != 90.0 {
+		t.Errorf("default ThresholdTotal=90, got %v", c.ThresholdTotal)
 	}
-	if total != 88.4 {
-		t.Fatalf("total: got %.1f", total)
+	if c.CIMode {
+		t.Error("CIMode should be false by default")
 	}
-	if len(funcs) != 2 {
-		t.Fatalf("func count: got %d", len(funcs))
+	if c.RaceDetection {
+		t.Error("RaceDetection should be false by default")
 	}
-	if !funcs[0].Critical {
-		t.Fatalf("expected %s to be critical", funcs[0].Name)
+	if c.BuildTags != "" {
+		t.Errorf("BuildTags should be empty by default, got %q", c.BuildTags)
 	}
-	if funcs[1].Percent != 100 {
-		t.Fatalf("coverage: got %.1f", funcs[1].Percent)
+
+	// CI mode + env overrides
+	os.Setenv("CI", "true")
+	os.Setenv("THRESHOLD_TOTAL", "85")
+	os.Setenv("THRESHOLD_FUNC", "80")
+	os.Setenv("BUILD_TAGS", "sqlite_fts5 race_heavy")
+	os.Setenv("COVERPROFILE", "coverage.out")
+
+	c = parseConfig()
+	if !c.CIMode {
+		t.Error("CIMode should be true when CI=true")
+	}
+	if !c.RaceDetection {
+		t.Error("RaceDetection should be true in CI mode")
+	}
+	if c.ThresholdTotal != 85.0 {
+		t.Errorf("ThresholdTotal env override failed: got %v want 85", c.ThresholdTotal)
+	}
+	if c.ThresholdFunc != 80.0 {
+		t.Errorf("ThresholdFunc env override failed: got %v want 80", c.ThresholdFunc)
+	}
+	if c.BuildTags != "sqlite_fts5 race_heavy" {
+		t.Errorf("BuildTags env override failed: got %q", c.BuildTags)
+	}
+	if c.CoverProfile != "coverage.out" {
+		t.Errorf("CoverProfile env override failed: got %q", c.CoverProfile)
 	}
 }
 
-func TestCoverageHelpers(t *testing.T) {
-	if pct, ok := parsePercent("82.5%"); !ok || pct != 82.5 {
-		t.Fatalf("parsePercent: got %.1f %v", pct, ok)
-	}
-	if _, ok := parsePercent("bad"); ok {
-		t.Fatal("expected invalid percent")
-	}
-	if !isCritical("collab-server/internal/api/messages.go:1:", "handleListMessages") {
-		t.Fatal("expected API handler to be critical")
-	}
-	if isCritical("collab-server/internal/model/model.go:1:", "PlainValue") {
-		t.Fatal("did not expect model value to be critical")
-	}
-}
-
-func TestInputReader(t *testing.T) {
-	reader, closeFn, err := inputReader("-")
-	if err != nil {
-		t.Fatalf("inputReader stdin: %v", err)
-	}
-	closeFn()
-	if reader == nil {
-		t.Fatal("expected stdin reader")
-	}
-
-	_, closeFn, err = inputReader(t.TempDir() + "/missing")
-	closeFn()
-	if err == nil {
-		t.Fatal("expected missing file error")
+func TestModulePrefix_BorgeeServer(t *testing.T) {
+	// Sanity: ensure the haystack→borgee port renamed ModulePrefix.
+	if ModulePrefix != "borgee-server/" {
+		t.Errorf("ModulePrefix should be %q, got %q", "borgee-server/", ModulePrefix)
 	}
 }
