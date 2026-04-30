@@ -292,6 +292,10 @@ func (s *Server) SetupRoutes() {
 	// CHN-5 archived channels — owner-only user-rail GET + admin-rail readonly
 	// GET (no PATCH/PUT/DELETE on admin path; admin god-mode ADM-0 §1.3 红线).
 	channelHandler.RegisterCHN5Routes(s.mux, authMw)
+	// CHN-6 channel pin/unpin — owner-only user-rail POST/DELETE; 0 schema
+	// 改 (复用 CHN-3.1 user_channel_layout, position < 0 = pinned). admin
+	// god-mode 不挂 (ADM-0 §1.3 红线 — pin 是 per-user preference).
+	channelHandler.RegisterCHN6Routes(s.mux, authMw)
 	// CHN-7 channel mute/unmute — owner-only user-rail POST/DELETE; 0 schema
 	// 改 (复用 CHN-3.1 user_channel_layout, collapsed bitmap bit 1 = mute).
 	// admin god-mode 不挂 (ADM-0 §1.3 红线 — mute 是 per-user preference).
