@@ -229,3 +229,83 @@ func TestCHN63_NoChannelPinQueue(t *testing.T) {
 		return nil
 	})
 }
+
+// REG-CHN6-cov — pin 404 channel not found + DM reject + unpin 401/404/non-member.
+func TestCHN61_PinChannel_NotFound404(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	resp, _ := testutil.JSON(t, http.MethodPost,
+		ts.URL+"/api/v1/channels/00000000-0000-0000-0000-000000000000/pin",
+		ownerToken, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("pin 404: got %d, want 404", resp.StatusCode)
+	}
+}
+
+func TestCHN61_PinChannel_DMRejected(t *testing.T) {
+	t.Parallel()
+	ts, s, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	member, _ := s.GetUserByEmail("member@test.com")
+	dm, _ := s.CreateDmChannel(owner.ID, member.ID)
+	resp, body := testutil.JSON(t, http.MethodPost,
+		ts.URL+"/api/v1/channels/"+dm.ID+"/pin", ownerToken, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("DM pin: got %d, want 400", resp.StatusCode)
+	}
+	if got, _ := body["code"].(string); got != "layout.dm_not_grouped" {
+		t.Errorf("DM pin code: got %v, want layout.dm_not_grouped", body["code"])
+	}
+}
+
+func TestCHN61_UnpinChannel_NotFound404(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	resp, _ := testutil.JSON(t, http.MethodDelete,
+		ts.URL+"/api/v1/channels/00000000-0000-0000-0000-000000000000/pin",
+		ownerToken, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("unpin 404: got %d, want 404", resp.StatusCode)
+	}
+}
+
+func TestCHN61_UnpinChannel_Unauthorized401(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	resp, _ := testutil.JSON(t, http.MethodDelete,
+		ts.URL+"/api/v1/channels/some-id/pin", "", nil)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("unpin unauth: got %d, want 401", resp.StatusCode)
+	}
+}
+
+func TestCHN61_UnpinChannel_DMRejected(t *testing.T) {
+	t.Parallel()
+	ts, s, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	owner, _ := s.GetUserByEmail("owner@test.com")
+	member, _ := s.GetUserByEmail("member@test.com")
+	dm, _ := s.CreateDmChannel(owner.ID, member.ID)
+	resp, _ := testutil.JSON(t, http.MethodDelete,
+		ts.URL+"/api/v1/channels/"+dm.ID+"/pin", ownerToken, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("DM unpin: got %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestCHN61_UnpinChannel_NonMemberRejected(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
+	ch := testutil.CreateChannel(t, ts.URL, ownerToken, "unpin-priv", "private")
+	chID := ch["id"].(string)
+	resp, _ := testutil.JSON(t, http.MethodDelete,
+		ts.URL+"/api/v1/channels/"+chID+"/pin", memberToken, nil)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("non-member unpin: got %d, want 403", resp.StatusCode)
+	}
+}
