@@ -18,7 +18,6 @@ beforeEach(async () => {
   // Reset fake IDB between tests
   // @ts-expect-error fake-indexeddb internals
   const { default: FDBFactory } = await import('fake-indexeddb/lib/FDBFactory');
-  // @ts-expect-error overwrite global
   globalThis.indexedDB = new FDBFactory();
 });
 

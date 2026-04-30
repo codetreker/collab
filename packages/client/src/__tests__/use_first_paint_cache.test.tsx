@@ -20,7 +20,6 @@ beforeEach(async () => {
   // Reset fake IDB
   // @ts-expect-error fake-indexeddb internals
   const { default: FDBFactory } = await import('fake-indexeddb/lib/FDBFactory');
-  // @ts-expect-error overwrite global
   globalThis.indexedDB = new FDBFactory();
   // Reset navigator.onLine
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
