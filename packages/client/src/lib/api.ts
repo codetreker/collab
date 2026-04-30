@@ -1670,3 +1670,58 @@ export async function searchArtifacts(
   }
   return (await resp.json()) as SearchArtifactsResponse;
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// CHN-15 (#chn-15): channel readonly toggle — owner-only.
+// ──────────────────────────────────────────────────────────────────────
+
+/**
+ * CHANNEL_READONLY_TOAST — byte-identical 跟 server
+ * `internal/api/chn_15_readonly.go::ChannelErrCodeReadonlyNoSend` const +
+ * `docs/qa/chn-15-content-lock.md` §3 同源.
+ *
+ * 改 = 改三处: server const + 此 map + content-lock §3.
+ */
+export const CHANNEL_READONLY_TOAST: Record<string, string> = {
+  'channel.readonly_no_send': '只读频道, 仅创建者可发言',
+};
+
+export interface ChannelReadonlyResponse {
+  channel_id: string;
+  collapsed: number;
+  readonly: boolean;
+}
+
+/** PUT /api/v1/channels/{id}/readonly — set channel readonly (owner-only). */
+export async function setChannelReadonly(channelID: string): Promise<ChannelReadonlyResponse> {
+  const resp = await fetch(`${BASE}/api/v1/channels/${encodeURIComponent(channelID)}/readonly`, {
+    method: 'PUT',
+    credentials: 'include',
+  });
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body?.error) detail = body.error;
+    } catch { /* ignore */ }
+    throw new Error(`channel/readonly ${detail}`);
+  }
+  return (await resp.json()) as ChannelReadonlyResponse;
+}
+
+/** DELETE /api/v1/channels/{id}/readonly — unset channel readonly (idempotent). */
+export async function unsetChannelReadonly(channelID: string): Promise<ChannelReadonlyResponse> {
+  const resp = await fetch(`${BASE}/api/v1/channels/${encodeURIComponent(channelID)}/readonly`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body?.error) detail = body.error;
+    } catch { /* ignore */ }
+    throw new Error(`channel/readonly ${detail}`);
+  }
+  return (await resp.json()) as ChannelReadonlyResponse;
+}
