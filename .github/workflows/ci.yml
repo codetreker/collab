@@ -97,17 +97,13 @@ jobs:
         #   - CI mode (GitHub Actions error format)
         #   - ExcludePackages / ExcludeFiles / ExcludeFuncs (per-func 排除)
         #   - UncoveredLimit + AST analysis (精准定位 uncovered block)
-        # 阈值: ThresholdTotal=85 (跟 #610 #3bd5fc38 cov 真补 85.1% 对齐, 反 #610
-        # 84% drop). race_heavy build tag 走 BuildTags env (跟 TEST-FIX-3 #610
-        # race_heavy 立场承袭, 11 sub-test 走此 tag 包含覆盖). CI=true 自动
-        # 触发 -race + GitHub error format. COVERPKG 锁定既有 6 个 internal
-        # package 跟 #610 ci.yml 字面 byte-identical (反 metric drift).
-        # ThresholdFunc/Package=0 暂禁 (haystack 默认 80/85 太严格, 现 0% / <80%
-        # 函数 30+ 个; 启用 CRITICAL_BLOCKS=true 后 ramp up; 当前阶段先复刻
-        # legacy ci.yml semantics 仅 total threshold). FAIL_ON_CRITICAL_BLOCKS
-        # 默认关 (haystack AST 分析 30+ CRITICAL uncovered block 一齐 fail
-        # 不现实, 留账 ramp).
-        # 立场承袭: 不降 cov 阈值铁律 (no_lower_test_coverage). 实测 85.3%
+        # 阈值: ThresholdTotal=85 / ThresholdFunc=50 / ThresholdPackage=70
+        # (跟 #612 cov 真补 85.2% 对齐, 反 #610 84% drop). race_heavy build
+        # tag 走 BuildTags env (跟 TEST-FIX-3 #610 race_heavy 立场承袭, 11
+        # sub-test 走此 tag 包含覆盖). CI=true 自动触发 -race + GitHub
+        # error format. FAIL_ON_CRITICAL_BLOCKS 默认关 (haystack AST 分析
+        # 30+ CRITICAL uncovered block 一齐 fail 不现实, 留账 ramp).
+        # 立场承袭: 不降 cov 阈值铁律 (no_lower_test_coverage). 实测 85.2%
         # ≥ 85% 不靠 flaky CI scheduler (deterministic 真补 + race_heavy tag).
         env:
           CI: "true"
