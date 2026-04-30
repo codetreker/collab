@@ -1535,3 +1535,23 @@ export async function getEditHistory(
   }
   return (await resp.json()) as DM7EditHistoryResponse;
 }
+
+// CHN-10: set channel description (owner-only). Server: PUT
+// /api/v1/channels/{channelId}/description body {description}; 500 char
+// upper bound (DESCRIPTION_MAX_LENGTH byte-identical 跟 server const +
+// channels.topic GORM size:500 同源 — 改一处 = 改三处反向锁守门).
+export const DESCRIPTION_MAX_LENGTH = 500;
+
+export async function setChannelDescription(
+  channelId: string,
+  description: string,
+): Promise<Channel> {
+  const data = await request<{ channel: Channel }>(
+    `/api/v1/channels/${encodeURIComponent(channelId)}/description`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ description }),
+    },
+  );
+  return data.channel;
+}
