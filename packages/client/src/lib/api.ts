@@ -407,6 +407,18 @@ export async function removeReaction(messageId: string, emoji: string): Promise<
   });
 }
 
+// DM-5: aggregated reaction summary (CV-7 既有 GET endpoint, 0 server code).
+// Response shape mirrors server `store.AggregatedReaction`.
+export interface AggregatedReaction {
+  emoji: string;
+  count: number;
+  user_ids: string[];
+}
+
+export async function getMessageReactions(messageId: string): Promise<{ reactions: AggregatedReaction[] }> {
+  return request<{ reactions: AggregatedReaction[] }>(`/api/v1/messages/${messageId}/reactions`);
+}
+
 // ─── Agents ────────────────────────────────────────────
 
 // AL-1a (#R3 Phase 2) — runtime 三态 + 故障原因码.
