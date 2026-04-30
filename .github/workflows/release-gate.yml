@@ -47,21 +47,21 @@ jobs:
 
       # §2 立场 ⑥ AST scan 锁链跨三 milestone (BPP-4 + BPP-5 + HB-3)
       - name: ast-scan-bpp4
-        run: cd packages/server-go && go test ./internal/bpp/ -run TestBPP4_NoRetryQueueInBPPPackage -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/bpp/ -run TestBPP4_NoRetryQueueInBPPPackage -count=1
 
       - name: ast-scan-bpp5
-        run: cd packages/server-go && go test ./internal/bpp/ -run TestBPP5_NoReconnectQueueInBPPPackage -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/bpp/ -run TestBPP5_NoReconnectQueueInBPPPackage -count=1
 
       - name: ast-scan-hb3
-        run: cd packages/server-go && go test ./internal/api/ -run TestHB3_NoGrantQueueInAPIPackage -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/api/ -run TestHB3_NoGrantQueueInAPIPackage -count=1
 
       # §1.5 撤销 grant < 100ms 真测 (HB-3 #504)
       - name: revoke-latency
-        run: cd packages/server-go && go test ./internal/api/ -run TestHB3_DELETE_RevokeStampsRevokedAt -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/api/ -run TestHB3_DELETE_RevokeStampsRevokedAt -count=1
 
       # §2 立场 ⑩ host vs runtime 字典分立 (HB-3 不复用 user_permissions)
       - name: dict-isolation
-        run: cd packages/server-go && go test ./internal/api/ -run TestHB3_NoUserPermissionsJoin -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/api/ -run TestHB3_NoUserPermissionsJoin -count=1
 
       # §3 立场 ⑤ 数字常量单源锁 (BPP-4 30s heartbeat byte-identical)
       - name: numeric-singletons

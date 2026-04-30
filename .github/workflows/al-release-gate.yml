@@ -30,7 +30,7 @@ jobs:
 
       # §1.1 5-state graph reflect lint (validTransitions byte-identical)
       - name: state-graph-reflect
-        run: cd packages/server-go && go test ./internal/store/ -run "TestValidateTransition|TestAppendAgentStateTransition" -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/store/ -run "TestValidateTransition|TestAppendAgentStateTransition" -count=1
 
       # §1.2 reason 字典锁链 ≥10 处 byte-identical (#496 SSOT 单源 verify)
       - name: reason-chain-cross-milestone
@@ -69,15 +69,15 @@ jobs:
 
       # §2.5 AL-1.4 state log coverage 真测 (5 transition + GET endpoint)
       - name: al-1-4-state-log-coverage
-        run: cd packages/server-go && go test ./internal/api/ -run TestAL14 -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/api/ -run TestAL14 -count=1
 
       # §2.6 AL-2a config blob validation 真测
       - name: al-2a-config-blob-validation
-        run: cd packages/server-go && go test ./internal/api/ -run TestAL2A2 -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/api/ -run TestAL2A2 -count=1
 
       # §2.7 AL-2b BPP frame fanout 真测
       - name: al-2b-bpp-fanout
-        run: cd packages/server-go && go test ./internal/ws/ -run TestAL2B2 -count=1
+        run: cd packages/server-go && go test -tags sqlite_fts5 ./internal/ws/ -run TestAL2B2 -count=1
 
       # §2.8 busy/idle BPP source 锁 (AL-1b 立场 ②)
       - name: busy-idle-bpp-source

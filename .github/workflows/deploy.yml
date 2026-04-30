@@ -28,7 +28,7 @@ jobs:
           go-version: '1.25'
       - run: pnpm install --frozen-lockfile --filter @borgee/client --filter borgee
       - run: pnpm --filter @borgee/client build
-      - run: cd packages/server-go && go test ./... -count=1
+      - run: cd packages/server-go && go test -tags sqlite_fts5 ./... -count=1
 
   deploy-staging:
     needs: test
