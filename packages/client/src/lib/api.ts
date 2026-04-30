@@ -1,6 +1,7 @@
 // ─── REST API client ─────────────────────────────────────
 
 import type { Channel, ChannelGroup, Message, User, DmChannel, WorkspaceFile } from '../types';
+import type { NotifPref } from './notif_pref';
 
 const BASE = '';  // Same origin via Vite proxy in dev, or same server in prod
 
@@ -148,6 +149,21 @@ export async function pinChannel(channelId: string, pinned: boolean): Promise<{ 
   return request<{ position: number; pinned: boolean }>(`/api/v1/channels/${channelId}/pin`, {
     method,
   });
+}
+
+// CHN-8: set notification preference for a channel. user-rail only;
+// admin god-mode 不挂 (ADM-0 §1.3 红线 + 立场 ②). pref ∈ {'all', 'mention', 'none'}.
+export async function setNotificationPref(
+  channelId: string,
+  pref: NotifPref,
+): Promise<{ collapsed: number; pref: NotifPref }> {
+  return request<{ collapsed: number; pref: NotifPref }>(
+    `/api/v1/channels/${channelId}/notification-pref`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ pref }),
+    },
+  );
 }
 
 export async function joinChannel(channelId: string): Promise<void> {
