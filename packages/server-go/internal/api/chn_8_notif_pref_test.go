@@ -308,3 +308,28 @@ func TestCHN83_NoNotifPrefQueue(t *testing.T) {
 		})
 	}
 }
+
+// REG-CHN8-cov — 401 unauthorized branch.
+func TestCHN81_SetPref_Unauthorized401(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	ch := testutil.CreateChannel(t, ts.URL, ownerToken, "auth-pref", "public")
+	chID := ch["id"].(string)
+	status, _ := setPrefHelper(t, ts.URL, "", chID, "all")
+	if status != http.StatusUnauthorized {
+		t.Errorf("unauth: got %d, want 401", status)
+	}
+}
+
+// REG-CHN8-cov — 404 channel not found.
+func TestCHN81_SetPref_NotFound404(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	status, _ := setPrefHelper(t, ts.URL, ownerToken,
+		"00000000-0000-0000-0000-000000000000", "all")
+	if status != http.StatusNotFound {
+		t.Errorf("not-found: got %d, want 404", status)
+	}
+}
