@@ -10,7 +10,7 @@
 |---|---|---|---|
 | **A. server-go .go 文件名** | 169 git mv | git mv 保 history; 同 package 文件 rename 不破 import path, 0 caller 改 | `<prefix>_<num>(_<sub>)?_<feature>.go` → `<domain>_<feature>.go` (dm→message/chn→channel/cv→canvas/bpp→plugin/hb→host/rt→realtime/al→agent/ap→permission/adm→admin/cm→community/cs→collab/dl→datalayer/infra→infra/test_fix→testfix); 冲突回退 `<prefix><num>_<feature>` |
 | **B. struct/handler + migration var** | 18 + 32 | Python regex 跨 .go 文件批替换 | ADM2Handler→AdminEndpointsHandler, DM10PinHandler→MessagePinHandler, dm101MessagesPinnedAt→messagesPinnedAt 等 (Python collision 检测无 dup) |
-| **C. Go test 函数名** | 924 处 (856 真改 + 68 collision-keep) | Python regex 三 pass: `Test<DOMAIN>\d+_X` / `Test<DOMAIN>\d+[A-Z]\d+_X` (sub-letter+digit) / `Test<DOMAIN>\d+<CamelCase>` (no underscore) | 同 package 内 byte-identical new name 保留原名反 redeclared (10× TestCHN_NoSchemaChange / 5× TestCV_Idempotent 等); 同 file dup 自动 _N suffix |
+| **C. Go test 函数名** | 924 处全 unique (856 真改 strip + 90 file-prefix functionality suffix 接合规) | Python regex 三 pass: `Test<DOMAIN>\d+_X` / `Test<DOMAIN>\d+[A-Z]\d+_X` (sub-letter+digit) / `Test<DOMAIN>\d+<CamelCase>` (no underscore) | 飞马 audit 反转后续 commit c2d192c4 全 unique 化 (file-prefix functionality suffix); 同 file dup 自动 _N suffix |
 | **D. TSX 测试命名归一** | 0 | 检测 dot-variant 0 hit, 已是 kebab/PascalCase 一致 | (无需 rename) |
 | **E. modules/ → docs/architecture/** | 11 git mv | git mv 保 history, 跨 doc 引用 11 处 `implementation/modules/<arch>` → `architecture/<arch>` 全更 | admin-model / agent-lifecycle / auth-permissions / canvas-vision / channel-model / client-shape / concept-model / data-layer / host-bridge / plugin-protocol / realtime |
 
@@ -44,7 +44,7 @@
 
 ## 5. 留账透明
 
-- ❌ Test func collision-keep 90 处 — 同 package 内 byte-identical new name 保留原名 (反 redeclared, 0 行为改铁律). 真要做干净需测试组合并 → 留 **NAMING-2** 测试合并 milestone (新 audit 范畴, 不算留尾)
+- ❌ Test func collision-keep — 飞马 audit 反转: 90 处全 unique 化 (file-prefix functionality suffix, 不留 NAMING-2). 实施 commit c2d192c4: `Test<Domain>\d+_X` → `Test<FilePrefixCamel>_X` (e.g. TestCHN51_NoSchemaChange → TestChn5archived_NoSchemaChange). 反向 grep `Test(CHN|DM|RT|AL|CV|BPP|HB|AP|ADM|CM|CS|DL)[0-9]+` ==0.
 - ❌ REFACTOR-3 (cursor envelope 深化 / messages.go 长函数拆 / store query helper 整合) — 留 REFACTOR-3 议程, 跟本 NAMING-1 不同 concern
 - ❌ DOM data-attr / CSS class 命名归一 (e.g. `data-cv7-comment-input`) — content-lock 绑, 留 v3+ 议程
 - ❌ DB column 名改 — 0 schema 改铁律
