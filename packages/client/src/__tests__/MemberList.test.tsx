@@ -24,6 +24,10 @@ const nodeRequire = createRequire(import.meta.url);
 const fs: any = nodeRequire('fs');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodePath: any = nodeRequire('path');
+// ESM workaround — __dirname undefined in `tsc -b` ESM emit.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nodeUrl: any = nodeRequire('url');
+const HERE = nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url));
 
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
@@ -153,7 +157,7 @@ describe('CHN-11.3 MemberList + AddMemberModal + KickConfirmModal content lock',
   it('⑤ 同义词反向 reject + addChannelMember/removeChannelMember 真调', async () => {
     const compRoots = ['MemberList', 'AddMemberModal', 'KickConfirmModal'];
     for (const c of compRoots) {
-      const p = nodePath.resolve(__dirname, '..', 'components', `${c}.tsx`);
+      const p = nodePath.resolve(HERE, '..', 'components', `${c}.tsx`);
       const src: string = fs.readFileSync(p, 'utf8');
       // user-visible Chinese 反向 reject — 我们用 `添加/移除`.
       for (const tok of ['逐出', '踢出', '邀请']) {
