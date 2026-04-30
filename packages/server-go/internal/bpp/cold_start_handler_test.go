@@ -241,7 +241,7 @@ func TestBPP_Handler_TransitionsToOnline_FromOffline(t *testing.T) {
 	}
 }
 
-func TestBPP6_Handler_CrossOwnerReject(t *testing.T) {
+func TestColdStartHandler_Handler_CrossOwnerReject(t *testing.T) {
 	t.Parallel()
 	st := &bpp6StubStateAppender{}
 	owner := &bpp6StubOwner{owners: map[string]string{"agent-1": "OTHER"}}

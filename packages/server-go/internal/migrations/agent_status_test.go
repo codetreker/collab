@@ -77,13 +77,13 @@ func TestAL_CreatesAgentStatusTable(t *testing.T) {
 	}
 }
 
-// TestAL1B1_NoDomainBleed pins acceptance §1.5 — 立场 ① "拆三路径".
+// TestAgentStatus_NoDomainBleed pins acceptance §1.5 — 立场 ① "拆三路径".
 // 反向断言列名: AL-3 presence 列 (is_online / presence) 全无 + AL-4
 // runtime 列 (last_error_reason / endpoint_url / process_kind) 全无 +
 // 立场 ② "BPP 单源" 反人工伪造列 (source / set_by) 全无 + RT-1 envelope
 // cursor 拆死. 跟 al_4_1 TestAL41_NoLLMOrPresenceColumns + cv_3_1
 // TestCV31_NoCascadeDelete 同模式 反约束防御.
-func TestAL1B1_NoDomainBleed(t *testing.T) {
+func TestAgentStatus_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
@@ -186,10 +186,10 @@ func TestAL_NoCascadeDelete(t *testing.T) {
 	}
 }
 
-// TestAL1B1_Idempotent pins acceptance §1.4 forward-only safety:
+// TestAgentStatus_Idempotent pins acceptance §1.4 forward-only safety:
 // re-running v=21 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX
 // IF NOT EXISTS guards). Same as every migration body in the registry.
-func TestAL1B1_Idempotent(t *testing.T) {
+func TestAgentStatus_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)

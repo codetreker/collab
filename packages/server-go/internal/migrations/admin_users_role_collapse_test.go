@@ -109,7 +109,7 @@ func TestADM_BackfillAndCollapse(t *testing.T) {
 }
 
 // 3.D: idempotent — running the migration twice yields the same end state.
-func TestADM03_Idempotent(t *testing.T) {
+func TestAdminUsersRoleCollapse_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)

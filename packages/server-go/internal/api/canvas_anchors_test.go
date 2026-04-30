@@ -97,9 +97,9 @@ func TestCV_AgentCannotCreateAnchor(t *testing.T) {
 	}
 }
 
-// TestCV22_CrossChannel403 pins 立场 ⑦: a non-member of the artifact's
+// TestCanvasAnchors_CrossChannel403 pins 立场 ⑦: a non-member of the artifact's
 // channel cannot create / list anchors.
-func TestCV22_CrossChannel403(t *testing.T) {
+func TestCanvasAnchors_CrossChannel403(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	memberTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")

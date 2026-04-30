@@ -16,7 +16,7 @@ import (
 )
 
 // REG-CHN7-001 — 0 schema 改反向断言.
-func TestCHN71_NoSchemaChange(t *testing.T) {
+func TestChn7mute_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	pat := regexp.MustCompile(`(?i)chn_7_\d+|chn7_\d+_mute`)

@@ -3,7 +3,7 @@
 // 锁链延伸第 11 处.
 //
 // Pins:
-//   REG-CHN6-001 TestCHN61_NoSchemaChange — migrations/ 0 新文件
+//   REG-CHN6-001 TestChn6pin_NoSchemaChange — migrations/ 0 新文件
 //   REG-CHN6-002 TestCHN61_PinChannel_* — POST /pin owner-only
 //   REG-CHN6-003 TestCHN61_UnpinChannel_* — DELETE /pin idempotent
 //   REG-CHN6-004 TestCHN_PinThreshold_ByteIdentical — 双向锁
@@ -24,7 +24,7 @@ import (
 )
 
 // REG-CHN6-001 — 0 schema 改反向断言: migrations/ 0 新 chn_6_* file.
-func TestCHN61_NoSchemaChange(t *testing.T) {
+func TestChn6pin_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	pat := regexp.MustCompile(`(?i)chn_6_\d+|chn6_\d+_pin`)

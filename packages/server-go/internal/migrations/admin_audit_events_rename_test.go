@@ -126,10 +126,10 @@ func TestADM_VersionIs43(t *testing.T) {
 	}
 }
 
-// TestADM31_Idempotent — acceptance §1.6.
+// TestAdminAuditEventsRename_Idempotent — acceptance §1.6.
 // Re-running migration must be a no-op (forward-only stance shared with
 // ADM-2.1 + AL-7.1 + AP-2.1 + BPP-8.1 + AP-1.1 + AP-3.1).
-func TestADM31_Idempotent(t *testing.T) {
+func TestAdminAuditEventsRename_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM31(t, db)

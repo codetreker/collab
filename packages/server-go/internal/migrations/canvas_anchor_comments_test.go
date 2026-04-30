@@ -236,9 +236,9 @@ func TestCV_CommentsTablePKMonotonic(t *testing.T) {
 	}
 }
 
-// TestCV21_HasIndexes pins acceptance §1.x — per-version anchor list +
+// TestCanvasAnchorComments_HasIndexes pins acceptance §1.x — per-version anchor list +
 // thread comment lookup require both indexes.
-func TestCV21_HasIndexes(t *testing.T) {
+func TestCanvasAnchorComments_HasIndexes(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
@@ -295,8 +295,8 @@ func TestCV_AnchorsAcrossVersionsCoexist(t *testing.T) {
 	}
 }
 
-// TestCV21_Idempotent pins forward-only safety: re-running v=14 is no-op.
-func TestCV21_Idempotent(t *testing.T) {
+// TestCanvasAnchorComments_Idempotent pins forward-only safety: re-running v=14 is no-op.
+func TestCanvasAnchorComments_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)

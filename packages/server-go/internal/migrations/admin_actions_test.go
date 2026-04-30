@@ -133,10 +133,10 @@ func TestADM_RejectsUnknownAction(t *testing.T) {
 	}
 }
 
-// TestADM21_NoDomainBleed pins admin-model.md §1.4 反约束 — 列名反向断言
+// TestAdminActions_NoDomainBleed pins admin-model.md §1.4 反约束 — 列名反向断言
 // 'updated_at' (audit 不可改写) / 'org_id' (派生不冗余) / 'session_id'
 // (impersonate 走单独表) 全无. 字面承袭 #366 黑名单同模式.
-func TestADM21_NoDomainBleed(t *testing.T) {
+func TestAdminActions_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
@@ -189,9 +189,9 @@ func TestADM_HasIndexes(t *testing.T) {
 	}
 }
 
-// TestADM21_PKEnforcesUniqueRowPerID pins 立场 — duplicate id INSERT must
+// TestAdminActions_PKEnforcesUniqueRowPerID pins 立场 — duplicate id INSERT must
 // reject (UUID 由 server 端生成, 但 schema 层 PK 兜底防 collision).
-func TestADM21_PKEnforcesUniqueRowPerID(t *testing.T) {
+func TestAdminActions_PKEnforcesUniqueRowPerID(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
@@ -214,10 +214,10 @@ func TestADM21_PKEnforcesUniqueRowPerID(t *testing.T) {
 	}
 }
 
-// TestADM21_Idempotent pins acceptance forward-only safety: re-running
+// TestAdminActions_Idempotent pins acceptance forward-only safety: re-running
 // v=22 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
 // guards). Same as every migration body in the registry.
-func TestADM21_Idempotent(t *testing.T) {
+func TestAdminActions_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)

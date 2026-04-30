@@ -4,7 +4,7 @@
 // Pins:
 //   REG-HB1-001 TestHB_PluginManifest_Returns200_WithShape +
 //                Unauthorized_NoToken_401 + PluginEntriesNonEmpty
-//   REG-HB1-002 TestHB1_NoSchemaChange + PluginEntriesConstNonEmpty
+//   REG-HB1-002 TestHostManifest_NoSchemaChange + PluginEntriesConstNonEmpty
 //   REG-HB1-003 TestHB_ReasonsByteIdentical
 //   REG-HB1-004 TestHB_ManifestSignatureVerify
 //   REG-HB1-005 TestHB_NoAdminPluginManifestPath
@@ -93,7 +93,7 @@ func TestHB_PluginEntriesConstNonEmpty(t *testing.T) {
 }
 
 // REG-HB1-002b — 0 schema 改 (反向 grep migrations/hb_1_*).
-func TestHB1_NoSchemaChange(t *testing.T) {
+func TestHostManifest_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	entries, err := os.ReadDir(dir)

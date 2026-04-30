@@ -132,7 +132,7 @@ func TestCM_DefaultsStateToPending(t *testing.T) {
 	}
 }
 
-func TestCM40_IsIdempotentOnRerun(t *testing.T) {
+func TestCommunityAgentInvitations_IsIdempotentOnRerun(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 

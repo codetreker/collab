@@ -46,10 +46,10 @@ func TestCV_ListIterations_LimitClamp(t *testing.T) {
 	}
 }
 
-// TestCV4V2_NoSchemaChange — acceptance §1.2 立场 ④ 0 schema 改.
+// TestCv4v2Iterations_NoSchemaChange — acceptance §1.2 立场 ④ 0 schema 改.
 // Reverse-grep production migrations + bpp/api packages for forbidden
 // CV-4 v2 history table / event sequence literals.
-func TestCV4V2_NoSchemaChange(t *testing.T) {
+func TestCv4v2Iterations_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"ALTER TABLE artifact_iterations",

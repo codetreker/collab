@@ -67,8 +67,8 @@ func TestDM_VersionIs34(t *testing.T) {
 	}
 }
 
-// TestDM71_Idempotent — re-run is no-op.
-func TestDM71_Idempotent(t *testing.T) {
+// TestMessagesEditHistory_Idempotent — re-run is no-op.
+func TestMessagesEditHistory_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM71(t, db)

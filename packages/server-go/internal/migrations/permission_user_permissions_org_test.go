@@ -137,9 +137,9 @@ func TestAP_RegistryHasV29(t *testing.T) {
 	t.Fatal("v=29 (AP-3.1) not registered in migrations.All")
 }
 
-// TestAP31_Idempotent — re-running v=29 on an already-applied DB is a
+// TestPermissionUserPermissionsOrg_Idempotent — re-running v=29 on an already-applied DB is a
 // no-op (schema_migrations gate).
-func TestAP31_Idempotent(t *testing.T) {
+func TestPermissionUserPermissionsOrg_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAP31(t, db)

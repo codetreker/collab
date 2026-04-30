@@ -88,11 +88,11 @@ func TestAL_InsertAndAutoIncrement(t *testing.T) {
 	}
 }
 
-// TestAL14_NoDomainBleed pins acceptance §反约束 — 列名反向断言:
+// TestAgentStateLog_NoDomainBleed pins acceptance §反约束 — 列名反向断言:
 // updated_at (forward-only audit 不可改写) / cursor (RT-1 envelope frame
 // 路径不下沉) / org_id (派生不冗余) / task_state (state 已在 to_state)
 // 等不挂.
-func TestAL14_NoDomainBleed(t *testing.T) {
+func TestAgentStateLog_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
@@ -136,9 +136,9 @@ func TestAL_HasIndex(t *testing.T) {
 	}
 }
 
-// TestAL14_AcceptsAL1aReasonValues pins 立场 ④ — error 转移 reason 复用
+// TestAgentStateLog_AcceptsAL1aReasonValues pins 立场 ④ — error 转移 reason 复用
 // AL-1a 6 reason byte-identical (改 = 改 7 处单测锁链).
-func TestAL14_AcceptsAL1aReasonValues(t *testing.T) {
+func TestAgentStateLog_AcceptsAL1aReasonValues(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
@@ -161,9 +161,9 @@ func TestAL14_AcceptsAL1aReasonValues(t *testing.T) {
 	// reason 在 server 层拒, 不是 schema).
 }
 
-// TestAL14_Idempotent pins forward-only safety: re-running v=25 is no-op
+// TestAgentStateLog_Idempotent pins forward-only safety: re-running v=25 is no-op
 // (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS guards).
-func TestAL14_Idempotent(t *testing.T) {
+func TestAgentStateLog_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)

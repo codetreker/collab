@@ -81,9 +81,9 @@ func TestHB_VersionIs35(t *testing.T) {
 	}
 }
 
-// TestHB51_Idempotent — re-running chain against an already-applied DB
+// TestHostAgentStateLogArchivedAt_Idempotent — re-running chain against an already-applied DB
 // is a no-op (schema_migrations gate).
-func TestHB51_Idempotent(t *testing.T) {
+func TestHostAgentStateLogArchivedAt_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runHB51(t, db)

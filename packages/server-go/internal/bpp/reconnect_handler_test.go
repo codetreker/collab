@@ -181,7 +181,7 @@ func TestBPP_Handler_ClearsAgentError(t *testing.T) {
 	}
 }
 
-func TestBPP5_Handler_CrossOwnerReject(t *testing.T) {
+func TestReconnectHandler_Handler_CrossOwnerReject(t *testing.T) {
 	t.Parallel()
 	events := &bpp5StubEventLister{highWater: 100}
 	scope := &bpp5StubScope{}

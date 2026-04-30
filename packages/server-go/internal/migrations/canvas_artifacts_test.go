@@ -267,9 +267,9 @@ func TestCV_RejectsDuplicateArtifactVersion(t *testing.T) {
 	}
 }
 
-// TestCV11_HasIndexes pins acceptance §1.1 — channel-scoped list +
+// TestCanvasArtifacts_HasIndexes pins acceptance §1.1 — channel-scoped list +
 // version sidebar lookup require both indexes.
-func TestCV11_HasIndexes(t *testing.T) {
+func TestCanvasArtifacts_HasIndexes(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
@@ -287,8 +287,8 @@ func TestCV11_HasIndexes(t *testing.T) {
 	}
 }
 
-// TestCV11_Idempotent pins forward-only safety: re-running v=13 is no-op.
-func TestCV11_Idempotent(t *testing.T) {
+// TestCanvasArtifacts_Idempotent pins forward-only safety: re-running v=13 is no-op.
+func TestCanvasArtifacts_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)

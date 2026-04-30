@@ -127,7 +127,7 @@ func TestCM_CreatesOrgIDIndexes(t *testing.T) {
 	}
 }
 
-func TestCM11_IsIdempotentOnRerun(t *testing.T) {
+func TestCommunityOrganizations_IsIdempotentOnRerun(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)

@@ -54,7 +54,7 @@ func countReadPerm(t *testing.T, db *gorm.DB, userID string) int {
 	return int(n)
 }
 
-func TestAP0Bis_BackfillsMessageReadForLegacyAgents(t *testing.T) {
+func TestPermissionMessageRead_BackfillsMessageReadForLegacyAgents(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedAgentMinimalSchema(t, db)
@@ -71,7 +71,7 @@ func TestAP0Bis_BackfillsMessageReadForLegacyAgents(t *testing.T) {
 	}
 }
 
-func TestAP0Bis_Idempotent(t *testing.T) {
+func TestPermissionMessageRead_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedAgentMinimalSchema(t, db)
@@ -101,7 +101,7 @@ func TestAP0Bis_Idempotent(t *testing.T) {
 	}
 }
 
-func TestAP0Bis_SkipsNonAgentRoles(t *testing.T) {
+func TestPermissionMessageRead_SkipsNonAgentRoles(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedAgentMinimalSchema(t, db)
@@ -126,7 +126,7 @@ func TestAP0Bis_SkipsNonAgentRoles(t *testing.T) {
 	}
 }
 
-func TestAP0Bis_SkipsSoftDeletedAgents(t *testing.T) {
+func TestPermissionMessageRead_SkipsSoftDeletedAgents(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedAgentMinimalSchema(t, db)

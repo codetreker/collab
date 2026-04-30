@@ -11,7 +11,7 @@ import (
 	"borgee-server/internal/store"
 )
 
-func TestBPP5ChannelScopeAdapter_EmptyForUnknownUser(t *testing.T) {
+func TestBpp5reconnectAdapter_EmptyForUnknownUser(t *testing.T) {
 	t.Parallel()
 	s := store.MigratedStoreFromTemplate(t)
 

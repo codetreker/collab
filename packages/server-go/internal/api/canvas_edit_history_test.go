@@ -53,8 +53,8 @@ func TestCV_ErrCode_ByteIdentical(t *testing.T) {
 	}
 }
 
-// TestCV151_NoSchemaChange — 0 schema 改 反向断言.
-func TestCV151_NoSchemaChange(t *testing.T) {
+// TestCanvasEditHistory_NoSchemaChange — 0 schema 改 反向断言.
+func TestCanvasEditHistory_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	root := cv15RepoRoot(t)
 	migDir := filepath.Join(root, "packages/server-go/internal/migrations")

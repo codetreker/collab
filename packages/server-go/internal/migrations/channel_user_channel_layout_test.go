@@ -185,10 +185,10 @@ func TestCHN_HasUserIDIndex(t *testing.T) {
 	}
 }
 
-// TestCHN31_Idempotent pins acceptance §1.4 forward-only safety: re-running
+// TestChannelUserChannelLayout_Idempotent pins acceptance §1.4 forward-only safety: re-running
 // v=19 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
 // guards). Same as every migration body in the registry.
-func TestCHN31_Idempotent(t *testing.T) {
+func TestChannelUserChannelLayout_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)

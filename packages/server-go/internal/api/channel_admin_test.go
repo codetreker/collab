@@ -3,8 +3,8 @@
 // /channels/:id/members CHN-1 #276 既有 path byte-identical 不变).
 //
 // Pins:
-//   REG-CHN11-001 TestCHN111_NoSchemaChange (filepath.Walk migrations/)
-//   REG-CHN11-002 TestCHN111_NoServerProductionCode (反向 grep `chn_11`
+//   REG-CHN11-001 TestChannelAdmin_NoSchemaChange (filepath.Walk migrations/)
+//   REG-CHN11-002 TestChannelAdmin_NoServerProductionCode (反向 grep `chn_11`
 //                  在 internal/api/*.go 非 _test.go 0 hit)
 //   REG-CHN11-003 TestCHN_HandlersByteIdentical (handleAddMember +
 //                  handleRemoveMember block 反向 grep `chn_11` 0 hit)
@@ -21,7 +21,7 @@ import (
 )
 
 // REG-CHN11-001 — 0 schema 改 (反向 grep migrations/chn_11_*).
-func TestCHN111_NoSchemaChange(t *testing.T) {
+func TestChannelAdmin_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	entries, err := os.ReadDir(dir)
@@ -37,7 +37,7 @@ func TestCHN111_NoSchemaChange(t *testing.T) {
 
 // REG-CHN11-002 — 0 server production code (反向 grep `chn_11` / `chn11`
 // 在 internal/api/*.go 非 _test.go 0 hit).
-func TestCHN111_NoServerProductionCode(t *testing.T) {
+func TestChannelAdmin_NoServerProductionCode(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "api")
 	forbidden := []string{"chn_11", "chn11", "CHN11"}

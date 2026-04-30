@@ -183,9 +183,9 @@ func TestBPP_ConfigRevTracker_NegativeRev(t *testing.T) {
 	}
 }
 
-// TestBPP23_ErrorCodeLiteralsByteIdentical pins content-lock §1 ⑥
+// TestAgentConfigUpdate_ErrorCodeLiteralsByteIdentical pins content-lock §1 ⑥
 // 错误码字面 byte-identical.
-func TestBPP23_ErrorCodeLiteralsByteIdentical(t *testing.T) {
+func TestAgentConfigUpdate_ErrorCodeLiteralsByteIdentical(t *testing.T) {
 	t.Parallel()
 	if bpp.ConfigErrCodeFieldDisallowed != "bpp.config_field_disallowed" {
 		t.Errorf("ConfigErrCodeFieldDisallowed drift: got %q",

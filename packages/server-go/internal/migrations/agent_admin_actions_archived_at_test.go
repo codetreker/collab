@@ -148,9 +148,9 @@ func TestAL_VersionIs33(t *testing.T) {
 	}
 }
 
-// TestAL71_Idempotent — re-running chain against an already-applied DB
+// TestAgentAdminActionsArchivedAt_Idempotent — re-running chain against an already-applied DB
 // is a no-op (schema_migrations gate).
-func TestAL71_Idempotent(t *testing.T) {
+func TestAgentAdminActionsArchivedAt_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)

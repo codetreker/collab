@@ -221,9 +221,9 @@ func TestBPP_ValidateTaskFinished_CompletedRejectsReason(t *testing.T) {
 	}
 }
 
-// TestBPP22_ErrorCodeLiteralsByteIdentical pins content-lock §1 ⑥
+// TestTaskLifecycle_ErrorCodeLiteralsByteIdentical pins content-lock §1 ⑥
 // 错误码字面 byte-identical.
-func TestBPP22_ErrorCodeLiteralsByteIdentical(t *testing.T) {
+func TestTaskLifecycle_ErrorCodeLiteralsByteIdentical(t *testing.T) {
 	cases := []struct{ got, want string }{
 		{bpp.TaskErrCodeSubjectEmpty, "bpp.task_subject_empty"},
 		{bpp.TaskErrCodeOutcomeUnknown, "bpp.task_outcome_unknown"},

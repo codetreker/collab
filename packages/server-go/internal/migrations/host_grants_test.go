@@ -206,10 +206,10 @@ func TestHB_HasIndexes(t *testing.T) {
 	}
 }
 
-// TestHB31_Idempotent pins forward-only stance — re-running the migration
+// TestHostGrants_Idempotent pins forward-only stance — re-running the migration
 // must not error (IF NOT EXISTS guards). 跟 al_2a_1_agent_configs_test
 // idempotency 同模式.
-func TestHB31_Idempotent(t *testing.T) {
+func TestHostGrants_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runHB31(t, db)

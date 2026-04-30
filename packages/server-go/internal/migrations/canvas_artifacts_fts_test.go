@@ -175,7 +175,7 @@ func TestCV_RegistryHasV36(t *testing.T) {
 }
 
 // REG-CV6-001h — idempotent (CREATE *_IF_NOT_EXISTS + schema_migrations gate).
-func TestCV61_Idempotent(t *testing.T) {
+func TestCanvasArtifactsFts_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV61(t, db)

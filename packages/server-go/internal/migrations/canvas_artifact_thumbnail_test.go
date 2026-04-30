@@ -124,8 +124,8 @@ func TestCV_RegistryHasV32(t *testing.T) {
 	t.Fatal("v=31 (CV-3 v2.1) not registered in migrations.All")
 }
 
-// TestCV3V21_Idempotent — re-running v=31 on already-applied DB is no-op.
-func TestCV3V21_Idempotent(t *testing.T) {
+// TestCanvasArtifactThumbnail_Idempotent — re-running v=31 on already-applied DB is no-op.
+func TestCanvasArtifactThumbnail_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV3V2(t, db)

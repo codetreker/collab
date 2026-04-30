@@ -2,7 +2,7 @@
 // 列表 + admin readonly + unarchive system DM 互补二式 acceptance.
 //
 // Pins:
-//   REG-CHN5-001 TestCHN51_NoSchemaChange — migrations/ 0 新文件
+//   REG-CHN5-001 TestChn5archived_NoSchemaChange — migrations/ 0 新文件
 //   REG-CHN5-002 TestCHN52_ListMyArchived_* — owner-only GET 用户路由
 //   REG-CHN5-003 TestCHN52_AdminListArchived_* — admin readonly
 //   REG-CHN5-004 TestCHN52_UnarchiveFanouts* — unarchive 互补二式
@@ -26,7 +26,7 @@ import (
 // migration file (跟 chn-5-spec.md §1 立场 ① 字面单源). channels.archived_at
 // 列由 CHN-1.1 #267 既有 (chn_1_1_channels_org_scoped.go) — 此 test 仅守
 // 新增 chn_5_* 文件 0 hit (复用既有列).
-func TestCHN51_NoSchemaChange(t *testing.T) {
+func TestChn5archived_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	pat := regexp.MustCompile(`(?i)chn_5_\d+|chn5_\d+_archive`)

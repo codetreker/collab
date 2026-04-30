@@ -119,11 +119,11 @@ func TestCV_PreservesMarkdownRowsAcrossRebuild(t *testing.T) {
 	}
 }
 
-// TestCV31_PreservesChannelIDIndex pins acceptance §1 + cv-1-spec §0
+// TestCanvasArtifactKinds_PreservesChannelIDIndex pins acceptance §1 + cv-1-spec §0
 // 立场 — `idx_artifacts_channel_id` MUST survive the table-recreate
 // (DROP TABLE drops the index, the migration must recreate it). channel-list
 // 是 CV-1.2 list 端热路径; index 丢失 = list 全表扫.
-func TestCV31_PreservesChannelIDIndex(t *testing.T) {
+func TestCanvasArtifactKinds_PreservesChannelIDIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV31(t, db)
@@ -136,11 +136,11 @@ func TestCV31_PreservesChannelIDIndex(t *testing.T) {
 	}
 }
 
-// TestCV31_NoSeparateKindTables pins acceptance §1.5 + spec §3 反约束 —
+// TestCanvasArtifactKinds_NoSeparateKindTables pins acceptance §1.5 + spec §3 反约束 —
 // 立场 ① 不裂表: 不开 artifact_code / artifact_images. 反向断言
 // sqlite_master.tables 不含此名 (跟 spec §3 reverse grep 同源, schema
 // 层 belt 兜).
-func TestCV31_NoSeparateKindTables(t *testing.T) {
+func TestCanvasArtifactKinds_NoSeparateKindTables(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV31(t, db)
@@ -157,11 +157,11 @@ func TestCV31_NoSeparateKindTables(t *testing.T) {
 	}
 }
 
-// TestCV31_Idempotent pins forward-only safety: re-running v=17 against
+// TestCanvasArtifactKinds_Idempotent pins forward-only safety: re-running v=17 against
 // a DB that already has it is a no-op (the migration framework's
 // schema_migrations gate handles this; we exercise the gate by calling
 // Run twice).
-func TestCV31_Idempotent(t *testing.T) {
+func TestCanvasArtifactKinds_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV31(t, db)

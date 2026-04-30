@@ -13,7 +13,7 @@ import (
 	"borgee-server/internal/ws"
 )
 
-func TestBPP3PluginFrameRouterAdapter_Route_Happy(t *testing.T) {
+func TestBpp3routerAdapter_Route_Happy(t *testing.T) {
 	t.Parallel()
 	pfd := bpp.NewPluginFrameDispatcher(slog.Default())
 	adapter := &pluginFrameRouterAdapter{pfd: pfd}
@@ -32,7 +32,7 @@ func TestBPP3PluginFrameRouterAdapter_Route_Happy(t *testing.T) {
 	}
 }
 
-func TestBPP3PluginFrameRouterAdapter_OwnerUserIDBridge(t *testing.T) {
+func TestBpp3routerAdapter_OwnerUserIDBridge(t *testing.T) {
 	t.Parallel()
 	// Verify ws.PluginSessionContext.OwnerUserID is byte-identical bridged
 	// into bpp.PluginSessionContext.OwnerUserID via the adapter. Use a

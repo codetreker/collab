@@ -58,12 +58,12 @@ func TestAL_CreatesAgentConfigsTable(t *testing.T) {
 	}
 }
 
-// TestAL2A1_NoDomainBleed pins acceptance §数据契约 row 2 反约束 — 列名
+// TestAgentConfigs_NoDomainBleed pins acceptance §数据契约 row 2 反约束 — 列名
 // 反向断言: runtime-only 字段不在 schema 层 (blob TEXT JSON, runtime 校验
 // 走 AL-2a.2 server REST API 层 + 4.1.c reflect scan); cursor 不挂
 // (AL-2a 不含 BPP frame, 蓝图 §1.5); org_id 不重复持有 (走 users.org_id
 // 单源).
-func TestAL2A1_NoDomainBleed(t *testing.T) {
+func TestAgentConfigs_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
@@ -144,11 +144,11 @@ func TestAL_AcceptsMonotonicSchemaVersion(t *testing.T) {
 	}
 }
 
-// TestAL2A1_HasAgentIDIndex pins acceptance §数据契约 row 1 — 显式命名
+// TestAgentConfigs_HasAgentIDIndex pins acceptance §数据契约 row 1 — 显式命名
 // idx_agent_configs_agent_id (PATCH/GET /api/v1/agents/:id/config 热路径,
 // SSOT lookup). 跟 AL-4.1 #398 TestAL41_HasAgentIDIndex / CHN-3.1 #410
 // TestCHN31_HasUserIDIndex 同模式.
-func TestAL2A1_HasAgentIDIndex(t *testing.T) {
+func TestAgentConfigs_HasAgentIDIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
@@ -161,11 +161,11 @@ func TestAL2A1_HasAgentIDIndex(t *testing.T) {
 	}
 }
 
-// TestAL2A1_Idempotent pins forward-only safety: re-running v=20 is no-op
+// TestAgentConfigs_Idempotent pins forward-only safety: re-running v=20 is no-op
 // (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS guards). Same
 // as every migration body in the registry (跟 chn_3_1 / cv_4_1 / al_4_1
 // 同模式).
-func TestAL2A1_Idempotent(t *testing.T) {
+func TestAgentConfigs_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)

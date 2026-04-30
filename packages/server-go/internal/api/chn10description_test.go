@@ -2,7 +2,7 @@
 // /api/v1/channels/{channelId}/description endpoint + 反约束守门.
 //
 // Pins:
-//   REG-CHN10-001 TestCHN101_NoSchemaChange (filepath.Walk migrations/)
+//   REG-CHN10-001 TestChn10description_NoSchemaChange (filepath.Walk migrations/)
 //   REG-CHN10-002 TestCHN_PutDescription_OwnerHappyPath
 //                 + _NonOwnerRejected + _Unauthorized401
 //   REG-CHN10-003 TestCHN_PutDescription_LengthCap500
@@ -26,7 +26,7 @@ import (
 )
 
 // REG-CHN10-001 — 0 schema 改 (反向 grep migrations/chn_10_*).
-func TestCHN101_NoSchemaChange(t *testing.T) {
+func TestChn10description_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	entries, err := os.ReadDir(dir)

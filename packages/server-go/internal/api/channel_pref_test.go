@@ -16,7 +16,7 @@ import (
 )
 
 // REG-CHN8-001 — 0 schema 改反向断言.
-func TestCHN81_NoSchemaChange(t *testing.T) {
+func TestChannelPref_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	pat := regexp.MustCompile(`(?i)chn_8_\d+|chn8_\d+_notif`)

@@ -67,8 +67,8 @@ func TestCHN_VersionIs44(t *testing.T) {
 	}
 }
 
-// TestCHN141_Idempotent — re-run is no-op.
-func TestCHN141_Idempotent(t *testing.T) {
+// TestChannelsDescriptionEditHistory_Idempotent — re-run is no-op.
+func TestChannelsDescriptionEditHistory_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCHN141(t, db)

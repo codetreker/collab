@@ -2,7 +2,7 @@
 // monitor acceptance §1+§2+§3.
 //
 // Pins:
-//   REG-HB6-001 TestHB61_NoSchemaChange + WindowSecondsByteIdentical
+//   REG-HB6-001 TestHost_NoSchemaChange + WindowSecondsByteIdentical
 //   REG-HB6-002 TestHB_AggregateLag_PercentileCorrect
 //   REG-HB6-003 TestHB_WindowCutoffExcludesStale
 //   REG-HB6-004 TestHB_AdminHappyPath + _NonAdmin401 + _NoUserRailPath
@@ -26,7 +26,7 @@ import (
 )
 
 // REG-HB6-001 — 0 schema 改 (反向 grep migrations/hb_6_).
-func TestHB61_NoSchemaChange(t *testing.T) {
+func TestHost_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	entries, err := os.ReadDir(dir)

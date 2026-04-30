@@ -76,10 +76,10 @@ func TestDM_VersionIs45(t *testing.T) {
 	}
 }
 
-// TestDM101_Idempotent — acceptance §1.4.
+// TestMessageMessagesPinnedAt_Idempotent — acceptance §1.4.
 // Re-running migration must be a no-op (forward-only stance shared with
 // AL-7.1 + DM-7.1 + AP-2.1 + HB-5.1 + AP-1.1 + AP-3.1 跨七 milestone).
-func TestDM101_Idempotent(t *testing.T) {
+func TestMessageMessagesPinnedAt_Idempotent(t *testing.T) {
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, sender_id TEXT,

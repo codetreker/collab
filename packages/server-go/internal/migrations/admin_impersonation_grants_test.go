@@ -50,9 +50,9 @@ func TestADM_CreatesImpersonationGrantsTable(t *testing.T) {
 	}
 }
 
-// TestADM22_NoDomainBleed pins admin-model.md §3 字面 "由 user 创建, admin
+// TestAdminImpersonationGrants_NoDomainBleed pins admin-model.md §3 字面 "由 user 创建, admin
 // 仅消费这条记录" — actor_id / cursor / token / etc 不在此表.
-func TestADM22_NoDomainBleed(t *testing.T) {
+func TestAdminImpersonationGrants_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)
@@ -95,8 +95,8 @@ func TestADM_HasIndex(t *testing.T) {
 	}
 }
 
-// TestADM22_PKEnforcesUniqueRowPerID pins UUID collision 兜底.
-func TestADM22_PKEnforcesUniqueRowPerID(t *testing.T) {
+// TestAdminImpersonationGrants_PKEnforcesUniqueRowPerID pins UUID collision 兜底.
+func TestAdminImpersonationGrants_PKEnforcesUniqueRowPerID(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)
@@ -137,8 +137,8 @@ func TestADM_AcceptsRevokedAtNullable(t *testing.T) {
 	}
 }
 
-// TestADM22_Idempotent pins forward-only safety: re-running v=23 is no-op.
-func TestADM22_Idempotent(t *testing.T) {
+// TestAdminImpersonationGrants_Idempotent pins forward-only safety: re-running v=23 is no-op.
+func TestAdminImpersonationGrants_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM22(t, db)

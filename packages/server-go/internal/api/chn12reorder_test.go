@@ -4,8 +4,8 @@
 // 既有 path byte-identical 不变).
 //
 // Pins:
-//   REG-CHN12-001 TestCHN121_NoSchemaChange (filepath.Walk migrations/)
-//   REG-CHN12-002 TestCHN121_NoServerProductionCode (反向 grep `chn_12`
+//   REG-CHN12-001 TestChn12reorder_NoSchemaChange (filepath.Walk migrations/)
+//   REG-CHN12-002 TestChn12reorder_NoServerProductionCode (反向 grep `chn_12`
 //                  在 internal/api/*.go 非 _test.go 0 hit)
 //   REG-CHN12-003 TestCHN_HandlerByteIdentical (handlePutMyLayout block
 //                  反向 grep `chn_12` 0 hit)
@@ -22,7 +22,7 @@ import (
 )
 
 // REG-CHN12-001 — 0 schema 改 (反向 grep migrations/chn_12_*).
-func TestCHN121_NoSchemaChange(t *testing.T) {
+func TestChn12reorder_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	entries, err := os.ReadDir(dir)
@@ -38,7 +38,7 @@ func TestCHN121_NoSchemaChange(t *testing.T) {
 
 // REG-CHN12-002 — 0 server production code (反向 grep `chn_12` / `chn12`
 // 在 internal/api/*.go 非 _test.go 0 hit).
-func TestCHN121_NoServerProductionCode(t *testing.T) {
+func TestChn12reorder_NoServerProductionCode(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "api")
 	forbidden := []string{"chn_12", "chn12", "CHN12"}

@@ -2,7 +2,7 @@
 // + 反向 grep守门 (CHN-13 仅 server LIKE filter + client SPA; 0 schema 改).
 //
 // Pins:
-//   REG-CHN13-001 TestCHN131_NoSchemaChange (filepath.Walk migrations/)
+//   REG-CHN13-001 TestChn13search_NoSchemaChange (filepath.Walk migrations/)
 //   REG-CHN13-002 TestCHN_ListChannelsWithQuery (q="" byte-identical
 //                  + q="match" 子串过滤)
 //   REG-CHN13-003 TestCHN_QueryCaseInsensitive + QuerySubstringMatch
@@ -24,7 +24,7 @@ import (
 )
 
 // REG-CHN13-001 — 0 schema 改 (反向 grep migrations/chn_13_*).
-func TestCHN131_NoSchemaChange(t *testing.T) {
+func TestChn13search_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	entries, err := os.ReadDir(dir)

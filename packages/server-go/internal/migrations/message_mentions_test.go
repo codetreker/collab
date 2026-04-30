@@ -203,10 +203,10 @@ func TestDM_MentionsPKMonotonic(t *testing.T) {
 	}
 }
 
-// TestDM21_Idempotent pins acceptance §1.0.d forward-only safety:
+// TestMessageMentions_Idempotent pins acceptance §1.0.d forward-only safety:
 // re-running v=15 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX
 // IF NOT EXISTS guards). Same as every migration body in the registry.
-func TestDM21_Idempotent(t *testing.T) {
+func TestMessageMentions_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)

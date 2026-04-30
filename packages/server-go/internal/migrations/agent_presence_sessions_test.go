@@ -154,11 +154,11 @@ func TestAL_HasUserIDIndex(t *testing.T) {
 	}
 }
 
-// TestAL31_Idempotent pins forward-only safety: re-running v=12 against
+// TestAgentPresenceSessions_Idempotent pins forward-only safety: re-running v=12 against
 // a DB that already has it must be a no-op (CREATE TABLE IF NOT EXISTS
 // + CREATE INDEX IF NOT EXISTS guards). This is what migrations_test
 // expects of every migration body.
-func TestAL31_Idempotent(t *testing.T) {
+func TestAgentPresenceSessions_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL31(t, db)

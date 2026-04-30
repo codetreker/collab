@@ -133,11 +133,11 @@ func TestCV_RejectsNonMarkdownType(t *testing.T) {
 	}
 }
 
-// TestCV12_CrossChannel403 pins 立场 ① + acceptance §2.1: a non-member
+// TestCanvasArtifacts_CrossChannel403 pins 立场 ① + acceptance §2.1: a non-member
 // cannot create artifacts in another user's private channel. We use a
 // fresh private channel owned by member; admin (also member-rail) is
 // not added → POST should 403.
-func TestCV12_CrossChannel403(t *testing.T) {
+func TestCanvasArtifacts_CrossChannel403(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	memberTok := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")

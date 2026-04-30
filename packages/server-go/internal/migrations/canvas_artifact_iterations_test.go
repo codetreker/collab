@@ -158,12 +158,12 @@ func TestCV_RejectsUnknownState(t *testing.T) {
 	}
 }
 
-// TestCV41_HasIndexes pins acceptance §1.3 — 双索引字面:
+// TestCanvasArtifactIterations_HasIndexes pins acceptance §1.3 — 双索引字面:
 // idx_iterations_artifact_id_state (per-artifact pending/running 热路径) +
 // idx_iterations_target_agent (agent 工作队列查). 跟 AL-4.1 #398
 // TestAL41_HasAgentIDIndex 同模式 — 显式命名让 EXPLAIN QUERY PLAN 可读 +
 // 反查 grep 可断.
-func TestCV41_HasIndexes(t *testing.T) {
+func TestCanvasArtifactIterations_HasIndexes(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
@@ -214,10 +214,10 @@ func TestCV_AcceptsAL1aReasonValues(t *testing.T) {
 	}
 }
 
-// TestCV41_Idempotent pins acceptance §1.4 forward-only safety: re-running
+// TestCanvasArtifactIterations_Idempotent pins acceptance §1.4 forward-only safety: re-running
 // v=18 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
 // guards). Same as every migration body in the registry.
-func TestCV41_Idempotent(t *testing.T) {
+func TestCanvasArtifactIterations_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)

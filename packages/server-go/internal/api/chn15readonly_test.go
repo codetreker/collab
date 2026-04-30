@@ -47,9 +47,9 @@ func TestCHN_ReadonlyBit_ByteIdentical(t *testing.T) {
 	}
 }
 
-// TestCHN151_NoSchemaChange — filepath.Walk migrations/ 反向 grep
+// TestChn15readonly_NoSchemaChange — filepath.Walk migrations/ 反向 grep
 // chn_15_\d+ 0 hit + sqlite_master 反向. 立场 ①.
-func TestCHN151_NoSchemaChange(t *testing.T) {
+func TestChn15readonly_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	root := chn15RepoRoot(t)
 	migDir := filepath.Join(root, "packages/server-go/internal/migrations")

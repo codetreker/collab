@@ -16,7 +16,7 @@ import (
 )
 
 // REG-CHN9-001 — 0 schema 改反向断言.
-func TestCHN91_NoSchemaChange(t *testing.T) {
+func TestChn9visibility_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	pat := regexp.MustCompile(`(?i)chn_9_\d+|chn9_\d+_visibility`)

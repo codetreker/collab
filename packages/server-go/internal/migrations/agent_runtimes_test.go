@@ -192,11 +192,11 @@ func TestAL_RejectsDuplicateRuntimePerAgent(t *testing.T) {
 	}
 }
 
-// TestAL41_HasAgentIDIndex pins acceptance §1.3 — INDEX
+// TestAgentRuntimes_HasAgentIDIndex pins acceptance §1.3 — INDEX
 // idx_agent_runtimes_agent_id (lookup 热路径). UNIQUE 已经建了
 // sqlite_autoindex, 此显式 idx 是 acceptance 字面要求 (跟 AL-3.1 / DM-2.1
 // 同模式 — 显式命名让 EXPLAIN QUERY PLAN 可读 + 反查 grep 可断).
-func TestAL41_HasAgentIDIndex(t *testing.T) {
+func TestAgentRuntimes_HasAgentIDIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
@@ -209,13 +209,13 @@ func TestAL41_HasAgentIDIndex(t *testing.T) {
 	}
 }
 
-// TestAL41_AcceptsAL1aReasonValues pins acceptance §1.1 + §2.5
+// TestAgentRuntimes_AcceptsAL1aReasonValues pins acceptance §1.1 + §2.5
 // last_error_reason 复用 AL-1a #249 6 reason 枚举 (字面 byte-identical
 // 跟 agent/state.go Reason* + AL-3 #305 ③ + lib/agent-state.ts
 // REASON_LABELS 三处一致). schema 层无 CHECK enum (留 server 校验, 跟
 // 11 项 language 白名单同思路 — schema CHECK 装不下产品级 enum), 此
 // test 仅断言 INSERT 6 reason 全 OK.
-func TestAL41_AcceptsAL1aReasonValues(t *testing.T) {
+func TestAgentRuntimes_AcceptsAL1aReasonValues(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
@@ -243,10 +243,10 @@ func TestAL41_AcceptsAL1aReasonValues(t *testing.T) {
 	}
 }
 
-// TestAL41_Idempotent pins acceptance §1.4 forward-only safety:
+// TestAgentRuntimes_Idempotent pins acceptance §1.4 forward-only safety:
 // re-running v=16 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX
 // IF NOT EXISTS guards). Same as every migration body in the registry.
-func TestAL41_Idempotent(t *testing.T) {
+func TestAgentRuntimes_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)

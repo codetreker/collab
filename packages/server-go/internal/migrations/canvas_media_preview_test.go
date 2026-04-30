@@ -141,7 +141,7 @@ func TestCV_PreservesExistingRows(t *testing.T) {
 }
 
 // REG-CV2V2-001e — idx_artifacts_channel_id survives the v=28 rebuild.
-func TestCV2V2_PreservesChannelIDIndex(t *testing.T) {
+func TestCanvasMediaPreview_PreservesChannelIDIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
@@ -155,7 +155,7 @@ func TestCV2V2_PreservesChannelIDIndex(t *testing.T) {
 }
 
 // REG-CV2V2-001f (spec §0 立场 ③ + 反约束 不裂表) — no per-kind tables.
-func TestCV2V2_NoSeparateKindTables(t *testing.T) {
+func TestCanvasMediaPreview_NoSeparateKindTables(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
@@ -172,8 +172,8 @@ func TestCV2V2_NoSeparateKindTables(t *testing.T) {
 	}
 }
 
-// TestCV2V2_Idempotent — re-running v=28 on an already-applied DB is a no-op.
-func TestCV2V2_Idempotent(t *testing.T) {
+// TestCanvasMediaPreview_Idempotent — re-running v=28 on an already-applied DB is a no-op.
+func TestCanvasMediaPreview_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
