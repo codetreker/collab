@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func TestCovHandlerNowNewIDInjected(t *testing.T) {
+func TestHandlerNowNewIDInjected(t *testing.T) {
 	t.Parallel()
 	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return fixedTime }
@@ -128,7 +128,7 @@ func TestCovHandlerNowNewIDInjected(t *testing.T) {
 
 // TestCovAnchorLoadArtifact exercises loadArtifact / authorKindForUser
 // branches for additional cov.
-func TestCovAnchorLoadArtifact(t *testing.T) {
+func TestAnchorLoadArtifact(t *testing.T) {
 	t.Parallel()
 	srv, s, _ := setupFullTestServer(t)
 	t.Cleanup(srv.Close)
@@ -155,7 +155,7 @@ func TestCovAnchorLoadArtifact(t *testing.T) {
 }
 // TestCovHasChannelPermission covers ChannelHandler.hasChannelPermission
 // branches: wildcard / explicit match / no match.
-func TestCovHasChannelPermission(t *testing.T) {
+func TestHasChannelPermission(t *testing.T) {
 	t.Parallel()
 	srv, s, _ := setupFullTestServer(t)
 	t.Cleanup(srv.Close)
@@ -178,7 +178,7 @@ func TestCovHasChannelPermission(t *testing.T) {
 }
 
 // TestCovPercentile covers percentile branches: empty / single / multi.
-func TestCovPercentile(t *testing.T) {
+func TestPercentile(t *testing.T) {
 	t.Parallel()
 	if got := percentile(nil, 50); got != 0 {
 		t.Errorf("percentile empty: got %d", got)
@@ -199,7 +199,7 @@ func TestCovPercentile(t *testing.T) {
 
 // TestCovIterationChannelOwnerID covers iterations.go channelOwnerID
 // unknown-channel error branch.
-func TestCovIterationChannelOwnerID(t *testing.T) {
+func TestIterationChannelOwnerID(t *testing.T) {
 	t.Parallel()
 	srv, s, _ := setupFullTestServer(t)
 	t.Cleanup(srv.Close)
@@ -212,7 +212,7 @@ func TestCovIterationChannelOwnerID(t *testing.T) {
 
 // TestCovResolveStatus5StateBranches covers the disabled / no-state /
 // busy-row / fallthrough branches of resolveStatus5State.
-func TestCovResolveStatus5StateBranches(t *testing.T) {
+func TestResolveStatus5StateBranches(t *testing.T) {
 	t.Parallel()
 	srv, s, _ := setupFullTestServer(t)
 	t.Cleanup(srv.Close)
@@ -241,7 +241,7 @@ func TestCovResolveStatus5StateBranches(t *testing.T) {
 
 // TestCovHandlerLoadArtifactBranches covers the unknown-id ErrRecordNotFound
 // branch of multiple handlers' loadArtifact methods + IterationHandler.canAccessChannel.
-func TestCovHandlerLoadArtifactBranches(t *testing.T) {
+func TestHandlerLoadArtifactBranches(t *testing.T) {
 	t.Parallel()
 	srv, s, _ := setupFullTestServer(t)
 	t.Cleanup(srv.Close)
@@ -274,7 +274,7 @@ func TestCovHandlerLoadArtifactBranches(t *testing.T) {
 
 // 几个分支: human creator → true; agent creator + no comments → false;
 // unknown user → falls through.
-func TestCovAnchorThreadHasHumanAuthor(t *testing.T) {
+func TestAnchorThreadHasHumanAuthor(t *testing.T) {
 	t.Parallel()
 	srv, s, _ := setupFullTestServer(t)
 	t.Cleanup(srv.Close)

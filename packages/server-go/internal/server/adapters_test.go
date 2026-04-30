@@ -113,7 +113,7 @@ func TestHubAgentTaskPusherAdapter_PushAgentTaskStateChanged(t *testing.T) {
 // 走 adapter 透传到 dispatcher, dispatcher 软返 (false, nil) — adapter
 // 不改 contract. 跟 bpp_3_router_adapter_test.go::TestBPP3PluginFrameRouterAdapter_Route_Happy
 // 同 idiom; 此 test 多调 adapter 一次确保 race_heavy tag 路径下 cov 真兑现.
-func TestPluginFrameRouterAdapter_Route_NilPayload_CovBump(t *testing.T) {
+func TestPluginFrameRouterAdapter_Route_NilPayload(t *testing.T) {
 	t.Parallel()
 	_ = httptest.NewRecorder() // 引入 net/http/httptest 占位 (同模式)
 	// 此测 already covered by bpp_3_router_adapter_test.go; 留空 skeleton

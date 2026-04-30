@@ -27,7 +27,7 @@ import (
 // TestCovBump_HandlerLogErrSmokes 真测 3 个 0% logErr helper (HostGrants /
 // Layout / PushSubscriptions). 各 helper 是 nil-safe wrapper (Logger==nil
 // 直返), 真调跑两路 (有 logger / 无 logger). 0 production 行为改.
-func TestCovBump_HandlerLogErrSmokes(t *testing.T) {
+func TestHandlerLogErrSmokes(t *testing.T) {
 	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	err := errors.New("test-cov-err")
@@ -48,7 +48,7 @@ func TestCovBump_HandlerLogErrSmokes(t *testing.T) {
 // TestCovBump_ErrTypesError 真测 4 个 errXxx Error() string 化方法
 // (cv_3_2_artifact_validation.go errInvalid* 系列). 100% 字面 prefix
 // concatenation, 0 副作用.
-func TestCovBump_ErrTypesError(t *testing.T) {
+func TestErrTypesError(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name string
@@ -68,7 +68,7 @@ func TestCovBump_ErrTypesError(t *testing.T) {
 
 // TestCovBump_ChannelDisplayName 真测 mention_dispatch.go:361 channelDisplayName
 // (defensive helper, dm: prefix 剥离). 0 副作用.
-func TestCovBump_ChannelDisplayName(t *testing.T) {
+func TestChannelDisplayName(t *testing.T) {
 	t.Parallel()
 	if got := channelDisplayName("dm:owner-agent"); got != "owner-agent" {
 		t.Errorf("dm prefix strip: got %q, want %q", got, "owner-agent")

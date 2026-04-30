@@ -4,6 +4,7 @@ package bpp
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"strings"
 	"sync"
@@ -242,4 +243,27 @@ func TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSink(t *testing.T) {
 		}
 	}()
 	NewHeartbeatWatchdog(&fakeLivenessSource{}, nil, nil)
+}
+
+// TestHeartbeatWatchdog_Run_CancelExits verifies Run returns when its ctx
+// is canceled (deterministic, no timer reliance — uses a closed done chan
+// pattern same as ws hub heartbeat tests).
+func TestHeartbeatWatchdog_Run_CancelExits(t *testing.T) {
+	t.Parallel()
+	src := &fakeLivenessSource{}
+	sink := &recordingErrorSink{}
+	w := NewHeartbeatWatchdog(src, sink, slog.Default())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		w.Run(ctx)
+		close(done)
+	}()
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Run did not exit on ctx cancel")
+	}
 }

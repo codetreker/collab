@@ -10,7 +10,7 @@ import (
 )
 
 // REG-covbump v3 — AL-8 audit-log filter param branches.
-func TestCovBump_v3_AuditLogFilters(t *testing.T) {
+func TestAuditLogFilters(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -72,7 +72,7 @@ func TestCovBump_v3_AuditLogFilters(t *testing.T) {
 }
 
 // REG-covbump v3 — impersonation-grant lifecycle (create/get/revoke).
-func TestCovBump_v3_ImpersonateGrantLifecycle(t *testing.T) {
+func TestImpersonateGrantLifecycle(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -116,7 +116,7 @@ func TestCovBump_v3_ImpersonateGrantLifecycle(t *testing.T) {
 }
 
 // REG-covbump v3 — AL-7 audit-retention/override branches.
-func TestCovBump_v3_AL7AuditRetentionOverride(t *testing.T) {
+func TestAL7AuditRetentionOverride(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)

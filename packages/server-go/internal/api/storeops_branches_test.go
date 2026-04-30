@@ -14,7 +14,7 @@ import (
 
 // REG-WORKTREE-cov-v6 — HB-5 heartbeat-retention override branches
 // (mirror of AL-7 audit-retention/override 7-branch test).
-func TestCovBump_v6_HB5RetentionOverride(t *testing.T) {
+func TestHB5RetentionOverride(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -57,7 +57,7 @@ func TestCovBump_v6_HB5RetentionOverride(t *testing.T) {
 }
 
 // REG-WORKTREE-cov-v6 — CHN-7 mute toggle full branches.
-func TestCovBump_v6_ChannelMute(t *testing.T) {
+func TestChannelMute(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -102,7 +102,7 @@ func TestCovBump_v6_ChannelMute(t *testing.T) {
 }
 
 // REG-WORKTREE-cov-v6 — capability_grant store helpers.
-func TestCovBump_v6_StoreChannelGroupOps(t *testing.T) {
+func TestStoreChannelGroupOps(t *testing.T) {
 	t.Parallel()
 	_, s, _ := testutil.NewTestServer(t)
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -144,7 +144,7 @@ func TestCovBump_v6_StoreChannelGroupOps(t *testing.T) {
 
 // REG-WORKTREE-cov-v6 — me/admin-actions branches + audit-log filters
 // targeting unexercised paths in handleListMyAdminActions + handleAdminAuditLog.
-func TestCovBump_v6_AdminActionsExtra(t *testing.T) {
+func TestAdminActionsExtra(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

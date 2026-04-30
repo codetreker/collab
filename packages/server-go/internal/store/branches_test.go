@@ -24,7 +24,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestCov_LayoutBitmapNoRowBranches(t *testing.T) {
+func TestLayoutBitmapNoRowBranches(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "cov_layout_user", "member")
@@ -71,7 +71,7 @@ func TestCov_LayoutBitmapNoRowBranches(t *testing.T) {
 	}
 }
 
-func TestCov_UnpinChannelLayout_NoRow(t *testing.T) {
+func TestUnpinChannelLayout_NoRow(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "cov_unpin_user", "member")
@@ -98,7 +98,7 @@ func TestCov_UnpinChannelLayout_NoRow(t *testing.T) {
 	}
 }
 
-func TestCov_OrgIDLookups(t *testing.T) {
+func TestOrgIDLookups(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "cov_org_user", "member")
@@ -169,7 +169,7 @@ func TestCov_OrgIDLookups(t *testing.T) {
 	}
 }
 
-func TestCov_SplitRank_NoPipe(t *testing.T) {
+func TestSplitRank_NoPipe(t *testing.T) {
 	t.Parallel()
 	// splitRank: no-pipe input → ("0", input) branch
 	a, b := splitRank("nopipe")
@@ -183,7 +183,7 @@ func TestCov_SplitRank_NoPipe(t *testing.T) {
 	}
 }
 
-func TestCov_ShortPrefix(t *testing.T) {
+func TestShortPrefix(t *testing.T) {
 	t.Parallel()
 	if got := shortPrefix("abc"); got != "abc" {
 		t.Fatalf("shortPrefix short: got %q want abc", got)
@@ -196,7 +196,7 @@ func TestCov_ShortPrefix(t *testing.T) {
 	}
 }
 
-func TestCov_GenerateAPIKey(t *testing.T) {
+func TestGenerateAPIKey(t *testing.T) {
 	t.Parallel()
 	k1, err := GenerateAPIKey()
 	if err != nil {
@@ -211,7 +211,7 @@ func TestCov_GenerateAPIKey(t *testing.T) {
 	}
 }
 
-func TestCov_SoftDeleteChannel_WithMessages(t *testing.T) {
+func TestSoftDeleteChannel_WithMessages(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "sdel_user", "member")
@@ -241,7 +241,7 @@ func TestCov_SoftDeleteChannel_WithMessages(t *testing.T) {
 	}
 }
 
-func TestCov_NormalizeDMNameAndParse(t *testing.T) {
+func TestNormalizeDMNameAndParse(t *testing.T) {
 	t.Parallel()
 	// parseDMUserIDs branches:
 	if got := parseDMUserIDs("foo:a_b"); got != nil {
@@ -271,7 +271,7 @@ func TestCov_NormalizeDMNameAndParse(t *testing.T) {
 	}
 }
 
-func TestCov_GetChannelReadonly_Branches(t *testing.T) {
+func TestGetChannelReadonly_Branches(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 
@@ -303,7 +303,7 @@ func TestCov_GetChannelReadonly_Branches(t *testing.T) {
 	}
 }
 
-func TestCov_SearchDMMessages(t *testing.T) {
+func TestSearchDMMessages(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 	u1 := createUser(t, s, "dm_searcher", "member")
@@ -340,7 +340,7 @@ func TestCov_SearchDMMessages(t *testing.T) {
 	}
 }
 
-func TestCov_ReapStaleBusyToIdle(t *testing.T) {
+func TestReapStaleBusyToIdle(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 
@@ -355,7 +355,7 @@ func TestCov_ReapStaleBusyToIdle(t *testing.T) {
 	}
 }
 
-func TestCov_CreateWelcomeChannelForUser(t *testing.T) {
+func TestCreateWelcomeChannelForUser(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 
@@ -385,7 +385,7 @@ func TestCov_CreateWelcomeChannelForUser(t *testing.T) {
 	}
 }
 
-func TestCov_MaskDeletedMessages(t *testing.T) {
+func TestMaskDeletedMessages(t *testing.T) {
 	t.Parallel()
 	deletedAt := int64(1000)
 	msgs := []MessageWithSender{
@@ -401,7 +401,7 @@ func TestCov_MaskDeletedMessages(t *testing.T) {
 	}
 }
 
-func TestCov_CreateOrgForUser_Idempotent(t *testing.T) {
+func TestCreateOrgForUser_Idempotent(t *testing.T) {
 	t.Parallel()
 	s := migratedStore(t)
 

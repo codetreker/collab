@@ -10,7 +10,7 @@ import (
 )
 
 // REG-covbump v5 — AL-5 recover error branches.
-func TestCovBump_v5_AL5RecoverErrors(t *testing.T) {
+func TestAL5RecoverErrors(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -33,7 +33,7 @@ func TestCovBump_v5_AL5RecoverErrors(t *testing.T) {
 }
 
 // REG-covbump v5 — sanitizeImpersonateGrant nil branch via JSON GET.
-func TestCovBump_v5_ImpersonateGrantSanitizeNil(t *testing.T) {
+func TestImpersonateGrantSanitizeNil(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -51,7 +51,7 @@ func TestCovBump_v5_ImpersonateGrantSanitizeNil(t *testing.T) {
 }
 
 // REG-covbump v5 — host-grants validation + lifecycle.
-func TestCovBump_v5_HostGrantsLifecycle(t *testing.T) {
+func TestHostGrantsLifecycle(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

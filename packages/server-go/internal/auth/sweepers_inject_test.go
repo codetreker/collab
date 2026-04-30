@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// TestCovSweeperStartNilSafe covers Start nil-store / nil-receiver branches.
-func TestCovSweeperStartNilSafe(t *testing.T) {
+// TestSweeperStart_NilSafe covers Start nil-store / nil-receiver branches.
+func TestSweeperStart_NilSafe(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -44,7 +44,7 @@ func TestCovSweeperStartNilSafe(t *testing.T) {
 	}
 }
 
-func TestCovSweeperNowInjected(t *testing.T) {
+func TestSweeper_NowInjected(t *testing.T) {
 	t.Parallel()
 	fixed := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	clk := func() time.Time { return fixed }
