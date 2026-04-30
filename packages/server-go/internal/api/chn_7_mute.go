@@ -19,8 +19,6 @@ package api
 
 import (
 	"net/http"
-
-	"borgee-server/internal/auth"
 )
 
 // MuteBit is the byte-identical const that flags a muted channel in
@@ -67,25 +65,9 @@ func (h *ChannelHandler) handleUnmuteChannel(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *ChannelHandler) handleMuteToggle(w http.ResponseWriter, r *http.Request, muted bool) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
 	channelID := r.PathValue("channelId")
-	ch, err := h.Store.GetChannelByID(channelID)
-	if err != nil || ch == nil {
-		writeJSONError(w, http.StatusNotFound, "Channel not found")
-		return
-	}
-	// DM 反 — 跟 CHN-3.2 / CHN-6 错码 byte-identical.
-	if ch.Type == "dm" {
-		writeJSONErrorCode(w, http.StatusBadRequest, "layout.dm_not_grouped",
-			"DM 不参与个人分组")
-		return
-	}
-	if !h.Store.IsChannelMember(channelID, user.ID) {
-		writeJSONError(w, http.StatusForbidden, "Forbidden")
+	user, _, ok := requireChannelMember(w, r, h.Store, channelID, ChannelACLOpts{RejectDM: true})
+	if !ok {
 		return
 	}
 	collapsed, err := h.Store.SetMuteBit(user.ID, channelID, int64(MuteBit), muted)

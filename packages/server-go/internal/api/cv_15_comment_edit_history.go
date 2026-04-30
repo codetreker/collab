@@ -31,7 +31,6 @@
 package api
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -105,7 +104,7 @@ func (h *CV15CommentEditHistoryHandler) handleUserGet(w http.ResponseWriter, r *
 		return
 	}
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"history": parseCommentEditHistory(msg.EditHistory),
+		"history": parseMessageEditHistory(msg.EditHistory),
 	})
 }
 
@@ -132,22 +131,9 @@ func (h *CV15CommentEditHistoryHandler) handleAdminGet(w http.ResponseWriter, r 
 		return
 	}
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"history": parseCommentEditHistory(msg.EditHistory),
+		"history": parseMessageEditHistory(msg.EditHistory),
 	})
 }
 
-// parseCommentEditHistory decodes the stored JSON array, returning an
-// empty slice if NULL/empty (so the client always sees `[]`). Mirrors
-// dm_7_edit_history.go::parseEditHistoryEntries — kept as a separate
-// function so the CV-15 surface compiles independently if the DM-7
-// helper signature ever changes.
-func parseCommentEditHistory(raw *string) []map[string]any {
-	if raw == nil || *raw == "" {
-		return []map[string]any{}
-	}
-	var arr []map[string]any
-	if err := json.Unmarshal([]byte(*raw), &arr); err != nil {
-		return []map[string]any{}
-	}
-	return arr
-}
+// REFACTOR-1 R1.2: parseMessageEditHistory SSOT 移到 message_edit_history.go
+// (helper-2). DM-7 ↔ CV-15 11 行 duplicate 合一, byte-identical 不破.

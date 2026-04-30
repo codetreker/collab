@@ -27,8 +27,6 @@ package api
 
 import (
 	"net/http"
-
-	"borgee-server/internal/auth"
 )
 
 // ReadonlyBit is the byte-identical const that flags a readonly channel
@@ -77,20 +75,9 @@ func (h *ChannelHandler) handleUnsetReadonly(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *ChannelHandler) handleReadonlyToggle(w http.ResponseWriter, r *http.Request, readonly bool) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
 	channelID := r.PathValue("channelId")
-	ch, err := h.Store.GetChannelByID(channelID)
-	if err != nil || ch == nil {
-		writeJSONError(w, http.StatusNotFound, "Channel not found")
-		return
-	}
-	// 立场 ② owner-only — 仅 channel.CreatedBy 可改 readonly.
-	if ch.CreatedBy != user.ID {
-		writeJSONError(w, http.StatusForbidden, "Forbidden")
+	_, ch, ok := requireChannelMember(w, r, h.Store, channelID, ChannelACLOpts{RequireCreator: true})
+	if !ok {
 		return
 	}
 	collapsed, err := h.Store.SetMuteBit(ch.CreatedBy, channelID, int64(ReadonlyBit), readonly)

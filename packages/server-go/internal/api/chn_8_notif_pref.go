@@ -27,8 +27,6 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-
-	"borgee-server/internal/auth"
 )
 
 // NotifPrefShift / NotifPrefMask are byte-identical const that locate the
@@ -80,24 +78,9 @@ type chn8NotifPrefRequest struct {
 // Other bits (CHN-3 collapsed bit 0, CHN-7 mute bit 1) are preserved
 // (立场 ① 不互扰).
 func (h *ChannelHandler) handleSetNotificationPref(w http.ResponseWriter, r *http.Request) {
-	user := auth.UserFromContext(r.Context())
-	if user == nil {
-		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
 	channelID := r.PathValue("channelId")
-	ch, err := h.Store.GetChannelByID(channelID)
-	if err != nil || ch == nil {
-		writeJSONError(w, http.StatusNotFound, "Channel not found")
-		return
-	}
-	if ch.Type == "dm" {
-		writeJSONErrorCode(w, http.StatusBadRequest, "layout.dm_not_grouped",
-			"DM 不参与个人分组")
-		return
-	}
-	if !h.Store.IsChannelMember(channelID, user.ID) {
-		writeJSONError(w, http.StatusForbidden, "Forbidden")
+	user, _, ok := requireChannelMember(w, r, h.Store, channelID, ChannelACLOpts{RejectDM: true})
+	if !ok {
 		return
 	}
 	var req chn8NotifPrefRequest
