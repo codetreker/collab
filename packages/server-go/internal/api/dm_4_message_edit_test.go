@@ -13,6 +13,7 @@
 package api_test
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -94,6 +95,40 @@ func TestDM41_HappyPath(t *testing.T) {
 	}
 	if got, want := msg["content"], "edited content via DM-4"; got != want {
 		t.Errorf("content: got %q, want %q", got, want)
+	}
+}
+
+// TestDM41_HappyPath_IdempotentSameContent — DM-7 follow-up (G4.audit row #1):
+// 反向断 same-content PATCH 不追加 edit_history (保 idempotent).
+// Phase 4 batch1 audit §2.1 drift closure.
+func TestDM41_HappyPath_IdempotentSameContent(t *testing.T) {
+	ts, s, _ := testutil.NewTestServer(t)
+	ownerToken, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
+
+	// 1st PATCH (real edit: original → "same content") → appends 1 history row.
+	for i := 0; i < 3; i++ {
+		resp, _ := testutil.JSON(t, "PATCH",
+			ts.URL+"/api/v1/channels/"+dmID+"/messages/"+messageID, ownerToken,
+			map[string]any{"content": "same content"})
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("PATCH iter %d: status %d", i, resp.StatusCode)
+		}
+	}
+	var msg store.Message
+	if err := s.DB().Where("id = ?", messageID).First(&msg).Error; err != nil {
+		t.Fatalf("reload msg: %v", err)
+	}
+	if msg.EditHistory == nil {
+		t.Fatal("edit_history nil after 1st PATCH (expected 1 entry)")
+	}
+	var arr []map[string]any
+	if err := json.Unmarshal([]byte(*msg.EditHistory), &arr); err != nil {
+		t.Fatalf("parse edit_history: %v", err)
+	}
+	// 1st PATCH appended 1 row (original → "same content"); 2nd/3rd PATCH
+	// idempotent (same content) — must NOT append.
+	if len(arr) != 1 {
+		t.Errorf("edit_history length: got %d, want 1 (idempotent same-content PATCH)", len(arr))
 	}
 }
 
