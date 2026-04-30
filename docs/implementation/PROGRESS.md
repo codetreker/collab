@@ -28,7 +28,7 @@
 
 ## In-flight 当前状态 (≤10 行)
 
-- **REFACTOR-2** (本 PR) — internal/api 飞马 audit #4-#13 全清 (8 helper SSOT + ~500-700 LoC 净减, 0 行为改 / 0 schema / 0 endpoint)
+- (none — REFACTOR-2 ✅ 落 phase-4.md, 等下一 milestone)
 
 ---
 

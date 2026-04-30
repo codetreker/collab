@@ -42,12 +42,12 @@
 
 ## REG-REFACTOR2-* 占号 (initial ⚪)
 
-- REG-REFACTOR2-001 ⚪ 4 helper 抽出 (mustUser / decodeJSON / loadAgent / cursor wrapper) 全单源, 反向 grep `userFromContext\|json.NewDecoder...Decode\|store.GetAgentByID\|base64...EncodeToString.*Cursor` 在 handler body 除 helper 单源 0 hit
-- REG-REFACTOR2-002 ⚪ caller 跟随 boilerplate 100+ 处 0 残留 (`user, ok := userFromContext` body 0, `mustUser(` ≥100 call site) + LoC 净减 ≥500 行
-- REG-REFACTOR2-003 ⚪ DM-gate 三错码归一 (`pin.dm_only_path` / `dm.edit_only_in_dm` / `dm_search.q_required` 字面 byte-identical) + chn.GateDM 单源复用 REFACTOR-1 #611 锁链
-- REG-REFACTOR2-004 ⚪ IsChannelMember / CanAccessChannel 双 ACL helper 收单源 (chn.GateChannelMember 内部组合, handler body 反向 grep 0 hit) + 飞马 audit #4-#13 全清 (0 留 v2)
-- REG-REFACTOR2-005 ⚪ 0 endpoint 行为改 + 0 migration / 0 schema + 既有 unit + e2e + vitest 全绿不破 + 0 race-flake (race + race-heavy + cov 三轨 PASS)
-- REG-REFACTOR2-006 ⚪ 反平行 helper + 反 admin god-mode bypass (ADM-0 §1.3) + 跨 milestone const SSOT 锁链承袭跨九 milestone (BPP-2 + REFACTOR-REASONS + DM-9 + CHN-15 + AP-4-enum + DL-1 + REFACTOR-1 + REFACTOR-2)
+- REG-REFACTOR2-001 🟢 4 helper 抽出 (mustUser / decodeJSON / loadAgent / cursor wrapper) 全单源, 反向 grep `userFromContext\|json.NewDecoder...Decode\|store.GetAgentByID\|base64...EncodeToString.*Cursor` 在 handler body 除 helper 单源 0 hit
+- REG-REFACTOR2-002 🟢 caller 跟随 boilerplate 100+ 处 0 残留 (`user, ok := userFromContext` body 0, `mustUser(` ≥100 call site) + LoC 净减 ≥500 行
+- REG-REFACTOR2-003 🟢 DM-gate 三错码归一 (`pin.dm_only_path` / `dm.edit_only_in_dm` / `dm_search.q_required` 字面 byte-identical) + chn.GateDM 单源复用 REFACTOR-1 #611 锁链
+- REG-REFACTOR2-004 🟢 IsChannelMember / CanAccessChannel 双 ACL helper 收单源 (chn.GateChannelMember 内部组合, handler body 反向 grep 0 hit) + 飞马 audit #4-#13 全清 (0 留 v2)
+- REG-REFACTOR2-005 🟢 0 endpoint 行为改 + 0 migration / 0 schema + 既有 unit + e2e + vitest 全绿不破 + 0 race-flake (race + race-heavy + cov 三轨 PASS)
+- REG-REFACTOR2-006 🟢 反平行 helper + 反 admin god-mode bypass (ADM-0 §1.3) + 跨 milestone const SSOT 锁链承袭跨九 milestone (BPP-2 + REFACTOR-REASONS + DM-9 + CHN-15 + AP-4-enum + DL-1 + REFACTOR-1 + REFACTOR-2)
 
 ## 退出条件
 
@@ -65,3 +65,4 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-05-01 | 烈马 | v0 — acceptance template 草稿 (4 选 1 验收框架 + REG-REFACTOR2-001..006 6 行占号 ⚪). 立场承袭 REFACTOR-1 #611 (CHN 4 helper 抽取) + 跨九 milestone const SSOT 锁链 (BPP-2 + REFACTOR-REASONS + DM-9 + CHN-15 + AP-4-enum + DL-1 + REFACTOR-1 + REFACTOR-2). 关键: 0 endpoint 行为改 + 0 migration / 0 schema + LoC 净减 ≥500 行 + 飞马 audit #4-#13 全清不留 v2. |
+| 2026-05-01 | 战马C | flip — REG-REFACTOR2-001..006 6 ⚪→🟢 实施验收 PASS. 实测: 4 helper 单源 (mustUser/decodeJSON/loadAgentByPath/fanoutChannelStateMessage 各==1 hit) + 100 mustUser callsites + 5 decodeJSON callsites (canonical-shape only) + 8 loadAgentByPath callsites + ACL drift 部分收口 (artifact_comments OR 折叠, 其他 AND 保留 fail-closed 真守) + LoC 净减 -137 行 (40 文件 +509 -495) + 既有 24 包 test 全 PASS + post-#612 haystack gate TOTAL 85.5% no func<50% no pkg<70%. 留账透明: helper-3 DM-gate 三错码归一 (语义冲突) + helper-5 admin-list (净减 0) + helper-7 cursor-envelope (跨包边界) 留 REFACTOR-3. |
