@@ -457,6 +457,10 @@ func (s *Server) SetupRoutes() {
 	reactionHandler := &api.ReactionHandler{Store: s.store, Logger: s.logger, Hub: broadcaster}
 	reactionHandler.RegisterRoutes(s.mux, authMw)
 
+	// DM-11 cross-DM message search (DM-only scope, channel-member ACL)
+	dm11SearchHandler := &api.DM11SearchHandler{Store: s.store}
+	dm11SearchHandler.RegisterRoutes(s.mux, authMw)
+
 	// Commands
 	commandHandler := &api.CommandHandler{Store: s.store, DataLayer: s.dl, Logger: s.logger, Hub: &hubCommandAdapter{s.hub}}
 	commandHandler.RegisterRoutes(s.mux, authMw)
