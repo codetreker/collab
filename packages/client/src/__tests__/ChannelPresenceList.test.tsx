@@ -22,6 +22,9 @@ const nodeRequire = createRequire(import.meta.url);
 const fs: any = nodeRequire('fs');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodePath: any = nodeRequire('path');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const url: any = nodeRequire('url');
+const HERE = nodePath.dirname(url.fileURLToPath(import.meta.url));
 
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
@@ -103,7 +106,7 @@ describe('RT-4.3 ChannelPresenceList content lock', () => {
 
   it('⑤ 同义词反向 reject + 既有 RT-2 typing byte-identical', () => {
     const compPath = nodePath.resolve(
-      __dirname,
+      HERE,
       '..',
       'components',
       'ChannelPresenceList.tsx',
@@ -115,7 +118,7 @@ describe('RT-4.3 ChannelPresenceList content lock', () => {
     }
     // RT-2 既有 TypingIndicator.tsx 不漂入 RT-4.
     const typingPath = nodePath.resolve(
-      __dirname,
+      HERE,
       '..',
       'components',
       'TypingIndicator.tsx',
