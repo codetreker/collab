@@ -68,6 +68,7 @@ export default function PresenceDot({ state, reason, compact = false }: Presence
         data-presence={normalized}
         data-task-state={taskState}
         data-reason={reason ?? ''}
+        data-failure-badge={normalized === 'error' ? 'true' : ''}
         title={label.text}
       >
         <span className={dotClass} aria-hidden="true" />
@@ -81,6 +82,7 @@ export default function PresenceDot({ state, reason, compact = false }: Presence
       data-presence={normalized}
       data-task-state={taskState}
       data-reason={reason ?? ''}
+      data-failure-badge={normalized === 'error' ? 'true' : ''}
     >
       <span className={dotClass} aria-hidden="true" />
       <span className="presence-text">{label.text}</span>
