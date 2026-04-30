@@ -139,6 +139,17 @@ export async function listArchivedChannels(): Promise<Channel[]> {
   return data.channels;
 }
 
+// CHN-6: pin / unpin a channel for the current user. user-rail only;
+// admin god-mode 不挂 (ADM-0 §1.3 红线 + 立场 ②). Server stamps
+// position = -(nowMs) on pin / max(positive)+1.0 on unpin (跟 CHN-3.3
+// MIN-1.0 单调小数模式互补).
+export async function pinChannel(channelId: string, pinned: boolean): Promise<{ position: number; pinned: boolean }> {
+  const method = pinned ? 'POST' : 'DELETE';
+  return request<{ position: number; pinned: boolean }>(`/api/v1/channels/${channelId}/pin`, {
+    method,
+  });
+}
+
 export async function joinChannel(channelId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/join`, {
     method: 'POST',

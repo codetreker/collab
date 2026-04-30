@@ -972,6 +972,47 @@ func (s *Store) ListAllArchivedChannelsForAdmin() ([]ChannelWithCounts, error) {
 	return results, err
 }
 
+// PinChannelLayout upserts user_channel_layout with the supplied
+// pinned position (CHN-6 立场 ③: caller stamps `-(nowMs)` for ASC-asc
+// sort). 跟 CHN-3.2 PUT /me/layout upsert 同模式 byte-identical.
+//
+// 反约束 (chn-6-spec.md §0 立场 ②): user_id 必传 (per-user pin); caller
+// 在 handler 层走 IsChannelMember + DM reject 红线; 此函数仅写入.
+func (s *Store) PinChannelLayout(userID, channelID string, position float64, nowMs int64) error {
+	return s.db.Exec(`INSERT INTO user_channel_layout
+		(user_id, channel_id, collapsed, position, created_at, updated_at)
+		VALUES (?, ?, 0, ?, ?, ?)
+		ON CONFLICT(user_id, channel_id) DO UPDATE SET
+		  position   = excluded.position,
+		  updated_at = excluded.updated_at`,
+		userID, channelID, position, nowMs, nowMs).Error
+}
+
+// UnpinChannelLayout returns the (user, channel) row to the non-pinned
+// section by writing `position = max(positive)+1.0` (跟 CHN-3.3 #415
+// client MIN-1.0 单调小数模式互补; new pos always > 0 = unpinned).
+// Returns the new position so handler can echo it.
+func (s *Store) UnpinChannelLayout(userID, channelID string, nowMs int64) (float64, error) {
+	// Find current max non-pinned position for this user. No row → 0.0.
+	var maxPos float64
+	if err := s.db.Raw(`SELECT COALESCE(MAX(position), 0.0)
+		FROM user_channel_layout
+		WHERE user_id = ? AND position >= 0`, userID).Row().Scan(&maxPos); err != nil {
+		return 0, err
+	}
+	newPos := maxPos + 1.0
+	if err := s.db.Exec(`INSERT INTO user_channel_layout
+		(user_id, channel_id, collapsed, position, created_at, updated_at)
+		VALUES (?, ?, 0, ?, ?, ?)
+		ON CONFLICT(user_id, channel_id) DO UPDATE SET
+		  position   = excluded.position,
+		  updated_at = excluded.updated_at`,
+		userID, channelID, newPos, nowMs, nowMs).Error; err != nil {
+		return 0, err
+	}
+	return newPos, nil
+}
+
 func (s *Store) ListAllChannelsForAdmin(userID string) ([]ChannelWithCounts, error) {
 	var results []ChannelWithCounts
 	err := s.db.Raw(`
