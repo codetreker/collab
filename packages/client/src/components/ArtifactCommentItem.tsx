@@ -21,6 +21,8 @@
 
 import { useCallback, useState } from 'react';
 import { ApiError, editMessage, deleteMessage, addReaction } from '../lib/api';
+import type { Message } from '../types';
+import QuotedCommentBlock from './QuotedCommentBlock';
 
 interface ArtifactCommentItemProps {
   commentId: string;
@@ -29,6 +31,10 @@ interface ArtifactCommentItemProps {
   body: string;
   currentUserId: string;
   onChanged?: () => void;
+  // CV-13.2: optional parent message for quote/reference rendering. Parent
+  // component looks up via reply_to_id from in-memory messages list cache
+  // (CV-8 #441 reply_to_id 列既有 + 0 server fetch).
+  quotedMessage?: Message | null;
 }
 
 const DELETE_CONFIRM_TEXT = '确认删除这条评论?';
@@ -40,6 +46,7 @@ export default function ArtifactCommentItem({
   body,
   currentUserId,
   onChanged,
+  quotedMessage,
 }: ArtifactCommentItemProps) {
   const isOwn = authorId === currentUserId;
   const [editing, setEditing] = useState(false);
@@ -113,6 +120,9 @@ export default function ArtifactCommentItem({
 
   return (
     <div className="cv7-comment-item" data-cv7-comment-id={commentId}>
+      {/* CV-13.2: quote / reference 块 (parent message 来自父组件 messages
+          list 内存 cache lookup, 0 server code 复用 reply_to_id CV-8 #441). */}
+      {quotedMessage !== undefined && <QuotedCommentBlock quotedMessage={quotedMessage ?? null} />}
       <span className="cv7-comment-author" data-cv7-author-role={authorRole}>
         {authorRole === 'agent' ? '🤖' : '👤'} {authorId}
       </span>
