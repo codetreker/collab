@@ -138,7 +138,13 @@ type clientBucket struct {
 	lastTime time.Time
 }
 
-func newRateLimiter() *rateLimiter {
+func newRateLimiter(ctx context.Context) *rateLimiter {
+	if ctx == nil {
+		// Defensive: should never be nil (TEST-FIX-2 — caller passes
+		// s.ctx). Fall back to context.Background to avoid panic but
+		// goroutine will leak. Tests must pass real ctx.
+		ctx = context.Background()
+	}
 	rl := &rateLimiter{
 		clients:  make(map[string]*clientBucket),
 		authRate: 10.0 / 60.0, // 10 per minute
@@ -146,21 +152,30 @@ func newRateLimiter() *rateLimiter {
 		apiRate:  100.0 / 60.0, // 100 per minute
 		apiMax:   100,
 	}
-	go rl.cleanup()
+	go rl.cleanup(ctx)
 	return rl
 }
 
-func (rl *rateLimiter) cleanup() {
+func (rl *rateLimiter) cleanup(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Minute)
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		for key, b := range rl.clients {
-			if now.Sub(b.lastTime) > 10*time.Minute {
-				delete(rl.clients, key)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			// TEST-FIX-2: ctx-aware shutdown. Tests that pass t.Context()
+			// (Go 1.24+ auto-cancels on test end) get clean goroutine exit
+			// instead of leaked ticker firing on closed DB.
+			return
+		case <-ticker.C:
+			rl.mu.Lock()
+			now := time.Now()
+			for key, b := range rl.clients {
+				if now.Sub(b.lastTime) > 10*time.Minute {
+					delete(rl.clients, key)
+				}
 			}
+			rl.mu.Unlock()
 		}
-		rl.mu.Unlock()
 	}
 }
 

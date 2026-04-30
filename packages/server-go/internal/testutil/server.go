@@ -150,7 +150,11 @@ func NewTestServer(t *testing.T) (*httptest.Server, *store.Store, *config.Config
 	s.AddChannelMember(&store.ChannelMember{ChannelID: general.ID, UserID: member.ID})
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := server.New(cfg, logger, s)
+	// TEST-FIX-2: pass t.Context() so server goroutines (rateLimiter
+	// cleanup / RetentionSweeper / HeartbeatRetentionSweeper / hub.StartHeartbeat
+	// / heartbeat watchdog) all exit on test teardown — prevents leak into
+	// next sub-test's race accumulator (>120s timeout panic).
+	srv := server.New(t.Context(), cfg, logger, s)
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(func() {
 		ts.Close()
@@ -190,7 +194,7 @@ func NewTestServerWithFakeClock(t *testing.T) (*httptest.Server, *store.Store, *
 	// reset httptest with a fresh srv that has SetClock called. To keep
 	// shared fixture seeding, we reuse the store + cfg (already populated).
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := server.New(cfg, logger, s)
+	srv := server.New(t.Context(), cfg, logger, s)
 	srv.SetClock(fake)
 	// Replace the handler atomically: close prior ts, mount new one.
 	ts.Close()

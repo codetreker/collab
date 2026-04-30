@@ -55,7 +55,7 @@ func testServer(t *testing.T) (*Server, *store.Store) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := New(cfg, logger, s)
+	srv := New(t.Context(), cfg, logger, s)
 	return srv, s
 }
 
@@ -299,7 +299,7 @@ func TestStatusRecorderFlush(t *testing.T) {
 }
 
 func TestRateLimiter(t *testing.T) {
-	rl := newRateLimiter()
+	rl := newRateLimiter(t.Context())
 	ip := "127.0.0.1"
 
 	for i := 0; i < 10; i++ {
@@ -310,7 +310,7 @@ func TestRateLimiter(t *testing.T) {
 }
 
 func TestRateLimiterUsesAuthBucket(t *testing.T) {
-	rl := newRateLimiter()
+	rl := newRateLimiter(t.Context())
 	rl.authRate = 0
 	rl.authMax = 1
 	rl.apiMax = 0
@@ -325,7 +325,7 @@ func TestRateLimiterUsesAuthBucket(t *testing.T) {
 }
 
 func TestRateLimitMiddlewareRejectsExhaustedClient(t *testing.T) {
-	rl := newRateLimiter()
+	rl := newRateLimiter(t.Context())
 	rl.apiRate = 0
 	rl.apiMax = 1
 
@@ -384,7 +384,7 @@ func TestRateLimitBypass_RequiresBothHeaderAndDevMode(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			rl := newRateLimiter()
+			rl := newRateLimiter(t.Context())
 			rl.apiRate = 0
 			rl.apiMax = 1
 
@@ -468,7 +468,7 @@ func TestClientIPSources(t *testing.T) {
 }
 
 func TestRateLimiterRefills(t *testing.T) {
-	rl := newRateLimiter()
+	rl := newRateLimiter(t.Context())
 	rl.apiRate = 10
 	rl.apiMax = 2
 	ip := "198.51.100.11"
