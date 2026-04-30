@@ -30,7 +30,10 @@ jobs:
         run: |
           set -e
           # actor / action / target / when / scope 5 字段 byte-identical
-          # 跟 BPP-4 dead_letter + HB-3 host_grants
+          # 跟 BPP-4 dead_letter + HB-3 host_grants + HB-1 install audit + HB-2 host-IPC audit
+          # (HB-1 + HB-2 待 Go binary 真实施补到 5; HB stack Go 重审拍板).
+          # Go binary 真实施 PR 加 packages/borgee-helper/install-butler/audit.go +
+          # packages/borgee-helper/host-bridge/audit.go 时, 把下面 sources 列表从 2 → 4.
           count=$(grep -rE '"actor"' packages/server-go/internal/api/host_grants.go packages/server-go/internal/bpp/dead_letter.go | wc -l)
           if [ "$count" -lt 2 ]; then
             echo "::error::audit schema actor field missing in HB-3 + BPP-4 sources (got $count, expected ≥2)"
@@ -39,7 +42,7 @@ jobs:
           for key in actor action target when scope; do
             for src in packages/server-go/internal/api/host_grants.go packages/server-go/internal/bpp/dead_letter.go; do
               if ! grep -qE "\"$key\"" "$src"; then
-                echo "::error::audit schema field \"$key\" missing in $src (跨四 milestone byte-identical 锁链)"
+                echo "::error::audit schema field \"$key\" missing in $src (跨四 milestone byte-identical 锁链, HB-1+HB-2 Go binary 真实施补到 5)"
                 exit 1
               fi
             done
