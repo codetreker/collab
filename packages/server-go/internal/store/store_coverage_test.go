@@ -24,6 +24,7 @@ func createUser(t *testing.T, s *Store, name, role string) *User {
 }
 
 func TestChannelCRUDStore(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "user1", "admin")
 
@@ -82,6 +83,7 @@ func TestChannelCRUDStore(t *testing.T) {
 }
 
 func TestChannelMemberOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "m1", "member")
 	u2 := createUser(t, s, "m2", "member")
@@ -119,6 +121,7 @@ func TestChannelMemberOps(t *testing.T) {
 }
 
 func TestMessageOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "sender", "member")
 	ch := &Channel{Name: "msg-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
@@ -184,6 +187,7 @@ func TestMessageOps(t *testing.T) {
 }
 
 func TestMessageMentions(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "mentioner", "member")
 	u2 := createUser(t, s, "mentioned", "member")
@@ -201,6 +205,7 @@ func TestMessageMentions(t *testing.T) {
 }
 
 func TestDmChannelOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u1 := createUser(t, s, "dm1", "member")
 	u2 := createUser(t, s, "dm2", "member")
@@ -231,6 +236,7 @@ func TestDmChannelOps(t *testing.T) {
 }
 
 func TestChannelGroupOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "grouper", "admin")
 
@@ -281,6 +287,7 @@ func TestChannelGroupOps(t *testing.T) {
 }
 
 func TestPositionHelpers(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "poshelper", "admin")
 
@@ -317,6 +324,7 @@ func TestPositionHelpers(t *testing.T) {
 }
 
 func TestGroupPositionHelpers(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "gposhelper", "admin")
 
@@ -352,6 +360,7 @@ func TestGroupPositionHelpers(t *testing.T) {
 }
 
 func TestReactionOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "reactor", "member")
 	u2 := createUser(t, s, "reactor2", "member")
@@ -380,6 +389,7 @@ func TestReactionOps(t *testing.T) {
 }
 
 func TestWorkspaceOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "wsuser", "member")
 	ch := &Channel{Name: "ws-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
@@ -454,6 +464,7 @@ func TestWorkspaceOps(t *testing.T) {
 }
 
 func TestResolveConflictFunc(t *testing.T) {
+	t.Parallel()
 	result := ResolveConflict("test.txt", []string{"test.txt"})
 	if result != "test (1).txt" {
 		t.Fatalf("expected test (1).txt, got %s", result)
@@ -471,6 +482,7 @@ func TestResolveConflictFunc(t *testing.T) {
 }
 
 func TestRemoteNodeOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "remoteuser", "member")
 
@@ -553,6 +565,7 @@ func TestRemoteNodeOps(t *testing.T) {
 }
 
 func TestEventOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "evtuser", "member")
 	ch := &Channel{Name: "evt-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
@@ -597,6 +610,7 @@ func TestEventOps(t *testing.T) {
 }
 
 func TestAdminOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "adminops", "member")
 	m := createUser(t, s, "memberops", "member")
@@ -678,6 +692,7 @@ func TestAdminOps(t *testing.T) {
 }
 
 func TestAgentOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	owner := createUser(t, s, "agentowner", "member")
 
@@ -711,6 +726,7 @@ func TestAgentOps(t *testing.T) {
 }
 
 func TestPermissionOps(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "permuser", "member")
 
@@ -743,6 +759,7 @@ func TestPermissionOps(t *testing.T) {
 }
 
 func TestChannelQueries(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "chquery", "admin")
 
@@ -803,6 +820,7 @@ func TestChannelQueries(t *testing.T) {
 }
 
 func TestOnlineUsers(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "onlineuser", "member")
 	s.UpdateLastSeen(u.ID)
@@ -817,6 +835,7 @@ func TestOnlineUsers(t *testing.T) {
 }
 
 func TestGetUserByDisplayName(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	createUser(t, s, "findme", "member")
 
@@ -835,6 +854,7 @@ func TestGetUserByDisplayName(t *testing.T) {
 }
 
 func TestInviteCodeConsume(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "inviter", "admin")
 	u2 := createUser(t, s, "consumer", "member")
@@ -862,6 +882,7 @@ func TestInviteCodeConsume(t *testing.T) {
 }
 
 func TestDefaultPermissionsAgent(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "agentperm", "agent")
 	s.GrantDefaultPermissions(u.ID, "agent")
@@ -883,6 +904,7 @@ func TestDefaultPermissionsAgent(t *testing.T) {
 }
 
 func TestDefaultPermissionsAdmin(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "adminperm", "admin")
 	s.GrantDefaultPermissions(u.ID, "admin")

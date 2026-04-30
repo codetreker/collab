@@ -25,6 +25,7 @@ import (
 // REG-BPP32-006 (acceptance §2.4 happy + content-lock §2 action enum) —
 // owner POST /me/grants action=grant 落 user_permissions 行.
 func TestBPP32_PostGrant_HappyPath(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	owner, agent := bpp32SeedOwnerAndAgent(t, s, "owner-bpp32-grant@test.com")
 	ownerTok := testutil.LoginAs(t, ts.URL, *owner.Email, "password123")
@@ -61,6 +62,7 @@ func TestBPP32_PostGrant_HappyPath(t *testing.T) {
 
 // REG-BPP32-007 (acceptance §2.1) — owner-only ACL: non-owner → 403.
 func TestBPP32_PostGrant_NonOwner403(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	_, agent := bpp32SeedOwnerAndAgent(t, s, "owner-bpp32-acl@test.com")
 
@@ -84,6 +86,7 @@ func TestBPP32_PostGrant_NonOwner403(t *testing.T) {
 // REG-BPP32-008 (acceptance §2.2) — capability 必 ∈ AP-1 auth.Capabilities;
 // 字典外值 reject + bpp.grant_capability_disallowed 错码.
 func TestBPP32_PostGrant_CapabilityWhitelistGuard(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	owner, agent := bpp32SeedOwnerAndAgent(t, s, "owner-bpp32-cap@test.com")
 	ownerTok := testutil.LoginAs(t, ts.URL, *owner.Email, "password123")
@@ -111,6 +114,7 @@ func TestBPP32_PostGrant_CapabilityWhitelistGuard(t *testing.T) {
 
 // REG-BPP32-009 (acceptance §2.3) — scope ∈ v1 三层; 漂移值 reject.
 func TestBPP32_PostGrant_ScopeWhitelistGuard(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	owner, agent := bpp32SeedOwnerAndAgent(t, s, "owner-bpp32-scope@test.com")
 	ownerTok := testutil.LoginAs(t, ts.URL, *owner.Email, "password123")
@@ -146,6 +150,7 @@ func TestBPP32_PostGrant_ScopeWhitelistGuard(t *testing.T) {
 // REG-BPP32-010 (acceptance §2.5 + 反约束 spec §3 #5/#6/#7) —
 // reject + snooze v1 仅 audit (不持久化反向 grant). admin god-mode 不挂.
 func TestBPP32_PostGrant_RejectSnoozeAuditOnly(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	owner, agent := bpp32SeedOwnerAndAgent(t, s, "owner-bpp32-rs@test.com")
 	ownerTok := testutil.LoginAs(t, ts.URL, *owner.Email, "password123")
@@ -189,6 +194,7 @@ func TestBPP32_PostGrant_RejectSnoozeAuditOnly(t *testing.T) {
 // REG-BPP32-011 (反约束 spec §3 #5+#6) — admin path 不挂 /me/grants
 // (admin god-mode 走 /admin-api 单独 mw); + cross-org grant 反向 grep.
 func TestBPP32_ReverseGrep_NoAdminPathAndNoCrossOrgGrant(t *testing.T) {
+	t.Parallel()
 	apiDir := filepath.Join("..", "api")
 	// 反约束: admin handler / mw 不出现 grant endpoint
 	bad1 := regexp.MustCompile(`admin.*\/me\/grants|admin-api.*\/grants`)

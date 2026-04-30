@@ -42,6 +42,7 @@ func seedLegacyTables(t *testing.T, db *gorm.DB) {
 }
 
 func TestCM11_CreatesOrganizationsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 
@@ -67,6 +68,7 @@ func TestCM11_CreatesOrganizationsTable(t *testing.T) {
 }
 
 func TestCM11_AddsOrgIDToResourceTables(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 
@@ -93,6 +95,7 @@ func TestCM11_AddsOrgIDToResourceTables(t *testing.T) {
 }
 
 func TestCM11_CreatesOrgIDIndexes(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 
@@ -125,6 +128,7 @@ func TestCM11_CreatesOrgIDIndexes(t *testing.T) {
 }
 
 func TestCM11_IsIdempotentOnRerun(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 

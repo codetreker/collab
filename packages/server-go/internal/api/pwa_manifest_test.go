@@ -23,6 +23,7 @@ import (
 // TestDL44_PWAManifest_PublicEndpoint pins acceptance — GET /api/v1/pwa/manifest
 // 不需 auth (浏览器 install prompt 在 login 前 fetch).
 func TestDL44_PWAManifest_PublicEndpoint(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/pwa/manifest")
@@ -39,6 +40,7 @@ func TestDL44_PWAManifest_PublicEndpoint(t *testing.T) {
 // TestDL44_PWAManifest_ContentType pins W3C MIME — Content-Type:
 // application/manifest+json (浏览器 install prompt trigger 识别).
 func TestDL44_PWAManifest_ContentType(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/pwa/manifest")
@@ -57,6 +59,7 @@ func TestDL44_PWAManifest_ContentType(t *testing.T) {
 // — required + recommended fields (name / short_name / start_url /
 // display / icons).
 func TestDL44_PWAManifest_RequiredFields(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/pwa/manifest")
@@ -106,6 +109,7 @@ func TestDL44_PWAManifest_RequiredFields(t *testing.T) {
 // TestDL44_PWAManifest_NoSecretsLeak pins 反约束 — manifest 内容不含
 // secret / token / api_key / vapid 等字面 (公开 endpoint 隐私防御).
 func TestDL44_PWAManifest_NoSecretsLeak(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/pwa/manifest")
@@ -137,6 +141,7 @@ func TestDL44_PWAManifest_NoSecretsLeak(t *testing.T) {
 // endpoint 路径不含 'plugin-manifest' (HB-1 #491 独占字面). zhanma-a
 // drift audit 锚源.
 func TestDL44_PWAManifest_NameNotPluginManifest(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	// Verify the WRONG path (HB-1 字面) returns 404 — DL-4 不冒充该 endpoint.

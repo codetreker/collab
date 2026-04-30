@@ -8,6 +8,7 @@ import (
 // `messages.quick_action` (TEXT, nullable). The seed/backfill steps are
 // no-ops on the minimal scaffold, but the column-add must run.
 func TestCMOnboardingWelcome_AddsQuickActionColumn(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 
@@ -36,6 +37,7 @@ func TestCMOnboardingWelcome_AddsQuickActionColumn(t *testing.T) {
 // chain). Pre-existing users without a #welcome channel must get one
 // (channel + member + system message with quick_action).
 func TestCMOnboardingWelcome_SeedsSystemUserAndBackfills(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 
@@ -114,6 +116,7 @@ func TestCMOnboardingWelcome_SeedsSystemUserAndBackfills(t *testing.T) {
 // TestCMOnboardingWelcome_IsIdempotent — re-running v=7 must not create a
 // second welcome channel or duplicate the system user.
 func TestCMOnboardingWelcome_IsIdempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
 

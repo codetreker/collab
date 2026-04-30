@@ -89,6 +89,7 @@ func (s *bpp5StubClearer) Clear(agentID string) {
 // ---- §1 frame schema (4 项) ----
 
 func TestBPP5_ReconnectHandshakeFrame_FieldOrder(t *testing.T) {
+	t.Parallel()
 	want := []struct{ name, tag string }{
 		{"Type", "type"},
 		{"PluginID", "plugin_id"},
@@ -113,6 +114,7 @@ func TestBPP5_ReconnectHandshakeFrame_FieldOrder(t *testing.T) {
 }
 
 func TestBPP5_ReconnectHandshake_DirectionLock(t *testing.T) {
+	t.Parallel()
 	if got := (ReconnectHandshakeFrame{}).FrameDirection(); got != DirectionPluginToServer {
 		t.Errorf("direction drift: got %q, want plugin_to_server", got)
 	}
@@ -122,6 +124,7 @@ func TestBPP5_ReconnectHandshake_DirectionLock(t *testing.T) {
 }
 
 func TestBPP5_ConnectFrame_NoReconnectFields(t *testing.T) {
+	t.Parallel()
 	// 反约束: connect ≠ reconnect — 字段集不交.
 	typ := reflect.TypeOf(ConnectFrame{})
 	for i := 0; i < typ.NumField(); i++ {
@@ -135,6 +138,7 @@ func TestBPP5_ConnectFrame_NoReconnectFields(t *testing.T) {
 // ---- §2 server handler (5 项) ----
 
 func TestBPP5_Handler_CallsResolveResumeIncremental(t *testing.T) {
+	t.Parallel()
 	events := &bpp5StubEventLister{highWater: 100}
 	scope := &bpp5StubScope{ids: map[string][]string{"owner-1": {"ch1", "ch2"}}}
 	owner := &bpp5StubOwner{owners: map[string]string{"agent-1": "owner-1"}}
@@ -161,6 +165,7 @@ func TestBPP5_Handler_CallsResolveResumeIncremental(t *testing.T) {
 }
 
 func TestBPP5_Handler_ClearsAgentError(t *testing.T) {
+	t.Parallel()
 	events := &bpp5StubEventLister{highWater: 100}
 	scope := &bpp5StubScope{ids: map[string][]string{"o": {"c1"}}}
 	owner := &bpp5StubOwner{owners: map[string]string{"a": "o"}}
@@ -177,6 +182,7 @@ func TestBPP5_Handler_ClearsAgentError(t *testing.T) {
 }
 
 func TestBPP5_Handler_CrossOwnerReject(t *testing.T) {
+	t.Parallel()
 	events := &bpp5StubEventLister{highWater: 100}
 	scope := &bpp5StubScope{}
 	owner := &bpp5StubOwner{owners: map[string]string{"a": "real-owner"}}
@@ -201,6 +207,7 @@ func TestBPP5_Handler_CrossOwnerReject(t *testing.T) {
 }
 
 func TestBPP5_Handler_CursorRegression_TrustButLog(t *testing.T) {
+	t.Parallel()
 	// frame.LastKnownCursor > server high-water → log warn but do NOT reject.
 	events := &bpp5StubEventLister{highWater: 50}
 	scope := &bpp5StubScope{ids: map[string][]string{"o": {"c1"}}}
@@ -226,6 +233,7 @@ func TestBPP5_Handler_CursorRegression_TrustButLog(t *testing.T) {
 }
 
 func TestBPP5_Handler_PanicsOnNilDeps(t *testing.T) {
+	t.Parallel()
 	events := &bpp5StubEventLister{}
 	scope := &bpp5StubScope{}
 	owner := &bpp5StubOwner{}
@@ -254,6 +262,7 @@ func TestBPP5_Handler_PanicsOnNilDeps(t *testing.T) {
 // ---- §4 反约束 AST scan (BPP-4 dead_letter_test 锁链延伸) ----
 
 func TestBPP5_NoReconnectQueueInBPPPackage(t *testing.T) {
+	t.Parallel()
 	forbidden := []string{
 		"pendingReconnects",
 		"reconnectQueue",

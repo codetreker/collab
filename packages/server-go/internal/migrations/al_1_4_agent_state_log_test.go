@@ -21,6 +21,7 @@ func runAL14(t *testing.T, db *gorm.DB) {
 // TestAL14_CreatesAgentStateLogTable pins schema 7 列 + AUTOINCREMENT PK +
 // NOT NULL shape. Drift here breaks server reducer audit append path.
 func TestAL14_CreatesAgentStateLogTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
 
@@ -47,6 +48,7 @@ func TestAL14_CreatesAgentStateLogTable(t *testing.T) {
 // TestAL14_InsertAndAutoIncrement pins PK AUTOINCREMENT 单调序; 多次
 // INSERT 同 agent 行 id 严格递增 (反向: 重复 id 由 SQLite 自动拒).
 func TestAL14_InsertAndAutoIncrement(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
 
@@ -91,6 +93,7 @@ func TestAL14_InsertAndAutoIncrement(t *testing.T) {
 // 路径不下沉) / org_id (派生不冗余) / task_state (state 已在 to_state)
 // 等不挂.
 func TestAL14_NoDomainBleed(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
 
@@ -121,6 +124,7 @@ func TestAL14_NoDomainBleed(t *testing.T) {
 // (owner GET /api/v1/agents/:id/state-log 热路径). 跟 admin_actions / chn_3_1 /
 // cv_4_1 同模式显式命名.
 func TestAL14_HasIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
 
@@ -135,6 +139,7 @@ func TestAL14_HasIndex(t *testing.T) {
 // TestAL14_AcceptsAL1aReasonValues pins 立场 ④ — error 转移 reason 复用
 // AL-1a 6 reason byte-identical (改 = 改 7 处单测锁链).
 func TestAL14_AcceptsAL1aReasonValues(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
 
@@ -159,6 +164,7 @@ func TestAL14_AcceptsAL1aReasonValues(t *testing.T) {
 // TestAL14_Idempotent pins forward-only safety: re-running v=25 is no-op
 // (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS guards).
 func TestAL14_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
 	e := New(db)

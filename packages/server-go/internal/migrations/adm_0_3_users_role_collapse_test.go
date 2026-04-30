@@ -73,6 +73,7 @@ func runADM03(t *testing.T, db *gorm.DB) {
 // 3.B: legacy admin lands in admins table (login = email, hash carried).
 // 3.C: orphan user_permissions for the admin user are gone.
 func TestADM03_BackfillAndCollapse(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)
 	seedAdmin(t, db, "u-legacy-1", "legacy@example.com", "$2a$10$abc")
@@ -109,6 +110,7 @@ func TestADM03_BackfillAndCollapse(t *testing.T) {
 
 // 3.D: idempotent — running the migration twice yields the same end state.
 func TestADM03_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)
 	seedAdmin(t, db, "u-legacy-2", "twice@example.com", "$2a$10$xyz")
@@ -129,6 +131,7 @@ func TestADM03_Idempotent(t *testing.T) {
 // 3.D bis: re-applying when an admins row already exists (env bootstrap path)
 // must not duplicate; ON CONFLICT(login) DO NOTHING is the gate.
 func TestADM03_PreexistingAdminLogin(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)
 	// Bootstrap already inserted this login with a different hash.
@@ -163,6 +166,7 @@ func TestADM03_PreexistingAdminLogin(t *testing.T) {
 // hasTable gate must skip cleanly when sessions / admins / user_permissions
 // don't exist in the schema (trimmed migration-test fixtures).
 func TestADM03_TolerantToTrimmedSchema(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	// Only the bare users table — no admins, no user_permissions, no sessions.
 	if err := db.Exec(`CREATE TABLE users (
@@ -188,6 +192,7 @@ func TestADM03_TolerantToTrimmedSchema(t *testing.T) {
 
 // hasTable gate must also skip when the users table itself is absent.
 func TestADM03_NoUsersTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	// No users table at all.
 	if err := adm03UsersRoleCollapse.Up(db); err != nil {

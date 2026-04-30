@@ -12,6 +12,7 @@ import (
 // a channel_member row, and exactly one system message carrying the
 // quick_action payload.
 func TestCreateWelcomeChannelForUser_Success(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -68,6 +69,7 @@ func TestCreateWelcomeChannelForUser_Success(t *testing.T) {
 // for the same user does not create duplicate channels — the existing
 // type=system row is returned.
 func TestCreateWelcomeChannelForUser_Idempotent(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -103,6 +105,7 @@ func TestCreateWelcomeChannelForUser_Idempotent(t *testing.T) {
 // channel + channel_member must still commit and the helper must return
 // systemMessageOK=false without an error.
 func TestCreateWelcomeChannelForUser_GracefulMessageFailure(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -145,6 +148,7 @@ func TestCreateWelcomeChannelForUser_GracefulMessageFailure(t *testing.T) {
 // Contract: a member of a type='system' channel MUST see it in
 // ListChannelsWithUnread / ListAllChannelsForAdmin output.
 func TestListChannelsWithUnread_IncludesSystemWelcome(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -196,6 +200,7 @@ func TestListChannelsWithUnread_IncludesSystemWelcome(t *testing.T) {
 // store/welcome.go from drifting away from migrations/cm_onboarding_welcome.go.
 // Per onboarding-journey.md §3 the copy is locked; both packages must agree.
 func TestWelcomeConstantsMirrorMigrations(t *testing.T) {
+	t.Parallel()
 	if WelcomeMessageBody != migrations.WelcomeMessageBody {
 		t.Fatalf("WelcomeMessageBody drift\n store: %q\n migr.: %q", WelcomeMessageBody, migrations.WelcomeMessageBody)
 	}

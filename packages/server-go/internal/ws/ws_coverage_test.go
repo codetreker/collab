@@ -16,6 +16,7 @@ import (
 )
 
 func TestPluginWSConnect(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -90,6 +91,7 @@ func TestPluginWSConnect(t *testing.T) {
 }
 
 func TestPluginWSUnauthorized(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -103,6 +105,7 @@ func TestPluginWSUnauthorized(t *testing.T) {
 }
 
 func TestRemoteWSUnauthorized(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -116,6 +119,7 @@ func TestRemoteWSUnauthorized(t *testing.T) {
 }
 
 func TestRemoteWSConnect(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	users, _ := s.ListUsers()
@@ -161,6 +165,7 @@ func TestRemoteWSConnect(t *testing.T) {
 }
 
 func TestWSTypingAndUnsubscribe(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -197,6 +202,7 @@ func TestWSTypingAndUnsubscribe(t *testing.T) {
 }
 
 func TestWSPingPong(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -214,6 +220,7 @@ func TestWSPingPong(t *testing.T) {
 }
 
 func TestWSSubscribeNonexistent(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -231,6 +238,7 @@ func TestWSSubscribeNonexistent(t *testing.T) {
 }
 
 func TestWSAuthMethods(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	users, _ := s.ListUsers()
@@ -257,6 +265,7 @@ func TestWSAuthMethods(t *testing.T) {
 }
 
 func TestHubBroadcasting(t *testing.T) {
+	t.Parallel()
 	hub, s := setupTestHub(t)
 
 	user := &store.User{ID: "hub-test", DisplayName: "HubTest", Role: "member"}
@@ -277,6 +286,7 @@ func TestHubBroadcasting(t *testing.T) {
 }
 
 func TestCommandStoreGetByName(t *testing.T) {
+	t.Parallel()
 	cs := ws.NewCommandStore()
 	cs.Register("conn-1", "agent-1", "Bot", []ws.AgentCommand{
 		{Name: "test-cmd", Description: "test"},

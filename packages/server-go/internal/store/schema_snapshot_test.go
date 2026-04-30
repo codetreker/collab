@@ -24,6 +24,7 @@ import (
 // fields, but the schema content is reproducible — we verify this via
 // row-count round-trip rather than byte equality.)
 func TestSerializeSchema_Reproducible(t *testing.T) {
+	t.Parallel()
 	s1 := mustOpenMigrated(t)
 	defer s1.Close()
 	snap1, err := s1.SerializeSchema()
@@ -71,6 +72,7 @@ func TestSerializeSchema_Reproducible(t *testing.T) {
 // + Deserialize yields the same schema_migrations row count as a Store opened
 // + Migrate. Row count is the cheapest schema-identical proxy.
 func TestDeserializeSchema_RoundTrip(t *testing.T) {
+	t.Parallel()
 	src := mustOpenMigrated(t)
 	defer src.Close()
 	snap, err := src.SerializeSchema()
@@ -108,6 +110,7 @@ func TestDeserializeSchema_RoundTrip(t *testing.T) {
 // each open + deserialize into their own :memory: DB; no data race, no
 // shared state corruption.
 func TestDeserializeSchema_ConcurrentSafe(t *testing.T) {
+	t.Parallel()
 	src := mustOpenMigrated(t)
 	defer src.Close()
 	snap, err := src.SerializeSchema()
@@ -155,6 +158,7 @@ func TestDeserializeSchema_ConcurrentSafe(t *testing.T) {
 // store A do not bleed to store B (after both restore from the same snapshot).
 // Critical for per-test isolation in NewTestServer.
 func TestDeserializeSchema_RowIsolation(t *testing.T) {
+	t.Parallel()
 	src := mustOpenMigrated(t)
 	defer src.Close()
 	snap, err := src.SerializeSchema()
@@ -206,6 +210,7 @@ func TestDeserializeSchema_RowIsolation(t *testing.T) {
 // can rely on Deserialize as a Migrate replacement (or fall back to
 // full Migrate if Serialize is unavailable).
 func TestDeserializeSchema_FreshOpenSkipsMigrate(t *testing.T) {
+	t.Parallel()
 	src := mustOpenMigrated(t)
 	defer src.Close()
 	snap, err := src.SerializeSchema()

@@ -49,6 +49,7 @@ func walkForForbidden(v any) string {
 }
 
 func TestAdminFieldWhitelist_GodModeEndpointsAreMetadataOnly(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAsAdmin(t, ts.URL)
 

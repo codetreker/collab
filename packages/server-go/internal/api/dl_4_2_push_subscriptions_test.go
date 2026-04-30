@@ -22,6 +22,7 @@ import (
 // TestDL42_SubscribeRoundTrip pins acceptance §1 — POST 后 row 落库 +
 // DELETE 后 row 消失 (round-trip 完整路径).
 func TestDL42_SubscribeRoundTrip(t *testing.T) {
+	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -64,6 +65,7 @@ func TestDL42_SubscribeRoundTrip(t *testing.T) {
 // TestDL42_UpsertSameEndpoint pins acceptance §2 — 同 endpoint 重注册 →
 // 行原地更新 p256dh/auth, 不插新 row (UNIQUE 严闭).
 func TestDL42_UpsertSameEndpoint(t *testing.T) {
+	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -106,6 +108,7 @@ func TestDL42_UpsertSameEndpoint(t *testing.T) {
 // TestDL42_CrossUserReject pins REG-INV-002 fail-closed — user-B 不能
 // 操作 user-A 的 endpoint subscription (POST 409 / DELETE 403).
 func TestDL42_CrossUserReject(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tokenA := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	tokenB := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
@@ -146,6 +149,7 @@ func TestDL42_CrossUserReject(t *testing.T) {
 // TestDL42_InvalidPayload pins acceptance §1 — 4 字面字段缺一即 reject
 // (push.endpoint_invalid).
 func TestDL42_InvalidPayload(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -174,6 +178,7 @@ func TestDL42_InvalidPayload(t *testing.T) {
 // TestDL42_UnsubscribeIdempotent pins acceptance §3 — DELETE 不存在
 // endpoint 仍返 204 (跟 layout DELETE 同模式 idempotent).
 func TestDL42_UnsubscribeIdempotent(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -187,6 +192,7 @@ func TestDL42_UnsubscribeIdempotent(t *testing.T) {
 
 // TestDL42_UnsubscribeRequiresEndpoint pins endpoint query param required.
 func TestDL42_UnsubscribeRequiresEndpoint(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -202,6 +208,7 @@ func TestDL42_UnsubscribeRequiresEndpoint(t *testing.T) {
 // TestDL42_UnauthorizedNoToken pins auth requirement — POST/DELETE without
 // borgee_token cookie → 401 (跟 agent_config / layout 同模式).
 func TestDL42_UnauthorizedNoToken(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp, _ := testutil.JSON(t, "POST", ts.URL+"/api/v1/push/subscribe", "", map[string]any{

@@ -10,6 +10,7 @@ import (
 // and that obviously-wrong inputs (empty, wrong case, unrelated words) are
 // rejected.
 func TestAgentInvitation_ValidStates(t *testing.T) {
+	t.Parallel()
 	for _, s := range []AgentInvitationState{
 		AgentInvitationPending,
 		AgentInvitationApproved,
@@ -36,6 +37,7 @@ func TestAgentInvitation_ValidStates(t *testing.T) {
 // TestAgentInvitation_TerminalStates positively asserts approved / rejected /
 // expired are the three legal terminal states (blueprint §4.2 wording).
 func TestAgentInvitation_TerminalStates(t *testing.T) {
+	t.Parallel()
 	terminals := []AgentInvitationState{
 		AgentInvitationApproved,
 		AgentInvitationRejected,
@@ -52,6 +54,7 @@ func TestAgentInvitation_TerminalStates(t *testing.T) {
 }
 
 func TestAgentInvitation_IsTerminal(t *testing.T) {
+	t.Parallel()
 	cases := map[AgentInvitationState]bool{
 		AgentInvitationPending:  false,
 		AgentInvitationApproved: true,
@@ -69,6 +72,7 @@ func TestAgentInvitation_IsTerminal(t *testing.T) {
 // outcome of CanTransition for every (from, to) pair across the full enum.
 // Adding a new state forces this test to be updated, which is the point.
 func TestCanTransition_AllPairs(t *testing.T) {
+	t.Parallel()
 	all := []AgentInvitationState{
 		AgentInvitationPending,
 		AgentInvitationApproved,
@@ -91,6 +95,7 @@ func TestCanTransition_AllPairs(t *testing.T) {
 }
 
 func TestCanTransition_RejectsUnknownStates(t *testing.T) {
+	t.Parallel()
 	cases := []struct{ from, to AgentInvitationState }{
 		{"", AgentInvitationApproved},
 		{AgentInvitationPending, ""},
@@ -106,6 +111,7 @@ func TestCanTransition_RejectsUnknownStates(t *testing.T) {
 }
 
 func TestTransition_Success_StampsDecidedAt(t *testing.T) {
+	t.Parallel()
 	for _, target := range []AgentInvitationState{
 		AgentInvitationApproved,
 		AgentInvitationRejected,
@@ -136,6 +142,7 @@ func TestTransition_Success_StampsDecidedAt(t *testing.T) {
 // the invitation. Combined with TestCanTransition_AllPairs this is the
 // "行为不变量 4.1" acceptance evidence: no illegal transition can succeed.
 func TestTransition_RejectsAllIllegalEdges(t *testing.T) {
+	t.Parallel()
 	all := []AgentInvitationState{
 		AgentInvitationPending,
 		AgentInvitationApproved,
@@ -168,6 +175,7 @@ func TestTransition_RejectsAllIllegalEdges(t *testing.T) {
 }
 
 func TestTransition_NilReceiver(t *testing.T) {
+	t.Parallel()
 	var inv *AgentInvitation
 	err := inv.Transition(AgentInvitationApproved, 1)
 	if !errors.Is(err, ErrInvalidTransition) {
@@ -176,6 +184,7 @@ func TestTransition_NilReceiver(t *testing.T) {
 }
 
 func TestAgentInvitation_TableName(t *testing.T) {
+	t.Parallel()
 	if got := (AgentInvitation{}).TableName(); got != "agent_invitations" {
 		t.Errorf("TableName() = %q, want %q", got, "agent_invitations")
 	}

@@ -24,6 +24,7 @@ import (
 // JWT iat is within ~1s of wall-clock. 反约束: production 路径 byte-
 // identical 跟 PERF-JWT-CLOCK 前 (time.Now() 直接调).
 func TestAuthHandler_NilClock_FallsBackToTimeNow(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	before := time.Now().Unix()
 	tok := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
@@ -59,6 +60,7 @@ func TestAuthHandler_NilClock_FallsBackToTimeNow(t *testing.T) {
 // Advance(N) makes subsequent JWT mint use the advanced timestamp (no real
 // sleep). 替代 time.Sleep(1100ms) — token rotation iat 真前进而不真等.
 func TestAuthHandler_FakeClock_AdvancesIAT(t *testing.T) {
+	t.Parallel()
 	ts, _, _, fake := testutil.NewTestServerWithFakeClock(t)
 
 	tok1 := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
@@ -80,6 +82,7 @@ func TestAuthHandler_FakeClock_AdvancesIAT(t *testing.T) {
 // TestAuthHandler_FakeClock_NoRealSleep — wall-clock invariant: fake clock
 // Advance is sub-millisecond regardless of duration argument.
 func TestAuthHandler_FakeClock_NoRealSleep(t *testing.T) {
+	t.Parallel()
 	_, _, _, fake := testutil.NewTestServerWithFakeClock(t)
 	start := time.Now()
 	fake.Advance(1 * time.Hour) // 应瞬时
@@ -91,6 +94,7 @@ func TestAuthHandler_FakeClock_NoRealSleep(t *testing.T) {
 // TestAuthHandler_StructFieldExposed — 立场: AuthHandler.Clock 字段是
 // public API seam, 测试可直接构造并注入 fake.
 func TestAuthHandler_StructFieldExposed(t *testing.T) {
+	t.Parallel()
 	fake := clock.NewFake(time.Now())
 	h := &api.AuthHandler{Clock: fake}
 	// 反向验证编译期 — 字段类型是 clock.Clock interface (Real / Fake 都满足).
@@ -103,6 +107,7 @@ func TestAuthHandler_StructFieldExposed(t *testing.T) {
 // signAndSetCookie 调 h.now(), nil Clock 路径走 time.Now() 跟 PERF-JWT-CLOCK
 // 前 byte-identical (cookie name / MaxAge / HttpOnly / SameSite 全不变).
 func TestAuthHandler_ProductionPath_NoBehaviorChange(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	body := strings.NewReader(`{"email":"admin@test.com","password":"password123"}`)

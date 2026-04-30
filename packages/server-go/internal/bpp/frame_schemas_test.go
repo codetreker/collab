@@ -42,6 +42,7 @@ import (
 // → total 10 envelopes (6 control + 4 data). 跟 acceptance §1.2 字面
 // byte-identical — direction lock plugin→server.
 func TestBPPEnvelopeFrameWhitelist(t *testing.T) {
+	t.Parallel()
 	envs := bpp.AllBPPEnvelopes()
 	if got, want := len(envs), 15; got != want {
 		t.Fatalf("BPP envelope count: got %d, want %d (BPP-1 control 6 + data 3 + AL-2b ack +1 + BPP-2.2 task +2 + BPP-3.1 permission_denied +1 + BPP-5 reconnect_handshake +1 + BPP-6 cold_start_handshake +1 = 15)", got, want)
@@ -76,6 +77,7 @@ func TestBPPEnvelopeFrameWhitelist(t *testing.T) {
 // whitelist value. Also asserts the control-plane / data-plane counts
 // match the §2.1 / §2.2 row counts.
 func TestBPPEnvelopeDirectionLock(t *testing.T) {
+	t.Parallel()
 	wl := bpp.BPPEnvelopeWhitelist()
 	var ctrl, data int
 	for _, e := range bpp.AllBPPEnvelopes() {
@@ -107,6 +109,7 @@ func TestBPPEnvelopeDirectionLock(t *testing.T) {
 // MUST be `Type string` tagged `json:"type"`. This is the dispatcher
 // contract — change it and every wire decoder breaks at once.
 func TestBPPEnvelopeFieldOrder(t *testing.T) {
+	t.Parallel()
 	for _, e := range bpp.AllBPPEnvelopes() {
 		typ := reflect.TypeOf(e)
 		if typ.Kind() != reflect.Struct {
@@ -133,6 +136,7 @@ func TestBPPEnvelopeFieldOrder(t *testing.T) {
 // catches deletions. We accept any file in internal/bpp/ matching
 // `BPP-1.*byte-identical.*RT-0` (count >= 1).
 func TestBPPEnvelopeGodocAnchor(t *testing.T) {
+	t.Parallel()
 	dir := bppPkgDir(t)
 	pat := regexp.MustCompile(`BPP-1.*byte-identical.*RT-0`)
 	hits := 0
@@ -155,6 +159,7 @@ func TestBPPEnvelopeGodocAnchor(t *testing.T) {
 // brief's reverse-grep list. Comments are stripped before scanning so
 // docstrings that describe the forbidden patterns don't self-trip.
 func TestBPPEnvelopeReverseGrepNoFullDefault(t *testing.T) {
+	t.Parallel()
 	bad := []*regexp.Regexp{
 		regexp.MustCompile(`replay_mode\s*=\s*"full"`),
 		regexp.MustCompile(`default.*ResumeModeFull`),
@@ -211,6 +216,7 @@ func stripGoComments(body []byte) ([]byte, error) {
 // exported `*Frame` struct declared there is in AllBPPEnvelopes(). An
 // engineer who adds a struct but forgets the registry entry trips this.
 func TestBPPEnvelopeAllExportedStructsCovered(t *testing.T) {
+	t.Parallel()
 	dir := bppPkgDir(t)
 	src := filepath.Join(dir, "envelope.go")
 	body, err := os.ReadFile(src)

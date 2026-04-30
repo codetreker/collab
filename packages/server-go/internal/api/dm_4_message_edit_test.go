@@ -80,6 +80,7 @@ func dm4SetupOwnerAndDM(t *testing.T, ts *httptest.Server, s *store.Store) (stri
 // TestDM41_HappyPath — acceptance §1.1 owner edits own message in DM,
 // returns 200 + content updated.
 func TestDM41_HappyPath(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
 
@@ -102,6 +103,7 @@ func TestDM41_HappyPath(t *testing.T) {
 // 反向断 same-content PATCH 不追加 edit_history (保 idempotent).
 // Phase 4 batch1 audit §2.1 drift closure.
 func TestDM41_HappyPath_IdempotentSameContent(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
 
@@ -136,6 +138,7 @@ func TestDM41_HappyPath_IdempotentSameContent(t *testing.T) {
 // member@test.com is added as DM member to keep channel ACL satisfied
 // but is not the original sender, so PATCH must 403.
 func TestDM41_NonOwnerRejected(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	_, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
 
@@ -158,6 +161,7 @@ func TestDM41_NonOwnerRejected(t *testing.T) {
 // PATCH /api/v1/channels/{publicChannelId}/messages/{id} → 403
 // `dm.edit_only_in_dm`.
 func TestDM41_NonDMReject(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -197,6 +201,7 @@ func TestDM41_NonDMReject(t *testing.T) {
 
 // TestDM41_Unauthorized401 — acceptance §1.1 unauth → 401.
 func TestDM41_Unauthorized401(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	_, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
 
@@ -210,6 +215,7 @@ func TestDM41_Unauthorized401(t *testing.T) {
 
 // TestDM41_NotFound404 — acceptance §1.1 message id mismatch → 404.
 func TestDM41_NotFound404(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, dmID, _ := dm4SetupOwnerAndDM(t, ts, s)
 
@@ -226,6 +232,7 @@ func TestDM41_NotFound404(t *testing.T) {
 // 第 2 + DM-4 第 3). dm_4*.go 反向 grep 5 字面 0 hit (production
 // .go 不含 thinking 状态字面).
 func TestDM41_NoThinkingPatternInBody(t *testing.T) {
+	t.Parallel()
 	forbidden := []string{
 		`"processing"`,
 		`"responding"`,
@@ -289,6 +296,7 @@ func patchRaw(t *testing.T, url, token, body string) *http.Response {
 // TestDM41_ChannelNotFound — handleEdit step 3: GetChannelByID error/nil
 // returns 404. Path uses a synthetic channel id that does not exist.
 func TestDM41_ChannelNotFound(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -302,6 +310,7 @@ func TestDM41_ChannelNotFound(t *testing.T) {
 
 // TestDM41_InvalidJSON — handleEdit step 4: malformed JSON body → 400.
 func TestDM41_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
 
@@ -316,6 +325,7 @@ func TestDM41_InvalidJSON(t *testing.T) {
 // TestDM41_EmptyContent — handleEdit step 4 trim path: whitespace-only
 // content trims to empty → 400.
 func TestDM41_EmptyContent(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
 
@@ -330,6 +340,7 @@ func TestDM41_EmptyContent(t *testing.T) {
 // TestDM41_MessageInOtherChannel — handleEdit step 5: message exists but
 // belongs to a different channel id than the path → 404.
 func TestDM41_MessageInOtherChannel(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, dmID, _ := dm4SetupOwnerAndDM(t, ts, s)
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -385,6 +396,7 @@ func TestDM41_MessageInOtherChannel(t *testing.T) {
 // is impossible — so we instead place a message owned by a foreign-org
 // user in the owner DM via direct store insert (CrossOrg branch).
 func TestDM41_CrossOrg403(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	_, dmID, messageID := dm4SetupOwnerAndDM(t, ts, s)
 

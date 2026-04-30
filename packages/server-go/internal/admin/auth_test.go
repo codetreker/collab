@@ -45,6 +45,7 @@ func postLogin(t *testing.T, base, login, password string) *http.Response {
 // TestLogin_1C_ValidEnvLogin covers review checklist invariant 1.C:
 // "POST /admin-api/auth/login 用 env login → 返 200 + Set-Cookie borgee_admin_session".
 func TestLogin_1C_ValidEnvLogin(t *testing.T) {
+	t.Parallel()
 	srv, plain := newLoginServer(t)
 
 	resp := postLogin(t, srv.URL, "root", plain)
@@ -81,6 +82,7 @@ func TestLogin_1C_ValidEnvLogin(t *testing.T) {
 // We do not (and must not) seed a row in `users`; the admin path looks at
 // `admins` only. Any login not present there must 401.
 func TestLogin_1D_NonAdminRejected(t *testing.T) {
+	t.Parallel()
 	srv, _ := newLoginServer(t)
 
 	// "alice" is not in admins (only "root" was bootstrapped). Even if she
@@ -111,6 +113,7 @@ func TestLogin_1D_NonAdminRejected(t *testing.T) {
 // enforced in the file: any reviewer can grep for `subtle.ConstantTimeCompare`
 // in internal/admin/auth.go.
 func TestLogin_1E_ConstantTimeCompare(t *testing.T) {
+	t.Parallel()
 	plain := "correct-horse"
 	hash := hashAt(t, plain, 10)
 

@@ -24,6 +24,7 @@ func runCV2V2(t *testing.T, db *gorm.DB) {
 // 5-tuple after v=28: markdown / code / image_link (CV-3.1 既有) +
 // video_link / pdf_link (CV-2 v2 新).
 func TestCV2V2_AcceptsAllFiveKinds(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
 
@@ -43,6 +44,7 @@ func TestCV2V2_AcceptsAllFiveKinds(t *testing.T) {
 // kanban / mindmap / doc / video / pdf (bare 'pdf' / 'video' 没有 _link
 // 后缀, 跟蓝图 §1.4 命名 "video_link"/"pdf_link" byte-identical).
 func TestCV2V2_RejectsForbiddenKinds(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
 
@@ -61,6 +63,7 @@ func TestCV2V2_RejectsForbiddenKinds(t *testing.T) {
 
 // REG-CV2V2-001c — preview_url column added, defaults NULL, accepts TEXT.
 func TestCV2V2_PreviewURLColumn(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
 
@@ -92,6 +95,7 @@ func TestCV2V2_PreviewURLColumn(t *testing.T) {
 // REG-CV2V2-001d (spec §3 反约束) — old rows preserved verbatim across
 // the table-recreate copy. preview_url=NULL on copy (no thumbnail backfill).
 func TestCV2V2_PreservesExistingRows(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	e.Register(cv11Artifacts)
@@ -138,6 +142,7 @@ func TestCV2V2_PreservesExistingRows(t *testing.T) {
 
 // REG-CV2V2-001e — idx_artifacts_channel_id survives the v=28 rebuild.
 func TestCV2V2_PreservesChannelIDIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
 
@@ -151,6 +156,7 @@ func TestCV2V2_PreservesChannelIDIndex(t *testing.T) {
 
 // REG-CV2V2-001f (spec §0 立场 ③ + 反约束 不裂表) — no per-kind tables.
 func TestCV2V2_NoSeparateKindTables(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
 
@@ -168,6 +174,7 @@ func TestCV2V2_NoSeparateKindTables(t *testing.T) {
 
 // TestCV2V2_Idempotent — re-running v=28 on an already-applied DB is a no-op.
 func TestCV2V2_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
 

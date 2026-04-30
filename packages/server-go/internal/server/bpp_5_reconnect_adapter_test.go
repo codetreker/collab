@@ -12,6 +12,7 @@ import (
 )
 
 func TestBPP5ChannelScopeAdapter_EmptyForUnknownUser(t *testing.T) {
+	t.Parallel()
 	s := store.MigratedStoreFromTemplate(t)
 
 	adapter := &channelScopeAdapter{store: s}

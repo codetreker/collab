@@ -22,6 +22,7 @@ import (
 // ---- §1 schema + REST CRUD (7 tests) ----
 
 func TestHB3_POST_HappyPath_Filesystem(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -47,6 +48,7 @@ func TestHB3_POST_HappyPath_Filesystem(t *testing.T) {
 }
 
 func TestHB3_POST_OneShot_HasExpiresAt(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -70,6 +72,7 @@ func TestHB3_POST_OneShot_HasExpiresAt(t *testing.T) {
 }
 
 func TestHB3_POST_GrantTypeEnumReject(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -87,6 +90,7 @@ func TestHB3_POST_GrantTypeEnumReject(t *testing.T) {
 }
 
 func TestHB3_POST_TtlKindEnumReject(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -104,6 +108,7 @@ func TestHB3_POST_TtlKindEnumReject(t *testing.T) {
 }
 
 func TestHB3_GET_ListActive(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -132,6 +137,7 @@ func TestHB3_GET_ListActive(t *testing.T) {
 }
 
 func TestHB3_DELETE_RevokeStampsRevokedAt(t *testing.T) {
+	t.Parallel()
 	// Acceptance §1.4: revoke → revoked_at NOT NULL; daemon 不缓存 路径
 	// (HB-4 §1.5 release gate 第 5 行 < 100ms 的 v1 实现).
 	ts, _, _ := testutil.NewTestServer(t)
@@ -171,6 +177,7 @@ func TestHB3_DELETE_RevokeStampsRevokedAt(t *testing.T) {
 }
 
 func TestHB3_DELETE_CrossUser403(t *testing.T) {
+	t.Parallel()
 	// Stance §0 立场 ⑦ admin god-mode 不入 + cross-user reject 403
 	// (anchor #360 同模式).
 	ts, _, _ := testutil.NewTestServer(t)
@@ -199,6 +206,7 @@ func TestHB3_DELETE_CrossUser403(t *testing.T) {
 // ---- §3 反约束 — host vs runtime 字典分立 + AST scan ----
 
 func TestHB3_NoUserPermissionsJoin(t *testing.T) {
+	t.Parallel()
 	// Stance §0 立场 ② 字典分立: host_grants 不 JOIN user_permissions.
 	dir := "."
 	entries, err := filepath.Glob(filepath.Join(dir, "host_grants*.go"))
@@ -230,6 +238,7 @@ func TestHB3_NoUserPermissionsJoin(t *testing.T) {
 }
 
 func TestHB3_NoGrantQueueInAPIPackage(t *testing.T) {
+	t.Parallel()
 	// Stance §0 立场 ⑧ best-effort 立场承袭 BPP-4/5 — AST scan 锁链延伸第 3 处.
 	forbidden := []string{
 		"pendingGrants",
@@ -275,6 +284,7 @@ func TestHB3_NoGrantQueueInAPIPackage(t *testing.T) {
 // BPP-4 #499 DeadLetterAuditEntry + HB-1/HB-2 audit 跨四 milestone
 // 同源. 此 test 验证 host_grants.go 真用 5 个 key 写 log.
 func TestHB3_AuditLogSchema5FieldsByteIdentical(t *testing.T) {
+	t.Parallel()
 	// 静态扫描 host_grants.go 源, 反断 logger.Info 调用包含 5 个固定 key.
 	dir := "."
 	path := filepath.Join(dir, "host_grants.go")

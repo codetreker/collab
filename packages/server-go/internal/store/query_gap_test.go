@@ -27,6 +27,7 @@ func hasString(values []string, want string) bool {
 }
 
 func TestQueryGapMessageCreationMentionNamesAndMasking(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	sender := createUser(t, s, "qgap_sender", "member")
 	named := createUser(t, s, "qgap_named", "member")
@@ -91,6 +92,7 @@ func TestQueryGapMessageCreationMentionNamesAndMasking(t *testing.T) {
 }
 
 func TestQueryGapAccessInviteAndLookupEdges(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	// ADM-0.3: users.role enum collapsed to {'member','agent'}; the legacy
 	// admin override on CanAccessChannel is gone. Use member fixtures and
@@ -144,6 +146,7 @@ func TestQueryGapAccessInviteAndLookupEdges(t *testing.T) {
 }
 
 func TestQueryGapWorkspaceRemoteEventNotFoundEdges(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "qgap_edges", "member")
 	ch := createChannel(t, s, "qgap-edge-ch", "public", u.ID)
@@ -198,6 +201,7 @@ func TestQueryGapWorkspaceRemoteEventNotFoundEdges(t *testing.T) {
 }
 
 func TestQueryGapPositionAndPermissionBranches(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	if s.DB() == nil {
 		t.Fatal("expected DB handle")
@@ -250,6 +254,7 @@ func TestQueryGapPositionAndPermissionBranches(t *testing.T) {
 }
 
 func TestQueryGapDMPreviewAndEmptyPositionBranches(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u1 := createUser(t, s, "qgap_dm1", "member")
 	u2 := createUser(t, s, "qgap_dm2", "member")
@@ -307,6 +312,7 @@ func TestQueryGapDMPreviewAndEmptyPositionBranches(t *testing.T) {
 }
 
 func TestQueryGapClosedDBErrors(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "qgap_closed", "member")
 	ch := createChannel(t, s, "qgap-closed", "public", u.ID)

@@ -14,6 +14,7 @@ import (
 )
 
 func TestValidateJWT(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	user := &store.User{ID: "jwt-user", DisplayName: "JWT User", Role: "member"}
 	s.CreateUser(user)
@@ -53,6 +54,7 @@ func TestValidateJWT(t *testing.T) {
 }
 
 func TestValidateJWT_ExpiredToken(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	user := &store.User{ID: "exp-user", DisplayName: "Expired", Role: "member"}
 	s.CreateUser(user)
@@ -73,6 +75,7 @@ func TestValidateJWT_ExpiredToken(t *testing.T) {
 }
 
 func TestValidateJWT_DisabledUser(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	user := &store.User{ID: "dis-user", DisplayName: "Disabled", Role: "member", Disabled: true}
 	s.CreateUser(user)
@@ -93,6 +96,7 @@ func TestValidateJWT_DisabledUser(t *testing.T) {
 }
 
 func TestAuthMiddleware_Cookie(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	user := &store.User{ID: "mw-user", DisplayName: "MW User", Role: "member"}
 	s.CreateUser(user)
@@ -127,6 +131,7 @@ func TestAuthMiddleware_Cookie(t *testing.T) {
 }
 
 func TestAuthMiddleware_BearerAPIKey(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	apiKey := "bgr_testapikey123"
 	user := &store.User{ID: "bearer-user", DisplayName: "Bearer", Role: "member", APIKey: &apiKey}
@@ -153,6 +158,7 @@ func TestAuthMiddleware_BearerAPIKey(t *testing.T) {
 }
 
 func TestAuthMiddleware_Unauthorized(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	cfg := &config.Config{JWTSecret: "test-secret", NodeEnv: "production"}
 
@@ -170,6 +176,7 @@ func TestAuthMiddleware_Unauthorized(t *testing.T) {
 }
 
 func TestAuthMiddleware_DevBypass(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	user := &store.User{ID: "dev-user", DisplayName: "Dev User", Role: "admin"}
 	s.CreateUser(user)
@@ -195,6 +202,7 @@ func TestAuthMiddleware_DevBypass(t *testing.T) {
 }
 
 func TestAuthMiddleware_DevBypassFallback(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	// ADM-0.3: dev fallback picks the first member (users.role enum collapsed).
 	user := &store.User{ID: "fb-member", DisplayName: "FB Member", Role: "member"}
@@ -216,6 +224,7 @@ func TestAuthMiddleware_DevBypassFallback(t *testing.T) {
 }
 
 func TestAuthenticateFlexible(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	apiKey := "bgr_flexkey123"
 	user := &store.User{ID: "flex-user", DisplayName: "Flex", Role: "member", APIKey: &apiKey}
@@ -239,6 +248,7 @@ func TestAuthenticateFlexible(t *testing.T) {
 }
 
 func TestAuthenticateFromAPIKey(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	apiKey := "bgr_fromkey123"
 	user := &store.User{ID: "fromkey-user", DisplayName: "FromKey", Role: "member", APIKey: &apiKey}
@@ -261,6 +271,7 @@ func TestAuthenticateFromAPIKey(t *testing.T) {
 }
 
 func TestAuthenticateFromQuery(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	apiKey := "bgr_querykey123"
 	user := &store.User{ID: "query-user", DisplayName: "Query", Role: "member", APIKey: &apiKey}
@@ -274,6 +285,7 @@ func TestAuthenticateFromQuery(t *testing.T) {
 }
 
 func TestUserFromContext_Nil(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	if UserFromContext(ctx) != nil {
 		t.Fatal("expected nil")
@@ -281,6 +293,7 @@ func TestUserFromContext_Nil(t *testing.T) {
 }
 
 func TestRequirePermission_ScopedPermission(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	member := &store.User{ID: "scoped-m", DisplayName: "Scoped", Role: "member"}
 	s.CreateUser(member)

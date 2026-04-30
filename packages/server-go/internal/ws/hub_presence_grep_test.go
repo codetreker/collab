@@ -20,6 +20,7 @@ import (
 )
 
 func TestPresenceLifecycle_NoDirectTableRead(t *testing.T) {
+	t.Parallel()
 	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatalf("glob: %v", err)

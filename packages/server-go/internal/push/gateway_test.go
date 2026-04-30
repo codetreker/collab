@@ -27,6 +27,7 @@ import (
 // TestDL43_NoopGateway pins dev/test isolation — Send always returns 0
 // without emitting, no env required.
 func TestDL43_NoopGateway(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	g := push.NewNoopGateway(logger)
 	if g == nil {
@@ -163,6 +164,7 @@ func TestDL43_Send_410GoneDeletesRow(t *testing.T) {
 // TestDL43_Gateway_InterfaceShape pins the seam — both noop and vapid
 // gateways satisfy the Gateway interface (compile-time gate).
 func TestDL43_Gateway_InterfaceShape(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	var g push.Gateway = push.NewNoopGateway(logger)
 	if g == nil {

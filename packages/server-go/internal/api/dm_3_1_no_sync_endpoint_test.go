@@ -27,6 +27,7 @@ import (
 // 反向 grep 在 server-go internal/api/ + internal/server/ production *.go
 // (除 _test.go), 立场 ⑤ server 0 行新增 守门.
 func TestDM31_NoBypassEndpoint(t *testing.T) {
+	t.Parallel()
 	forbiddenPaths := []string{
 		`"/api/v1/dm/sync"`,
 		`"/api/v1/dm/cursor"`,
@@ -73,6 +74,7 @@ func TestDM31_NoBypassEndpoint(t *testing.T) {
 // (type='dm') messages 走 GET /api/v1/channels/{id}/messages?since=<cursor>
 // 同 path 跟 public channel 同源 (复用 RT-1.3 events backfill).
 func TestDM31_BackfillIncludesDMChannel(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -134,6 +136,7 @@ func TestDM31_BackfillIncludesDMChannel(t *testing.T) {
 // TestDM31_NoBypassFrame pins 立场 ② — envelope whitelist 不含 dm-only
 // frames. 反向 grep production *.go.
 func TestDM31_NoBypassFrame(t *testing.T) {
+	t.Parallel()
 	forbiddenFrames := []string{
 		`"dm_session_changed"`,
 		`"dm_synced"`,

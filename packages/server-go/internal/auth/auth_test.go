@@ -10,6 +10,7 @@ import (
 )
 
 func TestHashAndCheckPassword(t *testing.T) {
+	t.Parallel()
 	hash, err := HashPassword("mypassword")
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +41,7 @@ func testStore(t *testing.T) *store.Store {
 // receives 403 from RequirePermission. The legacy shortcut at this site is
 // gone; admin authority lives on the admin-rail (admin_sessions cookie) only.
 func TestRequirePermission_AdminRoleNoLongerShortcuts(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	admin := &store.User{ID: "admin1", DisplayName: "Admin", Role: "admin"}
 	s.CreateUser(admin)
@@ -59,6 +61,7 @@ func TestRequirePermission_AdminRoleNoLongerShortcuts(t *testing.T) {
 }
 
 func TestRequirePermission_MemberWithPerm(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	member := &store.User{ID: "m1", DisplayName: "Member", Role: "member"}
 	s.CreateUser(member)
@@ -79,6 +82,7 @@ func TestRequirePermission_MemberWithPerm(t *testing.T) {
 }
 
 func TestRequirePermission_MemberWithoutPerm(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	member := &store.User{ID: "m2", DisplayName: "Member", Role: "member"}
 	s.CreateUser(member)
@@ -98,6 +102,7 @@ func TestRequirePermission_MemberWithoutPerm(t *testing.T) {
 }
 
 func TestRequirePermission_NoUser(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 
 	handler := RequirePermission(s, "channel.create", nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

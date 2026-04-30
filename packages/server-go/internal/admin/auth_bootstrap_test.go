@@ -67,6 +67,7 @@ func openMigratedDB(t *testing.T) *gorm.DB {
 // env state in tests. cmd/collab/main.go calls Bootstrap which delegates to
 // BootstrapWith using os.Getenv — equivalent fail-loud behavior.
 func TestBootstrap_1A_PanicsOnMissingEnv(t *testing.T) {
+	t.Parallel()
 	db := openMigratedDB(t)
 
 	t.Run("missing login", func(t *testing.T) {
@@ -111,6 +112,7 @@ func TestBootstrap_1A_PanicsOnMissingEnv(t *testing.T) {
 //
 // Run BootstrapWith twice with the same login; admins row count must equal 1.
 func TestBootstrap_1B_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMigratedDB(t)
 
 	if err := admin.BootstrapWith(db, "root", hashAt(t, "secret", 10)); err != nil {

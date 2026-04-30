@@ -35,6 +35,7 @@ func runBPP81(t *testing.T, db *gorm.DB) {
 //
 // All 11 actions (6 legacy + 5 new plugin_*) must INSERT successfully.
 func TestBPP81_AcceptsAllNewActions(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runBPP81(t, db)
 
@@ -65,6 +66,7 @@ func TestBPP81_AcceptsAllNewActions(t *testing.T) {
 //
 // 5 spec-外 plugin_* names must be rejected by CHECK constraint.
 func TestBPP81_RejectsUnknownAction(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runBPP81(t, db)
 
@@ -85,6 +87,7 @@ func TestBPP81_RejectsUnknownAction(t *testing.T) {
 
 // TestBPP81_VersionIs31 — registry literal lock.
 func TestBPP81_VersionIs31(t *testing.T) {
+	t.Parallel()
 	if got, want := bpp81AdminActionsPluginActions.Version, 31; got != want {
 		t.Errorf("BPP-8.1 Version drift: got %d, want %d", got, want)
 	}
@@ -107,6 +110,7 @@ func TestBPP81_VersionIs31(t *testing.T) {
 // TestBPP81_Idempotent — re-running the chain against an already-applied
 // DB is a no-op (schema_migrations gate prevents re-execution).
 func TestBPP81_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runBPP81(t, db)
 	// Second run should be a no-op via Engine.Run schema_migrations gate.
@@ -125,6 +129,7 @@ func TestBPP81_Idempotent(t *testing.T) {
 // bpp_event_log tables exist after migration chain runs (audit reuses
 // admin_actions, 不裂表).
 func TestBPP81_NoSeparateLifecycleTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runBPP81(t, db)
 	forbidden := []string{

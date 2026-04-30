@@ -22,6 +22,7 @@ import (
 )
 
 func TestAgentInvitationPendingFrame_WireSchema(t *testing.T) {
+	t.Parallel()
 	frame := &ws.AgentInvitationPendingFrame{
 		Type:            ws.FrameTypeAgentInvitationPending,
 		InvitationID:    "inv-1",
@@ -61,6 +62,7 @@ func TestAgentInvitationPendingFrame_WireSchema(t *testing.T) {
 }
 
 func TestAgentInvitationPendingFrame_ZeroExpiresIsSentinel(t *testing.T) {
+	t.Parallel()
 	// Client TS interface (PR #218) marks expires_at REQUIRED. The
 	// server must always emit the field — when no row-level expiry
 	// was set we ship 0 as a sentinel rather than dropping the key
@@ -88,6 +90,7 @@ func TestAgentInvitationPendingFrame_ZeroExpiresIsSentinel(t *testing.T) {
 }
 
 func TestAgentInvitationDecidedFrame_WireSchema(t *testing.T) {
+	t.Parallel()
 	frame := &ws.AgentInvitationDecidedFrame{
 		Type:         ws.FrameTypeAgentInvitationDecided,
 		InvitationID: "inv-1",
@@ -113,6 +116,7 @@ func TestAgentInvitationDecidedFrame_WireSchema(t *testing.T) {
 }
 
 func TestPushAgentInvitationPending_NilUserIsNoOp(t *testing.T) {
+	t.Parallel()
 	hub, _ := setupTestHub(t)
 	// No clients registered, no userID — must not panic / block.
 	hub.PushAgentInvitationPending("", &ws.AgentInvitationPendingFrame{
@@ -126,6 +130,7 @@ func TestPushAgentInvitationPending_NilUserIsNoOp(t *testing.T) {
 }
 
 func TestPushAgentInvitationPending_OfflineUserIsNoOp(t *testing.T) {
+	t.Parallel()
 	hub, _ := setupTestHub(t)
 	// User has no live sessions — push must silently drop. Persisted
 	// row remains source of truth.
@@ -140,6 +145,7 @@ func TestPushAgentInvitationPending_OfflineUserIsNoOp(t *testing.T) {
 }
 
 func TestPushAgentInvitationDecided_SignalsWaiters(t *testing.T) {
+	t.Parallel()
 	hub, _ := setupTestHub(t)
 	ch := hub.SubscribeEvents()
 	defer hub.UnsubscribeEvents(ch)

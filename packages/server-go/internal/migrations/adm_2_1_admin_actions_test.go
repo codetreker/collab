@@ -26,6 +26,7 @@ func runADM21(t *testing.T, db *gorm.DB) {
 // "受影响者必收 system message" implementation. 跟 CV-4.1 #399 +
 // CHN-3.1 #410 同模式.
 func TestADM21_CreatesAdminActionsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
 
@@ -61,6 +62,7 @@ func TestADM21_CreatesAdminActionsTable(t *testing.T) {
 // 约束 5 个 action 类型枚举字面 byte-identical. 跟 CV-4.1 #405
 // TestCV41_AcceptsAll4States 同模式.
 func TestADM21_AcceptsAll5Actions(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
 
@@ -89,6 +91,7 @@ func TestADM21_AcceptsAll5Actions(t *testing.T) {
 // 同义词 / 大小写漂移 / 字典外值 / 空字符串 全 reject. 跟 CV-4.1 #405
 // TestCV41_RejectsUnknownState 12 反约束值同模式.
 func TestADM21_RejectsUnknownAction(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
 
@@ -134,6 +137,7 @@ func TestADM21_RejectsUnknownAction(t *testing.T) {
 // 'updated_at' (audit 不可改写) / 'org_id' (派生不冗余) / 'session_id'
 // (impersonate 走单独表) 全无. 字面承袭 #366 黑名单同模式.
 func TestADM21_NoDomainBleed(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
 
@@ -168,6 +172,7 @@ func TestADM21_NoDomainBleed(t *testing.T) {
 // 跟 CHN-3.1 #410 TestCHN31_HasUserIDIndex / CV-4.1 #405 TestCV41_HasIndexes
 // 同模式 (双索引显式命名).
 func TestADM21_HasIndexes(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
 
@@ -187,6 +192,7 @@ func TestADM21_HasIndexes(t *testing.T) {
 // TestADM21_PKEnforcesUniqueRowPerID pins 立场 — duplicate id INSERT must
 // reject (UUID 由 server 端生成, 但 schema 层 PK 兜底防 collision).
 func TestADM21_PKEnforcesUniqueRowPerID(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
 
@@ -212,6 +218,7 @@ func TestADM21_PKEnforcesUniqueRowPerID(t *testing.T) {
 // v=22 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS
 // guards). Same as every migration body in the registry.
 func TestADM21_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
 	e := New(db)

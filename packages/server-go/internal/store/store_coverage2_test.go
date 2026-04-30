@@ -5,6 +5,7 @@ import (
 )
 
 func TestListUsersFunc(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	createUser(t, s, "list1", "member")
 	createUser(t, s, "list2", "admin")
@@ -19,6 +20,7 @@ func TestListUsersFunc(t *testing.T) {
 }
 
 func TestGetEventCursorForMessage(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "evtcursor", "member")
 	ch := &Channel{Name: "cursor-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
@@ -43,6 +45,7 @@ func TestGetEventCursorForMessage(t *testing.T) {
 }
 
 func TestGrantPermissionFunc(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "grantperm", "member")
 
@@ -64,6 +67,7 @@ func TestGrantPermissionFunc(t *testing.T) {
 }
 
 func TestCreateMessageWithReplyTo(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "replyer", "member")
 	ch := &Channel{Name: "reply-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
@@ -89,6 +93,7 @@ func TestCreateMessageWithReplyTo(t *testing.T) {
 // fail. This regression test ensures any future refactor of the WHERE
 // clause keeps the filter.
 func TestListChannelMessages_ExcludesSoftDeleted(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "softdel", "member")
 	ch := &Channel{Name: "softdel-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
@@ -152,6 +157,7 @@ func TestListChannelMessages_ExcludesSoftDeleted(t *testing.T) {
 }
 
 func TestListChannelMessagesPagination(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "paginator", "member")
 	ch := &Channel{Name: "page-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
@@ -189,6 +195,7 @@ func TestListChannelMessagesPagination(t *testing.T) {
 }
 
 func TestUpdateUserFields(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "updatefields", "member")
 
@@ -212,6 +219,7 @@ func TestUpdateUserFields(t *testing.T) {
 }
 
 func TestWorkspaceFileEdgeCases(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	u := createUser(t, s, "wsedge", "member")
 	ch := &Channel{Name: "ws-edge-ch", Visibility: "public", CreatedBy: u.ID, Type: "channel", Position: GenerateInitialRank()}
@@ -243,6 +251,7 @@ func TestWorkspaceFileEdgeCases(t *testing.T) {
 }
 
 func TestGenerateAPIKeyFunc(t *testing.T) {
+	t.Parallel()
 	key1, err := GenerateAPIKey()
 	if err != nil {
 		t.Fatal(err)
@@ -257,6 +266,7 @@ func TestGenerateAPIKeyFunc(t *testing.T) {
 }
 
 func TestResolveConflictEdgeCases(t *testing.T) {
+	t.Parallel()
 	r := ResolveConflict("noext", []string{"noext"})
 	if r != "noext (1)" {
 		t.Fatalf("expected noext (1), got %s", r)
@@ -269,6 +279,7 @@ func TestResolveConflictEdgeCases(t *testing.T) {
 }
 
 func TestGetChannelIncludingDeletedNotFound(t *testing.T) {
+	t.Parallel()
 	s := migratedStore(t)
 	_, err := s.GetChannelIncludingDeleted("nonexistent")
 	if err == nil {

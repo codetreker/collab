@@ -8,6 +8,7 @@ import (
 )
 
 func TestP1SlashCommandsE2E(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
 	channelID := testutil.GetGeneralChannelID(t, ts.URL, adminToken)

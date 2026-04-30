@@ -26,6 +26,7 @@ func runAL41(t *testing.T, db *gorm.DB) {
 // AL-1a #249 三态机 reason 复用. 跟 AL-3.1 #310
 // TestAL31_CreatesPresenceSessionsTable 同模式.
 func TestAL41_CreatesAgentRuntimesTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
 
@@ -78,6 +79,7 @@ func TestAL41_CreatesAgentRuntimesTable(t *testing.T) {
 // 立场 #7 字面 — 那是 plugin 内部事); is_online 全无 (跟 AL-3
 // presence_sessions 拆死, 立场 ③ 字面).
 func TestAL41_NoLLMOrPresenceColumns(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
 
@@ -109,6 +111,7 @@ func TestAL41_NoLLMOrPresenceColumns(t *testing.T) {
 // 'hermes' 占号 v2+ (CHECK 已含 — schema 早就支持新值不需 v2 改 CHECK).
 // 反约束: 'unknown' / '' / 'remote' 等枚举外值 reject.
 func TestAL41_RejectsInvalidProcessKind(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
 
@@ -137,6 +140,7 @@ func TestAL41_RejectsInvalidProcessKind(t *testing.T) {
 // 'idle' / 'starting' 等中间态 reject (立场 ③ 反约束 + 文案锁 §2 字面
 // "v0 不允许 starting/stopping/restarting 中间态").
 func TestAL41_RejectsInvalidStatus(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
 
@@ -166,6 +170,7 @@ func TestAL41_RejectsInvalidStatus(t *testing.T) {
 // TestAL31_RejectsDuplicateSessionID 同模式 但语义反 — agent 单 runtime
 // vs user 多 session).
 func TestAL41_RejectsDuplicateRuntimePerAgent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
 
@@ -192,6 +197,7 @@ func TestAL41_RejectsDuplicateRuntimePerAgent(t *testing.T) {
 // sqlite_autoindex, 此显式 idx 是 acceptance 字面要求 (跟 AL-3.1 / DM-2.1
 // 同模式 — 显式命名让 EXPLAIN QUERY PLAN 可读 + 反查 grep 可断).
 func TestAL41_HasAgentIDIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
 
@@ -210,6 +216,7 @@ func TestAL41_HasAgentIDIndex(t *testing.T) {
 // 11 项 language 白名单同思路 — schema CHECK 装不下产品级 enum), 此
 // test 仅断言 INSERT 6 reason 全 OK.
 func TestAL41_AcceptsAL1aReasonValues(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
 
@@ -240,6 +247,7 @@ func TestAL41_AcceptsAL1aReasonValues(t *testing.T) {
 // re-running v=16 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX
 // IF NOT EXISTS guards). Same as every migration body in the registry.
 func TestAL41_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
 	e := New(db)

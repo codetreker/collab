@@ -13,6 +13,7 @@ func testStore(t *testing.T) *Store {
 }
 
 func TestMigrate(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -20,6 +21,7 @@ func TestMigrate(t *testing.T) {
 }
 
 func TestMigrateDoesNotSeedAdmin(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -37,6 +39,7 @@ func TestMigrateDoesNotSeedAdmin(t *testing.T) {
 }
 
 func TestCreateAndGetUser(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)

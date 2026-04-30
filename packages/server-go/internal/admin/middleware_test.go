@@ -40,6 +40,7 @@ func readSource(t *testing.T, name string) string {
 // In other words: the new admin auth path is fully isolated. ADM-0.2 §1
 // 反向断言 2.A & 2.B are the live form of this invariant.
 func TestMiddleware_1F_DualRailCoexistence(t *testing.T) {
+	t.Parallel()
 	db := openMigratedDB(t)
 	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10)); err != nil {
 		t.Fatalf("bootstrap: %v", err)

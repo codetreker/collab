@@ -5,6 +5,7 @@ import (
 )
 
 func TestCM40_CreatesAgentInvitationsTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 
 	e := New(db)
@@ -45,6 +46,7 @@ func TestCM40_CreatesAgentInvitationsTable(t *testing.T) {
 }
 
 func TestCM40_CreatesIndexes(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 
 	e := New(db)
@@ -74,6 +76,7 @@ func TestCM40_CreatesIndexes(t *testing.T) {
 }
 
 func TestCM40_CheckConstraintRejectsBadState(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 
 	e := New(db)
@@ -104,6 +107,7 @@ func TestCM40_CheckConstraintRejectsBadState(t *testing.T) {
 }
 
 func TestCM40_DefaultsStateToPending(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 
 	e := New(db)
@@ -129,6 +133,7 @@ func TestCM40_DefaultsStateToPending(t *testing.T) {
 }
 
 func TestCM40_IsIdempotentOnRerun(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 
 	for i := 0; i < 2; i++ {

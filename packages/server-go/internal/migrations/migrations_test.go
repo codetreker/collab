@@ -17,6 +17,7 @@ func openMem(t *testing.T) *gorm.DB {
 }
 
 func TestEnsureSchemaCreatesTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	if err := e.EnsureSchema(); err != nil {
@@ -36,6 +37,7 @@ func TestEnsureSchemaCreatesTable(t *testing.T) {
 }
 
 func TestRunAppliesPendingInOrder(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	var calls []int
 	e := New(db)
@@ -61,6 +63,7 @@ func TestRunAppliesPendingInOrder(t *testing.T) {
 }
 
 func TestRunRecordsVersionAndName(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	e.Register(Migration{
@@ -95,6 +98,7 @@ func TestRunRecordsVersionAndName(t *testing.T) {
 }
 
 func TestRunTargetCaps(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	for _, v := range []int{1, 2, 3} {
@@ -121,6 +125,7 @@ func TestRunTargetCaps(t *testing.T) {
 }
 
 func TestRunRollsBackOnFailure(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	e.Register(Migration{
@@ -152,6 +157,7 @@ func TestRunRollsBackOnFailure(t *testing.T) {
 }
 
 func TestValidateRejectsDuplicates(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	e := New(db)
 	e.Register(Migration{Version: 1, Name: "a", Up: func(tx *gorm.DB) error { return nil }})
@@ -162,6 +168,7 @@ func TestValidateRejectsDuplicates(t *testing.T) {
 }
 
 func TestValidateRejectsBadInput(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	cases := []Migration{
 		{Version: 0, Name: "zero", Up: func(tx *gorm.DB) error { return nil }},
@@ -178,6 +185,7 @@ func TestValidateRejectsBadInput(t *testing.T) {
 }
 
 func TestDefaultRegistryRunsClean(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	// CM-1.1 ALTERs five legacy tables that store.createSchema normally
 	// builds. Recreate the minimum surface here so the migration package

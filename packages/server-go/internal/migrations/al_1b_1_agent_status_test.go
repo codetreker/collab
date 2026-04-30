@@ -27,6 +27,7 @@ func runAL1B1(t *testing.T, db *gorm.DB) {
 // #310 TestAL31_CreatesPresenceSessionsTable + AL-4.1 #398
 // TestAL41_CreatesAgentRuntimesTable 同模式.
 func TestAL1B1_CreatesAgentStatusTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
 
@@ -83,6 +84,7 @@ func TestAL1B1_CreatesAgentStatusTable(t *testing.T) {
 // cursor 拆死. 跟 al_4_1 TestAL41_NoLLMOrPresenceColumns + cv_3_1
 // TestCV31_NoCascadeDelete 同模式 反约束防御.
 func TestAL1B1_NoDomainBleed(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
 
@@ -113,6 +115,7 @@ func TestAL1B1_NoDomainBleed(t *testing.T) {
 // 'online' / 'offline' / 'error' / 'running' / 'active' / '' 等枚举外值
 // reject (跟 AL-1a 三态拆死, 跟 AL-4 process-level 4 态拆死).
 func TestAL1B1_AcceptsBusyIdleEnum(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
 
@@ -145,6 +148,7 @@ func TestAL1B1_AcceptsBusyIdleEnum(t *testing.T) {
 // idx_presence_sessions_user_id / AL-4.1 idx_agent_runtimes_agent_id
 // 同模式 — 显式命名让 EXPLAIN QUERY PLAN 可读 + 反查 grep 可断.
 func TestAL1B1_HasStateIndex(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
 
@@ -162,6 +166,7 @@ func TestAL1B1_HasStateIndex(t *testing.T) {
 // al_3_1 / al_4_1 / cv_2_1 / dm_2_1 同模式逻辑 FK (SQLite FK 默认禁用,
 // 此处 schema 字面双闸).
 func TestAL1B1_NoCascadeDelete(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
 
@@ -185,6 +190,7 @@ func TestAL1B1_NoCascadeDelete(t *testing.T) {
 // re-running v=21 is no-op (CREATE TABLE IF NOT EXISTS + CREATE INDEX
 // IF NOT EXISTS guards). Same as every migration body in the registry.
 func TestAL1B1_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
 	e := New(db)

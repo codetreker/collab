@@ -37,6 +37,7 @@ func runADM31(t *testing.T, db *gorm.DB) {
 // After RENAME, the new audit_events table must exist as a real table
 // (not view) with the original schema preserved.
 func TestADM31_AuditEventsTableExists(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM31(t, db)
 	var typ string
@@ -53,6 +54,7 @@ func TestADM31_AuditEventsTableExists(t *testing.T) {
 // TestADM31_AdminActionsViewExists — acceptance §1.2.
 // After RENAME, admin_actions must exist as a VIEW (alias backward compat).
 func TestADM31_AdminActionsViewExists(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM31(t, db)
 	var typ string
@@ -70,6 +72,7 @@ func TestADM31_AdminActionsViewExists(t *testing.T) {
 // SELECT FROM admin_actions (view) must return the same rows as
 // SELECT FROM audit_events (table). View is read-transparent.
 func TestADM31_ViewSelectRoundtrip(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM31(t, db)
 
@@ -96,6 +99,7 @@ func TestADM31_ViewSelectRoundtrip(t *testing.T) {
 // to audit_events table (backward compat for legacy gorm
 // `(AdminAction).TableName() == "admin_actions"`).
 func TestADM31_ViewInsertRoutedToTable(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM31(t, db)
 
@@ -116,6 +120,7 @@ func TestADM31_ViewInsertRoutedToTable(t *testing.T) {
 // TestADM31_VersionIs43 — acceptance §1.5.
 // migration must be registered at v=43 (team-lead 占号 reservation).
 func TestADM31_VersionIs43(t *testing.T) {
+	t.Parallel()
 	if adm31AuditEventsRename.Version != 43 {
 		t.Errorf("ADM-3.1 version expected 43, got %d", adm31AuditEventsRename.Version)
 	}
@@ -125,6 +130,7 @@ func TestADM31_VersionIs43(t *testing.T) {
 // Re-running migration must be a no-op (forward-only stance shared with
 // ADM-2.1 + AL-7.1 + AP-2.1 + BPP-8.1 + AP-1.1 + AP-3.1).
 func TestADM31_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runADM31(t, db)
 

@@ -26,6 +26,7 @@ func runHB51(t *testing.T, db *gorm.DB) {
 // agent_state_log.archived_at must exist as nullable INTEGER (NULL =
 // active row, sweeper UPDATE archived_at=now to archive).
 func TestHB51_AddsArchivedAtColumn(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runHB51(t, db)
 	cols := pragmaColumns(t, db, "agent_state_log")
@@ -43,6 +44,7 @@ func TestHB51_AddsArchivedAtColumn(t *testing.T) {
 // idx_agent_state_log_archived_at must be created with WHERE archived_at IS
 // NOT NULL (sparse index 跟 al_7_1 / ap_2_1 同模式).
 func TestHB51_HasSparseIdx(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runHB51(t, db)
 	var sql string
@@ -60,6 +62,7 @@ func TestHB51_HasSparseIdx(t *testing.T) {
 
 // TestHB51_VersionIs35 — registry literal lock.
 func TestHB51_VersionIs35(t *testing.T) {
+	t.Parallel()
 	if got, want := hb51AgentStateLogArchivedAt.Version, 35; got != want {
 		t.Errorf("HB-5.1 Version drift: got %d, want %d (post AL-7.1 v=33)", got, want)
 	}
@@ -81,6 +84,7 @@ func TestHB51_VersionIs35(t *testing.T) {
 // TestHB51_Idempotent — re-running chain against an already-applied DB
 // is a no-op (schema_migrations gate).
 func TestHB51_Idempotent(t *testing.T) {
+	t.Parallel()
 	db := openMem(t)
 	runHB51(t, db)
 	runHB51(t, db) // second run no-op
@@ -96,6 +100,7 @@ func TestHB51_Idempotent(t *testing.T) {
 // 跟 AL-7.1 不动). Only AL-7.1 'audit_retention_override' is added by
 // AL-7 chain — HB-5 reuses that action with metadata.target='heartbeat'.
 func TestHB51_NoAdminActionsEnumDrift(t *testing.T) {
+	t.Parallel()
 	body, err := os.ReadFile("hb_5_1_agent_state_log_archived_at.go")
 	if err != nil {
 		t.Fatalf("read hb_5_1: %v", err)

@@ -50,6 +50,7 @@ func (g *recordingGateway) Calls() []recordedCall {
 // nil notifier (caller passes directly to MentionDispatcher.PushNotifier
 // nil-safe field).
 func TestDL46_NewMentionNotifier_NilSafe(t *testing.T) {
+	t.Parallel()
 	n := push.NewMentionNotifier(nil)
 	if n != nil {
 		t.Errorf("NewMentionNotifier(nil) = %v, want nil", n)
@@ -59,6 +60,7 @@ func TestDL46_NewMentionNotifier_NilSafe(t *testing.T) {
 // TestDL46_NotifyMention_PayloadShape pins payload byte-identical:
 // {kind: "mention", from, channel, body, ts}.
 func TestDL46_NotifyMention_PayloadShape(t *testing.T) {
+	t.Parallel()
 	g := &recordingGateway{}
 	n := push.NewMentionNotifier(g)
 	if n == nil {
@@ -101,6 +103,7 @@ func TestDL46_NotifyMention_PayloadShape(t *testing.T) {
 
 // TestDL46_NewAgentTaskNotifier_NilSafe pins seam.
 func TestDL46_NewAgentTaskNotifier_NilSafe(t *testing.T) {
+	t.Parallel()
 	n := push.NewAgentTaskNotifier(nil)
 	if n != nil {
 		t.Errorf("NewAgentTaskNotifier(nil) = %v, want nil", n)
@@ -110,6 +113,7 @@ func TestDL46_NewAgentTaskNotifier_NilSafe(t *testing.T) {
 // TestDL46_NotifyAgentTask_PayloadShape pins payload {kind, agent_id,
 // state, subject, reason, ts}.
 func TestDL46_NotifyAgentTask_PayloadShape(t *testing.T) {
+	t.Parallel()
 	g := &recordingGateway{}
 	n := push.NewAgentTaskNotifier(g)
 	if n == nil {
@@ -160,6 +164,7 @@ func TestDL46_NotifyAgentTask_PayloadShape(t *testing.T) {
 // Notify* on nil notifier returns 0 attempts without panic (caller-side
 // nil-safe pattern allowing legacy code to inject nil gateway).
 func TestDL46_Notifiers_NilNotifier_NoOp(t *testing.T) {
+	t.Parallel()
 	var n *push.MentionNotifier
 	if got := n.NotifyMention("u", "s", "c", "b", 1); got != 0 {
 		t.Errorf("nil mention notifier returned %d attempts, want 0", got)

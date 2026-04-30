@@ -18,6 +18,7 @@ import (
 // TestBPP23_ValidConfigFieldsWhitelist pins content-lock §1 ② — 6 项
 // byte-identical 跟蓝图 §1.4 表左列字面.
 func TestBPP23_ValidConfigFieldsWhitelist(t *testing.T) {
+	t.Parallel()
 	want := []string{
 		"name",
 		"avatar",
@@ -40,6 +41,7 @@ func TestBPP23_ValidConfigFieldsWhitelist(t *testing.T) {
 // §3.2 happy path — payload with 6-whitelist fields parses + returns
 // the typed map.
 func TestBPP23_ValidatePayload_AcceptsWhitelistedFields(t *testing.T) {
+	t.Parallel()
 	cases := []string{
 		`{"name":"Helper"}`,
 		`{"avatar":"https://example.com/h.png"}`,
@@ -71,6 +73,7 @@ func TestBPP23_ValidatePayload_AcceptsWhitelistedFields(t *testing.T) {
 // 反断 + content-lock §2 ⑤ — runtime 调优字段 (蓝图 §1.4 右列) MUST
 // reject (Borgee 不带 runtime 立场 ① 字面).
 func TestBPP23_ValidatePayload_RejectsRuntimeFields(t *testing.T) {
+	t.Parallel()
 	for _, payload := range []string{
 		`{"api_key":"sk-..."}`,
 		`{"temperature":0.7}`,
@@ -101,6 +104,7 @@ func TestBPP23_ValidatePayload_RejectsRuntimeFields(t *testing.T) {
 // TestBPP23_ValidatePayload_RejectsMalformedJSON pins payload parse
 // branch — non-object JSON / syntax error → errConfigPayloadMalformed.
 func TestBPP23_ValidatePayload_RejectsMalformedJSON(t *testing.T) {
+	t.Parallel()
 	for _, payload := range []string{
 		`{not json`,
 		`["array","not","object"]`,
@@ -129,6 +133,7 @@ func TestBPP23_ValidatePayload_RejectsMalformedJSON(t *testing.T) {
 // 蓝图 §1.5 字面 "幂等 reload" — same (agent_id, config_rev) pushed
 // twice = ShouldApply returns true once + false on duplicates.
 func TestBPP23_ConfigRevTracker_IdempotentReload(t *testing.T) {
+	t.Parallel()
 	tr := bpp.NewConfigRevTracker()
 
 	// First apply at rev=1 → true.
@@ -168,6 +173,7 @@ func TestBPP23_ConfigRevTracker_IdempotentReload(t *testing.T) {
 // TestBPP23_ConfigRevTracker_NegativeRev pins defensive — negative
 // rev (never expected) returns false (treated as stale).
 func TestBPP23_ConfigRevTracker_NegativeRev(t *testing.T) {
+	t.Parallel()
 	tr := bpp.NewConfigRevTracker()
 	if tr.ShouldApply("agent-X", -1) {
 		t.Error("negative rev should be false (defensive)")
@@ -180,6 +186,7 @@ func TestBPP23_ConfigRevTracker_NegativeRev(t *testing.T) {
 // TestBPP23_ErrorCodeLiteralsByteIdentical pins content-lock §1 ⑥
 // 错误码字面 byte-identical.
 func TestBPP23_ErrorCodeLiteralsByteIdentical(t *testing.T) {
+	t.Parallel()
 	if bpp.ConfigErrCodeFieldDisallowed != "bpp.config_field_disallowed" {
 		t.Errorf("ConfigErrCodeFieldDisallowed drift: got %q",
 			bpp.ConfigErrCodeFieldDisallowed)

@@ -17,6 +17,7 @@ import (
 )
 
 func TestWSSendMessageEdgeCases(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -145,6 +146,7 @@ func TestWSSendMessageEdgeCases(t *testing.T) {
 }
 
 func TestWSSubscribePrivateChannel(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	memberToken := testutil.LoginAs(t, ts.URL, "member@test.com", "password123")
@@ -166,6 +168,7 @@ func TestWSSubscribePrivateChannel(t *testing.T) {
 }
 
 func TestWSRegisterCommands(t *testing.T) {
+	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
 	users, _ := s.ListUsers()
@@ -218,6 +221,7 @@ func TestWSRegisterCommands(t *testing.T) {
 }
 
 func TestWSRegisterCommandsNonAgent(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -243,6 +247,7 @@ func TestWSRegisterCommandsNonAgent(t *testing.T) {
 }
 
 func TestWSAuthenticateWSExported(t *testing.T) {
+	t.Parallel()
 	hub, s := setupTestHub(t)
 
 	u := &store.User{ID: "auth-ws-test", DisplayName: "AuthWSTest", Role: "member"}
@@ -282,6 +287,7 @@ func TestWSAuthenticateWSExported(t *testing.T) {
 }
 
 func TestWSListCommands(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 

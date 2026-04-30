@@ -6,6 +6,7 @@ import "testing"
 // RemoteNodeOrgID — CM-3 cross-org backfill query helpers (uncovered
 // 0% → tested smoke; coverage follow-up to cross 85% threshold).
 func TestCM3OrgIDQueries(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)
@@ -35,6 +36,7 @@ func TestCM3OrgIDQueries(t *testing.T) {
 // TestCreateOrgForUserGuards covers CreateOrgForUser early-return guards
 // (nil user / empty id / already has org) — uncovered 55.6% → fuller cover.
 func TestCreateOrgForUserGuards(t *testing.T) {
+	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {
 		t.Fatal(err)

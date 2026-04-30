@@ -21,6 +21,7 @@ import (
 // TestDL44_PWAManifest_CacheControlHeader pins the Cache-Control hint
 // (1h public cache) — covers the header-set branch in handleGet.
 func TestDL44_PWAManifest_CacheControlHeader(t *testing.T) {
+	t.Parallel()
 	h := &api.PWAManifestHandler{}
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -53,6 +54,7 @@ func TestDL44_PWAManifest_CacheControlHeader(t *testing.T) {
 // TestDL42_PushSubscriptionsHandler_NowInjection pins the injectable
 // clock — handler.now() returns Now() when set.
 func TestDL42_PushSubscriptionsHandler_NowInjection(t *testing.T) {
+	t.Parallel()
 	const fixedMs = int64(1700000000000)
 	h := &api.PushSubscriptionsHandler{
 		Now: func() time.Time { return time.UnixMilli(fixedMs) },
@@ -72,6 +74,7 @@ func TestDL42_PushSubscriptionsHandler_NowInjection(t *testing.T) {
 // TestDL42_PushSubscriptionsHandler_LoggerSeam pins the logger nil-safe
 // + populated paths.
 func TestDL42_PushSubscriptionsHandler_LoggerSeam(t *testing.T) {
+	t.Parallel()
 	hNil := &api.PushSubscriptionsHandler{}
 	mux := http.NewServeMux()
 	authMw := func(next http.Handler) http.Handler { return next }
@@ -86,6 +89,7 @@ func TestDL42_PushSubscriptionsHandler_LoggerSeam(t *testing.T) {
 // fallback branch in handleSubscribe (req.UserAgent empty → use
 // r.Header.Get("User-Agent")).
 func TestDL42_PushSubscribe_UserAgentFallback(t *testing.T) {
+	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -127,6 +131,7 @@ func TestDL42_PushSubscribe_UserAgentFallback(t *testing.T) {
 // user mismatch on the row-found branch (covers the rowUserID!=user.ID
 // 403 path more thoroughly).
 func TestDL42_PushUnsubscribe_OwnUserDeletes(t *testing.T) {
+	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -168,6 +173,7 @@ func TestDL42_PushUnsubscribe_OwnUserDeletes(t *testing.T) {
 // time.Now path (Now field nil → fallback). Uses construction + reflection
 // to avoid panic on nil Now field.
 func TestDL42_PushSubscriptionsHandler_NowDefault(t *testing.T) {
+	t.Parallel()
 	// Default-Now handler — call the handler's internal now() via the
 	// handleSubscribe path which exercises h.now() default branch.
 	ts, _, _ := testutil.NewTestServer(t)
@@ -190,6 +196,7 @@ func TestDL42_PushSubscriptionsHandler_NowDefault(t *testing.T) {
 // covers the writeJSONResponse 200 success branch (separate from error
 // branches already covered).
 func TestDL42_PushSubscribe_ResponseShape(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 
@@ -213,6 +220,7 @@ func TestDL42_PushSubscribe_ResponseShape(t *testing.T) {
 // every required field assertion. Covers handleGet header + body
 // branches more thoroughly than CacheControlHeader test.
 func TestDL44_PWAManifest_W3CRoundTrip(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	resp, err := http.Get(ts.URL + "/api/v1/pwa/manifest")
@@ -253,6 +261,7 @@ func TestDL44_PWAManifest_W3CRoundTrip(t *testing.T) {
 // TestDL44_PWAManifest_GETOnly — POST /api/v1/pwa/manifest should be
 // rejected by the GET-only mux pattern.
 func TestDL44_PWAManifest_GETOnly(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, err := http.Post(ts.URL+"/api/v1/pwa/manifest", "application/json", nil)
 	if err != nil {
@@ -268,6 +277,7 @@ func TestDL44_PWAManifest_GETOnly(t *testing.T) {
 // TestDL44_PWAManifest_TwoSequentialGETs pins idempotent GET — same
 // content across calls (no stateful mutation between requests).
 func TestDL44_PWAManifest_TwoSequentialGETs(t *testing.T) {
+	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
 	get := func() string {
@@ -292,6 +302,7 @@ func TestDL44_PWAManifest_TwoSequentialGETs(t *testing.T) {
 // user A and user B subscribe to different endpoints, neither sees
 // the other (covers handleSubscribe new-row INSERT path + scan branch).
 func TestDL42_PushSubscribe_TwoUsers_NoBleed(t *testing.T) {
+	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	tokenA := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	tokenB := testutil.LoginAs(t, ts.URL, "admin@test.com", "password123")
@@ -338,6 +349,7 @@ func (f *fakePushNotifier) NotifyMention(targetUserID, senderID, channelName, bo
 // PushNotifier seam in MentionDispatcher.Dispatch — when wired,
 // NotifyMention fires for each target regardless of online state.
 func TestDL46_MentionDispatcher_PushNotifierWired(t *testing.T) {
+	t.Parallel()
 	notifier := &fakePushNotifier{}
 	d := &api.MentionDispatcher{
 		PushNotifier: notifier,

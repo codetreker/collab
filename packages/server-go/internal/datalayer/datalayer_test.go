@@ -44,6 +44,7 @@ func newTestUser(t *testing.T, dl *DataLayer, displayName, email string) *store.
 // ----- UserRepository (3 cases) -----
 
 func TestUserRepository_GetByID_Happy(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	u := newTestUser(t, dl, "alice", "alice@example.com")
 	got, err := dl.UserRepo.GetByID(context.Background(), u.ID)
@@ -56,6 +57,7 @@ func TestUserRepository_GetByID_Happy(t *testing.T) {
 }
 
 func TestUserRepository_GetByEmail_NotFound(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	_, err := dl.UserRepo.GetByEmail(context.Background(), "ghost@nope")
 	if !errors.Is(err, ErrRepositoryNotFound) {
@@ -64,6 +66,7 @@ func TestUserRepository_GetByEmail_NotFound(t *testing.T) {
 }
 
 func TestUserRepository_GetByDisplayName_Empty(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	_, err := dl.UserRepo.GetByDisplayName(context.Background(), "")
 	if !errors.Is(err, ErrRepositoryNotFound) {
@@ -74,6 +77,7 @@ func TestUserRepository_GetByDisplayName_Empty(t *testing.T) {
 // ----- ChannelRepository (3 cases) -----
 
 func TestChannelRepository_CreateAndGet_Happy(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	u := newTestUser(t, dl, "ch-creator", "ch@example.com")
 	ch := &store.Channel{
@@ -96,6 +100,7 @@ func TestChannelRepository_CreateAndGet_Happy(t *testing.T) {
 }
 
 func TestChannelRepository_GetByID_NotFound(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	_, err := dl.ChannelRepo.GetByID(context.Background(), "no-such-id")
 	if !errors.Is(err, ErrRepositoryNotFound) {
@@ -104,6 +109,7 @@ func TestChannelRepository_GetByID_NotFound(t *testing.T) {
 }
 
 func TestChannelRepository_GetByNameInOrg_Empty(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	_, err := dl.ChannelRepo.GetByNameInOrg(context.Background(), "", "")
 	if !errors.Is(err, ErrRepositoryNotFound) {
@@ -114,6 +120,7 @@ func TestChannelRepository_GetByNameInOrg_Empty(t *testing.T) {
 // ----- MessageRepository (3 cases) -----
 
 func TestMessageRepository_CreateAndGet_Happy(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	u := newTestUser(t, dl, "msg-sender", "ms@example.com")
 	ch := &store.Channel{Name: "msgs", CreatedBy: u.ID}
@@ -138,6 +145,7 @@ func TestMessageRepository_CreateAndGet_Happy(t *testing.T) {
 }
 
 func TestMessageRepository_GetByID_NotFound(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	_, err := dl.MessageRepo.GetByID(context.Background(), "missing")
 	if !errors.Is(err, ErrRepositoryNotFound) {
@@ -146,6 +154,7 @@ func TestMessageRepository_GetByID_NotFound(t *testing.T) {
 }
 
 func TestMessageRepository_GetByID_Empty(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	_, err := dl.MessageRepo.GetByID(context.Background(), "")
 	if !errors.Is(err, ErrRepositoryNotFound) {
@@ -156,6 +165,7 @@ func TestMessageRepository_GetByID_Empty(t *testing.T) {
 // ----- PresenceStore + Storage + EventBus (3 cases combined for non-Repo seams) -----
 
 func TestPresenceStore_IsOnline_OfflineUser(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	online, err := dl.Presence.IsOnline(context.Background(), "no-such-user")
 	if err != nil {
@@ -174,6 +184,7 @@ func TestPresenceStore_IsOnline_OfflineUser(t *testing.T) {
 }
 
 func TestStorage_GetURL_HappyAndEmpty(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	ctx := context.Background()
 	url, err := dl.Storage.GetURL(ctx, "abc")
@@ -195,6 +206,7 @@ func TestStorage_GetURL_HappyAndEmpty(t *testing.T) {
 }
 
 func TestEventBus_PubSub_Roundtrip(t *testing.T) {
+	t.Parallel()
 	dl := newTestDataLayer(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
