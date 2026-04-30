@@ -22,6 +22,9 @@ const nodeRequire = createRequire(import.meta.url);
 const fs: any = nodeRequire('fs');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodePath: any = nodeRequire('path');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const url: any = nodeRequire('url');
+const HERE = nodePath.dirname(url.fileURLToPath(import.meta.url));
 
 let container: HTMLDivElement | null = null;
 let root: Root | null = null;
@@ -115,7 +118,7 @@ describe('DM-7.3 EditHistoryModal content lock', () => {
 
   it('⑤ 同义词反向 reject — source grep 0 hit', () => {
     const compPath = nodePath.resolve(
-      __dirname,
+      HERE,
       '..',
       'components',
       'EditHistoryModal.tsx',

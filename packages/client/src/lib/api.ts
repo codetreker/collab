@@ -1452,4 +1452,3 @@ export async function getEditHistory(
   }
   return (await resp.json()) as DM7EditHistoryResponse;
 }
-}
