@@ -1421,3 +1421,35 @@ export async function searchArtifactComments(
     `/api/v1/channels/${encodeURIComponent(channelId)}/messages/search?q=${encodeURIComponent(query)}`,
   );
 }
+
+// DM-7.3 — edit history GET (sender-only user-rail).
+// Server: GET /api/v1/channels/{channelId}/messages/{messageId}/edit-history
+export interface DM7EditHistoryEntry {
+  old_content: string;
+  ts: number;
+  reason: string;
+}
+
+export interface DM7EditHistoryResponse {
+  history: DM7EditHistoryEntry[];
+}
+
+export async function getEditHistory(
+  channelID: string,
+  messageID: string,
+): Promise<DM7EditHistoryResponse> {
+  const resp = await fetch(
+    `${BASE}/api/v1/channels/${encodeURIComponent(channelID)}/messages/${encodeURIComponent(messageID)}/edit-history`,
+    { method: 'GET', credentials: 'include' },
+  );
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const body = await resp.json();
+      if (body?.error) detail = body.error;
+    } catch { /* ignore */ }
+    throw new Error(`dm7/edit-history ${detail}`);
+  }
+  return (await resp.json()) as DM7EditHistoryResponse;
+}
+}

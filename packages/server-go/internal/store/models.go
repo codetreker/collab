@@ -77,6 +77,10 @@ type Message struct {
 	// OrgID is the message's organization (CM-3.1). Stamped at INSERT from
 	// sender.OrgID. Column added by migration cm_1_1_organizations.
 	OrgID string `gorm:"column:org_id;not null;default:'';size:36;index" json:"-"`
+	// EditHistory is a JSON array of edit-history entries appended by
+	// UpdateMessage when the content changes. NULL = no edits (DM-7
+	// 立场 ①). Format: [{old_content, ts, reason}].
+	EditHistory *string `gorm:"column:edit_history" json:"edit_history,omitempty"`
 }
 
 type ChannelMember struct {

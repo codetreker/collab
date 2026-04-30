@@ -322,6 +322,11 @@ func (s *Server) SetupRoutes() {
 	adm2Handler := &api.ADM2Handler{Store: s.store, Logger: s.logger}
 	adm2Handler.RegisterUserRoutes(s.mux, authMw)
 	adm2Handler.RegisterAdminRoutes(s.mux, adminMw)
+	// DM-7 message edit history — sender-only user-rail GET + admin readonly
+	// admin-rail GET (admin god-mode 不挂 PATCH/DELETE — ADM-0 §1.3 红线).
+	dm7EditHistoryHandler := &api.DM7EditHistoryHandler{Store: s.store, Logger: s.logger}
+	dm7EditHistoryHandler.RegisterUserRoutes(s.mux, authMw)
+	dm7EditHistoryHandler.RegisterAdminRoutes(s.mux, adminMw)
 	// AL-7.2 admin-rail audit retention override (admin-model.md §3 retention
 	// + ADM-0 §1.3 红线 admin 操作必走 audit row). admin-rail only — 反向 grep
 	// `audit_retention_override` 在 user-rail handler 0 hit.

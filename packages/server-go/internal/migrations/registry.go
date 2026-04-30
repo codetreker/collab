@@ -62,6 +62,7 @@ var All = []Migration{
 	bpp81AdminActionsPluginActions,
 	cv3v2ArtifactThumbnail,
 	al71AdminActionsArchivedAt,
+	dm71MessagesEditHistory,
 }
 
 // Default returns an Engine wired to db with All registered.
