@@ -217,3 +217,22 @@ func TestBPP32_RetryCache_ReverseGrep_NoBPP4Reuse(t *testing.T) {
 		t.Errorf("反约束 spec §3 #3 broken — request_retry_cache.go 不应复用 BPP-4 队列, hit: %v", hits)
 	}
 }
+
+// TestNewRequestRetryCache_RealClock — exercises the production
+// constructor (default 0% covered before this patch). Validates Add +
+// ShouldRetry round-trip uses time.Now wall clock without injection.
+func TestNewRequestRetryCache_RealClock(t *testing.T) {
+	t.Parallel()
+	c := bpp.NewRequestRetryCache()
+	entry := &bpp.RetryEntry{RequestID: "req-real-clock-1"}
+	c.Add(entry)
+	// Newly added: NextRetryAt is now+30s, so ShouldRetry returns
+	// (nil, nil) — not yet retryable.
+	got, err := c.ShouldRetry("req-real-clock-1")
+	if err != nil {
+		t.Fatalf("unexpected ShouldRetry err: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("expected backoff window to suppress retry; got %#v", got)
+	}
+}

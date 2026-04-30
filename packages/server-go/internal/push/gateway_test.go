@@ -175,3 +175,91 @@ func TestDL43_Gateway_InterfaceShape(t *testing.T) {
 
 // helper to silence unused lint when tests evolve.
 var _ = bytes.NewReader
+
+// TestDL43_Send_200OK_BumpsLastUsedAt covers the success path — server
+// returns 200, gateway updates last_used_at row column, no row deletion.
+func TestDL43_Send_200OK_BumpsLastUsedAt(t *testing.T) {
+	fake200 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(fake200.Close)
+
+	t.Setenv("BORGEE_VAPID_PUBLIC_KEY", "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM")
+	t.Setenv("BORGEE_VAPID_PRIVATE_KEY", "VDDPAhPIpgUyflfJYadkD6NqHIXmCVT54iqQGTtrwM4")
+	t.Setenv("BORGEE_VAPID_SUBJECT", "mailto:admin@borgee.test")
+
+	_, store, _ := testutil.NewTestServer(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	g, err := push.NewGateway(store, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.DB().Exec(`INSERT INTO web_push_subscriptions
+		(id, user_id, endpoint, p256dh_key, auth_key, user_agent, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		"sub-200-1", "user-200", fake200.URL+"/push/test",
+		"BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+		"tBHItJI5svbpez7KI4CCXg",
+		"TestUA", 1700000000000).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	attempts := g.Send(context.Background(), "user-200", map[string]any{"title": "test"})
+	if attempts != 1 {
+		t.Errorf("Send attempts = %d, want 1", attempts)
+	}
+
+	var lastUsed *int64
+	if err := store.DB().Raw(
+		`SELECT last_used_at FROM web_push_subscriptions WHERE id=?`, "sub-200-1",
+	).Row().Scan(&lastUsed); err != nil {
+		t.Fatal(err)
+	}
+	if lastUsed == nil || *lastUsed == 0 {
+		t.Errorf("expected last_used_at bumped after 200 OK, got nil/0")
+	}
+}
+
+// TestDL43_Send_500ErrorReturnsErr covers the 5xx error branch (sendOne
+// returns "status=N" formatted error; row not deleted, last_used_at not
+// updated).
+func TestDL43_Send_500ErrorReturnsErr(t *testing.T) {
+	fake500 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(fake500.Close)
+
+	t.Setenv("BORGEE_VAPID_PUBLIC_KEY", "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM")
+	t.Setenv("BORGEE_VAPID_PRIVATE_KEY", "VDDPAhPIpgUyflfJYadkD6NqHIXmCVT54iqQGTtrwM4")
+	t.Setenv("BORGEE_VAPID_SUBJECT", "mailto:admin@borgee.test")
+
+	_, store, _ := testutil.NewTestServer(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	g, err := push.NewGateway(store, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.DB().Exec(`INSERT INTO web_push_subscriptions
+		(id, user_id, endpoint, p256dh_key, auth_key, user_agent, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		"sub-500-1", "user-500", fake500.URL+"/push/test",
+		"BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+		"tBHItJI5svbpez7KI4CCXg",
+		"TestUA", 1700000000000).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	attempts := g.Send(context.Background(), "user-500", map[string]any{"title": "test"})
+	if attempts != 1 {
+		t.Errorf("Send attempts = %d, want 1", attempts)
+	}
+
+	// Row not deleted (5xx is transient, not GC trigger).
+	var n int64
+	store.DB().Raw(`SELECT COUNT(*) FROM web_push_subscriptions WHERE id=?`, "sub-500-1").Scan(&n)
+	if n != 1 {
+		t.Errorf("row count after 500 = %d, want 1 (5xx must not GC)", n)
+	}
+}

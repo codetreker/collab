@@ -119,6 +119,28 @@ func TestRT3_AgentTaskStateEnum(t *testing.T) {
 	}
 }
 
+// TestRT3_PushAgentTaskStateChanged_BroadcastBranches exercises live
+// fanout for both scoped + empty-channel paths (BroadcastToChannel +
+// BroadcastToAll fallback).
+func TestRT3_PushAgentTaskStateChanged_BroadcastBranches(t *testing.T) {
+	t.Parallel()
+	hub, _ := setupTestHub(t)
+
+	c1, s1 := hub.PushAgentTaskStateChanged("agent-A", "chan-X",
+		ws.AgentTaskStateBusy, "writing section 3", "", 1700000000000)
+	if !s1 || c1 == 0 {
+		t.Fatalf("scoped fanout: sent=%v cursor=%d", s1, c1)
+	}
+	c2, s2 := hub.PushAgentTaskStateChanged("agent-A", "",
+		ws.AgentTaskStateIdle, "", "runtime_timeout", 1700000000001)
+	if !s2 {
+		t.Fatalf("empty channel fallback: sent=%v", s2)
+	}
+	if c2 <= c1 {
+		t.Fatalf("cursor must monotonic; c1=%d c2=%d", c1, c2)
+	}
+}
+
 // TestRT3_PushAgentTaskStateChanged_NoCursorAllocator pins the test seam —
 // hub without cursor allocator returns (0, false) without panicking
 // (跟 PushIterationStateChanged / PushArtifactUpdated 同模式).

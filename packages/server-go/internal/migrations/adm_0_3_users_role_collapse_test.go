@@ -199,3 +199,41 @@ func TestADM03_NoUsersTable(t *testing.T) {
 		t.Fatalf("expected no-op on missing users table: %v", err)
 	}
 }
+
+// TestADM03_SessionsTablePresent_DeletesAdminSessions covers the
+// future-proof sessions branch (the hasTable gate returning true). When
+// a `sessions` table exists, all rows for admin users are swept.
+func TestADM03_SessionsTablePresent_DeletesAdminSessions(t *testing.T) {
+	t.Parallel()
+	db := openMem(t)
+	schemaForADM03(t, db)
+	if err := db.Exec(`CREATE TABLE sessions (
+  id      TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL
+)`).Error; err != nil {
+		t.Fatalf("seed sessions: %v", err)
+	}
+	seedAdmin(t, db, "u-admin-1", "admin@example.com", "hash1")
+	if err := db.Exec(`INSERT INTO sessions (id, user_id) VALUES ('s1', 'u-admin-1')`).Error; err != nil {
+		t.Fatalf("seed admin session: %v", err)
+	}
+	// non-admin session should survive.
+	if err := db.Exec(`INSERT INTO users (id, role) VALUES ('u-member-1', 'member')`).Error; err != nil {
+		t.Fatalf("seed member: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO sessions (id, user_id) VALUES ('s2', 'u-member-1')`).Error; err != nil {
+		t.Fatalf("seed member session: %v", err)
+	}
+
+	runADM03(t, db)
+
+	var n int64
+	db.Raw(`SELECT COUNT(*) FROM sessions WHERE user_id='u-admin-1'`).Row().Scan(&n)
+	if n != 0 {
+		t.Errorf("admin sessions not swept; got %d, want 0", n)
+	}
+	db.Raw(`SELECT COUNT(*) FROM sessions WHERE user_id='u-member-1'`).Row().Scan(&n)
+	if n != 1 {
+		t.Errorf("member session swept incorrectly; got %d, want 1", n)
+	}
+}

@@ -392,3 +392,39 @@ func TestCHN5_CovBump_ListGroups_AfterCreate(t *testing.T) {
 		t.Errorf("expected ≥1 group, got %d", len(groups))
 	}
 }
+
+// TestCHN52_ListMyArchived_StoreError covers the 500 error path —
+// dropping the channels table makes the underlying SELECT fail, the
+// handler logs + returns 500.
+func TestCHN52_ListMyArchived_StoreError(t *testing.T) {
+	// 不能 t.Parallel — 我们破坏 store schema, 跟 NewTestServer 同 fresh DB.
+	ts, store, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+
+	store.DB().Exec(`PRAGMA foreign_keys = OFF`)
+	if err := store.DB().Exec(`DROP TABLE channels`).Error; err != nil {
+		t.Fatalf("drop channels: %v", err)
+	}
+
+	resp, _ := testutil.JSON(t, http.MethodGet, ts.URL+"/api/v1/me/archived-channels", ownerToken, nil)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected 500 on store error, got %d", resp.StatusCode)
+	}
+}
+
+// TestCHN52_AdminListArchived_StoreError covers admin handler 500 path
+// (mirrors TestCHN52_ListMyArchived_StoreError 模式).
+func TestCHN52_AdminListArchived_StoreError(t *testing.T) {
+	ts, store, _ := testutil.NewTestServer(t)
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+
+	store.DB().Exec(`PRAGMA foreign_keys = OFF`)
+	if err := store.DB().Exec(`DROP TABLE channels`).Error; err != nil {
+		t.Fatalf("drop channels: %v", err)
+	}
+
+	resp, _ := testutil.JSON(t, http.MethodGet, ts.URL+"/admin-api/v1/channels/archived", adminToken, nil)
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected 500 on store error, got %d", resp.StatusCode)
+	}
+}
