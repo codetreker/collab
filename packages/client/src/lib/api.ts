@@ -110,6 +110,16 @@ export async function archiveChannel(channelId: string, archived: boolean): Prom
   return updateChannel(channelId, { archived });
 }
 
+// CHN-7: mute / unmute a channel for the current user. user-rail only;
+// admin god-mode 不挂 (ADM-0 §1.3 红线 + 立场 ②). Server toggles bit 1
+// of user_channel_layout.collapsed (bit 0 preserved for CHN-3 collapse).
+export async function muteChannel(channelId: string, muted: boolean): Promise<{ collapsed: number; muted: boolean }> {
+  const method = muted ? 'POST' : 'DELETE';
+  return request<{ collapsed: number; muted: boolean }>(`/api/v1/channels/${channelId}/mute`, {
+    method,
+  });
+}
+
 export async function joinChannel(channelId: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/v1/channels/${channelId}/join`, {
     method: 'POST',

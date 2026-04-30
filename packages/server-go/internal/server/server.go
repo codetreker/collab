@@ -283,6 +283,10 @@ func (s *Server) SetupRoutes() {
 	// Channels
 	channelHandler := &api.ChannelHandler{Store: s.store, Config: s.cfg, Logger: s.logger, Hub: broadcaster}
 	channelHandler.RegisterRoutes(s.mux, authMw)
+	// CHN-7 channel mute/unmute — owner-only user-rail POST/DELETE; 0 schema
+	// 改 (复用 CHN-3.1 user_channel_layout, collapsed bitmap bit 1 = mute).
+	// admin god-mode 不挂 (ADM-0 §1.3 红线 — mute 是 per-user preference).
+	channelHandler.RegisterCHN7Routes(s.mux, authMw)
 
 	// DMs
 	dmHandler := &api.DmHandler{Store: s.store, Config: s.cfg, Logger: s.logger}
