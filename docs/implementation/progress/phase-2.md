@@ -43,9 +43,9 @@
 - [x] **CM-4.0** agent_invitations schema + 状态机单测 (#183 merged)
 - [x] **CM-4.1** API handler POST/GET/PATCH (#185 merged)
 - [x] **CM-4.2** client UI inbox + quick action (#186 merged) — **60s polling, RT-0 后切 ws push 自动升级**
-- [ ] **CM-4.3b** 离线检测 + system message — 依赖 RT-0 (复用 ws hub 推送)
-- [ ] **CM-4.4** 5 分钟节流 + E2E — 战马 / 烈马
-- [ ] **闸 4 独立流程**: 野马 demo 签字 + 5 张关键截屏 (含 subject 文案 + agent↔agent 口播 + **stopwatch ≤ 3s**) + blueprint-sha.txt
+- [ ] **CM-4.3b** 离线检测 + system message — ⏸️ Deferred Phase 4 (closure #284 phase-2-exit-announcement.md DEFERRED 2 项之一)
+- [ ] **CM-4.4** 5 分钟节流 + E2E — ⏸️ Deferred Phase 4 (closure #284 DEFERRED 2 项之一) — 战马 / 烈马
+- [x] **闸 4 独立流程**: 野马 demo 签字 ✅ #275 (4/6 接受条件闭, 2 deferred Phase 4) + 5 张关键截屏 + blueprint-sha.txt
 
 ### Phase 2 后置 (CM-4 闸 4 通过后)
 
@@ -64,14 +64,14 @@
 
 **Gates**
 
-- [ ] G2.0 (新, R3) ADM-0 cookie 串扰反向断言 — 烈马 / 一票否决式
-- [ ] G2.1 邀请审批 E2E (Playwright + ws push) — 战马/烈马 / 证据: ___
-- [ ] G2.2 离线 fallback E2E — 战马/烈马 / 证据: ___
+- [x] G2.0 (新, R3) ADM-0 cookie 串扰反向断言 — 烈马 / 证据: PR #197+#201+#223 (closure #284 SIGNED) ✅
+- [x] G2.1 邀请审批 E2E (Playwright + ws push) — 战马/烈马 / 证据: PR #237+#239 (closure #284 SIGNED) ✅
+- [x] G2.2 离线 fallback E2E — 战马/烈马 / 证据: PR #237+#239 (closure #284 SIGNED) ✅
 - [x] G2.3 节流不变量 (fake clock 单测) — 烈马 / 证据: PR #229 internal/throttle + #236 T1-T5 全过
-- [ ] G2.4 用户感知签字 — **野马** / 关键截屏路径: `docs/evidence/cm-4/` (5 张 + stopwatch ≤ 3s) + blueprint-sha.txt
-- [ ] G2.5 presence 接口契约 (IsOnline + Sessions 锁死) — 飞马/战马 / 证据: 接口签名文件 ___
-- [ ] G2.6 (新, R3) /ws → BPP schema 等同性 (CI lint byte-identical) — 飞马 / 证据: lint 输出
-- [ ] **G2.audit** v0 代码债 audit 行已登记 (agent_invitations / presence map / 节流策略 / **admin 拆表迁移** / **/ws push schema lock**) — 飞马
+- [x] G2.4 用户感知签字 — **野马** / 证据: PR #275 (4/6 接受闭, 2 deferred Phase 4); 截屏 `docs/evidence/cm-4/`; closure #284 SIGNED ✅
+- [x] G2.5 presence 接口契约 (IsOnline + Sessions 锁死) — 飞马/战马 / 证据: PR #277 AL-3 contract.go (closure #284 SIGNED) ✅
+- [x] G2.6 (新, R3) /ws → BPP schema 等同性 (CI lint byte-identical) — 飞马 / 证据: PR #304+#237 (closure #284 SIGNED) ✅
+- [x] **G2.audit** v0 代码债 audit — 飞马 / 证据: PR #212+#231+#244+#251 (closure #284 SIGNED) ✅
 
 **野马签字**: ___ (日期: ___) | 1 周 dogfood 反馈期截止: ___
 
