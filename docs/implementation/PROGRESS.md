@@ -28,7 +28,7 @@
 
 ## In-flight 当前状态 (≤10 行)
 
-- **NAMING-1** (本 PR) — milestone-prefix 5 类全清 (server-go 文件名 / struct/handler / Go test func / TSX test / modules→architecture 11) ~210 文件 touched 净 0 LoC, 0 行为改 / 0 schema / 0 endpoint / 0 migration v 号
+- (none — NAMING-1 ✅ 落 phase-4.md, 等下一 milestone)
 
 ---
 

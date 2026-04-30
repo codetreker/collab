@@ -49,12 +49,12 @@
 
 ## REG-NAMING1-* 占号 (initial ⚪)
 
-- REG-NAMING1-001 ⚪ 文件名 milestone-prefix 0 残留 (find 0 hit, server-go + client TSX) + git mv follow-history 保留
-- REG-NAMING1-002 ⚪ 结构体/变量/函数名 milestone-prefix 0 残留 (反向 grep DM10/CHN5/CV15/AL1A 等 production body 0 hit) + godoc 历史 narrative 锚不动
-- REG-NAMING1-003 ⚪ 测试函数名 milestone-prefix 0 残留 (反 PR #612 covbump spam 立场承袭) + vitest TSX describe block 0 milestone-prefix + covbump test 文件全删
-- REG-NAMING1-004 ⚪ docs/implementation/modules/ 迁 architecture/ 全闭 + 内部锚链全清 (0 hit `docs/implementation/modules/` 在 production code/docs 除合规白名单)
-- REG-NAMING1-005 ⚪ 既有全包 unit + e2e + vitest 全绿不破 + 0 endpoint 行为改 + 0 migration / 0 schema + post-#612 haystack gate 三轨过 (Func=50/Pkg=70/Total=85)
-- REG-NAMING1-006 ⚪ post-#613 REFACTOR-2 锁链承袭 (4 helper SSOT caller 路径 byte-identical) + 跨十 milestone const SSOT 锁链 (BPP-2 + REFACTOR-REASONS + DM-9 + CHN-15 + AP-4-enum + DL-1 + REFACTOR-1 + REFACTOR-2 + NAMING-1)
+- REG-NAMING1-001 🟢 文件名 milestone-prefix 0 残留 (find 0 hit, server-go + client TSX) + git mv follow-history 保留
+- REG-NAMING1-002 🟢 结构体/变量/函数名 milestone-prefix 0 残留 (反向 grep DM10/CHN5/CV15/AL1A 等 production body 0 hit) + godoc 历史 narrative 锚不动
+- REG-NAMING1-003 🟢 测试函数名 milestone-prefix 0 残留 (反 PR #612 covbump spam 立场承袭) + vitest TSX describe block 0 milestone-prefix + covbump test 文件全删
+- REG-NAMING1-004 🟢 docs/implementation/modules/ 迁 architecture/ 全闭 + 内部锚链全清 (0 hit `docs/implementation/modules/` 在 production code/docs 除合规白名单)
+- REG-NAMING1-005 🟢 既有全包 unit + e2e + vitest 全绿不破 + 0 endpoint 行为改 + 0 migration / 0 schema + post-#612 haystack gate 三轨过 (Func=50/Pkg=70/Total=85)
+- REG-NAMING1-006 🟢 post-#613 REFACTOR-2 锁链承袭 (4 helper SSOT caller 路径 byte-identical) + 跨十 milestone const SSOT 锁链 (BPP-2 + REFACTOR-REASONS + DM-9 + CHN-15 + AP-4-enum + DL-1 + REFACTOR-1 + REFACTOR-2 + NAMING-1)
 
 ## 退出条件
 
@@ -71,3 +71,5 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-05-01 | 烈马 | v0 — acceptance template 草稿 (5 选 1 验收框架 + REG-NAMING1-001..006 6 行占号 ⚪). 立场承袭 REFACTOR-1 #611 + REFACTOR-2 #613 (helper SSOT) + PR #612 锁审查标准 (反 milestone-prefix spam covbump body 复制). 关键: 0 endpoint 行为改 + 0 migration / 0 schema + git mv follow-history 保留 + modules/→architecture/ 迁 byte-identical + post-#612/#613 haystack gate 三轨守门承袭. |
+
+| 2026-05-01 | 战马C | flip — REG-NAMING1-001..00N 实施验收 PASS. 实测 Phase N1.1 (A 文件 169 git mv + B struct/handler 18 + migration var 32 + C test func 856 strip / 68 collision-keep) + N1.2 (E modules→architecture 11 + 跨 doc ref 11 处更) + 5 hardcoded 路径修. 同 file dup 自动 _N suffix (TestADM_ExecError_BadPrior_Sessions / TestCM_ExecError_BadPrior_2). 24 包 test 全 PASS, haystack gate TOTAL 85.5% no func<50% no pkg<70%. 文件 milestone-prefix 残留 0 hit ✅. 测试函数 milestone-prefix 残留 90 (collision-keep, 反 redeclared, 0 行为改铁律 — 真要做干净需测试组合并留 NAMING-2 议程). D 类 TSX 测试命名 dot-variant 0 hit (检测无需 rename). |
