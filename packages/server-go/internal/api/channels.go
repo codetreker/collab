@@ -358,8 +358,12 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 	// CHN-1.2 立场 ⑤: archive flip — server stamps timestamp; emits per-member
 	// system DM fanout reusing the ADM-0 §1.4 红线 ③ shape. Skipped if no
 	// transition (already archived → ignored; un-archive nullifies).
+	// CHN-5.2 立场 ③: unarchive 加互补 fanoutUnarchiveSystemMessage (跟 archive
+	// 互补二式 byte-identical 跟 chn-5-content-lock.md §1).
 	archiveTriggered := false
+	unarchiveTriggered := false
 	var archiveTs int64
+	var unarchiveTs int64
 	if body.Archived != nil {
 		if *body.Archived {
 			if ch.ArchivedAt == nil {
@@ -368,6 +372,10 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 				archiveTriggered = true
 			}
 		} else {
+			if ch.ArchivedAt != nil {
+				unarchiveTs = nowMillis()
+				unarchiveTriggered = true
+			}
 			updates["archived_at"] = nil
 		}
 	}
@@ -383,6 +391,9 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 	// the archive flag at the same time as the notification.
 	if archiveTriggered {
 		h.fanoutArchiveSystemMessage(channelID, ch.Name, user.ID, archiveTs)
+	}
+	if unarchiveTriggered {
+		h.fanoutUnarchiveSystemMessage(channelID, ch.Name, user.ID, unarchiveTs)
 	}
 
 	result, _ := h.Store.GetChannelWithCounts(channelID, user.ID)
