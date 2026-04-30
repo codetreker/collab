@@ -31,22 +31,60 @@ import (
 	"borgee-server/internal/store"
 )
 
-// closedStoreFixtureContext 给 race-heavy sub-test 提供 ctx-aware 兜底.
-// Go 1.25 t.Context() 在 test cleanup 自动 cancel; 显式 WithCancel + t.Cleanup
-// 是双保险 (反 Background() leak — TEST-FIX-2 #608 真因不复发).
+// newTestServerWithClosedStore 提供 race-heavy / closed-store 类 sub-test 的
+// 共享 fixture (test-fix-3-spec §0 立场 ②).
 //
-// Signature 兼容既有 newClosedStoreTestServer (return 三元组 ts/s/cfg);
-// 内部委托 setupFullTestServer (内已有 s.Close cleanup), 加 ctx-aware wrapper.
+// 内部:
+//   - 委托 setupFullTestServer 起完整 mux + 默认 seed (TEST-FIX-2 #608 ctor 路径)
+//   - 显式 context.WithCancel(t.Context()) + t.Cleanup(cancel) 双保险:
+//     Go 1.25 t.Context() 在 test cleanup 自动 cancel, 显式 Cleanup 是兜底
+//     (反 Background() leak — TEST-FIX-2 #608 真因不复发)
 //
-// 使用场景: race-heavy 类 sub-test (TestClosedStoreInternalErrorBranches 等)
-// 走此 helper 替代 inline boilerplate.
-func closedStoreFixtureContext(t *testing.T) (context.Context, *httptest.Server, *store.Store, *config.Config) {
+// 返回 ctx 让调用方 (sub-test) 可显式传给 server.New(ctx) 等 ctx-aware ctor;
+// ts/s/cfg 三元组兼容既有 newClosedStoreTestServer signature.
+//
+// 使用场景: closed-store 关闭后 500/403 边界 (TestClosedStoreInternalErrorBranches
+// 11 sub-test) — sub-test 收到 store 后 _ = s.Close() 模拟关闭, helper 负责
+// 起 server + ctx-aware cleanup 不漏 goroutine.
+func newTestServerWithClosedStore(t *testing.T) (context.Context, *httptest.Server, *store.Store, *config.Config) {
 	t.Helper()
-	// 双保险: t.Context() 已有 (Go 1.25 自动 cancel), 加显式 WithCancel + Cleanup
-	// 让既有 server.New(ctx) ctor 跟 sweeper / rateLimiter cleanup goroutine 都
-	// 拿到 cancel 信号 (TEST-FIX-2 #608 修过的 ctx-aware shutdown 路径).
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	ts, s, cfg := setupFullTestServer(t)
+	return ctx, ts, s, cfg
+}
+
+// newTestServerWithFaultStore 提供 state-based fault injection 类 sub-test 的
+// 共享 fixture (跟 #597 (e') PRAGMA+DROP idiom 同精神, 反 sqlmock dep).
+//
+// mode 参数选择故障注入路径:
+//   - "query_only": PRAGMA query_only=1 后续 INSERT/UPDATE/DELETE 全 fail
+//     (走 SQLite 原生模式, 不依赖外部 mock)
+//   - "drop_table": DROP TABLE <主关心表> 后续依赖该表的 query 全 fail
+//     (跟 #608 cov bump 飞马 (C) 同 idiom)
+//
+// 跟 newTestServerWithClosedStore 一样走 ctx-aware 双保险.
+//
+// 使用场景: 11 sub-test 之外的 fault-injection cov 增补 (TF3 不引入新 sub-test,
+// helper 留位给后续 milestone 复用 reuse — TF3 范围 byte-identical 迁不重写).
+func newTestServerWithFaultStore(t *testing.T, mode string) (context.Context, *httptest.Server, *store.Store, *config.Config) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+	ts, s, cfg := setupFullTestServer(t)
+	switch mode {
+	case "query_only":
+		// SQLite PRAGMA query_only=1 — 后续写 op 全返回 error, 不动 schema
+		// 避免破坏 helper-shared connection 给其他 sub-test (反 DROP TABLE
+		// 副作用扩散).
+		if err := s.DB().Exec("PRAGMA query_only=1").Error; err != nil {
+			t.Fatalf("query_only pragma: %v", err)
+		}
+	case "drop_table":
+		// 调用方需自行 DROP 主关心表 (helper 不预设表名, 留给 sub-test 决定);
+		// 此 mode 仅做兜底 ctx + cleanup, schema 操作交回 sub-test.
+	default:
+		// 默认无注入, 退化为 newTestServerWithClosedStore 同模式
+	}
 	return ctx, ts, s, cfg
 }
