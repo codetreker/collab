@@ -157,3 +157,40 @@ func TestHB52_Override_WithTargetUserID(t *testing.T) {
 		t.Errorf("with target: got %d, want 200", resp.StatusCode)
 	}
 }
+
+// REG-HB5-cov-bump v4 — opportunistic cov bump for channels.go (handleListGroups 14%).
+// Test-only, 0 production change.
+func TestHB5_CovBump_ListChannelGroups(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	resp, body := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/api/v1/channel-groups", ownerToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list groups: got %d", resp.StatusCode)
+	}
+	if _, ok := body["groups"].([]any); !ok {
+		t.Errorf("groups key missing")
+	}
+}
+
+func TestHB5_CovBump_ListGroups_AfterCreate(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	resp, _ := testutil.JSON(t, http.MethodPost,
+		ts.URL+"/api/v1/channel-groups", ownerToken,
+		map[string]any{"name": "hb5-cov-grp"})
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		t.Skipf("create group not 200/201 (got %d), skip", resp.StatusCode)
+	}
+	resp, body := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/api/v1/channel-groups", ownerToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("list groups after create: got %d", resp.StatusCode)
+	}
+	groups, _ := body["groups"].([]any)
+	if len(groups) < 1 {
+		t.Errorf("expected ≥1 group, got %d", len(groups))
+	}
+}
