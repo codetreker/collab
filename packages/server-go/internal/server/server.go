@@ -115,6 +115,17 @@ func New(cfg *config.Config, logger *slog.Logger, s *store.Store) *Server {
 	coldStartHandler := bpp.NewColdStartHandler(s, ownerResolver, srv.agentTracker, logger)
 	pfd.Register(bpp.FrameTypeBPPColdStartHandshake, coldStartHandler)
 
+	// RT-3 ⭐ task lifecycle → AgentTaskStateChanged fanout. Plugin upstream
+	// task_started / task_finished frames → server派生 AgentTaskStateChangedFrame
+	// (busy/idle) via Hub.PushAgentTaskStateChanged. multi-device fanout
+	// 走 BroadcastToChannel 自动 (P1MultiDeviceWebSocket #197 模式).
+	// thinking subject 必带非空 + outcome 3-enum + reason AL-1a 6-dict
+	// 全 ValidateTask* SSOT 守门 (BPP-2.2 #485 task_lifecycle.go 同源).
+	taskLifecycleHandler := bpp.NewTaskLifecycleHandler(
+		&hubAgentTaskPusherAdapter{hub: hub}, logger)
+	pfd.Register(bpp.FrameTypeBPPTaskStarted, taskLifecycleHandler.StartedAdapter())
+	pfd.Register(bpp.FrameTypeBPPTaskFinished, taskLifecycleHandler.FinishedAdapter())
+
 	hub.SetPluginFrameRouter(&pluginFrameRouterAdapter{pfd: pfd})
 
 	// BPP-4.1 heartbeat watchdog: 30s plugin liveness threshold, flips
@@ -752,4 +763,18 @@ type channelScopeAdapter struct {
 
 func (a *channelScopeAdapter) ChannelIDsForOwner(ownerUserID string) ([]string, error) {
 	return a.store.GetUserChannelIDs(ownerUserID), nil
+}
+
+// hubAgentTaskPusherAdapter wires *ws.Hub.PushAgentTaskStateChanged into
+// the bpp.AgentTaskPusher interface (跟 hubLivenessAdapter / channelScopeAdapter
+// 同模式) — RT-3 server派生 hook 通过此 adapter 跨 bpp ↛ ws 包边界 (bpp
+// 不 import ws, internal/server 是唯一胶水点).
+type hubAgentTaskPusherAdapter struct {
+	hub *ws.Hub
+}
+
+func (a *hubAgentTaskPusherAdapter) PushAgentTaskStateChanged(
+	agentID, channelID, state, subject, reason string, changedAt int64,
+) (int64, bool) {
+	return a.hub.PushAgentTaskStateChanged(agentID, channelID, state, subject, reason, changedAt)
 }
