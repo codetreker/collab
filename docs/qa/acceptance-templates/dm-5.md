@@ -1,4 +1,4 @@
-# Acceptance Template — DM-5: DM message reaction summary ✅
+# Acceptance Template — DM-5: DM message reaction summary ✅ closed
 
 > 跟 CV-9/10/11/12 client-only 同模式 + CV-7 reaction endpoint 复用. **0 server code + 0 schema 改 + 0 新 endpoint + 0 新 lib**.
 
