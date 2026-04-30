@@ -7,10 +7,10 @@ package helper
 
 import "testing"
 
-// TestHB20_IPC_UDSConnect_Linux pins HB-2.0 立场 ① — Linux IPC primitive
+// TestHB_IPC_UDSConnect_Linux pins HB-2.0 立场 ① — Linux IPC primitive
 // is UDS, default endpoint matches /run/borgee-helper/borgee-helper.sock
 // (跟 systemd unit User=borgee-helper Group=borgee-helper 同模式).
-func TestHB20_IPC_UDSConnect_Linux(t *testing.T) {
+func TestHB_IPC_UDSConnect_Linux(t *testing.T) {
 	t.Parallel()
 	got := IPCEndpointDefault(IPCPlatformLinux)
 	want := "/run/borgee-helper/borgee-helper.sock"

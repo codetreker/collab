@@ -24,9 +24,9 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestDL43_NoopGateway pins dev/test isolation — Send always returns 0
+// TestDL_NoopGateway pins dev/test isolation — Send always returns 0
 // without emitting, no env required.
-func TestDL43_NoopGateway(t *testing.T) {
+func TestDL_NoopGateway(t *testing.T) {
 	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	g := push.NewNoopGateway(logger)
@@ -40,10 +40,10 @@ func TestDL43_NoopGateway(t *testing.T) {
 	}
 }
 
-// TestDL43_NewGateway_RequiresEnv pins fail-soft on missing VAPID env —
+// TestDL_NewGateway_RequiresEnv pins fail-soft on missing VAPID env —
 // returns error, caller falls back to noop (跟 admin Bootstrap 区分:
 // admin fail-loud panic, push 不阻 server 启动).
-func TestDL43_NewGateway_RequiresEnv(t *testing.T) {
+func TestDL_NewGateway_RequiresEnv(t *testing.T) {
 	t.Setenv("BORGEE_VAPID_PUBLIC_KEY", "")
 	t.Setenv("BORGEE_VAPID_PRIVATE_KEY", "")
 	t.Setenv("BORGEE_VAPID_SUBJECT", "")
@@ -67,10 +67,10 @@ func TestDL43_NewGateway_RequiresEnv(t *testing.T) {
 	}
 }
 
-// TestDL43_NewGateway_AllEnvSet pins success path — all 3 env vars set,
+// TestDL_NewGateway_AllEnvSet pins success path — all 3 env vars set,
 // constructor returns gateway (no validation of key validity, that's
 // runtime emit's job).
-func TestDL43_NewGateway_AllEnvSet(t *testing.T) {
+func TestDL_NewGateway_AllEnvSet(t *testing.T) {
 	t.Setenv("BORGEE_VAPID_PUBLIC_KEY", "test-public-key-base64")
 	t.Setenv("BORGEE_VAPID_PRIVATE_KEY", "test-private-key-base64")
 	t.Setenv("BORGEE_VAPID_SUBJECT", "mailto:admin@borgee.test")
@@ -87,9 +87,9 @@ func TestDL43_NewGateway_AllEnvSet(t *testing.T) {
 	}
 }
 
-// TestDL43_Send_ZeroSubscriptions pins fan-out empty case — user with
+// TestDL_Send_ZeroSubscriptions pins fan-out empty case — user with
 // no registered subscription returns 0 attempts, no error, no panic.
-func TestDL43_Send_ZeroSubscriptions(t *testing.T) {
+func TestDL_Send_ZeroSubscriptions(t *testing.T) {
 	t.Setenv("BORGEE_VAPID_PUBLIC_KEY", "test-public-key-base64")
 	t.Setenv("BORGEE_VAPID_PRIVATE_KEY", "test-private-key-base64")
 	t.Setenv("BORGEE_VAPID_SUBJECT", "mailto:admin@borgee.test")
@@ -107,12 +107,12 @@ func TestDL43_Send_ZeroSubscriptions(t *testing.T) {
 	}
 }
 
-// TestDL43_Send_410GoneDeletesRow pins 单源退订 — push response 410 →
+// TestDL_Send_410GoneDeletesRow pins 单源退订 — push response 410 →
 // gateway DELETEs the row (蓝图 L22 字面 "退订" 单源).
 //
 // Uses a fake HTTP server returning 410 for any push attempt + a
 // pre-seeded subscription row.
-func TestDL43_Send_410GoneDeletesRow(t *testing.T) {
+func TestDL_Send_410GoneDeletesRow(t *testing.T) {
 	// Fake VAPID-aware push endpoint that always returns 410.
 	fake410 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusGone)
@@ -161,24 +161,24 @@ func TestDL43_Send_410GoneDeletesRow(t *testing.T) {
 	}
 }
 
-// TestDL43_Gateway_InterfaceShape pins the seam — both noop and vapid
+// TestDL_Gateway_InterfaceShape pins the seam — both noop and vapid
 // gateways satisfy the Gateway interface (compile-time gate).
-func TestDL43_Gateway_InterfaceShape(t *testing.T) {
+func TestDL_Gateway_InterfaceShape(t *testing.T) {
 	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	var g push.Gateway = push.NewNoopGateway(logger)
 	if g == nil {
 		t.Fatal("noop must satisfy Gateway")
 	}
-	// vapid gateway satisfaction tested by TestDL43_NewGateway_AllEnvSet.
+	// vapid gateway satisfaction tested by TestDL_NewGateway_AllEnvSet.
 }
 
 // helper to silence unused lint when tests evolve.
 var _ = bytes.NewReader
 
-// TestDL43_Send_200OK_BumpsLastUsedAt covers the success path — server
+// TestDL_Send_200OK_BumpsLastUsedAt covers the success path — server
 // returns 200, gateway updates last_used_at row column, no row deletion.
-func TestDL43_Send_200OK_BumpsLastUsedAt(t *testing.T) {
+func TestDL_Send_200OK_BumpsLastUsedAt(t *testing.T) {
 	fake200 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -221,10 +221,10 @@ func TestDL43_Send_200OK_BumpsLastUsedAt(t *testing.T) {
 	}
 }
 
-// TestDL43_Send_500ErrorReturnsErr covers the 5xx error branch (sendOne
+// TestDL_Send_500ErrorReturnsErr covers the 5xx error branch (sendOne
 // returns "status=N" formatted error; row not deleted, last_used_at not
 // updated).
-func TestDL43_Send_500ErrorReturnsErr(t *testing.T) {
+func TestDL_Send_500ErrorReturnsErr(t *testing.T) {
 	fake500 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))

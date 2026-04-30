@@ -30,11 +30,11 @@ import (
 	sdkbpp "borgee-server/sdk/bpp"
 )
 
-// TestBPP7_Reconnect_CarriesCursor — acceptance §2.1.
+// TestBPP_Reconnect_CarriesCursor — acceptance §2.1.
 //
 // Confirms the marshalled ReconnectHandshakeFrame contains last_known_cursor
 // (BPP-5 #503 字段集承袭).
-func TestBPP7_Reconnect_CarriesCursor(t *testing.T) {
+func TestBPP_Reconnect_CarriesCursor(t *testing.T) {
 	frame := srvbpp.ReconnectHandshakeFrame{
 		Type:            srvbpp.FrameTypeBPPReconnectHandshake,
 		PluginID:        "plugin-1",
@@ -54,10 +54,10 @@ func TestBPP7_Reconnect_CarriesCursor(t *testing.T) {
 	}
 }
 
-// TestBPP7_ColdStart_NoCursor — acceptance §2.1 BPP-6 spec §0.1 字段集
+// TestBPP_ColdStart_NoCursor — acceptance §2.1 BPP-6 spec §0.1 字段集
 // 互斥反断: ColdStartHandshakeFrame must NOT carry LastKnownCursor /
 // DisconnectAt / ReconnectAt fields.
-func TestBPP7_ColdStart_NoCursor(t *testing.T) {
+func TestBPP_ColdStart_NoCursor(t *testing.T) {
 	typ := reflect.TypeOf(srvbpp.ColdStartHandshakeFrame{})
 	for i := 0; i < typ.NumField(); i++ {
 		name := typ.Field(i).Name
@@ -68,25 +68,25 @@ func TestBPP7_ColdStart_NoCursor(t *testing.T) {
 	}
 }
 
-// TestBPP7_ColdStart_ReasonRuntimeCrashed_ByteIdentical — acceptance §2.1+§2.6
+// TestBPP_ColdStart_ReasonRuntimeCrashed_ByteIdentical — acceptance §2.1+§2.6
 // AL-1a reason 锁链 BPP-7 = 第 12 处 (BPP-2.2 第 7 + AL-2b 第 8 + BPP-4
 // 第 9 + BPP-5 第 10 + BPP-6 第 11 + BPP-7 第 12).
-func TestBPP7_ColdStart_ReasonRuntimeCrashed_ByteIdentical(t *testing.T) {
+func TestBPP_ColdStart_ReasonRuntimeCrashed_ByteIdentical(t *testing.T) {
 	if reasons.RuntimeCrashed != "runtime_crashed" {
 		t.Fatalf("reasons.RuntimeCrashed drift: got %q, want %q (AL-1a 锁链第 12 处)",
 			reasons.RuntimeCrashed, "runtime_crashed")
 	}
 }
 
-// TestBPP7_HeartbeatInterval_30s — acceptance §2.2.
-func TestBPP7_HeartbeatInterval_30s(t *testing.T) {
+// TestBPP_HeartbeatInterval_30s — acceptance §2.2.
+func TestBPP_HeartbeatInterval_30s(t *testing.T) {
 	if got, want := sdkbpp.HeartbeatInterval, 30*time.Second; got != want {
 		t.Errorf("HeartbeatInterval drift: got %v, want %v (BPP-4 #499 watchdog 周期 byte-identical)", got, want)
 	}
 }
 
-// TestBPP7_GrantRetry_StopsAfter3 — acceptance §2.3.
-func TestBPP7_GrantRetry_StopsAfter3(t *testing.T) {
+// TestBPP_GrantRetry_StopsAfter3 — acceptance §2.3.
+func TestBPP_GrantRetry_StopsAfter3(t *testing.T) {
 	c := sdkbpp.NewClient("plugin-1", "agent-1", nil)
 	var attempts int32
 	op := func(ctx context.Context) error {
@@ -107,8 +107,8 @@ func TestBPP7_GrantRetry_StopsAfter3(t *testing.T) {
 	}
 }
 
-// TestBPP7_GrantRetry_BackoffByteIdentical — acceptance §2.3.
-func TestBPP7_GrantRetry_BackoffByteIdentical(t *testing.T) {
+// TestBPP_GrantRetry_BackoffByteIdentical — acceptance §2.3.
+func TestBPP_GrantRetry_BackoffByteIdentical(t *testing.T) {
 	if sdkbpp.MaxPermissionRetries != 3 {
 		t.Errorf("MaxPermissionRetries drift: got %d, want 3 (server const reuse)", sdkbpp.MaxPermissionRetries)
 	}
@@ -117,10 +117,10 @@ func TestBPP7_GrantRetry_BackoffByteIdentical(t *testing.T) {
 	}
 }
 
-// TestBPP7_NoSDKQueueOrCustomReason — acceptance §2.4 best-effort
+// TestBPP_NoSDKQueueOrCustomReason — acceptance §2.4 best-effort
 // 锁链延伸第 4 处 (BPP-4 dead_letter_test + BPP-5 reconnect_handler_test +
 // BPP-6 cold_start_handler_test + BPP-7 sdk_test).
-func TestBPP7_NoSDKQueueOrCustomReason(t *testing.T) {
+func TestBPP_NoSDKQueueOrCustomReason(t *testing.T) {
 	forbidden := []string{
 		"pendingSDKReconnect",
 		"sdkRetryQueue",
@@ -169,8 +169,8 @@ func TestBPP7_NoSDKQueueOrCustomReason(t *testing.T) {
 	}
 }
 
-// TestBPP7_AdvanceCursor_Monotonic — RT-1.3 cursor monotonic 立场承袭.
-func TestBPP7_AdvanceCursor_Monotonic(t *testing.T) {
+// TestBPP_AdvanceCursor_Monotonic — RT-1.3 cursor monotonic 立场承袭.
+func TestBPP_AdvanceCursor_Monotonic(t *testing.T) {
 	c := sdkbpp.NewClient("plugin-1", "agent-1", nil)
 	c.AdvanceCursor(100)
 	if c.LastKnownCursor() != 100 {

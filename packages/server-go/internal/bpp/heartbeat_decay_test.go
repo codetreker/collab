@@ -13,11 +13,11 @@ import (
 	"time"
 )
 
-// TestHB3V2_DeriveDecayState_Boundaries — acceptance §1.1.
+// TestHB_DeriveDecayState_Boundaries — acceptance §1.1.
 // Boundaries: t=0/29/30/59/60 (seconds since lastHeartbeatAt) →
 // fresh/fresh/stale/stale/dead. 30s and 60s are inclusive boundaries
 // of fresh and stale respectively.
-func TestHB3V2_DeriveDecayState_Boundaries(t *testing.T) {
+func TestHB_DeriveDecayState_Boundaries(t *testing.T) {
 	t.Parallel()
 	const lastHB = int64(1_000_000_000_000)
 	cases := []struct {
@@ -46,10 +46,10 @@ func TestHB3V2_DeriveDecayState_Boundaries(t *testing.T) {
 	}
 }
 
-// TestHB3V2_DeriveDecayState_NilSafe — acceptance §1.3.
+// TestHB_DeriveDecayState_NilSafe — acceptance §1.3.
 // 0 / negative lastHeartbeatAt → dead (never alive).
 // future-dated lastHeartbeatAt (now < last) → fresh (clamp delta=0).
-func TestHB3V2_DeriveDecayState_NilSafe(t *testing.T) {
+func TestHB_DeriveDecayState_NilSafe(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		now, last int64
@@ -69,10 +69,10 @@ func TestHB3V2_DeriveDecayState_NilSafe(t *testing.T) {
 	}
 }
 
-// TestHB3V2_ConstThresholdsByteIdentical — acceptance §2.3 立场 ⑥.
+// TestHB_ConstThresholdsByteIdentical — acceptance §2.3 立场 ⑥.
 // StaleThreshold byte-identical 跟 BPP-4 watchdog 30s + BPP-7 SDK
 // HeartbeatInterval 30s 同源.
-func TestHB3V2_ConstThresholdsByteIdentical(t *testing.T) {
+func TestHB_ConstThresholdsByteIdentical(t *testing.T) {
 	t.Parallel()
 	if StaleThreshold != 30*time.Second {
 		t.Errorf("StaleThreshold drift: got %v, want 30s (BPP-4 watchdog + BPP-7 SDK 同源)", StaleThreshold)
@@ -82,11 +82,11 @@ func TestHB3V2_ConstThresholdsByteIdentical(t *testing.T) {
 	}
 }
 
-// TestHB3V2_NoSchemaChange — acceptance §1.2 立场 ① 反断.
+// TestHB_NoSchemaChange — acceptance §1.2 立场 ① 反断.
 //
 // Reverse-grep production migrations + bpp/api packages for forbidden
 // HB-3 v2 decay table / schema literals.
-func TestHB3V2_NoSchemaChange(t *testing.T) {
+func TestHB_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"heartbeat_decay_table",
@@ -127,14 +127,14 @@ func TestHB3V2_NoSchemaChange(t *testing.T) {
 	}
 }
 
-// TestHB3V2_DecayState_LiteralSingleSource — acceptance §2.3 立场 ④.
+// TestHB_DecayState_LiteralSingleSource — acceptance §2.3 立场 ④.
 //
 // hardcode "fresh"/"stale"/"dead" literals in production *.go MUST
 // only appear in heartbeat_decay.go (source of truth). envelope.go
 // references "stale" as part of an unrelated heartbeat status enum
 // (BPP-1 plugin status: online/working/offline + the legacy
 // 'stale' label) so it's whitelisted explicitly.
-func TestHB3V2_DecayState_LiteralSingleSource(t *testing.T) {
+func TestHB_DecayState_LiteralSingleSource(t *testing.T) {
 	t.Parallel()
 	whitelist := map[string]bool{
 		"heartbeat_decay.go": true,
@@ -176,10 +176,10 @@ func TestHB3V2_DecayState_LiteralSingleSource(t *testing.T) {
 	}
 }
 
-// TestHB3V2_NoStaleSidePath — acceptance §2.1 立场 ②.
+// TestHB_NoStaleSidePath — acceptance §2.1 立场 ②.
 // 反向 grep `RecordHeartbeatStale\|LifecycleAuditor.*Stale` 0 hit
 // (复用 BPP-8 RecordHeartbeatTimeout, 不另开 Stale 旁路).
-func TestHB3V2_NoStaleSidePath(t *testing.T) {
+func TestHB_NoStaleSidePath(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"RecordHeartbeatStale",
@@ -218,9 +218,9 @@ func TestHB3V2_NoStaleSidePath(t *testing.T) {
 	}
 }
 
-// TestHB3V2_NoDecayQueueOrSchema — acceptance §3.1 立场 ⑤
+// TestHB_NoDecayQueueOrSchema — acceptance §3.1 立场 ⑤
 // best-effort 锁链延伸第 6 处.
-func TestHB3V2_NoDecayQueueOrSchema(t *testing.T) {
+func TestHB_NoDecayQueueOrSchema(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingDecayQueue",
@@ -315,8 +315,8 @@ func (s *stubBucketAuditor) RecordHeartbeatTimeout(pluginID, agentID string) {
 	s.calls++
 }
 
-// TestHB3V2_CrossBucket_TriggersAudit — acceptance §2.1.
-func TestHB3V2_CrossBucket_TriggersAudit(t *testing.T) {
+// TestHB_CrossBucket_TriggersAudit — acceptance §2.1.
+func TestHB_CrossBucket_TriggersAudit(t *testing.T) {
 	t.Parallel()
 	st := &stubBucketAuditor{}
 	tr := NewBucketAuditTrigger(st)
@@ -326,8 +326,8 @@ func TestHB3V2_CrossBucket_TriggersAudit(t *testing.T) {
 	}
 }
 
-// TestHB3V2_SameBucket_NoAuditCall — acceptance §2.1 立场 ⑦.
-func TestHB3V2_SameBucket_NoAuditCall(t *testing.T) {
+// TestHB_SameBucket_NoAuditCall — acceptance §2.1 立场 ⑦.
+func TestHB_SameBucket_NoAuditCall(t *testing.T) {
 	t.Parallel()
 	st := &stubBucketAuditor{}
 	tr := NewBucketAuditTrigger(st)
@@ -339,8 +339,8 @@ func TestHB3V2_SameBucket_NoAuditCall(t *testing.T) {
 	}
 }
 
-// TestHB3V2_BucketAuditTrigger_NilSafeCtor — boot bug.
-func TestHB3V2_BucketAuditTrigger_NilSafeCtor(t *testing.T) {
+// TestHB_BucketAuditTrigger_NilSafeCtor — boot bug.
+func TestHB_BucketAuditTrigger_NilSafeCtor(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if recover() == nil {
@@ -350,8 +350,8 @@ func TestHB3V2_BucketAuditTrigger_NilSafeCtor(t *testing.T) {
 	NewBucketAuditTrigger(nil)
 }
 
-// TestHB3V2_AdminGodModeNotMounted — acceptance §3.2.
-func TestHB3V2_AdminGodModeNotMounted(t *testing.T) {
+// TestHB_AdminGodModeNotMounted — acceptance §3.2.
+func TestHB_AdminGodModeNotMounted(t *testing.T) {
 	t.Parallel()
 	dir := "../api"
 	entries, err := os.ReadDir(dir)

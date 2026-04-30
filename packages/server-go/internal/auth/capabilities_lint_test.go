@@ -2,13 +2,13 @@
 // Capabilities map + IsValidCapability helper 单源 (spec §0 立场 ① + ③).
 //
 // 6 unit (跟 acceptance template 立场 ① 1.1-1.5 + 立场 ③ 3.1 同源):
-//   - TestAP4E1_ALL_OrderedByteIdentical (1.1) — ALL 顺序跟 const 声明顺序对齐
-//   - TestAP4E1_Capabilities_AutoBuildFromAll (1.2) — init() 派生 map ↔ ALL 双向
-//   - TestAP4E1_ALL_Length14 (1.3) — len(ALL) == 14 锁
-//   - TestAP4E1_reflect_lint_NoOrphanConst (1.4a) — 14 const 字面 ⊂ ALL
-//   - TestAP4E1_reflect_lint_NoExtraInMap (1.4b) — Capabilities map ⊂ ALL
-//   - TestAP4E1_NoAdminGodModeInALL (1.5) — admin god-mode 红线 (ADM-0 §1.3)
-//   - TestAP4E1_IsValidCapability_TruthTable (3.1) — 14 true + 1 false
+//   - TestAP_ALL_OrderedByteIdentical (1.1) — ALL 顺序跟 const 声明顺序对齐
+//   - TestAP_Capabilities_AutoBuildFromAll (1.2) — init() 派生 map ↔ ALL 双向
+//   - TestAP_ALL_Length14 (1.3) — len(ALL) == 14 锁
+//   - TestAP_reflect_lint_NoOrphanConst (1.4a) — 14 const 字面 ⊂ ALL
+//   - TestAP_reflect_lint_NoExtraInMap (1.4b) — Capabilities map ⊂ ALL
+//   - TestAP_NoAdminGodModeInALL (1.5) — admin god-mode 红线 (ADM-0 §1.3)
+//   - TestAP_IsValidCapability_TruthTable (3.1) — 14 true + 1 false
 package auth
 
 import (
@@ -19,9 +19,9 @@ import (
 	"testing"
 )
 
-// TestAP4E1_ALL_OrderedByteIdentical — ALL slice 顺序 byte-identical 跟
+// TestAP_ALL_OrderedByteIdentical — ALL slice 顺序 byte-identical 跟
 // const 声明顺序 (channel scope → artifact scope → messaging → channel admin).
-func TestAP4E1_ALL_OrderedByteIdentical(t *testing.T) {
+func TestAP_ALL_OrderedByteIdentical(t *testing.T) {
 	t.Parallel()
 	want := []string{
 		"read_channel", "write_channel", "delete_channel",
@@ -39,8 +39,8 @@ func TestAP4E1_ALL_OrderedByteIdentical(t *testing.T) {
 	}
 }
 
-// TestAP4E1_Capabilities_AutoBuildFromAll — init() 派生 map 双向 ⊂ ALL.
-func TestAP4E1_Capabilities_AutoBuildFromAll(t *testing.T) {
+// TestAP_Capabilities_AutoBuildFromAll — init() 派生 map 双向 ⊂ ALL.
+func TestAP_Capabilities_AutoBuildFromAll(t *testing.T) {
 	t.Parallel()
 	if len(Capabilities) != len(ALL) {
 		t.Fatalf("Capabilities len = %d, want %d", len(Capabilities), len(ALL))
@@ -67,17 +67,17 @@ func TestAP4E1_Capabilities_AutoBuildFromAll(t *testing.T) {
 	}
 }
 
-// TestAP4E1_ALL_Length14 — 14 锁 (跟 AP-1 #493 同源).
-func TestAP4E1_ALL_Length14(t *testing.T) {
+// TestAP_ALL_Length14 — 14 锁 (跟 AP-1 #493 同源).
+func TestAP_ALL_Length14(t *testing.T) {
 	t.Parallel()
 	if len(ALL) != 14 {
 		t.Fatalf("len(ALL) = %d, want 14 (AP-1 #493 字面锁)", len(ALL))
 	}
 }
 
-// TestAP4E1_reflect_lint_NoOrphanConst — capabilities.go const 字面 ⊂ ALL.
+// TestAP_reflect_lint_NoOrphanConst — capabilities.go const 字面 ⊂ ALL.
 // 走 go/ast 解析 capabilities.go const block, 验每个 string literal ∈ ALL.
-func TestAP4E1_reflect_lint_NoOrphanConst(t *testing.T) {
+func TestAP_reflect_lint_NoOrphanConst(t *testing.T) {
 	t.Parallel()
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "capabilities.go", nil, parser.ParseComments)
@@ -112,8 +112,8 @@ func TestAP4E1_reflect_lint_NoOrphanConst(t *testing.T) {
 	}
 }
 
-// TestAP4E1_reflect_lint_NoExtraInMap — Capabilities map ⊂ ALL (无 extra).
-func TestAP4E1_reflect_lint_NoExtraInMap(t *testing.T) {
+// TestAP_reflect_lint_NoExtraInMap — Capabilities map ⊂ ALL (无 extra).
+func TestAP_reflect_lint_NoExtraInMap(t *testing.T) {
 	t.Parallel()
 	allSet := make(map[string]bool, len(ALL))
 	for _, c := range ALL {
@@ -126,8 +126,8 @@ func TestAP4E1_reflect_lint_NoExtraInMap(t *testing.T) {
 	}
 }
 
-// TestAP4E1_NoAdminGodModeInALL — ADM-0 §1.3 红线 (admin 永久不挂).
-func TestAP4E1_NoAdminGodModeInALL(t *testing.T) {
+// TestAP_NoAdminGodModeInALL — ADM-0 §1.3 红线 (admin 永久不挂).
+func TestAP_NoAdminGodModeInALL(t *testing.T) {
 	t.Parallel()
 	banned := []string{"admin_", "godmode_", "impersonat"}
 	for _, c := range ALL {
@@ -139,8 +139,8 @@ func TestAP4E1_NoAdminGodModeInALL(t *testing.T) {
 	}
 }
 
-// TestAP4E1_IsValidCapability_TruthTable — 14 true + 1 false.
-func TestAP4E1_IsValidCapability_TruthTable(t *testing.T) {
+// TestAP_IsValidCapability_TruthTable — 14 true + 1 false.
+func TestAP_IsValidCapability_TruthTable(t *testing.T) {
 	t.Parallel()
 	for _, c := range ALL {
 		if !IsValidCapability(c) {

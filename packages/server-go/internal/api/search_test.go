@@ -29,7 +29,7 @@ func searchURL(base, q, channelID string) string {
 
 // REG-CV6-002 (acceptance §1.2) — happy path: insert markdown w/ "Hello world",
 // search "hello" returns 1 result with snippet `<mark>Hello</mark> world`.
-func TestCV62_SearchHappyPath_MarkdownBody(t *testing.T) {
+func TestCV_SearchHappyPath_MarkdownBody(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -58,7 +58,7 @@ func TestCV62_SearchHappyPath_MarkdownBody(t *testing.T) {
 }
 
 // REG-CV6-003 (acceptance §1.3) — non-member → 403 channel_not_member.
-func TestCV62_NonMember403(t *testing.T) {
+func TestCV_NonMember403(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -86,7 +86,7 @@ func TestCV62_NonMember403(t *testing.T) {
 }
 
 // REG-CV6-003b — admin (no auth user) → 401.
-func TestCV62_NoAuth401(t *testing.T) {
+func TestCV_NoAuth401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -99,7 +99,7 @@ func TestCV62_NoAuth401(t *testing.T) {
 }
 
 // REG-CV6-005 (acceptance §1.5) — query empty / too long bounds.
-func TestCV62_QueryEmpty400(t *testing.T) {
+func TestCV_QueryEmpty400(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -115,7 +115,7 @@ func TestCV62_QueryEmpty400(t *testing.T) {
 	}
 }
 
-func TestCV62_QueryTooLong400(t *testing.T) {
+func TestCV_QueryTooLong400(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -133,7 +133,7 @@ func TestCV62_QueryTooLong400(t *testing.T) {
 }
 
 // REG-CV6-005b — missing channel_id → 400 (v0 is channel-scoped only).
-func TestCV62_MissingChannelID400(t *testing.T) {
+func TestCV_MissingChannelID400(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -149,7 +149,7 @@ func TestCV62_MissingChannelID400(t *testing.T) {
 }
 
 // REG-CV6-005c — ?limit= clamp + parse (default 50, cap 200, ignore invalid).
-func TestCV62_LimitClampAndParse(t *testing.T) {
+func TestCV_LimitClampAndParse(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -170,9 +170,9 @@ func TestCV62_LimitClampAndParse(t *testing.T) {
 	}
 }
 
-// TestCV62_DBErrorPath500 — force the FTS5 table missing path so the
+// TestCV_DBErrorPath500 — force the FTS5 table missing path so the
 // raw query errors. Covers the 500 fallback branch in handleArtifactSearch.
-func TestCV62_DBErrorPath500(t *testing.T) {
+func TestCV_DBErrorPath500(t *testing.T) {
 	// Not parallel — we mutate the shared DB schema.
 	ts, s, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -190,7 +190,7 @@ func TestCV62_DBErrorPath500(t *testing.T) {
 }
 
 // REG-CV6-006 (acceptance §1.6 + 立场 ⑥) — archived artifacts excluded.
-func TestCV62_ArchivedNotInResults(t *testing.T) {
+func TestCV_ArchivedNotInResults(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -206,7 +206,7 @@ func TestCV62_ArchivedNotInResults(t *testing.T) {
 }
 
 // REG-CV6-007 — 5 const literal byte-identical.
-func TestCV62_ErrCodeConstByteIdentical(t *testing.T) {
+func TestCV_ErrCodeConstByteIdentical(t *testing.T) {
 	want := map[string]string{
 		"NotOwner":         "search.not_owner",
 		"ChannelNotMember": "search.channel_not_member",
@@ -229,7 +229,7 @@ func TestCV62_ErrCodeConstByteIdentical(t *testing.T) {
 }
 
 // REG-CV6-002b — code kind body indexed too.
-func TestCV62_SearchHappyPath_CodeTitle(t *testing.T) {
+func TestCV_SearchHappyPath_CodeTitle(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

@@ -17,7 +17,7 @@ import (
 // REG-BPP31-001 — basic path: hub.PushPermissionDenied emits
 // PermissionDeniedFrame with byte-identical wire JSON; cursor 单调
 // 发号; sent=true.
-func TestBPP31_PushPermissionDenied_Basic(t *testing.T) {
+func TestBPP_PushPermissionDenied_Basic(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -66,7 +66,7 @@ func TestBPP31_PushPermissionDenied_Basic(t *testing.T) {
 
 // REG-BPP31-002 — direction lock server→plugin (frame schema invariant
 // enforced by bppEnvelopeWhitelist). plugin 永不发 permission_denied.
-func TestBPP31_DirectionLock_ServerToPlugin(t *testing.T) {
+func TestBPP_DirectionLock_ServerToPlugin(t *testing.T) {
 	t.Parallel()
 	wl := bpp.BPPEnvelopeWhitelist()
 	dir, ok := wl[bpp.FrameTypeBPPPermissionDenied]
@@ -85,7 +85,7 @@ func TestBPP31_DirectionLock_ServerToPlugin(t *testing.T) {
 
 // REG-BPP31-003 — plugin offline fail-graceful: sent=false, cursor still
 // allocated (sequence 不留洞, 跟 PushAgentConfigUpdate 同模式).
-func TestBPP31_PushPermissionDenied_PluginOffline(t *testing.T) {
+func TestBPP_PushPermissionDenied_PluginOffline(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -104,7 +104,7 @@ func TestBPP31_PushPermissionDenied_PluginOffline(t *testing.T) {
 // REG-BPP31-004 — cursor 共序: BPP-3.1 push 跟 RT-1 PushArtifactUpdated +
 // AL-2b PushAgentConfigUpdate 共一根 sequence (反约束 §1 立场 ① 不另起
 // plugin-only 通道).
-func TestBPP31_PushPermissionDenied_SharedSequence(t *testing.T) {
+func TestBPP_PushPermissionDenied_SharedSequence(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -134,7 +134,7 @@ func TestBPP31_PushPermissionDenied_SharedSequence(t *testing.T) {
 
 // REG-BPP31-005 — field byte-identity (filled + zero-tail). 反约束 8 字段
 // 全序列化, 不挂 omitempty.
-func TestBPP31_PushPermissionDenied_FieldByteIdentity(t *testing.T) {
+func TestBPP_PushPermissionDenied_FieldByteIdentity(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -163,7 +163,7 @@ func TestBPP31_PushPermissionDenied_FieldByteIdentity(t *testing.T) {
 
 // REG-BPP31-006 — interface seam: PermissionDeniedPusher 可由 *Hub 实现
 // (api 包将通过此接口注入, AP-1 #493 follow-up wiring).
-func TestBPP31_HubImplementsPermissionDeniedPusher(t *testing.T) {
+func TestBPP_HubImplementsPermissionDeniedPusher(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 	var _ ws.PermissionDeniedPusher = hub

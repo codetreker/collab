@@ -59,9 +59,9 @@ func (f *fakeOwnerResolver) OwnerOf(_ string) (string, error) {
 	return f.owner, nil
 }
 
-// TestBPP3Dispatcher_Route_Happy pins acceptance §2.1 — registered
+// TestPluginFrameDispatcher_Route_Happy pins acceptance §2.1 — registered
 // frame type routes to Dispatch with raw payload + session context.
-func TestBPP3Dispatcher_Route_Happy(t *testing.T) {
+func TestPluginFrameDispatcher_Route_Happy(t *testing.T) {
 	t.Parallel()
 	pfd := bpp.NewPluginFrameDispatcher(nil)
 	fd := &fakeFrameDispatcher{}
@@ -83,10 +83,10 @@ func TestBPP3Dispatcher_Route_Happy(t *testing.T) {
 	}
 }
 
-// TestBPP3Dispatcher_Route_UnknownType_SoftSkip pins forward-compat —
+// TestPluginFrameDispatcher_Route_UnknownType_SoftSkip pins forward-compat —
 // unknown frame type returns (false, nil), no error, no panic. Plugin
 // upgrade tolerance critical.
-func TestBPP3Dispatcher_Route_UnknownType_SoftSkip(t *testing.T) {
+func TestPluginFrameDispatcher_Route_UnknownType_SoftSkip(t *testing.T) {
 	t.Parallel()
 	pfd := bpp.NewPluginFrameDispatcher(nil)
 	raw := []byte(`{"type":"future_frame_v2","agent_id":"a-1"}`)
@@ -99,9 +99,9 @@ func TestBPP3Dispatcher_Route_UnknownType_SoftSkip(t *testing.T) {
 	}
 }
 
-// TestBPP3Dispatcher_Route_MalformedJSON_SoftSkip pins fail-soft —
+// TestPluginFrameDispatcher_Route_MalformedJSON_SoftSkip pins fail-soft —
 // malformed JSON wire payload soft-skips (no panic, no err return).
-func TestBPP3Dispatcher_Route_MalformedJSON_SoftSkip(t *testing.T) {
+func TestPluginFrameDispatcher_Route_MalformedJSON_SoftSkip(t *testing.T) {
 	t.Parallel()
 	pfd := bpp.NewPluginFrameDispatcher(nil)
 	raw := []byte(`{not valid json`)
@@ -114,9 +114,9 @@ func TestBPP3Dispatcher_Route_MalformedJSON_SoftSkip(t *testing.T) {
 	}
 }
 
-// TestBPP3Dispatcher_Route_EmptyPayload_SoftSkip pins guard — empty
+// TestPluginFrameDispatcher_Route_EmptyPayload_SoftSkip pins guard — empty
 // raw bytes soft-skip (zero-len edge).
-func TestBPP3Dispatcher_Route_EmptyPayload_SoftSkip(t *testing.T) {
+func TestPluginFrameDispatcher_Route_EmptyPayload_SoftSkip(t *testing.T) {
 	t.Parallel()
 	pfd := bpp.NewPluginFrameDispatcher(nil)
 	handled, err := pfd.Route(nil, bpp.PluginSessionContext{})
@@ -129,9 +129,9 @@ func TestBPP3Dispatcher_Route_EmptyPayload_SoftSkip(t *testing.T) {
 	}
 }
 
-// TestBPP3Dispatcher_Route_EmptyType_SoftSkip pins guard — payload
+// TestPluginFrameDispatcher_Route_EmptyType_SoftSkip pins guard — payload
 // without `type` field soft-skips.
-func TestBPP3Dispatcher_Route_EmptyType_SoftSkip(t *testing.T) {
+func TestPluginFrameDispatcher_Route_EmptyType_SoftSkip(t *testing.T) {
 	t.Parallel()
 	pfd := bpp.NewPluginFrameDispatcher(nil)
 	raw := []byte(`{"agent_id":"a-1"}`)
@@ -141,10 +141,10 @@ func TestBPP3Dispatcher_Route_EmptyType_SoftSkip(t *testing.T) {
 	}
 }
 
-// TestBPP3Dispatcher_Route_DispatcherError pins error propagation —
+// TestPluginFrameDispatcher_Route_DispatcherError pins error propagation —
 // when dispatcher returns err, Route returns (true, err) so callers can
 // errors.Is for metrics/logging.
-func TestBPP3Dispatcher_Route_DispatcherError(t *testing.T) {
+func TestPluginFrameDispatcher_Route_DispatcherError(t *testing.T) {
 	t.Parallel()
 	pfd := bpp.NewPluginFrameDispatcher(nil)
 	fd := &fakeFrameDispatcher{retErr: errors.New("validation failed")}
@@ -160,8 +160,8 @@ func TestBPP3Dispatcher_Route_DispatcherError(t *testing.T) {
 	}
 }
 
-// TestBPP3Dispatcher_Register_PanicsOnEmptyType pins boot-bug guard.
-func TestBPP3Dispatcher_Register_PanicsOnEmptyType(t *testing.T) {
+// TestPluginFrameDispatcher_Register_PanicsOnEmptyType pins boot-bug guard.
+func TestPluginFrameDispatcher_Register_PanicsOnEmptyType(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
@@ -172,8 +172,8 @@ func TestBPP3Dispatcher_Register_PanicsOnEmptyType(t *testing.T) {
 	pfd.Register("", &fakeFrameDispatcher{})
 }
 
-// TestBPP3Dispatcher_Register_PanicsOnNilDispatcher pins boot-bug guard.
-func TestBPP3Dispatcher_Register_PanicsOnNilDispatcher(t *testing.T) {
+// TestPluginFrameDispatcher_Register_PanicsOnNilDispatcher pins boot-bug guard.
+func TestPluginFrameDispatcher_Register_PanicsOnNilDispatcher(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
@@ -184,9 +184,9 @@ func TestBPP3Dispatcher_Register_PanicsOnNilDispatcher(t *testing.T) {
 	pfd.Register(bpp.FrameTypeBPPAgentConfigAck, nil)
 }
 
-// TestBPP3Dispatcher_Register_PanicsOnDuplicate pins single-dispatcher
+// TestPluginFrameDispatcher_Register_PanicsOnDuplicate pins single-dispatcher
 // invariant — only one dispatcher per frame type.
-func TestBPP3Dispatcher_Register_PanicsOnDuplicate(t *testing.T) {
+func TestPluginFrameDispatcher_Register_PanicsOnDuplicate(t *testing.T) {
 	t.Parallel()
 	pfd := bpp.NewPluginFrameDispatcher(nil)
 	pfd.Register(bpp.FrameTypeBPPAgentConfigAck, &fakeFrameDispatcher{})
@@ -198,9 +198,9 @@ func TestBPP3Dispatcher_Register_PanicsOnDuplicate(t *testing.T) {
 	pfd.Register(bpp.FrameTypeBPPAgentConfigAck, &fakeFrameDispatcher{})
 }
 
-// TestBPP3Dispatcher_Register_PanicsOnUnknownFrameType pins envelope
+// TestPluginFrameDispatcher_Register_PanicsOnUnknownFrameType pins envelope
 // whitelist enforcement — frame must be defined in envelope.go first.
-func TestBPP3Dispatcher_Register_PanicsOnUnknownFrameType(t *testing.T) {
+func TestPluginFrameDispatcher_Register_PanicsOnUnknownFrameType(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
@@ -211,11 +211,11 @@ func TestBPP3Dispatcher_Register_PanicsOnUnknownFrameType(t *testing.T) {
 	pfd.Register("nonexistent_frame_type_xyz", &fakeFrameDispatcher{})
 }
 
-// TestBPP3Dispatcher_Register_PanicsOnServerToPluginFrame pins
+// TestPluginFrameDispatcher_Register_PanicsOnServerToPluginFrame pins
 // direction lock — only Plugin→Server frames may register here.
 // AgentConfigUpdateFrame is server→plugin, so registering it here is a
 // definitional bug.
-func TestBPP3Dispatcher_Register_PanicsOnServerToPluginFrame(t *testing.T) {
+func TestPluginFrameDispatcher_Register_PanicsOnServerToPluginFrame(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
@@ -228,10 +228,10 @@ func TestBPP3Dispatcher_Register_PanicsOnServerToPluginFrame(t *testing.T) {
 	pfd.Register(bpp.FrameTypeBPPAgentConfigUpdate, &fakeFrameDispatcher{})
 }
 
-// TestBPP3AckFrameAdapter_DecodesAndDelegates pins acceptance §3.1 —
+// TestPluginFrameDispatcher_DecodesAndDelegates pins acceptance §3.1 —
 // AckFrameAdapter wraps AckDispatcher: raw → AgentConfigAckFrame →
 // typed Dispatch.
-func TestBPP3AckFrameAdapter_DecodesAndDelegates(t *testing.T) {
+func TestPluginFrameDispatcher_DecodesAndDelegates(t *testing.T) {
 	t.Parallel()
 	handler := &fakeAckHandler{}
 	resolver := &fakeOwnerResolver{owner: "u-1"}
@@ -248,8 +248,8 @@ func TestBPP3AckFrameAdapter_DecodesAndDelegates(t *testing.T) {
 	}
 }
 
-// TestBPP3AckFrameAdapter_PanicsOnNilDispatcher pins boot-bug guard.
-func TestBPP3AckFrameAdapter_PanicsOnNilDispatcher(t *testing.T) {
+// TestPluginFrameDispatcher_PanicsOnNilDispatcher pins boot-bug guard.
+func TestPluginFrameDispatcher_PanicsOnNilDispatcher(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
@@ -259,9 +259,9 @@ func TestBPP3AckFrameAdapter_PanicsOnNilDispatcher(t *testing.T) {
 	bpp.NewAckFrameAdapter(nil)
 }
 
-// TestBPP3AckFrameAdapter_DecodeError pins error wrapping — malformed
+// TestPluginFrameDispatcher_DecodeError pins error wrapping — malformed
 // raw frame returns wrapped error (not panic).
-func TestBPP3AckFrameAdapter_DecodeError(t *testing.T) {
+func TestPluginFrameDispatcher_DecodeError(t *testing.T) {
 	t.Parallel()
 	handler := &fakeAckHandler{}
 	resolver := &fakeOwnerResolver{owner: "u-1"}
@@ -281,11 +281,11 @@ func TestBPP3AckFrameAdapter_DecodeError(t *testing.T) {
 	}
 }
 
-// TestBPP3Dispatcher_Integration_RegisterRouteAck pins end-to-end
+// TestPluginFrameDispatcher_Integration_RegisterRouteAck pins end-to-end
 // routing: PluginFrameDispatcher.Route → AckFrameAdapter.Dispatch →
 // AckDispatcher.Dispatch → fakeAckHandler.HandleAck. Validates the
 // full BPP-3 boundary chain works.
-func TestBPP3Dispatcher_Integration_RegisterRouteAck(t *testing.T) {
+func TestPluginFrameDispatcher_Integration_RegisterRouteAck(t *testing.T) {
 	t.Parallel()
 	handler := &fakeAckHandler{}
 	resolver := &fakeOwnerResolver{owner: "u-1"}

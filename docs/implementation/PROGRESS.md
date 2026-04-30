@@ -28,7 +28,7 @@
 
 ## In-flight 当前状态 (≤10 行)
 
-- (none — REFACTOR-2 ✅ 落 phase-4.md, 等下一 milestone)
+- (none — NAMING-1 ✅ 落 phase-4.md, 等下一 milestone)
 
 ---
 

@@ -41,7 +41,7 @@
 - D11 §1 `users.role (member / admin / agent)` → ADM-0.3 后改 `(member / agent)` + 加 `admins` / `admin_sessions` 行 → **战马合 ADM-0.3 PR 顺手改**。
 - D12 §1 messages 行追加 `quick_action TEXT` 列 → **战马B**。
 
-### 🟡 P1 — implementation/modules/admin-model.md
+### 🟡 P1 — architecture/admin-model.md
 
 - D13 §2 Milestones ADM-0.1 / ADM-0.2 加 ✅ marker → **本 PR 已落** (飞马)。
 

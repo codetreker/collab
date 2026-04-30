@@ -42,7 +42,7 @@ func TestCMOnboardingWelcome_SeedsSystemUserAndBackfills(t *testing.T) {
 	seedLegacyTables(t, db)
 
 	e := New(db)
-	e.Register(cm11Organizations)
+	e.Register(organizations)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("phase1: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestCMOnboardingWelcome_IsIdempotent(t *testing.T) {
 	seedLegacyTables(t, db)
 
 	e := New(db)
-	e.Register(cm11Organizations)
+	e.Register(organizations)
 	e.Register(cmOnboardingWelcome)
 	if err := e.Run(0); err != nil {
 		t.Fatalf("first run: %v", err)

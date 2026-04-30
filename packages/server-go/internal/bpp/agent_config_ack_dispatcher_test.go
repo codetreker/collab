@@ -51,10 +51,10 @@ func newDispatcherWith(t *testing.T, owners map[string]string) (*bpp.AckDispatch
 	return bpp.NewAckDispatcher(h, r), h
 }
 
-// TestAL2B_AckDispatcher_StatusEnum_FailClosed pins acceptance §1.2 — 3
+// TestAL_AckDispatcher_StatusEnum_FailClosed pins acceptance §1.2 — 3
 // 态 enum byte-identical, 枚举外值 reject (跟 al_2b_frames_test.go
 // isValidAckStatus 同源, 此处 prod 路径).
-func TestAL2B_AckDispatcher_StatusEnum_FailClosed(t *testing.T) {
+func TestAL_AckDispatcher_StatusEnum_FailClosed(t *testing.T) {
 	t.Parallel()
 
 	d, _ := newDispatcherWith(t, map[string]string{"agent-A": "user-1"})
@@ -97,10 +97,10 @@ func TestAL2B_AckDispatcher_StatusEnum_FailClosed(t *testing.T) {
 	}
 }
 
-// TestAL2B_AckDispatcher_ReasonAL1aDict pins acceptance §3.2 — Reason
+// TestAL_AckDispatcher_ReasonAL1aDict pins acceptance §3.2 — Reason
 // 字典承袭 AL-1a 6 项 byte-identical. 跟 BPP-2.2 task_finished failed
 // reason 同源 (改 = 改 8 处单测锁).
-func TestAL2B_AckDispatcher_ReasonAL1aDict(t *testing.T) {
+func TestAL_AckDispatcher_ReasonAL1aDict(t *testing.T) {
 	t.Parallel()
 
 	d, _ := newDispatcherWith(t, map[string]string{"agent-A": "user-1"})
@@ -156,10 +156,10 @@ func TestAL2B_AckDispatcher_ReasonAL1aDict(t *testing.T) {
 	}
 }
 
-// TestAL2B_AckDispatcher_CrossOwnerReject pins acceptance §2.5 — frame
+// TestAL_AckDispatcher_CrossOwnerReject pins acceptance §2.5 — frame
 // agent_id 跟 sess.OwnerUserID owner 不匹配 → reject (REG-INV-002
 // fail-closed 扫描器复用).
-func TestAL2B_AckDispatcher_CrossOwnerReject(t *testing.T) {
+func TestAL_AckDispatcher_CrossOwnerReject(t *testing.T) {
 	t.Parallel()
 
 	d, h := newDispatcherWith(t, map[string]string{
@@ -193,10 +193,10 @@ func TestAL2B_AckDispatcher_CrossOwnerReject(t *testing.T) {
 	}
 }
 
-// TestAL2B_AckDispatcher_HappyPath_DelegatesToHandler pins the seam
+// TestAL_AckDispatcher_HappyPath_DelegatesToHandler pins the seam
 // contract: 校验全过 → handler.HandleAck 调一次, 参数 byte-identical
 // 跟入参. handler 错误透传 (跟 BPP-2.1 ActionHandler 同模式).
-func TestAL2B_AckDispatcher_HappyPath_DelegatesToHandler(t *testing.T) {
+func TestAL_AckDispatcher_HappyPath_DelegatesToHandler(t *testing.T) {
 	t.Parallel()
 
 	d, h := newDispatcherWith(t, map[string]string{"agent-A": "user-1"})
@@ -232,9 +232,9 @@ func TestAL2B_AckDispatcher_HappyPath_DelegatesToHandler(t *testing.T) {
 	}
 }
 
-// TestAL2B_AckDispatcher_NilArgsPanic pins boot-time defense (跟 BPP-2.1
+// TestAL_AckDispatcher_NilArgsPanic pins boot-time defense (跟 BPP-2.1
 // RegisterHandler nil panic 同模式 — prevents 0-coverage routes).
-func TestAL2B_AckDispatcher_NilArgsPanic(t *testing.T) {
+func TestAL_AckDispatcher_NilArgsPanic(t *testing.T) {
 	t.Parallel()
 
 	defer func() {

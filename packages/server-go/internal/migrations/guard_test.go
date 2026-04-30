@@ -21,13 +21,13 @@ func TestPrereqMissingMigrationsAreNoOp(t *testing.T) {
 		migration Migration
 		prereq    string // prerequisite table the migration guards on
 	}{
-		{"al_7_1", al71AdminActionsArchivedAt, "admin_actions"},
-		{"bpp_8_1", bpp81AdminActionsPluginActions, "admin_actions"},
-		{"hb_5_1", hb51AgentStateLogArchivedAt, "agent_state_log"},
-		{"chn_14_1", chn141ChannelsDescriptionEditHistory, "channels"},
-		{"ap_2_1", ap21UserPermissionsRevoked, "user_permissions"},
-		{"adm_3_1", adm31AuditEventsRename, "audit_events"},
-		{"dm_7_1", dm71MessagesEditHistory, "messages"},
+		{"al_7_1", adminActionsArchivedAt, "admin_actions"},
+		{"bpp_8_1", adminActionsPluginActions, "admin_actions"},
+		{"hb_5_1", agentStateLogArchivedAt, "agent_state_log"},
+		{"chn_14_1", channelsDescriptionEditHistory, "channels"},
+		{"ap_2_1", userPermissionsRevoked, "user_permissions"},
+		{"adm_3_1", auditEventsRename, "audit_events"},
+		{"dm_7_1", messagesEditHistory, "messages"},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -60,87 +60,87 @@ func tableExists(db *gorm.DB, name string) (bool, error) {
 	return n > 0, nil
 }
 
-// TestADM01_ExecError_BadPrior covers the err-return inside the stmts
+// TestADM_ExecError_BadPrior covers the err-return inside the stmts
 // loop — pre-existing `admins` table without the `login` column makes
 // the UNIQUE INDEX statement fail.
-func TestADM01_ExecError_BadPrior(t *testing.T) {
+func TestADM_ExecError_BadPrior(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE admins (id TEXT PRIMARY KEY)`).Error; err != nil {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(adm01Admins)
+	e.Register(admins)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from index on missing login column")
 	}
 }
 
-// TestADM02_ExecError_BadPrior — same pattern for adm_0_2_admin_sessions.
-func TestADM02_ExecError_BadPrior(t *testing.T) {
+// TestADM_ExecError_BadPrior — same pattern for adm_0_2_admin_sessions.
+func TestADM_ExecError_BadPrior_Sessions(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE admin_sessions (id TEXT PRIMARY KEY)`).Error; err != nil {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(adm02AdminSessions)
+	e.Register(adminSessions)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from index on missing column")
 	}
 }
 
-// TestCM10_ExecError_BadPrior — same pattern for cm_1_1_organizations.
-func TestCM10_ExecError_BadPrior(t *testing.T) {
+// TestCM_ExecError_BadPrior — same pattern for cm_1_1_organizations.
+func TestCM_ExecError_BadPrior(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE organizations (id TEXT PRIMARY KEY)`).Error; err != nil {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(cm11Organizations)
+	e.Register(organizations)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from missing slug column")
 	}
 }
 
-// TestCM40_ExecError_BadPrior — agent_invitations missing required cols.
-func TestCM40_ExecError_BadPrior(t *testing.T) {
+// TestCM_ExecError_BadPrior — agent_invitations missing required cols.
+func TestCM_ExecError_BadPrior_2(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE agent_invitations (id TEXT PRIMARY KEY)`).Error; err != nil {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(cm40AgentInvitations)
+	e.Register(agentInvitations)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from index on missing column")
 	}
 }
 
-// TestDL41_ExecError_BadPrior — web_push_subscriptions missing column.
-func TestDL41_ExecError_BadPrior(t *testing.T) {
+// TestDL_ExecError_BadPrior — web_push_subscriptions missing column.
+func TestDL_ExecError_BadPrior(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE web_push_subscriptions (id TEXT PRIMARY KEY)`).Error; err != nil {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(dl41WebPushSubscriptions)
+	e.Register(webPushSubscriptions)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from index on missing column")
 	}
 }
 
-// TestCHN31_ExecError_BadPrior — user_channel_layout missing column.
-func TestCHN31_ExecError_BadPrior(t *testing.T) {
+// TestCHN_ExecError_BadPrior — user_channel_layout missing column.
+func TestCHN_ExecError_BadPrior(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE user_channel_layout (id TEXT PRIMARY KEY)`).Error; err != nil {
 		t.Fatal(err)
 	}
 	e := New(db)
-	e.Register(chn31UserChannelLayout)
+	e.Register(userChannelLayout)
 	if err := e.Run(0); err == nil {
 		t.Error("expected error from missing column")
 	}

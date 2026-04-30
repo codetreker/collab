@@ -46,10 +46,10 @@ func (g *recordingGateway) Calls() []recordedCall {
 	return out
 }
 
-// TestDL46_NewMentionNotifier_NilSafe pins seam — nil Gateway → returns
+// TestDL_NewMentionNotifier_NilSafe pins seam — nil Gateway → returns
 // nil notifier (caller passes directly to MentionDispatcher.PushNotifier
 // nil-safe field).
-func TestDL46_NewMentionNotifier_NilSafe(t *testing.T) {
+func TestDL_NewMentionNotifier_NilSafe(t *testing.T) {
 	t.Parallel()
 	n := push.NewMentionNotifier(nil)
 	if n != nil {
@@ -57,9 +57,9 @@ func TestDL46_NewMentionNotifier_NilSafe(t *testing.T) {
 	}
 }
 
-// TestDL46_NotifyMention_PayloadShape pins payload byte-identical:
+// TestDL_NotifyMention_PayloadShape pins payload byte-identical:
 // {kind: "mention", from, channel, body, ts}.
-func TestDL46_NotifyMention_PayloadShape(t *testing.T) {
+func TestDL_NotifyMention_PayloadShape(t *testing.T) {
 	t.Parallel()
 	g := &recordingGateway{}
 	n := push.NewMentionNotifier(g)
@@ -101,8 +101,8 @@ func TestDL46_NotifyMention_PayloadShape(t *testing.T) {
 	}
 }
 
-// TestDL46_NewAgentTaskNotifier_NilSafe pins seam.
-func TestDL46_NewAgentTaskNotifier_NilSafe(t *testing.T) {
+// TestDL_NewAgentTaskNotifier_NilSafe pins seam.
+func TestDL_NewAgentTaskNotifier_NilSafe(t *testing.T) {
 	t.Parallel()
 	n := push.NewAgentTaskNotifier(nil)
 	if n != nil {
@@ -110,9 +110,9 @@ func TestDL46_NewAgentTaskNotifier_NilSafe(t *testing.T) {
 	}
 }
 
-// TestDL46_NotifyAgentTask_PayloadShape pins payload {kind, agent_id,
+// TestDL_NotifyAgentTask_PayloadShape pins payload {kind, agent_id,
 // state, subject, reason, ts}.
-func TestDL46_NotifyAgentTask_PayloadShape(t *testing.T) {
+func TestDL_NotifyAgentTask_PayloadShape(t *testing.T) {
 	t.Parallel()
 	g := &recordingGateway{}
 	n := push.NewAgentTaskNotifier(g)
@@ -160,10 +160,10 @@ func TestDL46_NotifyAgentTask_PayloadShape(t *testing.T) {
 	}
 }
 
-// TestDL46_Notifiers_NilNotifier_NoOp pins fire-and-forget — invoking
+// TestDL_Notifiers_NilNotifier_NoOp pins fire-and-forget — invoking
 // Notify* on nil notifier returns 0 attempts without panic (caller-side
 // nil-safe pattern allowing legacy code to inject nil gateway).
-func TestDL46_Notifiers_NilNotifier_NoOp(t *testing.T) {
+func TestDL_Notifiers_NilNotifier_NoOp(t *testing.T) {
 	t.Parallel()
 	var n *push.MentionNotifier
 	if got := n.NotifyMention("u", "s", "c", "b", 1); got != 0 {

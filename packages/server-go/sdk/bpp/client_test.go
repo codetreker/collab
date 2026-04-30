@@ -24,12 +24,12 @@ import (
 	sdkbpp "borgee-server/sdk/bpp"
 )
 
-// TestBPP7_ConnectFrame_RoundTrip — acceptance §1.1.
+// TestBPP_ConnectFrame_RoundTrip — acceptance §1.1.
 //
 // Encode a ConnectFrame with known fields, decode into the same type,
 // and confirm the round-trip preserves all 5 fields with the right JSON
 // keys (Type/PluginID/Token/Version/Capabilities).
-func TestBPP7_ConnectFrame_RoundTrip(t *testing.T) {
+func TestBPP_ConnectFrame_RoundTrip(t *testing.T) {
 	original := srvbpp.ConnectFrame{
 		Type:         srvbpp.FrameTypeBPPConnect,
 		PluginID:     "plugin-1",
@@ -56,12 +56,12 @@ func TestBPP7_ConnectFrame_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestBPP7_FrameSchemaByteIdentical — acceptance §1.2 立场 ① 反断.
+// TestBPP_FrameSchemaByteIdentical — acceptance §1.2 立场 ① 反断.
 //
 // Reflect over server's bpp.AllBPPEnvelopes(); each frame must have a
 // non-empty Type field of kind string with json:"type" tag at field 0.
 // Also confirms SDK can iterate all 15 frames without redefining any.
-func TestBPP7_FrameSchemaByteIdentical(t *testing.T) {
+func TestBPP_FrameSchemaByteIdentical(t *testing.T) {
 	envs := srvbpp.AllBPPEnvelopes()
 	if len(envs) != 15 {
 		t.Fatalf("expected 15 envelopes (BPP-1..6), got %d", len(envs))
@@ -78,12 +78,12 @@ func TestBPP7_FrameSchemaByteIdentical(t *testing.T) {
 	}
 }
 
-// TestBPP7_NoFrameRedefinition — acceptance §1.2 立场 ① AST scan.
+// TestBPP_NoFrameRedefinition — acceptance §1.2 立场 ① AST scan.
 //
 // SDK package sdk/bpp/ must NOT declare its own *Frame structs — all
 // envelope types must come from server's internal/bpp via import.
 // Scans top-level type declarations matching `*Frame` suffix.
-func TestBPP7_NoFrameRedefinition(t *testing.T) {
+func TestBPP_NoFrameRedefinition(t *testing.T) {
 	dir := "."
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -122,11 +122,11 @@ func TestBPP7_NoFrameRedefinition(t *testing.T) {
 	}
 }
 
-// TestBPP7_NoForeignWSLib — acceptance §1.3 立场 ② ws library reverse grep.
+// TestBPP_NoForeignWSLib — acceptance §1.3 立场 ② ws library reverse grep.
 //
 // SDK must use github.com/coder/websocket (same as server). Reject
 // gorilla/websocket, gobwas/ws, nhooyr.io/websocket imports.
-func TestBPP7_NoForeignWSLib(t *testing.T) {
+func TestBPP_NoForeignWSLib(t *testing.T) {
 	forbidden := []string{
 		`"github.com/gorilla/websocket"`,
 		`"github.com/gobwas/ws"`,
@@ -162,9 +162,9 @@ func TestBPP7_NoForeignWSLib(t *testing.T) {
 	}
 }
 
-// TestBPP7_NoClientDispatcher — acceptance §1.3 立场 ⑤ AST scan.
+// TestBPP_NoClientDispatcher — acceptance §1.3 立场 ⑤ AST scan.
 // Reject SDKDispatcher / ClientFrameDispatcher identifiers in production.
-func TestBPP7_NoClientDispatcher(t *testing.T) {
+func TestBPP_NoClientDispatcher(t *testing.T) {
 	forbidden := []string{
 		"SDKDispatcher",
 		"ClientFrameDispatcher",
@@ -206,9 +206,9 @@ func TestBPP7_NoClientDispatcher(t *testing.T) {
 	}
 }
 
-// TestBPP7_AdminGodModeNotMounted — acceptance §1.4 立场 ⑦ ADM-0 §1.3.
+// TestBPP_AdminGodModeNotMounted — acceptance §1.4 立场 ⑦ ADM-0 §1.3.
 // admin*.go in internal/api/ must not reference SDK / BPP-7 paths.
-func TestBPP7_AdminGodModeNotMounted(t *testing.T) {
+func TestBPP_AdminGodModeNotMounted(t *testing.T) {
 	dir := "../../internal/api"
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -246,8 +246,8 @@ func TestBPP7_AdminGodModeNotMounted(t *testing.T) {
 	}
 }
 
-// TestBPP7_NilSafeCtor — acceptance §2.5 boot bug detection.
-func TestBPP7_NilSafeCtor(t *testing.T) {
+// TestBPP_NilSafeCtor — acceptance §2.5 boot bug detection.
+func TestBPP_NilSafeCtor(t *testing.T) {
 	cases := []struct {
 		name string
 		fn   func()

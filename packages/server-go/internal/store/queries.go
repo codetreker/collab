@@ -170,7 +170,7 @@ func (s *Store) CreateUser(user *User) error {
 // (CM-1.2). Used by the register path and admin-created humans: 1 person =
 // 1 org in v0. The user.OrgID field is updated in-place on success.
 //
-// Blueprint: docs/implementation/modules/concept-model.md §CM-1.2; concept §1.1.
+// Blueprint: docs/architecture/concept-model.md §CM-1.2; concept §1.1.
 //
 // Atomicity: org row + users.org_id update happen in a single transaction so
 // a failure cannot leave a user with an empty org_id (the column is NOT NULL
@@ -384,7 +384,7 @@ func (s *Store) AddUserToPublicChannels(userID string) error {
 //     no longer shortcuts the user-rail (ADM-0.2 §4); explicit grants would
 //     just shadow nothing.
 //
-// Blueprint: docs/implementation/modules/auth-permissions.md §AP-0-bis; §3.
+// Blueprint: docs/architecture/auth-permissions.md §AP-0-bis; §3.
 func (s *Store) GrantDefaultPermissions(userID string, role string) error {
 	var perms []string
 	switch role {

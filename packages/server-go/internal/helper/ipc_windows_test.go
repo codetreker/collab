@@ -6,10 +6,10 @@ package helper
 
 import "testing"
 
-// TestHB20_IPC_NamedPipeConnect_Windows pins HB-2.0 立场 ③ — Windows
+// TestHB_IPC_NamedPipeConnect_Windows pins HB-2.0 立场 ③ — Windows
 // IPC primitive is Named Pipe (\\.\pipe\borgee-helper); sandbox model
 // differs from POSIX (HB-2 v0(C) v2 留 Windows port).
-func TestHB20_IPC_NamedPipeConnect_Windows(t *testing.T) {
+func TestHB_IPC_NamedPipeConnect_Windows(t *testing.T) {
 	t.Parallel()
 	got := IPCEndpointDefault(IPCPlatformWindows)
 	want := `\\.\pipe\borgee-helper`

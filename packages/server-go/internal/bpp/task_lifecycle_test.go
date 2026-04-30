@@ -19,9 +19,9 @@ import (
 	"borgee-server/internal/bpp"
 )
 
-// TestBPP22_TaskStartedFrameFieldOrder pins 6-field byte-identical
+// TestBPP_TaskStartedFrameFieldOrder pins 6-field byte-identical
 // envelope order. JSON key order follows struct declaration order.
-func TestBPP22_TaskStartedFrameFieldOrder(t *testing.T) {
+func TestBPP_TaskStartedFrameFieldOrder(t *testing.T) {
 	t.Parallel()
 	frame := bpp.TaskStartedFrame{
 		Type:      bpp.FrameTypeBPPTaskStarted,
@@ -41,9 +41,9 @@ func TestBPP22_TaskStartedFrameFieldOrder(t *testing.T) {
 	}
 }
 
-// TestBPP22_TaskFinishedFrameFieldOrder pins 7-field byte-identical
+// TestBPP_TaskFinishedFrameFieldOrder pins 7-field byte-identical
 // envelope order.
-func TestBPP22_TaskFinishedFrameFieldOrder(t *testing.T) {
+func TestBPP_TaskFinishedFrameFieldOrder(t *testing.T) {
 	t.Parallel()
 	frame := bpp.TaskFinishedFrame{
 		Type:       bpp.FrameTypeBPPTaskFinished,
@@ -64,9 +64,9 @@ func TestBPP22_TaskFinishedFrameFieldOrder(t *testing.T) {
 	}
 }
 
-// TestBPP22_ValidateTaskStarted_AcceptsNonEmpty pins acceptance §2.1
+// TestBPP_ValidateTaskStarted_AcceptsNonEmpty pins acceptance §2.1
 // happy path — subject with content passes validation.
-func TestBPP22_ValidateTaskStarted_AcceptsNonEmpty(t *testing.T) {
+func TestBPP_ValidateTaskStarted_AcceptsNonEmpty(t *testing.T) {
 	frame := bpp.TaskStartedFrame{
 		Type:      bpp.FrameTypeBPPTaskStarted,
 		TaskID:    "task-A",
@@ -80,10 +80,10 @@ func TestBPP22_ValidateTaskStarted_AcceptsNonEmpty(t *testing.T) {
 	}
 }
 
-// TestBPP22_ValidateTaskStarted_RejectsEmpty pins acceptance §2.1 反断
+// TestBPP_ValidateTaskStarted_RejectsEmpty pins acceptance §2.1 反断
 // + content-lock §1 ⑤ — empty / whitespace-only Subject MUST reject
 // with errSubjectEmpty (蓝图 §11 文案守 字面禁默认值 fallback).
-func TestBPP22_ValidateTaskStarted_RejectsEmpty(t *testing.T) {
+func TestBPP_ValidateTaskStarted_RejectsEmpty(t *testing.T) {
 	for _, bad := range []string{"", " ", "\t", "\n", "   \t  \n "} {
 		frame := bpp.TaskStartedFrame{
 			Type:      bpp.FrameTypeBPPTaskStarted,
@@ -102,9 +102,9 @@ func TestBPP22_ValidateTaskStarted_RejectsEmpty(t *testing.T) {
 	}
 }
 
-// TestBPP22_ValidateTaskFinished_AcceptsThreeOutcomes pins acceptance
+// TestBPP_ValidateTaskFinished_AcceptsThreeOutcomes pins acceptance
 // §2.2 — 3 outcome enum 全过 (completed/failed/cancelled byte-identical).
-func TestBPP22_ValidateTaskFinished_AcceptsThreeOutcomes(t *testing.T) {
+func TestBPP_ValidateTaskFinished_AcceptsThreeOutcomes(t *testing.T) {
 	cases := []struct {
 		outcome string
 		reason  string
@@ -128,10 +128,10 @@ func TestBPP22_ValidateTaskFinished_AcceptsThreeOutcomes(t *testing.T) {
 	}
 }
 
-// TestBPP22_ValidateTaskFinished_RejectsMiddleStates pins acceptance
+// TestBPP_ValidateTaskFinished_RejectsMiddleStates pins acceptance
 // §2.2 反断 + content-lock §2 ⑧ — 中间态 ('partial' / 'paused' /
 // 'pending' / 'starting') MUST reject (3 态严闭).
-func TestBPP22_ValidateTaskFinished_RejectsMiddleStates(t *testing.T) {
+func TestBPP_ValidateTaskFinished_RejectsMiddleStates(t *testing.T) {
 	for _, bad := range []string{
 		"partial", "paused", "pending", "starting", "running",
 		"in_progress", "Completed", "FAILED", "", "done",
@@ -152,11 +152,11 @@ func TestBPP22_ValidateTaskFinished_RejectsMiddleStates(t *testing.T) {
 	}
 }
 
-// TestBPP22_ValidateTaskFinished_FailedRequiresAL1aReason pins
+// TestBPP_ValidateTaskFinished_FailedRequiresAL1aReason pins
 // acceptance §2.2 + content-lock §1 ④ — outcome=='failed' requires
 // reason in AL-1a 6-dict (改 = 改四处+ 单测锁: #249 + AL-3 + AL-4 +
 // #427 + 此).
-func TestBPP22_ValidateTaskFinished_FailedRequiresAL1aReason(t *testing.T) {
+func TestBPP_ValidateTaskFinished_FailedRequiresAL1aReason(t *testing.T) {
 	// 6 AL-1a reasons all accepted on failed.
 	for _, reason := range []string{
 		agentpkg.ReasonAPIKeyInvalid,
@@ -205,10 +205,10 @@ func TestBPP22_ValidateTaskFinished_FailedRequiresAL1aReason(t *testing.T) {
 	}
 }
 
-// TestBPP22_ValidateTaskFinished_CompletedRejectsReason pins
+// TestBPP_ValidateTaskFinished_CompletedRejectsReason pins
 // acceptance §2.2 反断 — outcome ∈ {completed, cancelled} MUST have
 // empty reason (反字典污染).
-func TestBPP22_ValidateTaskFinished_CompletedRejectsReason(t *testing.T) {
+func TestBPP_ValidateTaskFinished_CompletedRejectsReason(t *testing.T) {
 	for _, outcome := range []string{bpp.TaskOutcomeCompleted, bpp.TaskOutcomeCancelled} {
 		err := bpp.ValidateTaskFinished(bpp.TaskFinishedFrame{
 			Type:    bpp.FrameTypeBPPTaskFinished,
@@ -221,9 +221,9 @@ func TestBPP22_ValidateTaskFinished_CompletedRejectsReason(t *testing.T) {
 	}
 }
 
-// TestBPP22_ErrorCodeLiteralsByteIdentical pins content-lock §1 ⑥
+// TestTaskLifecycle_ErrorCodeLiteralsByteIdentical pins content-lock §1 ⑥
 // 错误码字面 byte-identical.
-func TestBPP22_ErrorCodeLiteralsByteIdentical(t *testing.T) {
+func TestTaskLifecycle_ErrorCodeLiteralsByteIdentical(t *testing.T) {
 	cases := []struct{ got, want string }{
 		{bpp.TaskErrCodeSubjectEmpty, "bpp.task_subject_empty"},
 		{bpp.TaskErrCodeOutcomeUnknown, "bpp.task_outcome_unknown"},

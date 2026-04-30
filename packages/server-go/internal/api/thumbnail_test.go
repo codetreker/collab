@@ -18,7 +18,7 @@ import (
 
 // REG-CV3V2-002 — owner posts an https thumbnail_url for a markdown
 // artifact, server persists it.
-func TestCV3V22_HappyPathMarkdown(t *testing.T) {
+func TestCV_HappyPathMarkdown(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -48,7 +48,7 @@ func TestCV3V22_HappyPathMarkdown(t *testing.T) {
 }
 
 // REG-CV3V2-002b — code kind also accepted.
-func TestCV3V22_HappyPathCode(t *testing.T) {
+func TestCV_HappyPathCode(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -74,7 +74,7 @@ func TestCV3V22_HappyPathCode(t *testing.T) {
 }
 
 // REG-CV3V2-003 — non-owner → 403 + thumbnail.not_owner.
-func TestCV3V22_NonOwner403(t *testing.T) {
+func TestCV_NonOwner403(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -99,7 +99,7 @@ func TestCV3V22_NonOwner403(t *testing.T) {
 }
 
 // REG-CV3V2-003b — admin (no auth user) → 401.
-func TestCV3V22_Admin401(t *testing.T) {
+func TestCV_Admin401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -118,7 +118,7 @@ func TestCV3V22_Admin401(t *testing.T) {
 }
 
 // REG-CV3V2-004 — https only XSS 红线 (复用 ValidateImageLinkURL).
-func TestCV3V22_URLHttpsOnly(t *testing.T) {
+func TestCV_URLHttpsOnly(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -151,7 +151,7 @@ func TestCV3V22_URLHttpsOnly(t *testing.T) {
 
 // REG-CV3V2-005 — kind 闸: image_link → 400 thumbnail.kind_not_thumbnailable
 // (二闸互斥跟 PreviewableKinds).
-func TestCV3V22_KindNotThumbnailable_ImageLink(t *testing.T) {
+func TestCV_KindNotThumbnailable_ImageLink(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -178,7 +178,7 @@ func TestCV3V22_KindNotThumbnailable_ImageLink(t *testing.T) {
 }
 
 // REG-CV3V2-005b — video_link + pdf_link 同样 reject.
-func TestCV3V22_KindNotThumbnailable_VideoAndPDF(t *testing.T) {
+func TestCV_KindNotThumbnailable_VideoAndPDF(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -200,7 +200,7 @@ func TestCV3V22_KindNotThumbnailable_VideoAndPDF(t *testing.T) {
 
 // REG-CV3V2-005c — ThumbnailableKinds vs PreviewableKinds mutually exclusive
 // (single source of truth byte-identical 锁).
-func TestCV3V22_ThumbnailableVsPreviewableMutuallyExclusive(t *testing.T) {
+func TestCV_ThumbnailableVsPreviewableMutuallyExclusive(t *testing.T) {
 	t.Parallel()
 	for _, k := range api.ThumbnailableKinds {
 		if api.IsPreviewableKind(k) {
@@ -231,7 +231,7 @@ func TestCV3V22_ThumbnailableVsPreviewableMutuallyExclusive(t *testing.T) {
 }
 
 // REG-CV3V2-006 — overwrite 接受.
-func TestCV3V22_Overwrite(t *testing.T) {
+func TestCV_Overwrite(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

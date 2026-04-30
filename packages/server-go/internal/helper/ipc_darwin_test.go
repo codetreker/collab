@@ -6,10 +6,10 @@ package helper
 
 import "testing"
 
-// TestHB20_IPC_UDSConnect_macOS pins HB-2.0 立场 ② — macOS IPC primitive
+// TestHB_IPC_UDSConnect_macOS pins HB-2.0 立场 ② — macOS IPC primitive
 // also UDS but path differs (~/Library/Application Support/Borgee/...);
 // sandbox-exec profile differs from cgroups (HB-2 v0(C) deferred).
-func TestHB20_IPC_UDSConnect_macOS(t *testing.T) {
+func TestHB_IPC_UDSConnect_macOS(t *testing.T) {
 	t.Parallel()
 	got := IPCEndpointDefault(IPCPlatformDarwin)
 	want := "$HOME/Library/Application Support/Borgee/borgee-helper.sock"

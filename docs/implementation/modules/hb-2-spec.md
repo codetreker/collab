@@ -2,7 +2,7 @@
 
 > Owner: 战马A 起 v0 spec / 飞马 review 安全模型 / 烈马 acceptance
 > Blueprint锚: `docs/blueprint/host-bridge.md` §1.4 + §2 信任五支柱
-> Module ref: `docs/implementation/modules/host-bridge.md` §HB-2
+> Module ref: `docs/architecture/host-bridge.md` §HB-2
 > 依赖: **HB-1 install-butler** (装好 plugin runtime 后才有 host-bridge
 > 跑) + plugin (BPP) 提需求方
 > Status: **🚧 spec brief v0** — code stub deferred until HB-1 lands.

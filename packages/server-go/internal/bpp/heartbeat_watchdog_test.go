@@ -66,8 +66,8 @@ func (r *recordingErrorSink) callsSnapshot() []errorCall {
 	return out
 }
 
-// TestBPP4_Watchdog_ThresholdConstant — acceptance §1.1 单源 30s.
-func TestBPP4_Watchdog_ThresholdConstant(t *testing.T) {
+// TestBPP_Watchdog_ThresholdConstant — acceptance §1.1 单源 30s.
+func TestBPP_Watchdog_ThresholdConstant(t *testing.T) {
 	t.Parallel()
 	if BPP_HEARTBEAT_TIMEOUT_SECONDS != 30 {
 		t.Errorf("BPP-4 single-source threshold drifted: got %d, want 30 "+
@@ -76,9 +76,9 @@ func TestBPP4_Watchdog_ThresholdConstant(t *testing.T) {
 	}
 }
 
-// TestBPP4_Watchdog_TriggersErrorOn30sTimeout — acceptance §1.2
+// TestBPP_Watchdog_TriggersErrorOn30sTimeout — acceptance §1.2
 // (watchdog 触发路径 = 调 AgentErrorSink.SetError, 不下 cancel/abort).
-func TestBPP4_Watchdog_TriggersErrorOn30sTimeout(t *testing.T) {
+func TestBPP_Watchdog_TriggersErrorOn30sTimeout(t *testing.T) {
 	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
@@ -105,8 +105,8 @@ func TestBPP4_Watchdog_TriggersErrorOn30sTimeout(t *testing.T) {
 	}
 }
 
-// TestBPP4_Watchdog_NotSpammyOnRepeatedScan — markedErr 防重复 SetError.
-func TestBPP4_Watchdog_NotSpammyOnRepeatedScan(t *testing.T) {
+// TestBPP_Watchdog_NotSpammyOnRepeatedScan — markedErr 防重复 SetError.
+func TestBPP_Watchdog_NotSpammyOnRepeatedScan(t *testing.T) {
 	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
@@ -127,10 +127,10 @@ func TestBPP4_Watchdog_NotSpammyOnRepeatedScan(t *testing.T) {
 	}
 }
 
-// TestBPP4_Watchdog_ReconnectClearsMarked — agent reconnects (lastSeenAt
+// TestBPP_Watchdog_ReconnectClearsMarked — agent reconnects (lastSeenAt
 // advances), watchdog removes from markedErr so the next disconnect
 // cycle re-flips. 跟 acceptance §1.3 同链.
-func TestBPP4_Watchdog_ReconnectClearsMarked(t *testing.T) {
+func TestBPP_Watchdog_ReconnectClearsMarked(t *testing.T) {
 	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
@@ -164,9 +164,9 @@ func TestBPP4_Watchdog_ReconnectClearsMarked(t *testing.T) {
 	}
 }
 
-// TestBPP4_Watchdog_MultiPluginIsolated — 多 plugin 隔离, 一个 stale
+// TestBPP_Watchdog_MultiPluginIsolated — 多 plugin 隔离, 一个 stale
 // 不影响其他 fresh.
-func TestBPP4_Watchdog_MultiPluginIsolated(t *testing.T) {
+func TestBPP_Watchdog_MultiPluginIsolated(t *testing.T) {
 	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
@@ -197,10 +197,10 @@ func TestBPP4_Watchdog_MultiPluginIsolated(t *testing.T) {
 	}
 }
 
-// TestBPP4_Watchdog_LogKeyOnTimeout — 反约束 acceptance §1.4 watchdog
+// TestBPP_Watchdog_LogKeyOnTimeout — 反约束 acceptance §1.4 watchdog
 // 触发 log key `bpp.heartbeat_timeout` (跟 dead_letter `bpp.frame_dropped_*`
 // 同模式 — bpp.* prefix 锁).
-func TestBPP4_Watchdog_LogKeyOnTimeout(t *testing.T) {
+func TestBPP_Watchdog_LogKeyOnTimeout(t *testing.T) {
 	t.Parallel()
 	src := &fakeLivenessSource{}
 	sink := &recordingErrorSink{}
@@ -223,8 +223,8 @@ func TestBPP4_Watchdog_LogKeyOnTimeout(t *testing.T) {
 	}
 }
 
-// TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSource — defense-in-depth.
-func TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSource(t *testing.T) {
+// TestBPP_NewHeartbeatWatchdog_PanicsOnNilSource — defense-in-depth.
+func TestBPP_NewHeartbeatWatchdog_PanicsOnNilSource(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if recover() == nil {
@@ -234,8 +234,8 @@ func TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSource(t *testing.T) {
 	NewHeartbeatWatchdog(nil, &recordingErrorSink{}, nil)
 }
 
-// TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSink — defense-in-depth.
-func TestBPP4_NewHeartbeatWatchdog_PanicsOnNilSink(t *testing.T) {
+// TestBPP_NewHeartbeatWatchdog_PanicsOnNilSink — defense-in-depth.
+func TestBPP_NewHeartbeatWatchdog_PanicsOnNilSink(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if recover() == nil {

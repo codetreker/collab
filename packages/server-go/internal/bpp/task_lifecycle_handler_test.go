@@ -43,7 +43,7 @@ func newHandler(t *testing.T) (*bpp.TaskLifecycleHandler, *recPusher) {
 	return bpp.NewTaskLifecycleHandler(p, nil), p
 }
 
-func TestRT3_HandleStarted_EmptySubjectRejected(t *testing.T) {
+func TestRT_HandleStarted_EmptySubjectRejected(t *testing.T) {
 	t.Parallel()
 	h, p := newHandler(t)
 	err := h.HandleStarted(bpp.TaskStartedFrame{
@@ -58,7 +58,7 @@ func TestRT3_HandleStarted_EmptySubjectRejected(t *testing.T) {
 	}
 }
 
-func TestRT3_HandleStarted_HappyPath_BusyFanout(t *testing.T) {
+func TestRT_HandleStarted_HappyPath_BusyFanout(t *testing.T) {
 	t.Parallel()
 	h, p := newHandler(t)
 	if err := h.HandleStarted(bpp.TaskStartedFrame{
@@ -77,7 +77,7 @@ func TestRT3_HandleStarted_HappyPath_BusyFanout(t *testing.T) {
 	}
 }
 
-func TestRT3_HandleFinished_Completed_IdleFanout(t *testing.T) {
+func TestRT_HandleFinished_Completed_IdleFanout(t *testing.T) {
 	t.Parallel()
 	h, p := newHandler(t)
 	if err := h.HandleFinished(bpp.TaskFinishedFrame{
@@ -96,7 +96,7 @@ func TestRT3_HandleFinished_Completed_IdleFanout(t *testing.T) {
 	}
 }
 
-func TestRT3_HandleFinished_Failed_ReasonTransparent(t *testing.T) {
+func TestRT_HandleFinished_Failed_ReasonTransparent(t *testing.T) {
 	t.Parallel()
 	h, p := newHandler(t)
 	if err := h.HandleFinished(bpp.TaskFinishedFrame{
@@ -111,7 +111,7 @@ func TestRT3_HandleFinished_Failed_ReasonTransparent(t *testing.T) {
 	}
 }
 
-func TestRT3_HandleFinished_InvalidOutcome_Rejected(t *testing.T) {
+func TestRT_HandleFinished_InvalidOutcome_Rejected(t *testing.T) {
 	t.Parallel()
 	h, p := newHandler(t)
 	err := h.HandleFinished(bpp.TaskFinishedFrame{
@@ -126,7 +126,7 @@ func TestRT3_HandleFinished_InvalidOutcome_Rejected(t *testing.T) {
 	}
 }
 
-func TestRT3_HandleFinished_CompletedWithReason_RejectedDictPollution(t *testing.T) {
+func TestRT_HandleFinished_CompletedWithReason_RejectedDictPollution(t *testing.T) {
 	t.Parallel()
 	h, p := newHandler(t)
 	err := h.HandleFinished(bpp.TaskFinishedFrame{
@@ -142,7 +142,7 @@ func TestRT3_HandleFinished_CompletedWithReason_RejectedDictPollution(t *testing
 	}
 }
 
-func TestRT3_StartedAdapter_RawDecode_Dispatch(t *testing.T) {
+func TestRT_StartedAdapter_RawDecode_Dispatch(t *testing.T) {
 	t.Parallel()
 	h, p := newHandler(t)
 	raw := json.RawMessage(`{"type":"task_started","task_id":"t1","agent_id":"a1","channel_id":"c1","subject":"分析中","started_at":1700000000000}`)
@@ -154,7 +154,7 @@ func TestRT3_StartedAdapter_RawDecode_Dispatch(t *testing.T) {
 	}
 }
 
-func TestRT3_FinishedAdapter_RawDecode_Dispatch(t *testing.T) {
+func TestRT_FinishedAdapter_RawDecode_Dispatch(t *testing.T) {
 	t.Parallel()
 	h, p := newHandler(t)
 	raw := json.RawMessage(`{"type":"task_finished","task_id":"t1","agent_id":"a1","channel_id":"c1","outcome":"completed","reason":"","finished_at":1700000001000}`)
@@ -166,7 +166,7 @@ func TestRT3_FinishedAdapter_RawDecode_Dispatch(t *testing.T) {
 	}
 }
 
-func TestRT3_StartedAdapter_BadJSON_DecodeErr(t *testing.T) {
+func TestRT_StartedAdapter_BadJSON_DecodeErr(t *testing.T) {
 	t.Parallel()
 	h, _ := newHandler(t)
 	err := h.StartedAdapter().Dispatch(json.RawMessage(`{not json}`), bpp.PluginSessionContext{})
@@ -175,7 +175,7 @@ func TestRT3_StartedAdapter_BadJSON_DecodeErr(t *testing.T) {
 	}
 }
 
-func TestRT3_NewTaskLifecycleHandler_NilPusherPanics(t *testing.T) {
+func TestRT_NewTaskLifecycleHandler_NilPusherPanics(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
@@ -185,7 +185,7 @@ func TestRT3_NewTaskLifecycleHandler_NilPusherPanics(t *testing.T) {
 	bpp.NewTaskLifecycleHandler(nil, nil)
 }
 
-func TestRT3_StartedAdapter_EmptySubject_PreservesSentinelChain(t *testing.T) {
+func TestRT_StartedAdapter_EmptySubject_PreservesSentinelChain(t *testing.T) {
 	t.Parallel()
 	h, _ := newHandler(t)
 	raw := json.RawMessage(`{"type":"task_started","task_id":"t1","agent_id":"a1","channel_id":"c1","subject":"","started_at":1700000000000}`)

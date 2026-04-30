@@ -2,12 +2,12 @@
 // tests + reverse grep 反约束 守 (跟 ap-2 expires_sweeper_test.go 同模式).
 //
 // Pins:
-//   REG-AL7-001 TestAL72_RunOnceArchivesExpired — 3 expired + 2 fresh → archived count=3
-//   REG-AL7-002 TestAL72_RunOnceSoftArchiveNotRealDelete — UPDATE archived_at, row stays
-//   REG-AL7-003 TestAL72_RunOnceIdempotent — second tick count==0
-//   REG-AL7-004 TestAL72_StartCtxShutdown — Start goroutine ctx-aware
-//   REG-AL7-005 TestAL72_NilSafeCtor — Store nil = no-op
-//   REG-AL7-006 TestAL72_SweeperReason_ByteIdentical — reasons.Unknown
+//   REG-AL7-001 TestAL_RunOnceArchivesExpired — 3 expired + 2 fresh → archived count=3
+//   REG-AL7-002 TestAL_RunOnceSoftArchiveNotRealDelete — UPDATE archived_at, row stays
+//   REG-AL7-003 TestAL_RunOnceIdempotent — second tick count==0
+//   REG-AL7-004 TestAL_StartCtxShutdown — Start goroutine ctx-aware
+//   REG-AL7-005 TestAL_NilSafeCtor — Store nil = no-op
+//   REG-AL7-006 TestAL_SweeperReason_ByteIdentical — reasons.Unknown
 package auth
 
 import (
@@ -56,7 +56,7 @@ func seedAction(t *testing.T, s *store.Store, id string, createdAtMs int64) {
 }
 
 // REG-AL7-001 — RunOnce archives rows older than RetentionDays cutoff.
-func TestAL72_RunOnceArchivesExpired(t *testing.T) {
+func TestAL_RunOnceArchivesExpired(t *testing.T) {
 	t.Parallel()
 	s := al7TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -82,7 +82,7 @@ func TestAL72_RunOnceArchivesExpired(t *testing.T) {
 
 // REG-AL7-002 — soft-archive: row stays in table, archived_at set;
 // not real DELETE. 立场 ①.
-func TestAL72_RunOnceSoftArchiveNotRealDelete(t *testing.T) {
+func TestAL_RunOnceSoftArchiveNotRealDelete(t *testing.T) {
 	t.Parallel()
 	s := al7TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -112,7 +112,7 @@ func TestAL72_RunOnceSoftArchiveNotRealDelete(t *testing.T) {
 
 // REG-AL7-003 — second tick is no-op (already-archived rows excluded
 // by WHERE archived_at IS NULL).
-func TestAL72_RunOnceIdempotent(t *testing.T) {
+func TestAL_RunOnceIdempotent(t *testing.T) {
 	t.Parallel()
 	s := al7TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -130,7 +130,7 @@ func TestAL72_RunOnceIdempotent(t *testing.T) {
 }
 
 // REG-AL7-004 — Start ctx-aware shutdown (smoke).
-func TestAL72_StartCtxShutdown(t *testing.T) {
+func TestAL_StartCtxShutdown(t *testing.T) {
 	t.Parallel()
 	s := al7TestStore(t)
 	sw := &RetentionSweeper{Store: s, Interval: 100 * time.Millisecond}
@@ -142,7 +142,7 @@ func TestAL72_StartCtxShutdown(t *testing.T) {
 }
 
 // REG-AL7-005 — nil-safe ctor (Store nil = no-op).
-func TestAL72_NilSafeCtor(t *testing.T) {
+func TestAL_NilSafeCtor(t *testing.T) {
 	t.Parallel()
 	var sw *RetentionSweeper
 	sw.Start(context.Background())
@@ -159,7 +159,7 @@ func TestAL72_NilSafeCtor(t *testing.T) {
 // REG-AL7-006 — SweeperReason byte-identical 跟 reasons.Unknown 同源.
 // AL-1a reason 锁链第 15 处 (改 = 改 reasons.go + 此处 + 14 处 byte-
 // identical 站点).
-func TestAL72_SweeperReason_ByteIdentical(t *testing.T) {
+func TestAL_SweeperReason_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	if SweeperReason != reasons.Unknown {
 		t.Errorf("SweeperReason drift: got %q, want %q (= reasons.Unknown)",
@@ -179,7 +179,7 @@ func TestAL72_SweeperReason_ByteIdentical(t *testing.T) {
 
 // REG-AL7-007 — 立场 ④ + 立场 ⑤ 反向 grep: cron framework + retention
 // queue tokens 0 hit in this file.
-func TestAL72_NoCronFrameworkImport(t *testing.T) {
+func TestAL_NoCronFrameworkImport(t *testing.T) {
 	t.Parallel()
 	body, err := os.ReadFile("audit_retention_sweeper.go")
 	if err != nil {
@@ -201,7 +201,7 @@ func TestAL72_NoCronFrameworkImport(t *testing.T) {
 // Scans internal/auth + internal/api production *.go (excluding tests)
 // for retention-queue / dead-letter tokens (跟 BPP-4/5/6/7/8 + HB-3 v2
 // 同模式). Tokens are runtime queue patterns 战马D rejects in spec.
-func TestAL73_NoRetentionQueueOrCronImport(t *testing.T) {
+func TestAL_NoRetentionQueueOrCronImport(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingRetentionQueue",

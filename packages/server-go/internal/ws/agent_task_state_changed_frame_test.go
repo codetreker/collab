@@ -26,14 +26,14 @@ import (
 	"borgee-server/internal/ws"
 )
 
-// TestRT3_AgentTaskStateChangedFrame_FieldOrder pins acceptance §1 — 7
+// TestRT_AgentTaskStateChangedFrame_FieldOrder pins acceptance §1 — 7
 // 字段 byte-identical envelope:
 //
 //   {type, cursor, agent_id, state, subject, reason, changed_at}
 //
 // JSON key order follows struct declaration order. Drift here breaks
 // the wire contract + RT-3.2 client接 simultaneously.
-func TestRT3_AgentTaskStateChangedFrame_FieldOrder(t *testing.T) {
+func TestRT_AgentTaskStateChangedFrame_FieldOrder(t *testing.T) {
 	t.Parallel()
 
 	frame := ws.AgentTaskStateChangedFrame{
@@ -74,9 +74,9 @@ func TestRT3_AgentTaskStateChangedFrame_FieldOrder(t *testing.T) {
 	}
 }
 
-// TestRT3_AgentTaskStateChangedFrame_7Fields pins reflection lock —
+// TestRT_AgentTaskStateChangedFrame_7Fields pins reflection lock —
 // adding/removing/renaming fields is a CI red.
-func TestRT3_AgentTaskStateChangedFrame_7Fields(t *testing.T) {
+func TestRT_AgentTaskStateChangedFrame_7Fields(t *testing.T) {
 	t.Parallel()
 
 	want := []struct {
@@ -107,9 +107,9 @@ func TestRT3_AgentTaskStateChangedFrame_7Fields(t *testing.T) {
 	}
 }
 
-// TestRT3_AgentTaskStateEnum pins 2-enum {busy, idle} byte-identical 跟
+// TestRT_AgentTaskStateEnum pins 2-enum {busy, idle} byte-identical 跟
 // 蓝图 realtime.md §1.1 + agent-lifecycle.md §2.3.
-func TestRT3_AgentTaskStateEnum(t *testing.T) {
+func TestRT_AgentTaskStateEnum(t *testing.T) {
 	t.Parallel()
 	if ws.AgentTaskStateBusy != "busy" {
 		t.Errorf("AgentTaskStateBusy = %q, want %q", ws.AgentTaskStateBusy, "busy")
@@ -119,10 +119,10 @@ func TestRT3_AgentTaskStateEnum(t *testing.T) {
 	}
 }
 
-// TestRT3_PushAgentTaskStateChanged_BroadcastBranches exercises live
+// TestRT_PushAgentTaskStateChanged_BroadcastBranches exercises live
 // fanout for both scoped + empty-channel paths (BroadcastToChannel +
 // BroadcastToAll fallback).
-func TestRT3_PushAgentTaskStateChanged_BroadcastBranches(t *testing.T) {
+func TestRT_PushAgentTaskStateChanged_BroadcastBranches(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -141,10 +141,10 @@ func TestRT3_PushAgentTaskStateChanged_BroadcastBranches(t *testing.T) {
 	}
 }
 
-// TestRT3_PushAgentTaskStateChanged_NoCursorAllocator pins the test seam —
+// TestRT_PushAgentTaskStateChanged_NoCursorAllocator pins the test seam —
 // hub without cursor allocator returns (0, false) without panicking
 // (跟 PushIterationStateChanged / PushArtifactUpdated 同模式).
-func TestRT3_PushAgentTaskStateChanged_NoCursorAllocator(t *testing.T) {
+func TestRT_PushAgentTaskStateChanged_NoCursorAllocator(t *testing.T) {
 	t.Parallel()
 	h := &ws.Hub{}
 	cur, sent := h.PushAgentTaskStateChanged("agent-A", "chan-X",
@@ -157,7 +157,7 @@ func TestRT3_PushAgentTaskStateChanged_NoCursorAllocator(t *testing.T) {
 	}
 }
 
-// TestRT3_ReverseGrep_NoSubjectFallback pins blueprint §1.1 ⭐ — server
+// TestRT_ReverseGrep_NoSubjectFallback pins blueprint §1.1 ⭐ — server
 // MUST NOT emit AgentTaskStateChangedFrame with a fallback / default /
 // empty subject in busy state. Reverse grep guard mirrors BPP-2.2
 // task_lifecycle.go ValidateTaskStarted subject 必带非空 + dispatcher.go
@@ -165,7 +165,7 @@ func TestRT3_PushAgentTaskStateChanged_NoCursorAllocator(t *testing.T) {
 //
 // 蓝图字面: "BPP `progress` frame **强制带 `subject` 字段**——plugin 必须
 // 告诉 Borgee 'agent 在做什么', 否则不展示" + "沉默胜于假 loading".
-func TestRT3_ReverseGrep_NoSubjectFallback(t *testing.T) {
+func TestRT_ReverseGrep_NoSubjectFallback(t *testing.T) {
 	t.Parallel()
 
 	// Walk the ws package source files (not _test.go) for forbidden
@@ -215,11 +215,11 @@ func TestRT3_ReverseGrep_NoSubjectFallback(t *testing.T) {
 	}
 }
 
-// TestRT3_SharedSequence_WithRT1_CV2_DM2_CV4_AL2b pins SharedSequence
+// TestRT_SharedSequence_WithRT1_CV2_DM2_CV4_AL2b pins SharedSequence
 // invariant — RT-3 frame cursor 跟 5 上游 frame 共一根 hub.cursors
 // sequence (RT-1 spec §1.1 反约束: 不另起 channel). Allocates cursors
 // alternately across frame types and asserts strict monotonic.
-func TestRT3_SharedSequence_WithRT1_CV2_DM2_CV4_AL2b(t *testing.T) {
+func TestRT_SharedSequence_WithRT1_CV2_DM2_CV4_AL2b(t *testing.T) {
 	t.Parallel()
 
 	// We can't construct a full Hub easily here; the SharedSequence

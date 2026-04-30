@@ -227,7 +227,7 @@ func (s *Server) SetupRoutes() {
 	// DM-4.1 — agent message edit 多端同步. PATCH /api/v1/channels/{channelId}/messages/{messageId}
 	// 走 RT-3 既有 fan-out (events INSERT message_edited + Hub.BroadcastEventToChannel
 	// 多端覆盖). DM-only 路径校验 (channel.Type != "dm" → 403). owner-only ACL.
-	dm4EditHandler := &api.DM4MessageEditHandler{Store: s.store, Hub: broadcaster, Logger: s.logger}
+	dm4EditHandler := &api.MessageEditHandler{Store: s.store, Hub: broadcaster, Logger: s.logger}
 	dm4EditHandler.RegisterRoutes(s.mux, authMw)
 
 	// Users
@@ -275,26 +275,26 @@ func (s *Server) SetupRoutes() {
 
 	// AL-1.4 agent state log — owner-only GET /api/v1/agents/:id/state-log
 	// (蓝图 §2.3 "故障可解释" — owner 看 agent state 历史轨迹查病因).
-	al14Handler := &api.AL14Handler{Store: s.store, Logger: s.logger}
+	al14Handler := &api.AgentStateLogHandler{Store: s.store, Logger: s.logger}
 	al14Handler.RegisterRoutes(s.mux, authMw)
 
 	// AL-5 agent error recovery — owner-only POST /api/v1/agents/:id/recover
 	// (蓝图 §2.3 5-state error → online recovery; 复用 AL-1 #492 single-gate
 	// helper, 不裂状态机).
-	al5Handler := &api.AL5Handler{Store: s.store, DataLayer: s.dl, Logger: s.logger}
+	al5Handler := &api.AgentRecoverHandler{Store: s.store, DataLayer: s.dl, Logger: s.logger}
 	al5Handler.RegisterRoutes(s.mux, authMw)
 
 	// BPP-8.2 plugin lifecycle audit list — owner-only GET
 	// /api/v1/agents/{agentId}/lifecycle (复用 admin_actions audit forward-only,
 	// 跟 ADM-2.1 + AP-2 + BPP-4 跨四 milestone audit 同精神 锁链第 5 处;
 	// admin god-mode 不挂 ADM-0 §1.3 红线).
-	bpp8Handler := &api.BPP8LifecycleListHandler{Store: s.store, Logger: s.logger}
+	bpp8Handler := &api.PluginListHandler{Store: s.store, Logger: s.logger}
 	bpp8Handler.RegisterRoutes(s.mux, authMw)
 	// HB-3 v2 heartbeat decay list — owner-only GET
 	// /api/v1/agents/{agentId}/heartbeat-decay (decay 状态从 agent_runtimes.
 	// last_heartbeat_at 反向 derive, 0 schema 改; AL-1a 锁链第 14 处 复用
 	// reasons.NetworkUnreachable; admin god-mode 不挂 ADM-0 §1.3 红线).
-	hb3v2Handler := &api.HB3V2DecayListHandler{Store: s.store, Logger: s.logger}
+	hb3v2Handler := &api.HostDecayListHandler{Store: s.store, Logger: s.logger}
 	hb3v2Handler.RegisterRoutes(s.mux, authMw)
 
 	// DL-4 web push subscriptions — POST/DELETE /api/v1/push/subscribe.
@@ -319,7 +319,7 @@ func (s *Server) SetupRoutes() {
 	// ed25519 detached signature non-empty (立场 ④, sequoia/openpgp 双签
 	// 留 HB-1b Rust client). SigningKey 留 nil 走 test placeholder, production
 	// 接 env 私钥 inject (留 HB-1b 接).
-	hb1ManifestHandler := &api.HB1PluginManifestHandler{Logger: s.logger}
+	hb1ManifestHandler := &api.PluginManifestHandler{Logger: s.logger}
 	hb1ManifestHandler.RegisterRoutes(s.mux, authMw)
 
 	// (DL-4.3 push gateway init moved earlier — line ~85 — to feed
@@ -348,7 +348,7 @@ func (s *Server) SetupRoutes() {
 	// 跟 GORM size:500 + client DESCRIPTION_MAX_LENGTH 同源 — 双向锁守门).
 	// admin god-mode 不挂 (ADM-0 §1.3 红线); 既有 PUT /topic member-level
 	// path byte-identical 不变 (CHN-2 #406 既有 path 不破).
-	chn10DescHandler := &api.CHN10DescriptionHandler{Store: s.store, Logger: s.logger}
+	chn10DescHandler := &api.ChannelDescriptionHandler{Store: s.store, Logger: s.logger}
 	chn10DescHandler.RegisterUserRoutes(s.mux, authMw)
 	// CHN-14 channel description edit history audit — owner-only user-rail GET.
 	// schema v=44 ALTER channels ADD COLUMN description_edit_history TEXT NULL
@@ -356,7 +356,7 @@ func (s *Server) SetupRoutes() {
 	// nullable). UpdateChannelDescription SSOT 包装 SELECT old + JSON append
 	// + UPDATE; CHN-10 #561 既有 PUT path 调用此包装 byte-identical (length
 	// cap 500 + owner-only ACL 不变). admin readonly GET 在 adminMw 段挂.
-	chn14HistoryHandler := &api.CHN14DescriptionHistoryHandler{Store: s.store, Logger: s.logger}
+	chn14HistoryHandler := &api.ChannelDescriptionHistoryHandler{Store: s.store, Logger: s.logger}
 	chn14HistoryHandler.RegisterUserRoutes(s.mux, authMw)
 	// CHN-8 channel notification preferences — owner-only PUT three states
 	// (`all`/`mention`/`none`). 0 schema 改 (复用 user_channel_layout.collapsed
@@ -369,7 +369,7 @@ func (s *Server) SetupRoutes() {
 	// push 留 v3). admin god-mode 不挂 (ADM-0 §1.3 红线). 既有 RT-2 typing
 	// path byte-identical 不变.
 	rt4Tracker, _ := presence.NewSessionsTracker(s.store.DB())
-	rt4PresenceHandler := &api.RT4PresenceHandler{
+	rt4PresenceHandler := &api.RealtimePresenceHandler{
 		Store:   s.store,
 		Tracker: rt4Tracker,
 		Logger:  s.logger,
@@ -407,32 +407,32 @@ func (s *Server) SetupRoutes() {
 	// ADM-2.2 audit log + impersonate grant — wires user-rail (走 authMw,
 	// /api/v1/me/admin-actions + /api/v1/me/impersonation-grant CRUD) +
 	// admin-rail (/admin-api/v1/audit-log) endpoints. 立场 ③+④+⑦.
-	adm2Handler := &api.ADM2Handler{Store: s.store, Logger: s.logger}
+	adm2Handler := &api.AdminEndpointsHandler{Store: s.store, Logger: s.logger}
 	adm2Handler.RegisterUserRoutes(s.mux, authMw)
 	adm2Handler.RegisterAdminRoutes(s.mux, adminMw)
 	// DM-7 message edit history — sender-only user-rail GET + admin readonly
 	// admin-rail GET (admin god-mode 不挂 PATCH/DELETE — ADM-0 §1.3 红线).
-	dm7EditHistoryHandler := &api.DM7EditHistoryHandler{Store: s.store, Logger: s.logger}
+	dm7EditHistoryHandler := &api.MessageEditHistoryHandler{Store: s.store, Logger: s.logger}
 	dm7EditHistoryHandler.RegisterUserRoutes(s.mux, authMw)
 	dm7EditHistoryHandler.RegisterAdminRoutes(s.mux, adminMw)
 	// CV-15 artifact comment edit history — 0 schema 改 (复用 messages.edit_history
 	// DM-7.1 v=34 既有列), GET endpoint scoped to content_type='artifact_comment'
 	// (避免跟 DM-7 既有 /messages/{id}/edit-history 混淆). user-rail sender-only +
 	// admin readonly admin-rail (admin god-mode 不挂 PATCH/DELETE/PUT, ADM-0 §1.3).
-	cv15CommentEditHistoryHandler := &api.CV15CommentEditHistoryHandler{Store: s.store, Logger: s.logger}
+	cv15CommentEditHistoryHandler := &api.CanvasCommentEditHistoryHandler{Store: s.store, Logger: s.logger}
 	cv15CommentEditHistoryHandler.RegisterUserRoutes(s.mux, authMw)
 	cv15CommentEditHistoryHandler.RegisterAdminRoutes(s.mux, adminMw)
 	// AL-7.2 admin-rail audit retention override (admin-model.md §3 retention
 	// + ADM-0 §1.3 红线 admin 操作必走 audit row). admin-rail only — 反向 grep
 	// `audit_retention_override` 在 user-rail handler 0 hit.
-	al7RetentionHandler := &api.AL7AuditRetentionHandler{Store: s.store, Logger: s.logger}
+	al7RetentionHandler := &api.AgentRetentionOverrideHandler{Store: s.store, Logger: s.logger}
 	al7RetentionHandler.RegisterAdminRoutes(s.mux, adminMw)
 	// HB-6 heartbeat lag percentile monitor — admin-rail readonly GET
 	// /admin-api/v1/heartbeat-lag (synchronous 30s rolling-window aggregate
 	// from agent_runtimes.last_heartbeat_at, 0 schema 改). admin readonly
 	// 不挂 PATCH/POST/DELETE (ADM-0 §1.3 红线). Reuses BPP-4 watchdog
 	// 30s threshold byte-identical via WindowSeconds const.
-	hb6LagHandler := &api.HB6LagHandler{Store: s.store, Logger: s.logger}
+	hb6LagHandler := &api.HostLagHandler{Store: s.store, Logger: s.logger}
 	hb6LagHandler.RegisterAdminRoutes(s.mux, adminMw)
 	// AL-7.2 retention sweeper goroutine (1h ticker, ctx-aware shutdown). Same
 	// pattern as AP-2 ExpiresSweeper #525. Forward-only soft-archive via
@@ -441,7 +441,7 @@ func (s *Server) SetupRoutes() {
 	// HB-5.2 heartbeat retention sweeper + admin override (复用 AL-7 既有
 	// audit retention override action; metadata target='heartbeat' 字面区分,
 	// 立场 ② 不挂 admin_actions CHECK 第 13 项 enum).
-	hb5HeartbeatRetentionHandler := &api.HB5HeartbeatRetentionHandler{Store: s.store, Logger: s.logger}
+	hb5HeartbeatRetentionHandler := &api.HostRetentionOverrideHandler{Store: s.store, Logger: s.logger}
 	hb5HeartbeatRetentionHandler.RegisterAdminRoutes(s.mux, adminMw)
 	(&auth.HeartbeatRetentionSweeper{Store: s.store, Logger: s.logger}).Start(s.ctx)
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
@@ -469,11 +469,11 @@ func (s *Server) SetupRoutes() {
 	reactionHandler.RegisterRoutes(s.mux, authMw)
 
 	// DM-11 cross-DM message search (DM-only scope, channel-member ACL)
-	dm11SearchHandler := &api.DM11SearchHandler{Store: s.store}
+	dm11SearchHandler := &api.MessageSearchHandler{Store: s.store}
 	dm11SearchHandler.RegisterRoutes(s.mux, authMw)
 
 	// DM-10 message pin/unpin (DM-only scope)
-	dm10PinHandler := &api.DM10PinHandler{Store: s.store, Logger: s.logger}
+	dm10PinHandler := &api.MessagePinHandler{Store: s.store, Logger: s.logger}
 	dm10PinHandler.RegisterRoutes(s.mux, authMw)
 
 	// Commands

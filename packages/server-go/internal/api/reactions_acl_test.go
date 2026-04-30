@@ -40,8 +40,8 @@ func ap4Setup(t *testing.T) (string, string, string, string, string) {
 	return ts.URL, ownerTok, memberTok, chID, msgID
 }
 
-// TestAP4_PutReaction_NonMember404 pins 立场 ③: non-member PUT → 404.
-func TestAP4_PutReaction_NonMember404(t *testing.T) {
+// TestAP_PutReaction_NonMember404 pins 立场 ③: non-member PUT → 404.
+func TestAP_PutReaction_NonMember404(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, msgID := ap4Setup(t)
 	resp, _ := testutil.JSON(t, "PUT", url+"/api/v1/messages/"+msgID+"/reactions", memberTok,
@@ -51,8 +51,8 @@ func TestAP4_PutReaction_NonMember404(t *testing.T) {
 	}
 }
 
-// TestAP4_DeleteReaction_NonMember404 pins 立场 ③: non-member DELETE → 404.
-func TestAP4_DeleteReaction_NonMember404(t *testing.T) {
+// TestAP_DeleteReaction_NonMember404 pins 立场 ③: non-member DELETE → 404.
+func TestAP_DeleteReaction_NonMember404(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, msgID := ap4Setup(t)
 	resp, _ := testutil.JSON(t, "DELETE", url+"/api/v1/messages/"+msgID+"/reactions", memberTok,
@@ -62,8 +62,8 @@ func TestAP4_DeleteReaction_NonMember404(t *testing.T) {
 	}
 }
 
-// TestAP4_GetReactions_NonMember404 pins 立场 ③: non-member GET → 404.
-func TestAP4_GetReactions_NonMember404(t *testing.T) {
+// TestAP_GetReactions_NonMember404 pins 立场 ③: non-member GET → 404.
+func TestAP_GetReactions_NonMember404(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, msgID := ap4Setup(t)
 	resp, _ := testutil.JSON(t, "GET", url+"/api/v1/messages/"+msgID+"/reactions", memberTok, nil)
@@ -72,9 +72,9 @@ func TestAP4_GetReactions_NonMember404(t *testing.T) {
 	}
 }
 
-// TestAP4_Member_AllOK pins 立场 ④ 反向 sanity: channel member 三动作 (PUT/GET/DELETE)
+// TestAP_Member_AllOK pins 立场 ④ 反向 sanity: channel member 三动作 (PUT/GET/DELETE)
 // 全 200 byte-identical 既有行为不破.
-func TestAP4_Member_AllOK(t *testing.T) {
+func TestAP_Member_AllOK(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, memberTok, chID, msgID := ap4Setup(t)
 	// Owner adds member to the channel.
@@ -103,13 +103,13 @@ func TestAP4_Member_AllOK(t *testing.T) {
 	}
 }
 
-// TestAP4_GetReactions_Unauth401 pins 立场 ① — pre-AP-4 GET handler skipped
+// TestAP_GetReactions_Unauth401 pins 立场 ① — pre-AP-4 GET handler skipped
 // the user==nil check entirely; AP-4 fixes by emitting 401 on unauth.
 //
 // Note: middleware authMw should already block unauth requests at the
 // route level; this test verifies the handler-level guard as defense in
 // depth.
-func TestAP4_GetReactions_Unauth401(t *testing.T) {
+func TestAP_GetReactions_Unauth401(t *testing.T) {
 	t.Parallel()
 	url, _, _, _, msgID := ap4Setup(t)
 	// Send GET without token — server's authMw will reject with 401 before
