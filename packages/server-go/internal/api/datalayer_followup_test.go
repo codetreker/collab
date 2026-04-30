@@ -18,9 +18,9 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestDL44_PWAManifest_CacheControlHeader pins the Cache-Control hint
+// TestDL_PWAManifest_CacheControlHeader pins the Cache-Control hint
 // (1h public cache) — covers the header-set branch in handleGet.
-func TestDL44_PWAManifest_CacheControlHeader(t *testing.T) {
+func TestDL_PWAManifest_CacheControlHeader(t *testing.T) {
 	t.Parallel()
 	h := &api.PWAManifestHandler{}
 	mux := http.NewServeMux()
@@ -51,9 +51,9 @@ func TestDL44_PWAManifest_CacheControlHeader(t *testing.T) {
 	}
 }
 
-// TestDL42_PushSubscriptionsHandler_NowInjection pins the injectable
+// TestDL_PushSubscriptionsHandler_NowInjection pins the injectable
 // clock — handler.now() returns Now() when set.
-func TestDL42_PushSubscriptionsHandler_NowInjection(t *testing.T) {
+func TestDL_PushSubscriptionsHandler_NowInjection(t *testing.T) {
 	t.Parallel()
 	const fixedMs = int64(1700000000000)
 	h := &api.PushSubscriptionsHandler{
@@ -71,9 +71,9 @@ func TestDL42_PushSubscriptionsHandler_NowInjection(t *testing.T) {
 	}
 }
 
-// TestDL42_PushSubscriptionsHandler_LoggerSeam pins the logger nil-safe
+// TestDL_PushSubscriptionsHandler_LoggerSeam pins the logger nil-safe
 // + populated paths.
-func TestDL42_PushSubscriptionsHandler_LoggerSeam(t *testing.T) {
+func TestDL_PushSubscriptionsHandler_LoggerSeam(t *testing.T) {
 	t.Parallel()
 	hNil := &api.PushSubscriptionsHandler{}
 	mux := http.NewServeMux()
@@ -85,10 +85,10 @@ func TestDL42_PushSubscriptionsHandler_LoggerSeam(t *testing.T) {
 	hL.RegisterRoutes(mux2, authMw)
 }
 
-// TestDL42_PushSubscribe_UserAgentFallback exercises the UA-from-header
+// TestDL_PushSubscribe_UserAgentFallback exercises the UA-from-header
 // fallback branch in handleSubscribe (req.UserAgent empty → use
 // r.Header.Get("User-Agent")).
-func TestDL42_PushSubscribe_UserAgentFallback(t *testing.T) {
+func TestDL_PushSubscribe_UserAgentFallback(t *testing.T) {
 	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -130,7 +130,7 @@ func TestDL42_PushSubscribe_UserAgentFallback(t *testing.T) {
 // TestDL42_PushUnsubscribe_DBPath exercises the DELETE path with cross-
 // user mismatch on the row-found branch (covers the rowUserID!=user.ID
 // 403 path more thoroughly).
-func TestDL42_PushUnsubscribe_OwnUserDeletes(t *testing.T) {
+func TestDL_PushUnsubscribe_OwnUserDeletes(t *testing.T) {
 	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -169,10 +169,10 @@ func TestDL42_PushUnsubscribe_OwnUserDeletes(t *testing.T) {
 	}
 }
 
-// TestDL42_PushSubscriptionsHandler_NowDefault exercises the default
+// TestDL_PushSubscriptionsHandler_NowDefault exercises the default
 // time.Now path (Now field nil → fallback). Uses construction + reflection
 // to avoid panic on nil Now field.
-func TestDL42_PushSubscriptionsHandler_NowDefault(t *testing.T) {
+func TestDL_PushSubscriptionsHandler_NowDefault(t *testing.T) {
 	t.Parallel()
 	// Default-Now handler — call the handler's internal now() via the
 	// handleSubscribe path which exercises h.now() default branch.
@@ -192,10 +192,10 @@ func TestDL42_PushSubscriptionsHandler_NowDefault(t *testing.T) {
 	}
 }
 
-// TestDL42_PushSubscribe_ResponseShape pins the response JSON shape —
+// TestDL_PushSubscribe_ResponseShape pins the response JSON shape —
 // covers the writeJSONResponse 200 success branch (separate from error
 // branches already covered).
-func TestDL42_PushSubscribe_ResponseShape(t *testing.T) {
+func TestDL_PushSubscribe_ResponseShape(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -216,10 +216,10 @@ func TestDL42_PushSubscribe_ResponseShape(t *testing.T) {
 	}
 }
 
-// TestDL44_PWAManifest_W3CRoundTrip — full GET fetch + JSON decode +
+// TestDL_PWAManifest_W3CRoundTrip — full GET fetch + JSON decode +
 // every required field assertion. Covers handleGet header + body
 // branches more thoroughly than CacheControlHeader test.
-func TestDL44_PWAManifest_W3CRoundTrip(t *testing.T) {
+func TestDL_PWAManifest_W3CRoundTrip(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
@@ -258,9 +258,9 @@ func TestDL44_PWAManifest_W3CRoundTrip(t *testing.T) {
 	}
 }
 
-// TestDL44_PWAManifest_GETOnly — POST /api/v1/pwa/manifest should be
+// TestDL_PWAManifest_GETOnly — POST /api/v1/pwa/manifest should be
 // rejected by the GET-only mux pattern.
-func TestDL44_PWAManifest_GETOnly(t *testing.T) {
+func TestDL_PWAManifest_GETOnly(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, err := http.Post(ts.URL+"/api/v1/pwa/manifest", "application/json", nil)
@@ -274,9 +274,9 @@ func TestDL44_PWAManifest_GETOnly(t *testing.T) {
 	}
 }
 
-// TestDL44_PWAManifest_TwoSequentialGETs pins idempotent GET — same
+// TestDL_PWAManifest_TwoSequentialGETs pins idempotent GET — same
 // content across calls (no stateful mutation between requests).
-func TestDL44_PWAManifest_TwoSequentialGETs(t *testing.T) {
+func TestDL_PWAManifest_TwoSequentialGETs(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
@@ -298,10 +298,10 @@ func TestDL44_PWAManifest_TwoSequentialGETs(t *testing.T) {
 	}
 }
 
-// TestDL42_PushSubscribe_TwoUsers_NoBleed pins multi-user isolation —
+// TestDL_PushSubscribe_TwoUsers_NoBleed pins multi-user isolation —
 // user A and user B subscribe to different endpoints, neither sees
 // the other (covers handleSubscribe new-row INSERT path + scan branch).
-func TestDL42_PushSubscribe_TwoUsers_NoBleed(t *testing.T) {
+func TestDL_PushSubscribe_TwoUsers_NoBleed(t *testing.T) {
 	t.Parallel()
 	ts, store, _ := testutil.NewTestServer(t)
 	tokenA := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -345,10 +345,10 @@ func (f *fakePushNotifier) NotifyMention(targetUserID, senderID, channelName, bo
 	return 1
 }
 
-// TestDL46_MentionDispatcher_PushNotifierWired exercises the DL-4.6
+// TestDL_MentionDispatcher_PushNotifierWired exercises the DL-4.6
 // PushNotifier seam in MentionDispatcher.Dispatch — when wired,
 // NotifyMention fires for each target regardless of online state.
-func TestDL46_MentionDispatcher_PushNotifierWired(t *testing.T) {
+func TestDL_MentionDispatcher_PushNotifierWired(t *testing.T) {
 	t.Parallel()
 	notifier := &fakePushNotifier{}
 	d := &api.MentionDispatcher{

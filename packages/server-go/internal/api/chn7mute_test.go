@@ -43,7 +43,7 @@ func TestCHN71_NoSchemaChange(t *testing.T) {
 }
 
 // REG-CHN7-002a — POST mute happy path; collapsed bit 1 set.
-func TestCHN71_MuteChannel_HappyPath(t *testing.T) {
+func TestCHN_MuteChannel_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -75,7 +75,7 @@ func TestCHN71_MuteChannel_HappyPath(t *testing.T) {
 }
 
 // REG-CHN7-002b — non-member 403.
-func TestCHN71_MuteChannel_NonMemberRejected(t *testing.T) {
+func TestCHN_MuteChannel_NonMemberRejected(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -90,7 +90,7 @@ func TestCHN71_MuteChannel_NonMemberRejected(t *testing.T) {
 }
 
 // REG-CHN7-002c — Unauthorized 401.
-func TestCHN71_MuteChannel_Unauthorized(t *testing.T) {
+func TestCHN_MuteChannel_Unauthorized(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, http.MethodPost,
@@ -101,7 +101,7 @@ func TestCHN71_MuteChannel_Unauthorized(t *testing.T) {
 }
 
 // REG-CHN7-003a — DELETE unmute clears bit 1.
-func TestCHN71_UnmuteChannel_HappyPath(t *testing.T) {
+func TestCHN_UnmuteChannel_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -124,7 +124,7 @@ func TestCHN71_UnmuteChannel_HappyPath(t *testing.T) {
 }
 
 // REG-CHN7-003b — DELETE idempotent.
-func TestCHN71_UnmuteChannel_Idempotent(t *testing.T) {
+func TestCHN_UnmuteChannel_Idempotent(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -141,7 +141,7 @@ func TestCHN71_UnmuteChannel_Idempotent(t *testing.T) {
 }
 
 // REG-CHN7-003c — unmute preserves collapse bit (bit 0).
-func TestCHN71_UnmuteChannel_PreservesCollapsedBit(t *testing.T) {
+func TestCHN_UnmuteChannel_PreservesCollapsedBit(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -167,7 +167,7 @@ func TestCHN71_UnmuteChannel_PreservesCollapsedBit(t *testing.T) {
 }
 
 // REG-CHN7-004 — MuteBit byte-identical 双向锁 + IsMuted 谓词单源.
-func TestCHN71_MuteBit_ByteIdentical(t *testing.T) {
+func TestCHN_MuteBit_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	if api.MuteBit != 2 {
 		t.Errorf("MuteBit drift: got %d, want 2 (双向锁跟 client MUTE_BIT)", api.MuteBit)
@@ -187,7 +187,7 @@ func TestCHN71_MuteBit_ByteIdentical(t *testing.T) {
 }
 
 // REG-CHN7-005 — admin god-mode 不挂 反向断言.
-func TestCHN71_NoAdminMutePath(t *testing.T) {
+func TestCHN_NoAdminMutePath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/[^"]*mute`)
@@ -233,7 +233,7 @@ func TestCHN71_NoAdminMutePath(t *testing.T) {
 // 立场 ③: mute 仅 DL-4 push notifier skip — CreateMessage / RT-3 fan-out
 // / WS frame 全 byte-identical. 反向 grep `mute.*skip.*broadcast\|
 // mute.*drop.*message\|mute.*hub.*skip` 0 hit.
-func TestCHN71_MuteDoesNotDropMessages(t *testing.T) {
+func TestCHN_MuteDoesNotDropMessages(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "ws"), filepath.Join("..", "api")}
 	pat := regexp.MustCompile(`(?i)mute\s*[\.\s\w]*\b(skip|drop)\s*\b.*\b(broadcast|fanout|message|frame)`)
@@ -253,7 +253,7 @@ func TestCHN71_MuteDoesNotDropMessages(t *testing.T) {
 }
 
 // REG-CHN7-006b — AST 锁链延伸第 12 处.
-func TestCHN73_NoChannelMuteQueue(t *testing.T) {
+func TestCHN_NoChannelMuteQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingChannelMute",

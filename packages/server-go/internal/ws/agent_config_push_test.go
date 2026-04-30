@@ -16,10 +16,10 @@ import (
 	"borgee-server/internal/ws"
 )
 
-// TestAL2B2_PushAgentConfigUpdateBasic pins acceptance §2.1 — 基本路径:
+// TestAL_PushAgentConfigUpdateBasic pins acceptance §2.1 — 基本路径:
 // hub.PushAgentConfigUpdate emits AgentConfigUpdateFrame to plugin's send
 // channel with byte-identical wire JSON; cursor 单调发号; sent=true.
-func TestAL2B2_PushAgentConfigUpdateBasic(t *testing.T) {
+func TestAL_PushAgentConfigUpdateBasic(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -66,11 +66,11 @@ func TestAL2B2_PushAgentConfigUpdateBasic(t *testing.T) {
 	}
 }
 
-// TestAL2B2_PushAgentConfigUpdate_PluginOffline pins acceptance §2.1
+// TestAL_PushAgentConfigUpdate_PluginOffline pins acceptance §2.1
 // fail-graceful path — plugin not registered → sent=false, cursor still
 // allocated (蓝图 §1.5 反约束 "runtime 不缓存": frame dropped, plugin
 // 重连后 GET /agents/:id/config 主动拉; server 不入队列).
-func TestAL2B2_PushAgentConfigUpdate_PluginOffline(t *testing.T) {
+func TestAL_PushAgentConfigUpdate_PluginOffline(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -89,10 +89,10 @@ func TestAL2B2_PushAgentConfigUpdate_PluginOffline(t *testing.T) {
 	}
 }
 
-// TestAL2B2_PushAgentConfigUpdate_CursorMonotonic pins acceptance §2.1
+// TestAL_PushAgentConfigUpdate_CursorMonotonic pins acceptance §2.1
 // cursor 共序 — N 次 push cursor 严格递增, 跟 RT-1 PushArtifactUpdated
 // 共一根 sequence (反约束: 不另起 plugin-only 通道).
-func TestAL2B2_PushAgentConfigUpdate_CursorMonotonic(t *testing.T) {
+func TestAL_PushAgentConfigUpdate_CursorMonotonic(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -110,11 +110,11 @@ func TestAL2B2_PushAgentConfigUpdate_CursorMonotonic(t *testing.T) {
 	}
 }
 
-// TestAL2B2_PushAgentConfigUpdate_SharedSequenceWithRT1 pins acceptance
+// TestAL_PushAgentConfigUpdate_SharedSequenceWithRT1 pins acceptance
 // §2.1 立场 ① cursor 共序 — AL-2b push 跟 RT-1.1 PushArtifactUpdated
 // 共一根 sequence (跟 anchor_comment_frame_test / iteration_state_changed_
 // frame_test 同模式 — 反约束: 不另起 channel).
-func TestAL2B2_PushAgentConfigUpdate_SharedSequenceWithRT1(t *testing.T) {
+func TestAL_PushAgentConfigUpdate_SharedSequenceWithRT1(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -143,10 +143,10 @@ func TestAL2B2_PushAgentConfigUpdate_SharedSequenceWithRT1(t *testing.T) {
 	}
 }
 
-// TestAL2B2_PushAgentConfigUpdate_FieldByteIdentity pins acceptance §2.1
+// TestAL_PushAgentConfigUpdate_FieldByteIdentity pins acceptance §2.1
 // + #472 §1.1 — wire JSON 跟 BPP envelope reflect lint byte-identical
 // (filled + zero-tail 双 snapshot — 反约束 不挂 omitempty).
-func TestAL2B2_PushAgentConfigUpdate_FieldByteIdentity(t *testing.T) {
+func TestAL_PushAgentConfigUpdate_FieldByteIdentity(t *testing.T) {
 	t.Parallel()
 	hub, _ := setupTestHub(t)
 
@@ -174,10 +174,10 @@ func TestAL2B2_PushAgentConfigUpdate_FieldByteIdentity(t *testing.T) {
 	}
 }
 
-// TestAL2B2_PushAgentConfigUpdate_NoCursorAllocator pins fail-graceful
+// TestAL_PushAgentConfigUpdate_NoCursorAllocator pins fail-graceful
 // — hub without cursor allocator returns (0, false). 跟 PushArtifactUpdated
 // h.cursors==nil 同模式; 测试种子.
-func TestAL2B2_PushAgentConfigUpdate_NoCursorAllocator(t *testing.T) {
+func TestAL_PushAgentConfigUpdate_NoCursorAllocator(t *testing.T) {
 	t.Parallel()
 	// Bare Hub via NewHub — but with cursors set up automatically. Skip
 	// this case: 真实路径不暴露 cursors=nil 的 Hub. setupTestHub 已带
@@ -186,9 +186,9 @@ func TestAL2B2_PushAgentConfigUpdate_NoCursorAllocator(t *testing.T) {
 	t.Skip("setupTestHub always provides cursor allocator; covered by code review of guard line.")
 }
 
-// TestAL2B2_PluginConnDrainSendEmpty pins NewTestPluginConn helper —
+// TestAL_PluginConnDrainSendEmpty pins NewTestPluginConn helper —
 // 空 send channel return ("", false). 防 false-positive on later cases.
-func TestAL2B2_PluginConnDrainSendEmpty(t *testing.T) {
+func TestAL_PluginConnDrainSendEmpty(t *testing.T) {
 	t.Parallel()
 	pc := ws.NewTestPluginConn("agent-empty")
 	wire, ok := pc.DrainSend()

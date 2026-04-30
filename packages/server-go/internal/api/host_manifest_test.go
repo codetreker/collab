@@ -2,14 +2,14 @@
 // server-side endpoint unit tests + 反向 grep守门 (REG-HB1-001..006).
 //
 // Pins:
-//   REG-HB1-001 TestHB1_PluginManifest_Returns200_WithShape +
+//   REG-HB1-001 TestHB_PluginManifest_Returns200_WithShape +
 //                Unauthorized_NoToken_401 + PluginEntriesNonEmpty
 //   REG-HB1-002 TestHB1_NoSchemaChange + PluginEntriesConstNonEmpty
-//   REG-HB1-003 TestHB1_ReasonsByteIdentical
-//   REG-HB1-004 TestHB1_ManifestSignatureVerify
-//   REG-HB1-005 TestHB1_NoAdminPluginManifestPath
-//   REG-HB1-006 TestHB1_NoPluginManifestQueue (AST 锁链延伸第 23 处)
-//                + TestHB1_PluginManifest_Returns200 (DL-4 反向锚 → 正向)
+//   REG-HB1-003 TestHB_ReasonsByteIdentical
+//   REG-HB1-004 TestHB_ManifestSignatureVerify
+//   REG-HB1-005 TestHB_NoAdminPluginManifestPath
+//   REG-HB1-006 TestHB_NoPluginManifestQueue (AST 锁链延伸第 23 处)
+//                + TestHB_PluginManifest_Returns200 (DL-4 反向锚 → 正向)
 package api_test
 
 import (
@@ -28,7 +28,7 @@ import (
 )
 
 // REG-HB1-001a — server endpoint Bearer api-key + 200 + shape.
-func TestHB1_PluginManifest_Returns200_WithShape(t *testing.T) {
+func TestHB_PluginManifest_Returns200_WithShape(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -61,7 +61,7 @@ func TestHB1_PluginManifest_Returns200_WithShape(t *testing.T) {
 }
 
 // REG-HB1-001b — no Bearer token → 401.
-func TestHB1_PluginManifest_Unauthorized_NoToken_401(t *testing.T) {
+func TestHB_PluginManifest_Unauthorized_NoToken_401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, http.MethodGet,
@@ -72,7 +72,7 @@ func TestHB1_PluginManifest_Unauthorized_NoToken_401(t *testing.T) {
 }
 
 // REG-HB1-002a — manifest data const slice non-empty.
-func TestHB1_PluginEntriesConstNonEmpty(t *testing.T) {
+func TestHB_PluginEntriesConstNonEmpty(t *testing.T) {
 	t.Parallel()
 	if len(api.PluginManifestEntries) == 0 {
 		t.Fatal("PluginManifestEntries const slice is empty (立场 ②)")
@@ -108,7 +108,7 @@ func TestHB1_NoSchemaChange(t *testing.T) {
 }
 
 // REG-HB1-003 — 7-reason 字典字面 byte-identical.
-func TestHB1_ReasonsByteIdentical(t *testing.T) {
+func TestHB_ReasonsByteIdentical(t *testing.T) {
 	t.Parallel()
 	// 字面 byte-identical 跟 spec brief v0 #491 §3.3 + v1 §3.2 同源.
 	want := []string{
@@ -138,7 +138,7 @@ func TestHB1_ReasonsByteIdentical(t *testing.T) {
 }
 
 // REG-HB1-004 — ed25519 signature non-empty + verify roundtrip.
-func TestHB1_ManifestSignatureVerify(t *testing.T) {
+func TestHB_ManifestSignatureVerify(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -163,7 +163,7 @@ func TestHB1_ManifestSignatureVerify(t *testing.T) {
 
 // REG-HB1-004 supplement — direct signPayload roundtrip with real
 // ed25519 key (production path).
-func TestHB1_SignPayloadEd25519Roundtrip(t *testing.T) {
+func TestHB_SignPayloadEd25519Roundtrip(t *testing.T) {
 	t.Parallel()
 	pub, priv, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -191,7 +191,7 @@ func TestHB1_SignPayloadEd25519Roundtrip(t *testing.T) {
 
 // REG-HB1-005 — admin god-mode 不挂 PATCH/POST/PUT/DELETE 在 admin-api/
 // v1/.../plugin-manifest (ADM-0 §1.3 红线).
-func TestHB1_NoAdminPluginManifestPath(t *testing.T) {
+func TestHB_NoAdminPluginManifestPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("[^"]*admin-api/v[0-9]+/[^"]*plugin-manifest`)
@@ -214,7 +214,7 @@ func TestHB1_NoAdminPluginManifestPath(t *testing.T) {
 }
 
 // REG-HB1-006 — AST 锁链延伸第 23 处 forbidden 3 token.
-func TestHB1_NoPluginManifestQueue(t *testing.T) {
+func TestHB_NoPluginManifestQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingPluginManifest",
@@ -242,7 +242,7 @@ func TestHB1_NoPluginManifestQueue(t *testing.T) {
 // REG-HB1-006 supplement — DL-4 命名拆死锚转正向: HB-1 endpoint 真返 200
 // (反向锚 pwa_manifest_test.go::TestDL44_PWAManifest_NameNotPluginManifest
 // 既有不破; 本 test 是 HB-1 v0 上线的正向证据).
-func TestHB1_PluginManifest_Returns200(t *testing.T) {
+func TestHB_PluginManifest_Returns200(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -257,7 +257,7 @@ func TestHB1_PluginManifest_Returns200(t *testing.T) {
 
 // REG-HB1-005 supplement — AL-1a reason 字典分立 (HB-1 7-dict 跟 runtime
 // AL-1a 6-dict 反向 grep 拆死).
-func TestHB1_NoAL1aDriftIntoHB1(t *testing.T) {
+func TestHB_NoAL1aDriftIntoHB1(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "..", "internal", "agent", "reasons")
 	pat := regexp.MustCompile(`hb1[._]?(reason|Reason)|plugin[._]?(reason|Reason)`)

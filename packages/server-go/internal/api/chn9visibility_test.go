@@ -47,7 +47,7 @@ func TestCHN91_NoSchemaChange(t *testing.T) {
 }
 
 // REG-CHN9-002 — VisibilityConsts byte-identical 三向锁.
-func TestCHN91_VisibilityConsts_ByteIdentical(t *testing.T) {
+func TestCHN_VisibilityConsts_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	if api.VisibilityCreatorOnly != "creator_only" {
 		t.Errorf("VisibilityCreatorOnly drift: got %q", api.VisibilityCreatorOnly)
@@ -79,7 +79,7 @@ func TestCHN91_VisibilityConsts_ByteIdentical(t *testing.T) {
 }
 
 // REG-CHN9-003a — PATCH visibility=creator_only happy path (owner).
-func TestCHN91_PatchVisibility_CreatorOnly_HappyPath(t *testing.T) {
+func TestCHN_PatchVisibility_CreatorOnly_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -99,7 +99,7 @@ func TestCHN91_PatchVisibility_CreatorOnly_HappyPath(t *testing.T) {
 }
 
 // REG-CHN9-003b — backcompat: existing public/private PATCH 仍 OK byte-identical.
-func TestCHN91_PatchVisibility_BackcompatPublicPrivate(t *testing.T) {
+func TestCHN_PatchVisibility_BackcompatPublicPrivate(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -121,7 +121,7 @@ func TestCHN91_PatchVisibility_BackcompatPublicPrivate(t *testing.T) {
 }
 
 // REG-CHN9-004 — PATCH spec 外值 → 400 byte-identical reject message.
-func TestCHN91_PatchVisibility_RejectsInvalidValue(t *testing.T) {
+func TestCHN_PatchVisibility_RejectsInvalidValue(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -142,7 +142,7 @@ func TestCHN91_PatchVisibility_RejectsInvalidValue(t *testing.T) {
 }
 
 // REG-CHN9-005a — creator_only channel 不 leak 给 org peers.
-func TestCHN91_CreatorOnlyChannel_NotLeakedToOrgPeers(t *testing.T) {
+func TestCHN_CreatorOnlyChannel_NotLeakedToOrgPeers(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -173,7 +173,7 @@ func TestCHN91_CreatorOnlyChannel_NotLeakedToOrgPeers(t *testing.T) {
 //
 // 反向断言 SQL `visibility = 'public'` 字面跟 CHN-1.2 既有同源 (creator_only
 // 不入 org-public preview filter).
-func TestCHN91_ListChannelsFilter_ByteIdentical(t *testing.T) {
+func TestCHN_ListChannelsFilter_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	body, err := os.ReadFile(filepath.Join("..", "store", "queries.go"))
 	if err != nil {
@@ -194,7 +194,7 @@ func TestCHN91_ListChannelsFilter_ByteIdentical(t *testing.T) {
 }
 
 // REG-CHN9-006 — admin god-mode 不挂 visibility PATCH 反向断言.
-func TestCHN91_NoAdminVisibilityPath(t *testing.T) {
+func TestCHN_NoAdminVisibilityPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/[^"]*visibility`)
@@ -236,7 +236,7 @@ func TestCHN91_NoAdminVisibilityPath(t *testing.T) {
 }
 
 // REG-CHN9-007 — AST 锁链延伸第 14 处.
-func TestCHN93_NoVisibilityQueue(t *testing.T) {
+func TestCHN_NoVisibilityQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingVisibility",

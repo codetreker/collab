@@ -21,7 +21,7 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// REG-AP3-003 / TestAP33_CrossOrg_FullFlow — full-flow cross-org reject.
+// REG-AP3-003 / TestAP_CrossOrg_FullFlow — full-flow cross-org reject.
 //
 // Setup:
 //   1. Owner (org-A) creates a channel + artifact in org-A.
@@ -29,7 +29,7 @@ import (
 //      that artifact's scope (simulating a leaked grant).
 //   3. Same-org owner POST /commits → 200 OK.
 //   4. Cross-org foreign user POST /commits → 403 (cross-org reject).
-func TestAP33_CrossOrg_FullFlow(t *testing.T) {
+func TestAP_CrossOrg_FullFlow(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

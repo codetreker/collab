@@ -20,12 +20,12 @@ func runCHN31(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestCHN31_CreatesUserChannelLayoutTable pins acceptance §1.1: the
+// TestCHN_CreatesUserChannelLayoutTable pins acceptance §1.1: the
 // table has the contract columns with the right NOT NULL shape. Drift
 // here breaks CHN-3.2 GET/PUT /me/layout or 立场 ③ pin=position 单调
 // 小数 implementation. 跟 CV-4.1 #399
 // TestCV41_CreatesArtifactIterationsTable 同模式.
-func TestCHN31_CreatesUserChannelLayoutTable(t *testing.T) {
+func TestCHN_CreatesUserChannelLayoutTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
@@ -62,10 +62,10 @@ func TestCHN31_CreatesUserChannelLayoutTable(t *testing.T) {
 	}
 }
 
-// TestCHN31_NoDomainBleed pins acceptance §1.5 反约束 — 列名反向断言
+// TestCHN_NoDomainBleed pins acceptance §1.5 反约束 — 列名反向断言
 // hidden / muted / pinned / is_pinned / group_id / cursor 全无.
 // 字面承袭野马 #366 stance 7 立场 黑名单 ①②③ + 立场 ⑥.
-func TestCHN31_NoDomainBleed(t *testing.T) {
+func TestCHN_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
@@ -98,9 +98,9 @@ func TestCHN31_NoDomainBleed(t *testing.T) {
 	}
 }
 
-// TestCHN31_PKEnforcesUniqueRowPerUserChannel pins acceptance §1.2 +
+// TestCHN_PKEnforcesUniqueRowPerUserChannel pins acceptance §1.2 +
 // 立场 ② — duplicate (user_id, channel_id) INSERT must reject.
-func TestCHN31_PKEnforcesUniqueRowPerUserChannel(t *testing.T) {
+func TestCHN_PKEnforcesUniqueRowPerUserChannel(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
@@ -129,10 +129,10 @@ func TestCHN31_PKEnforcesUniqueRowPerUserChannel(t *testing.T) {
 	}
 }
 
-// TestCHN31_AcceptsPositionMonotonicDecimals pins 立场 ③ — pin = MIN-1.0
+// TestCHN_AcceptsPositionMonotonicDecimals pins 立场 ③ — pin = MIN-1.0
 // 单调小数. INSERT REAL position values; schema 不挂 CHECK constraint
 // (留 server 校验 reasonable bound), 仅断言 REAL 列受值.
-func TestCHN31_AcceptsPositionMonotonicDecimals(t *testing.T) {
+func TestCHN_AcceptsPositionMonotonicDecimals(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)
@@ -169,10 +169,10 @@ func TestCHN31_AcceptsPositionMonotonicDecimals(t *testing.T) {
 	}
 }
 
-// TestCHN31_HasUserIDIndex pins acceptance §1.3 — 显式命名 idx_user_
+// TestCHN_HasUserIDIndex pins acceptance §1.3 — 显式命名 idx_user_
 // channel_layout_user_id (本人 GET /me/layout 热路径). 跟 AL-4.1 #398
 // TestAL41_HasAgentIDIndex 同模式.
-func TestCHN31_HasUserIDIndex(t *testing.T) {
+func TestCHN_HasUserIDIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCHN31(t, db)

@@ -20,9 +20,9 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestDL44_PWAManifest_PublicEndpoint pins acceptance — GET /api/v1/pwa/manifest
+// TestDL_PWAManifest_PublicEndpoint pins acceptance — GET /api/v1/pwa/manifest
 // 不需 auth (浏览器 install prompt 在 login 前 fetch).
-func TestDL44_PWAManifest_PublicEndpoint(t *testing.T) {
+func TestDL_PWAManifest_PublicEndpoint(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
@@ -37,9 +37,9 @@ func TestDL44_PWAManifest_PublicEndpoint(t *testing.T) {
 	}
 }
 
-// TestDL44_PWAManifest_ContentType pins W3C MIME — Content-Type:
+// TestDL_PWAManifest_ContentType pins W3C MIME — Content-Type:
 // application/manifest+json (浏览器 install prompt trigger 识别).
-func TestDL44_PWAManifest_ContentType(t *testing.T) {
+func TestDL_PWAManifest_ContentType(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
@@ -55,10 +55,10 @@ func TestDL44_PWAManifest_ContentType(t *testing.T) {
 	}
 }
 
-// TestDL44_PWAManifest_RequiredFields pins W3C App Manifest spec subset
+// TestDL_PWAManifest_RequiredFields pins W3C App Manifest spec subset
 // — required + recommended fields (name / short_name / start_url /
 // display / icons).
-func TestDL44_PWAManifest_RequiredFields(t *testing.T) {
+func TestDL_PWAManifest_RequiredFields(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
@@ -106,9 +106,9 @@ func TestDL44_PWAManifest_RequiredFields(t *testing.T) {
 	}
 }
 
-// TestDL44_PWAManifest_NoSecretsLeak pins 反约束 — manifest 内容不含
+// TestDL_PWAManifest_NoSecretsLeak pins 反约束 — manifest 内容不含
 // secret / token / api_key / vapid 等字面 (公开 endpoint 隐私防御).
-func TestDL44_PWAManifest_NoSecretsLeak(t *testing.T) {
+func TestDL_PWAManifest_NoSecretsLeak(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 
@@ -137,10 +137,10 @@ func TestDL44_PWAManifest_NoSecretsLeak(t *testing.T) {
 	}
 }
 
-// TestDL44_PWAManifest_NameNotPluginManifest pins ⚠️ 命名拆死锚 — DL-4
+// TestDL_PWAManifest_NameNotPluginManifest pins ⚠️ 命名拆死锚 — DL-4
 // endpoint 路径不含 'plugin-manifest' (HB-1 #491 独占字面). zhanma-a
 // drift audit 锚源.
-func TestDL44_PWAManifest_NameNotPluginManifest(t *testing.T) {
+func TestDL_PWAManifest_NameNotPluginManifest(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 

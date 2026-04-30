@@ -60,10 +60,10 @@ func tableExists(db *gorm.DB, name string) (bool, error) {
 	return n > 0, nil
 }
 
-// TestADM01_ExecError_BadPrior covers the err-return inside the stmts
+// TestADM_ExecError_BadPrior covers the err-return inside the stmts
 // loop — pre-existing `admins` table without the `login` column makes
 // the UNIQUE INDEX statement fail.
-func TestADM01_ExecError_BadPrior(t *testing.T) {
+func TestADM_ExecError_BadPrior(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE admins (id TEXT PRIMARY KEY)`).Error; err != nil {
@@ -76,8 +76,8 @@ func TestADM01_ExecError_BadPrior(t *testing.T) {
 	}
 }
 
-// TestADM02_ExecError_BadPrior — same pattern for adm_0_2_admin_sessions.
-func TestADM02_ExecError_BadPrior(t *testing.T) {
+// TestADM_ExecError_BadPrior — same pattern for adm_0_2_admin_sessions.
+func TestADM_ExecError_BadPrior_Sessions(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE admin_sessions (id TEXT PRIMARY KEY)`).Error; err != nil {
@@ -90,8 +90,8 @@ func TestADM02_ExecError_BadPrior(t *testing.T) {
 	}
 }
 
-// TestCM10_ExecError_BadPrior — same pattern for cm_1_1_organizations.
-func TestCM10_ExecError_BadPrior(t *testing.T) {
+// TestCM_ExecError_BadPrior — same pattern for cm_1_1_organizations.
+func TestCM_ExecError_BadPrior(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE organizations (id TEXT PRIMARY KEY)`).Error; err != nil {
@@ -104,8 +104,8 @@ func TestCM10_ExecError_BadPrior(t *testing.T) {
 	}
 }
 
-// TestCM40_ExecError_BadPrior — agent_invitations missing required cols.
-func TestCM40_ExecError_BadPrior(t *testing.T) {
+// TestCM_ExecError_BadPrior — agent_invitations missing required cols.
+func TestCM_ExecError_BadPrior_2(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE agent_invitations (id TEXT PRIMARY KEY)`).Error; err != nil {
@@ -118,8 +118,8 @@ func TestCM40_ExecError_BadPrior(t *testing.T) {
 	}
 }
 
-// TestDL41_ExecError_BadPrior — web_push_subscriptions missing column.
-func TestDL41_ExecError_BadPrior(t *testing.T) {
+// TestDL_ExecError_BadPrior — web_push_subscriptions missing column.
+func TestDL_ExecError_BadPrior(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE web_push_subscriptions (id TEXT PRIMARY KEY)`).Error; err != nil {
@@ -132,8 +132,8 @@ func TestDL41_ExecError_BadPrior(t *testing.T) {
 	}
 }
 
-// TestCHN31_ExecError_BadPrior — user_channel_layout missing column.
-func TestCHN31_ExecError_BadPrior(t *testing.T) {
+// TestCHN_ExecError_BadPrior — user_channel_layout missing column.
+func TestCHN_ExecError_BadPrior(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE user_channel_layout (id TEXT PRIMARY KEY)`).Error; err != nil {

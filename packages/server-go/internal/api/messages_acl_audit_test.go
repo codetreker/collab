@@ -19,9 +19,9 @@ import (
 	"testing"
 )
 
-// TestAP5_PutMessage_PostRemovalReject — sender removed from public channel
+// TestAP_PutMessage_PostRemovalReject — sender removed from public channel
 // can no longer PUT-edit own message there. Expect 404 fail-closed.
-func TestAP5_PutMessage_PostRemovalReject(t *testing.T) {
+func TestAP_PutMessage_PostRemovalReject(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
@@ -46,9 +46,9 @@ func TestAP5_PutMessage_PostRemovalReject(t *testing.T) {
 	}
 }
 
-// TestAP5_DeleteMessage_PostRemovalReject — sender removed from channel
+// TestAP_DeleteMessage_PostRemovalReject — sender removed from channel
 // can no longer DELETE own message. 404 fail-closed.
-func TestAP5_DeleteMessage_PostRemovalReject(t *testing.T) {
+func TestAP_DeleteMessage_PostRemovalReject(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
@@ -71,9 +71,9 @@ func TestAP5_DeleteMessage_PostRemovalReject(t *testing.T) {
 	}
 }
 
-// TestAP5_Member_PutDelete_OK — sanity: channel member sender can still
+// TestAP_Member_PutDelete_OK — sanity: channel member sender can still
 // PUT/DELETE own message (既有行为不破).
-func TestAP5_Member_PutDelete_OK(t *testing.T) {
+func TestAP_Member_PutDelete_OK(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
@@ -94,10 +94,10 @@ func TestAP5_Member_PutDelete_OK(t *testing.T) {
 	}
 }
 
-// TestAP5_NonSenderMember_403 — sanity: channel member who is NOT the
+// TestAP_NonSenderMember_403 — sanity: channel member who is NOT the
 // sender still gets 403 from existing sender_id check (sender-only ACL
 // 不破, 跟 既有 PUT/DELETE messages 同源).
-func TestAP5_NonSenderMember_403(t *testing.T) {
+func TestAP_NonSenderMember_403(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := setupFullTestServer(t)
 	adminToken := loginAs(t, ts.URL, "owner@test.com", "password123")
@@ -125,10 +125,10 @@ func TestAP5_NonSenderMember_403(t *testing.T) {
 	}
 }
 
-// TestAP5_PatchDM_PostRemovalReject — DM-4 PATCH endpoint after sender
+// TestAP_PatchDM_PostRemovalReject — DM-4 PATCH endpoint after sender
 // removed from DM channel returns 404 (channel-member gate, 跟 messages
 // PUT/DELETE 同模式).
-func TestAP5_PatchDM_PostRemovalReject(t *testing.T) {
+func TestAP_PatchDM_PostRemovalReject(t *testing.T) {
 	t.Parallel()
 	ts, st, _ := setupFullTestServer(t)
 	memberToken := loginAs(t, ts.URL, "member@test.com", "password123")

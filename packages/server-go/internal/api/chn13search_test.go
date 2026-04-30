@@ -3,11 +3,11 @@
 //
 // Pins:
 //   REG-CHN13-001 TestCHN131_NoSchemaChange (filepath.Walk migrations/)
-//   REG-CHN13-002 TestCHN132_ListChannelsWithQuery (q="" byte-identical
+//   REG-CHN13-002 TestCHN_ListChannelsWithQuery (q="" byte-identical
 //                  + q="match" 子串过滤)
-//   REG-CHN13-003 TestCHN132_QueryCaseInsensitive + QuerySubstringMatch
-//   REG-CHN13-004 TestCHN133_NoSearchQueue (AST 锁链延伸第 21 处)
-//   REG-CHN13-005 TestCHN133_NoAdminSearchPath (admin god-mode 不挂)
+//   REG-CHN13-003 TestCHN_QueryCaseInsensitive + QuerySubstringMatch
+//   REG-CHN13-004 TestCHN_NoSearchQueue (AST 锁链延伸第 21 处)
+//   REG-CHN13-005 TestCHN_NoAdminSearchPath (admin god-mode 不挂)
 package api_test
 
 import (
@@ -39,7 +39,7 @@ func TestCHN131_NoSchemaChange(t *testing.T) {
 }
 
 // REG-CHN13-002 — GET /api/v1/channels?q= happy + 空 q byte-identical.
-func TestCHN132_ListChannelsWithQuery(t *testing.T) {
+func TestCHN_ListChannelsWithQuery(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -90,7 +90,7 @@ func TestCHN132_ListChannelsWithQuery(t *testing.T) {
 }
 
 // REG-CHN13-003 — q LIKE COLLATE NOCASE 大小写不敏感 + 子串.
-func TestCHN132_QueryCaseInsensitive(t *testing.T) {
+func TestCHN_QueryCaseInsensitive(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -121,7 +121,7 @@ func TestCHN132_QueryCaseInsensitive(t *testing.T) {
 }
 
 // REG-CHN13-003b — 子串匹配 (中间字符).
-func TestCHN132_QuerySubstringMatch(t *testing.T) {
+func TestCHN_QuerySubstringMatch(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -151,7 +151,7 @@ func TestCHN132_QuerySubstringMatch(t *testing.T) {
 }
 
 // REG-CHN13-004 — AST 锁链延伸第 21 处 forbidden 3 token.
-func TestCHN133_NoSearchQueue(t *testing.T) {
+func TestCHN_NoSearchQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingSearch",
@@ -179,7 +179,7 @@ func TestCHN133_NoSearchQueue(t *testing.T) {
 // REG-CHN13-005 — admin god-mode 不挂 search ?q= path (ADM-0 §1.3 红线;
 // search 是 user-rail filter, admin /admin-api/v1/channels 既有列表已含
 // 全 org, 不需要另外 search).
-func TestCHN133_NoAdminSearchPath(t *testing.T) {
+func TestCHN_NoAdminSearchPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("[^"]*admin-api/v[0-9]+/[^"]*\?q=`)

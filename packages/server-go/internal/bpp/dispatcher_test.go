@@ -39,13 +39,13 @@ func (f *fakeHandler) HandleAction(frame bpp.SemanticActionFrame, sess bpp.Sessi
 	return f.result, f.err
 }
 
-// TestBPP21_OpWhitelist pins acceptance §1.2: v1 ops byte-identical
+// TestBPP_OpWhitelist pins acceptance §1.2: v1 ops byte-identical
 // 跟蓝图 plugin-protocol.md §1.3 字面. Order matters — content-lock
 // §1 ① bytes the op list directly.
 //
 // BPP-3.2.1 (#494 follow-up) extends 7→8 with `request_capability_grant`
 // (蓝图 auth-permissions.md §1.3 主入口字面承袭).
-func TestBPP21_OpWhitelist(t *testing.T) {
+func TestBPP_OpWhitelist(t *testing.T) {
 	t.Parallel()
 	want := []string{
 		"create_artifact",
@@ -68,10 +68,10 @@ func TestBPP21_OpWhitelist(t *testing.T) {
 	}
 }
 
-// TestBPP21_RejectsUnknownOp pins acceptance §1.2 反断 + content-lock
+// TestBPP_RejectsUnknownOp pins acceptance §1.2 反断 + content-lock
 // §2 ⑦ — 'list_users' / 'delete_org' / v2+ 列表 reject (蓝图 §1.3
 // v2+ 字面禁 v1 进).
-func TestBPP21_RejectsUnknownOp(t *testing.T) {
+func TestBPP_RejectsUnknownOp(t *testing.T) {
 	t.Parallel()
 	d := bpp.NewDispatcher()
 	// Register a handler so the test specifically exercises the op-
@@ -107,11 +107,11 @@ func TestBPP21_RejectsUnknownOp(t *testing.T) {
 	}
 }
 
-// TestBPP21_DispatchRoutesToHandler pins acceptance §1.3: a registered
+// TestBPP_DispatchRoutesToHandler pins acceptance §1.3: a registered
 // handler is invoked for a valid op + the frame + session context are
 // passed through byte-identical (handler is the AP-0 perm gate, not
 // dispatcher).
-func TestBPP21_DispatchRoutesToHandler(t *testing.T) {
+func TestBPP_DispatchRoutesToHandler(t *testing.T) {
 	t.Parallel()
 	d := bpp.NewDispatcher()
 	want := []byte(`{"artifact_id":"art-1"}`)
@@ -146,11 +146,11 @@ func TestBPP21_DispatchRoutesToHandler(t *testing.T) {
 	}
 }
 
-// TestBPP21_DispatchAllSevenOps pins acceptance §1.2 happy path: each
+// TestBPP_DispatchAllSevenOps pins acceptance §1.2 happy path: each
 // of the 7 v1 ops can be registered + dispatched independently. Drift
 // between the spec list and the dispatcher would surface here as a
 // missed op or duplicate routing.
-func TestBPP21_DispatchAllSevenOps(t *testing.T) {
+func TestBPP_DispatchAllSevenOps(t *testing.T) {
 	t.Parallel()
 	d := bpp.NewDispatcher()
 	handlers := map[string]*fakeHandler{}
@@ -186,11 +186,11 @@ func TestBPP21_DispatchAllSevenOps(t *testing.T) {
 	}
 }
 
-// TestBPP21_NoHandlerRegistered pins the boot-order edge case: an op
+// TestBPP_NoHandlerRegistered pins the boot-order edge case: an op
 // in the v1 whitelist with no registered handler returns an error
 // distinct from the unknown-op error (so the api package can surface
 // 503 service-unavailable, not 400 bad-request).
-func TestBPP21_NoHandlerRegistered(t *testing.T) {
+func TestBPP_NoHandlerRegistered(t *testing.T) {
 	t.Parallel()
 	d := bpp.NewDispatcher()
 	// Register only one op so the test specifically targets the
@@ -216,10 +216,10 @@ func TestBPP21_NoHandlerRegistered(t *testing.T) {
 	}
 }
 
-// TestBPP21_RegisterHandlerRejectsUnknownOp pins boot-time invariant:
+// TestBPP_RegisterHandlerRejectsUnknownOp pins boot-time invariant:
 // registering a handler for an op outside the v1 whitelist is a
 // programming bug (typo or stale op name) and must fail loud.
-func TestBPP21_RegisterHandlerRejectsUnknownOp(t *testing.T) {
+func TestBPP_RegisterHandlerRejectsUnknownOp(t *testing.T) {
 	t.Parallel()
 	d := bpp.NewDispatcher()
 	for _, bad := range []string{
@@ -235,11 +235,11 @@ func TestBPP21_RegisterHandlerRejectsUnknownOp(t *testing.T) {
 	}
 }
 
-// TestBPP21_RegisterHandlerIdempotent pins the (op, handler) duplicate
+// TestBPP_RegisterHandlerIdempotent pins the (op, handler) duplicate
 // registration semantic — same handler instance can be re-registered
 // for the same op (idempotent boot path), but registering a different
 // handler for the same op must fail loud (boot programming bug).
-func TestBPP21_RegisterHandlerIdempotent(t *testing.T) {
+func TestBPP_RegisterHandlerIdempotent(t *testing.T) {
 	t.Parallel()
 	d := bpp.NewDispatcher()
 	h1 := &fakeHandler{}
@@ -258,10 +258,10 @@ func TestBPP21_RegisterHandlerIdempotent(t *testing.T) {
 	}
 }
 
-// TestBPP21_HandlerForUnregistered pins HandlerFor returns nil (not
+// TestBPP_HandlerForUnregistered pins HandlerFor returns nil (not
 // panic) for an unregistered op — so callers can treat nil as a
 // transient boot-order signal.
-func TestBPP21_HandlerForUnregistered(t *testing.T) {
+func TestBPP_HandlerForUnregistered(t *testing.T) {
 	t.Parallel()
 	d := bpp.NewDispatcher()
 	if h := d.HandlerFor(bpp.SemanticOpCreateArtifact); h != nil {
@@ -269,12 +269,12 @@ func TestBPP21_HandlerForUnregistered(t *testing.T) {
 	}
 }
 
-// TestBPP21_DispatchErrorCodeLiteral pins acceptance + content-lock
+// TestBPP_DispatchErrorCodeLiteral pins acceptance + content-lock
 // §1 ⑥ — the error code surfaced to the plugin must be byte-identical
 // `bpp.semantic_op_unknown` (跟 anchor.create_owner_only #360 /
 // dm.workspace_not_supported #407 / iteration.target_not_in_channel
 // #409 命名同模式).
-func TestBPP21_DispatchErrorCodeLiteral(t *testing.T) {
+func TestBPP_DispatchErrorCodeLiteral(t *testing.T) {
 	t.Parallel()
 	if bpp.DispatchErrCodeOpUnknown != "bpp.semantic_op_unknown" {
 		t.Errorf("DispatchErrCodeOpUnknown literal drift: got %q, want %q",
@@ -287,10 +287,10 @@ func TestBPP21_DispatchErrorCodeLiteral(t *testing.T) {
 	}
 }
 
-// TestBPP21_HandlerErrorPropagated pins handler error pass-through —
+// TestBPP_HandlerErrorPropagated pins handler error pass-through —
 // dispatcher does not swallow handler errors (which carry AP-0
 // permission denials, payload parse errors, etc).
-func TestBPP21_HandlerErrorPropagated(t *testing.T) {
+func TestBPP_HandlerErrorPropagated(t *testing.T) {
 	t.Parallel()
 	d := bpp.NewDispatcher()
 	wantErr := errors.New("handler perm denied (AP-0)")

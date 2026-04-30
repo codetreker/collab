@@ -2,12 +2,12 @@
 // assertions ONLY. **0 server production code added** (反向 grep 守门).
 //
 // Pins:
-//   REG-DM6-001 TestDM61_NoSchemaChange
-//   REG-DM6-002 TestDM61_NoServerProductionCode
-//   REG-DM6-003 TestDM61_ReplyToIDColumnExists
-//   REG-DM6-004 TestDM61_DMThreadReply_HappyPath
-//   REG-DM6-005 TestDM61_NoThinkingPatternInProduction
-//   REG-DM6-006 TestDM63_NoDMThreadQueue
+//   REG-DM6-001 TestDM_NoSchemaChange
+//   REG-DM6-002 TestDM_NoServerProductionCode
+//   REG-DM6-003 TestDM_ReplyToIDColumnExists
+//   REG-DM6-004 TestDM_DMThreadReply_HappyPath
+//   REG-DM6-005 TestDM_NoThinkingPatternInProduction
+//   REG-DM6-006 TestDM_NoDMThreadQueue
 package api_test
 
 import (
@@ -22,7 +22,7 @@ import (
 )
 
 // REG-DM6-001 — 0 schema 改反向断言: migrations/ 0 新 dm_6_* 文件.
-func TestDM61_NoSchemaChange(t *testing.T) {
+func TestDM_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	pat := regexp.MustCompile(`(?i)dm_6_\d+|dm6_\d+_thread`)
@@ -50,7 +50,7 @@ func TestDM61_NoSchemaChange(t *testing.T) {
 
 // REG-DM6-002 — 0 server production code 反向断言: internal/api/ 反向
 // grep `dm_6` 在 production *.go 0 hit (仅 _test.go 允许).
-func TestDM61_NoServerProductionCode(t *testing.T) {
+func TestDM_NoServerProductionCode(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`(?i)dm_?6\b`)
@@ -76,7 +76,7 @@ func TestDM61_NoServerProductionCode(t *testing.T) {
 }
 
 // REG-DM6-003 — messages.reply_to_id 列 existing 反向断言.
-func TestDM61_ReplyToIDColumnExists(t *testing.T) {
+func TestDM_ReplyToIDColumnExists(t *testing.T) {
 	t.Parallel()
 	_, s, _ := testutil.NewTestServer(t)
 	rows, err := s.DB().Raw(`PRAGMA table_info(messages)`).Rows()
@@ -105,7 +105,7 @@ func TestDM61_ReplyToIDColumnExists(t *testing.T) {
 
 // REG-DM6-004 — DM thread reply HappyPath: POST DM channel message with
 // reply_to_id → 200 + persisted (走既有 path byte-identical).
-func TestDM61_DMThreadReply_HappyPath(t *testing.T) {
+func TestDM_DMThreadReply_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -147,7 +147,7 @@ func TestDM61_DMThreadReply_HappyPath(t *testing.T) {
 // REG-DM6-005 — thinking 5-pattern 锁链第 9 处 — 反向 grep 在 dm_6
 // production 0 hit (DM-5 第 8 处 + DM-4 第 7 处 + DM-3 第 6 处 + RT-3
 // 第 5 处承袭).
-func TestDM61_NoThinkingPatternInProduction(t *testing.T) {
+func TestDM_NoThinkingPatternInProduction(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`<thinking>|<thought>|<reasoning>|<reflection>|<internal>`)
@@ -176,7 +176,7 @@ func TestDM61_NoThinkingPatternInProduction(t *testing.T) {
 }
 
 // REG-DM6-006 — AST 锁链延伸第 15 处.
-func TestDM63_NoDMThreadQueue(t *testing.T) {
+func TestDM_NoDMThreadQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingDMThread",

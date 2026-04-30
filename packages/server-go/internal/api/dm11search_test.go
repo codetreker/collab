@@ -53,8 +53,8 @@ func dm11Setup(t *testing.T) (string, string, string, *store.Store, string, stri
 	return ts.URL, ownerTok, memberTok, s, chID, content
 }
 
-// TestDM11_Search_HappyPath — owner搜索 member 在 DM 发的消息.
-func TestDM11_Search_HappyPath(t *testing.T) {
+// TestDM_Search_HappyPath — owner搜索 member 在 DM 发的消息.
+func TestDM_Search_HappyPath(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _ := dm11Setup(t)
 	resp, body := testutil.JSON(t, "GET",
@@ -77,8 +77,8 @@ func TestDM11_Search_HappyPath(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_QRequired — q 缺失 → 400 dm_search.q_required.
-func TestDM11_Search_QRequired(t *testing.T) {
+// TestDM_Search_QRequired — q 缺失 → 400 dm_search.q_required.
+func TestDM_Search_QRequired(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _ := dm11Setup(t)
 	resp, body := testutil.JSON(t, "GET", url+"/api/v1/dm/search", ownerTok, nil)
@@ -90,8 +90,8 @@ func TestDM11_Search_QRequired(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_QTooShort — q 1 char → 400 dm_search.q_too_short.
-func TestDM11_Search_QTooShort(t *testing.T) {
+// TestDM_Search_QTooShort — q 1 char → 400 dm_search.q_too_short.
+func TestDM_Search_QTooShort(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _ := dm11Setup(t)
 	resp, body := testutil.JSON(t, "GET", url+"/api/v1/dm/search?q=a", ownerTok, nil)
@@ -103,8 +103,8 @@ func TestDM11_Search_QTooShort(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_QTooLong — q > 200 char → 400 dm_search.q_too_long (反 DoS).
-func TestDM11_Search_QTooLong(t *testing.T) {
+// TestDM_Search_QTooLong — q > 200 char → 400 dm_search.q_too_long (反 DoS).
+func TestDM_Search_QTooLong(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _ := dm11Setup(t)
 	long := ""
@@ -121,8 +121,8 @@ func TestDM11_Search_QTooLong(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_Unauthorized — no token → 401.
-func TestDM11_Search_Unauthorized(t *testing.T) {
+// TestDM_Search_Unauthorized — no token → 401.
+func TestDM_Search_Unauthorized(t *testing.T) {
 	t.Parallel()
 	url, _, _, _, _, _ := dm11Setup(t)
 	resp, _ := testutil.JSON(t, "GET", url+"/api/v1/dm/search?q=needle", "", nil)
@@ -131,8 +131,8 @@ func TestDM11_Search_Unauthorized(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_NoMatch — query matches nothing → 200 + empty list.
-func TestDM11_Search_NoMatch(t *testing.T) {
+// TestDM_Search_NoMatch — query matches nothing → 200 + empty list.
+func TestDM_Search_NoMatch(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _ := dm11Setup(t)
 	resp, body := testutil.JSON(t, "GET",
@@ -146,9 +146,9 @@ func TestDM11_Search_NoMatch(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_DMOnly_ExcludesPublicChannel — public channel msg
+// TestDM_Search_DMOnly_ExcludesPublicChannel — public channel msg
 // matching the query is NOT returned (DM-only scope filter).
-func TestDM11_Search_DMOnly_ExcludesPublicChannel(t *testing.T) {
+func TestDM_Search_DMOnly_ExcludesPublicChannel(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _ := dm11Setup(t)
 	// Owner posts the same needle in a public channel.
@@ -174,9 +174,9 @@ func TestDM11_Search_DMOnly_ExcludesPublicChannel(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_NonMember_NoLeak — third user (not in the DM) searches
+// TestDM_Search_NonMember_NoLeak — third user (not in the DM) searches
 // and sees 0 results from this DM (channel-member ACL filter via JOIN).
-func TestDM11_Search_NonMember_NoLeak(t *testing.T) {
+func TestDM_Search_NonMember_NoLeak(t *testing.T) {
 	t.Parallel()
 	url, _, _, s, _, _ := dm11Setup(t)
 	users, _ := s.ListUsers()
@@ -205,8 +205,8 @@ func TestDM11_Search_NonMember_NoLeak(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_LimitClamp — limit=999 → clamped to 50.
-func TestDM11_Search_LimitClamp(t *testing.T) {
+// TestDM_Search_LimitClamp — limit=999 → clamped to 50.
+func TestDM_Search_LimitClamp(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _ := dm11Setup(t)
 	// Just verify the request succeeds — limit clamp is enforced server-side.
@@ -217,10 +217,10 @@ func TestDM11_Search_LimitClamp(t *testing.T) {
 	}
 }
 
-// TestDM11_Search_DeletedMessageHidden — soft-deleted DM message NOT
+// TestDM_Search_DeletedMessageHidden — soft-deleted DM message NOT
 // returned by search (maskDeletedMessages helper, fail-closed before
 // leak).
-func TestDM11_Search_DeletedMessageHidden(t *testing.T) {
+func TestDM_Search_DeletedMessageHidden(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, chID, _ := dm11Setup(t)
 	// Post a fresh message to delete.

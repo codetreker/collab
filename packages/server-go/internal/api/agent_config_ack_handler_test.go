@@ -26,7 +26,7 @@ func bppNewSlog(buf *bytes.Buffer) *slog.Logger {
 	return slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 }
 
-func TestBPP3_HandleAck_Applied(t *testing.T) {
+func TestBPP_HandleAck_Applied(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	h := &api.AgentConfigAckHandlerImpl{Logger: bppNewSlog(&buf)}
@@ -49,7 +49,7 @@ func TestBPP3_HandleAck_Applied(t *testing.T) {
 	}
 }
 
-func TestBPP3_HandleAck_Rejected(t *testing.T) {
+func TestBPP_HandleAck_Rejected(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	h := &api.AgentConfigAckHandlerImpl{Logger: bppNewSlog(&buf)}
@@ -72,7 +72,7 @@ func TestBPP3_HandleAck_Rejected(t *testing.T) {
 	}
 }
 
-func TestBPP3_HandleAck_Stale(t *testing.T) {
+func TestBPP_HandleAck_Stale(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	h := &api.AgentConfigAckHandlerImpl{Logger: bppNewSlog(&buf)}
@@ -92,7 +92,7 @@ func TestBPP3_HandleAck_Stale(t *testing.T) {
 	}
 }
 
-func TestBPP3_HandleAck_NilLoggerNoOp(t *testing.T) {
+func TestBPP_HandleAck_NilLoggerNoOp(t *testing.T) {
 	t.Parallel()
 	h := &api.AgentConfigAckHandlerImpl{}
 	if err := h.HandleAck(bpp.AgentConfigAckFrame{
@@ -102,7 +102,7 @@ func TestBPP3_HandleAck_NilLoggerNoOp(t *testing.T) {
 	}
 }
 
-func TestBPP3_OwnerResolver_ResolvesOwner(t *testing.T) {
+func TestBPP_OwnerResolver_ResolvesOwner(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -124,7 +124,7 @@ func TestBPP3_OwnerResolver_ResolvesOwner(t *testing.T) {
 	}
 }
 
-func TestBPP3_OwnerResolver_MissingAgent(t *testing.T) {
+func TestBPP_OwnerResolver_MissingAgent(t *testing.T) {
 	t.Parallel()
 	_, s, _ := testutil.NewTestServer(t)
 	r := &api.AgentOwnerResolver{Store: s}
@@ -133,10 +133,10 @@ func TestBPP3_OwnerResolver_MissingAgent(t *testing.T) {
 	}
 }
 
-// TestBPP3_OwnerResolver_AgentWithNilOwner covers the nil-OwnerID branch
+// TestBPP_OwnerResolver_AgentWithNilOwner covers the nil-OwnerID branch
 // (legacy data path — agents row exists but OwnerID is NULL; bpp dispatcher
 // will treat as cross-owner reject upstream).
-func TestBPP3_OwnerResolver_AgentWithNilOwner(t *testing.T) {
+func TestBPP_OwnerResolver_AgentWithNilOwner(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -154,12 +154,12 @@ func TestBPP3_OwnerResolver_AgentWithNilOwner(t *testing.T) {
 	}
 }
 
-// TestBPP4_AckDispatcher_FullFlow_CrossOwnerReject — end-to-end
+// TestBPP_AckDispatcher_FullFlow_CrossOwnerReject — end-to-end
 // dispatcher integration: AgentOwnerResolver + AgentConfigAckHandlerImpl
 // + bpp.AckDispatcher. Exercises Dispatch → resolver.OwnerOf happy →
 // cross-owner mismatch → errAckCrossOwnerReject. Coverage value:
 // covers more bpp.AckDispatcher.Dispatch branches under realistic store.
-func TestBPP4_AckDispatcher_FullFlow_CrossOwnerReject(t *testing.T) {
+func TestBPP_AckDispatcher_FullFlow_CrossOwnerReject(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agent := testutil.CreateAgent(t, ts.URL, token, "BPP4-CrossOwner")
@@ -183,10 +183,10 @@ func TestBPP4_AckDispatcher_FullFlow_CrossOwnerReject(t *testing.T) {
 	}
 }
 
-// TestBPP4_AckDispatcher_FullFlow_HappyPath — owner matches, applied
+// TestBPP_AckDispatcher_FullFlow_HappyPath — owner matches, applied
 // status, handler logs (covers full happy path through resolver +
 // handler in one shot).
-func TestBPP4_AckDispatcher_FullFlow_HappyPath(t *testing.T) {
+func TestBPP_AckDispatcher_FullFlow_HappyPath(t *testing.T) {
 	ts, s, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	agent := testutil.CreateAgent(t, ts.URL, token, "BPP4-Happy")

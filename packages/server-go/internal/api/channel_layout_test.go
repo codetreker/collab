@@ -49,9 +49,9 @@ func chn32CreateChannel(t *testing.T, ts string, token, name string) string {
 	return ch["id"].(string)
 }
 
-// TestCHN32_GetEmpty pins acceptance §2.1: GET /me/layout 返空数组 if
+// TestCHN_GetEmpty pins acceptance §2.1: GET /me/layout 返空数组 if
 // 本人无任何 layout 行 (fallback ordering 是 client 端事, server 不补全).
-func TestCHN32_GetEmpty(t *testing.T) {
+func TestCHN_GetEmpty(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -69,9 +69,9 @@ func TestCHN32_GetEmpty(t *testing.T) {
 	}
 }
 
-// TestCHN32_PutBatchUpsertAndGet pins acceptance §2.1+§2.4 — PUT batch
+// TestCHN_PutBatchUpsertAndGet pins acceptance §2.1+§2.4 — PUT batch
 // upsert, GET returns the rows ordered by position ASC.
-func TestCHN32_PutBatchUpsertAndGet(t *testing.T) {
+func TestCHN_PutBatchUpsertAndGet(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -140,10 +140,10 @@ func TestCHN32_PutBatchUpsertAndGet(t *testing.T) {
 	}
 }
 
-// TestCHN32_DMReject pins 立场 ④ + content-lock 反约束 — DM channel
+// TestCHN_DMReject pins 立场 ④ + content-lock 反约束 — DM channel
 // PUT → 400 with code `layout.dm_not_grouped` byte-identical (5 源
 // #357/#353/#366/#402 同源).
-func TestCHN32_DMReject(t *testing.T) {
+func TestCHN_DMReject(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -169,9 +169,9 @@ func TestCHN32_DMReject(t *testing.T) {
 	}
 }
 
-// TestCHN32_NonMemberReject pins acceptance §2.3 — non-member channel
+// TestCHN_NonMemberReject pins acceptance §2.3 — non-member channel
 // PUT → 403 (CHN-1 ACL 同源).
-func TestCHN32_NonMemberReject(t *testing.T) {
+func TestCHN_NonMemberReject(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -190,9 +190,9 @@ func TestCHN32_NonMemberReject(t *testing.T) {
 	}
 }
 
-// TestCHN32_InvalidPayload pins acceptance §2.5 — empty body / malformed
+// TestCHN_InvalidPayload pins acceptance §2.5 — empty body / malformed
 // JSON → 400 with code `layout.invalid_payload`.
-func TestCHN32_InvalidPayload(t *testing.T) {
+func TestCHN_InvalidPayload(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -217,9 +217,9 @@ func TestCHN32_InvalidPayload(t *testing.T) {
 	}
 }
 
-// TestCHN32_AcceptsNegativePosition pins 立场 ③ + ⑥ — server 接受任意
+// TestCHN_AcceptsNegativePosition pins 立场 ③ + ⑥ — server 接受任意
 // REAL position (含负数, client 算 MIN-1.0 pin). server 不 reject 负数.
-func TestCHN32_AcceptsNegativePosition(t *testing.T) {
+func TestCHN_AcceptsNegativePosition(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -237,9 +237,9 @@ func TestCHN32_AcceptsNegativePosition(t *testing.T) {
 	}
 }
 
-// TestCHN32_PerUserIsolation pins 立场 ② — same channel, different
+// TestCHN_PerUserIsolation pins 立场 ② — same channel, different
 // users → independent rows; PK (user_id, channel_id) 复合 enforces.
-func TestCHN32_PerUserIsolation(t *testing.T) {
+func TestCHN_PerUserIsolation(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -287,10 +287,10 @@ func TestCHN32_PerUserIsolation(t *testing.T) {
 	}
 }
 
-// TestCHN32_ToastErrorMsgLockPin pins acceptance §3.5 + content-lock ④
+// TestCHN_ToastErrorMsgLockPin pins acceptance §3.5 + content-lock ④
 // — failure response 文案 byte-identical "侧栏顺序保存失败, 请重试"
 // (5 源 #371 / acceptance §3.5 / #402 ④). 直接 grep 源文件锚字面.
-func TestCHN32_ToastErrorMsgLockPin(t *testing.T) {
+func TestCHN_ToastErrorMsgLockPin(t *testing.T) {
 	t.Parallel()
 	src := mustReadFile(t, "layout.go")
 	if !strings.Contains(src, `"侧栏顺序保存失败, 请重试"`) {
@@ -304,9 +304,9 @@ func TestCHN32_ToastErrorMsgLockPin(t *testing.T) {
 	}
 }
 
-// TestCHN32_AdminAPINotMounted ensures admin-api server doesn't expose
+// TestCHN_AdminAPINotMounted ensures admin-api server doesn't expose
 // /me/layout (立场 ⑤ ADM-0 §1.3 红线 — admin 不读业务数据).
-func TestCHN32_AdminAPINotMounted(t *testing.T) {
+func TestCHN_AdminAPINotMounted(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	// /me/layout is mounted on /api/v1/* user-rail mux. /admin-api/* is

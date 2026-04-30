@@ -17,11 +17,11 @@ func runDL41(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestDL41_CreatesWebPushSubscriptionsTable pins schema 8 列 — id PK +
+// TestDL_CreatesWebPushSubscriptionsTable pins schema 8 列 — id PK +
 // user_id NOT NULL + endpoint NOT NULL UNIQUE + p256dh_key NOT NULL +
 // auth_key NOT NULL + user_agent NOT NULL DEFAULT '' + created_at NOT
 // NULL + last_used_at NULL.
-func TestDL41_CreatesWebPushSubscriptionsTable(t *testing.T) {
+func TestDL_CreatesWebPushSubscriptionsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDL41(t, db)
@@ -50,9 +50,9 @@ func TestDL41_CreatesWebPushSubscriptionsTable(t *testing.T) {
 	}
 }
 
-// TestDL41_EndpointUNIQUE pins blueprint web-push 字面 — 同 endpoint 二次
+// TestDL_EndpointUNIQUE pins blueprint web-push 字面 — 同 endpoint 二次
 // INSERT 必失败 (UNIQUE 严闭防 web-push 库重复加密浪费配额).
-func TestDL41_EndpointUNIQUE(t *testing.T) {
+func TestDL_EndpointUNIQUE(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDL41(t, db)
@@ -74,9 +74,9 @@ func TestDL41_EndpointUNIQUE(t *testing.T) {
 	}
 }
 
-// TestDL41_NoDomainBleed pins blueprint client-shape.md §1.4 隐私 + DL-4
+// TestDL_NoDomainBleed pins blueprint client-shape.md §1.4 隐私 + DL-4
 // spec §2 — secret / device_id / cursor / org_id 等不在此表.
-func TestDL41_NoDomainBleed(t *testing.T) {
+func TestDL_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDL41(t, db)
@@ -111,9 +111,9 @@ func TestDL41_NoDomainBleed(t *testing.T) {
 	}
 }
 
-// TestDL41_HasUserIDIndex pins fan-out 热路径 — server 收
+// TestDL_HasUserIDIndex pins fan-out 热路径 — server 收
 // mention/agent_task_state_changed 派生 → 查 user 全设备 N row.
-func TestDL41_HasUserIDIndex(t *testing.T) {
+func TestDL_HasUserIDIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDL41(t, db)
@@ -126,9 +126,9 @@ func TestDL41_HasUserIDIndex(t *testing.T) {
 	}
 }
 
-// TestDL41_Idempotent pins forward-only stance — second Run() 不报错
+// TestDL_Idempotent pins forward-only stance — second Run() 不报错
 // (IF NOT EXISTS 守).
-func TestDL41_Idempotent(t *testing.T) {
+func TestDL_Idempotent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDL41(t, db)
@@ -140,9 +140,9 @@ func TestDL41_Idempotent(t *testing.T) {
 	}
 }
 
-// TestDL41_VersionIs26 pins migration sequencing — DL-4.1 = v=26,
+// TestDL_VersionIs26 pins migration sequencing — DL-4.1 = v=26,
 // continues from AL-1.4 v=25 (#492 merged).
-func TestDL41_VersionIs26(t *testing.T) {
+func TestDL_VersionIs26(t *testing.T) {
 	t.Parallel()
 	if dl41WebPushSubscriptions.Version != 26 {
 		t.Errorf("dl41WebPushSubscriptions.Version = %d, want 26 (registry sequencing post-#492)",

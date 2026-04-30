@@ -17,7 +17,7 @@ import (
 	"testing"
 )
 
-// TestCV9_ArtifactComment_TriggersMentionDispatch pins 立场 ①: artifact_comment-typed
+// TestCV_ArtifactComment_TriggersMentionDispatch pins 立场 ①: artifact_comment-typed
 // message dispatch path is byte-identical to text-typed — same MentionDispatcher
 // fixture proves the dispatcher itself does not branch on content_type, which
 // is exactly the "0 server production code" stance: the text-path coverage
@@ -27,7 +27,7 @@ import (
 // content_type — search internal/api/mention_dispatch.go for the function
 // signature. Therefore the same dispatch test with a body containing an
 // artifact-comment-shaped @<uuid> token byte-identical pins both paths.)
-func TestCV9_ArtifactComment_TriggersMentionDispatch(t *testing.T) {
+func TestCV_ArtifactComment_TriggersMentionDispatch(t *testing.T) {
 	t.Parallel()
 	d, _, hub, ids := newDispatchFixture(t, map[string]bool{}, 1_700_000_000_000)
 	d.Presence = &fakePresence{online: map[string]bool{ids.Agent: true}}
@@ -53,7 +53,7 @@ func TestCV9_ArtifactComment_TriggersMentionDispatch(t *testing.T) {
 	}
 }
 
-// TestCV9_AgentMentionThinking_StillReject pins 立场 ③: agent body 同时
+// TestCV_AgentMentionThinking_StillReject pins 立场 ③: agent body 同时
 // 含 mention + 5-pattern thinking sentinel 时, server 仍然 reject 400 —
 // mention 在 body 内不豁免 thinking guard. 5-pattern 第 7 处链 byte-identical.
 //
@@ -65,7 +65,7 @@ func TestCV9_ArtifactComment_TriggersMentionDispatch(t *testing.T) {
 // 已在 main 路径上). 这里我们只锁: dispatcher.Validate 不会"豁免" 5-pattern
 // body, 即 dispatcher 对 thinking-violating body 的处理跟普通 body 等价
 // (validate 仍只看 channel membership). thinking guard 是 handler 层独立 gate.
-func TestCV9_AgentMentionThinking_StillReject(t *testing.T) {
+func TestCV_AgentMentionThinking_StillReject(t *testing.T) {
 	t.Parallel()
 	d, _, _, ids := newDispatchFixture(t, map[string]bool{}, 1_700_000_000_000)
 

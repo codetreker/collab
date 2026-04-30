@@ -18,9 +18,9 @@ import (
 	"borgee-server/internal/api"
 )
 
-// TestCV4V2_ListIterations_LimitClamp — acceptance §1.1 立场 ①
+// TestCV_ListIterations_LimitClamp — acceptance §1.1 立场 ①
 // limit query default/clamp matrix: 0 / -1 / 999 / 100 / "" → 50/50/200/100/50.
-func TestCV4V2_ListIterations_LimitClamp(t *testing.T) {
+func TestCV_ListIterations_LimitClamp(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		raw  string
@@ -95,9 +95,9 @@ func TestCV4V2_NoSchemaChange(t *testing.T) {
 	}
 }
 
-// TestCV4V2_AdminGodModeNotMounted — acceptance §1.3 立场 ③+§4 ADM-0
+// TestCV_AdminGodModeNotMounted — acceptance §1.3 立场 ③+§4 ADM-0
 // red-line. admin*.go must not reference iteration list endpoint.
-func TestCV4V2_AdminGodModeNotMounted(t *testing.T) {
+func TestCV_AdminGodModeNotMounted(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"admin.*iterations",

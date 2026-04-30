@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestCM40_CreatesAgentInvitationsTable(t *testing.T) {
+func TestCM_CreatesAgentInvitationsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 
@@ -45,7 +45,7 @@ func TestCM40_CreatesAgentInvitationsTable(t *testing.T) {
 	}
 }
 
-func TestCM40_CreatesIndexes(t *testing.T) {
+func TestCM_CreatesIndexes(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 
@@ -75,7 +75,7 @@ func TestCM40_CreatesIndexes(t *testing.T) {
 	}
 }
 
-func TestCM40_CheckConstraintRejectsBadState(t *testing.T) {
+func TestCM_CheckConstraintRejectsBadState(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 
@@ -106,7 +106,7 @@ func TestCM40_CheckConstraintRejectsBadState(t *testing.T) {
 	}
 }
 
-func TestCM40_DefaultsStateToPending(t *testing.T) {
+func TestCM_DefaultsStateToPending(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 

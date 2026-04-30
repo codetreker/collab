@@ -23,7 +23,7 @@ func runCV2V2(t *testing.T, db *gorm.DB) {
 // REG-CV2V2-001a (acceptance §1.1) — kind enum CHECK accepts the full
 // 5-tuple after v=28: markdown / code / image_link (CV-3.1 既有) +
 // video_link / pdf_link (CV-2 v2 新).
-func TestCV2V2_AcceptsAllFiveKinds(t *testing.T) {
+func TestCV_AcceptsAllFiveKinds(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
@@ -43,7 +43,7 @@ func TestCV2V2_AcceptsAllFiveKinds(t *testing.T) {
 // REG-CV2V2-001b (spec §0 立场 ③ + acceptance §1.5) — CHECK still rejects
 // kanban / mindmap / doc / video / pdf (bare 'pdf' / 'video' 没有 _link
 // 后缀, 跟蓝图 §1.4 命名 "video_link"/"pdf_link" byte-identical).
-func TestCV2V2_RejectsForbiddenKinds(t *testing.T) {
+func TestCV_RejectsForbiddenKinds(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
@@ -62,7 +62,7 @@ func TestCV2V2_RejectsForbiddenKinds(t *testing.T) {
 }
 
 // REG-CV2V2-001c — preview_url column added, defaults NULL, accepts TEXT.
-func TestCV2V2_PreviewURLColumn(t *testing.T) {
+func TestCV_PreviewURLColumn(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV2V2(t, db)
@@ -94,7 +94,7 @@ func TestCV2V2_PreviewURLColumn(t *testing.T) {
 
 // REG-CV2V2-001d (spec §3 反约束) — old rows preserved verbatim across
 // the table-recreate copy. preview_url=NULL on copy (no thumbnail backfill).
-func TestCV2V2_PreservesExistingRows(t *testing.T) {
+func TestCV_PreservesExistingRows(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	e := New(db)

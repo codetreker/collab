@@ -20,13 +20,13 @@ func runAL2A1(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestAL2A1_CreatesAgentConfigsTable pins acceptance §数据契约 row 1: the
+// TestAL_CreatesAgentConfigsTable pins acceptance §数据契约 row 1: the
 // table has the contract columns (agent_id PK / schema_version int / blob
 // JSON / updated_at) with the right NOT NULL shape. Drift here breaks
 // AL-2a.2 PATCH /api/v1/agents/:id/config or 4.1.a 并发 update schema_
 // version 严格递增 implementation. 跟 CHN-3.1 #410
 // TestCHN31_CreatesUserChannelLayoutTable 同模式.
-func TestAL2A1_CreatesAgentConfigsTable(t *testing.T) {
+func TestAL_CreatesAgentConfigsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
@@ -94,10 +94,10 @@ func TestAL2A1_NoDomainBleed(t *testing.T) {
 	}
 }
 
-// TestAL2A1_PKEnforcesSingleRowPerAgent pins acceptance §数据契约 row 1 +
+// TestAL_PKEnforcesSingleRowPerAgent pins acceptance §数据契约 row 1 +
 // SSOT 立场 — duplicate agent_id INSERT must reject (single row per agent,
 // blob 整体替换 PATCH 语义).
-func TestAL2A1_PKEnforcesSingleRowPerAgent(t *testing.T) {
+func TestAL_PKEnforcesSingleRowPerAgent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)
@@ -122,11 +122,11 @@ func TestAL2A1_PKEnforcesSingleRowPerAgent(t *testing.T) {
 	}
 }
 
-// TestAL2A1_AcceptsMonotonicSchemaVersion pins acceptance §行为不变量
+// TestAL_AcceptsMonotonicSchemaVersion pins acceptance §行为不变量
 // 4.1.a — schema_version 单调递增. INSERT 不同 version 值; schema 不挂
 // CHECK constraint (留 server 校验 server-stamp 递增, 跟 CHN-3.1 position
 // REAL 同模式 — schema 受值, server 算).
-func TestAL2A1_AcceptsMonotonicSchemaVersion(t *testing.T) {
+func TestAL_AcceptsMonotonicSchemaVersion(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL2A1(t, db)

@@ -2,13 +2,13 @@
 // indicator member-only GET + 反约束守门.
 //
 // Pins:
-//   REG-RT4-001 TestRT41_NoSchemaChange
-//   REG-RT4-002 TestRT42_GetPresence_MemberHappyPath + _NonMemberRejected
+//   REG-RT4-001 TestRT_NoSchemaChange
+//   REG-RT4-002 TestRT_GetPresence_MemberHappyPath + _NonMemberRejected
 //                + _Unauthorized401
-//   REG-RT4-003 TestRT41_TypingPathByteIdentical (反向 grep rt_4 在
+//   REG-RT4-003 TestRT_TypingPathByteIdentical (反向 grep rt_4 在
 //               ws/client.go::handleTyping block 0 hit)
-//   REG-RT4-004 TestRT43_NoAdminPresencePath
-//   REG-RT4-005 TestRT43_NoPresenceQueue
+//   REG-RT4-004 TestRT_NoAdminPresencePath
+//   REG-RT4-005 TestRT_NoPresenceQueue
 package api_test
 
 import (
@@ -24,7 +24,7 @@ import (
 )
 
 // REG-RT4-001 — 0 schema 改.
-func TestRT41_NoSchemaChange(t *testing.T) {
+func TestRT_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	entries, err := os.ReadDir(dir)
@@ -40,7 +40,7 @@ func TestRT41_NoSchemaChange(t *testing.T) {
 
 // REG-RT4-003 — 既有 RT-2 typing WS path byte-identical — ws/client.go
 // `case "typing":` block 不漂入 rt_4 字面.
-func TestRT41_TypingPathByteIdentical(t *testing.T) {
+func TestRT_TypingPathByteIdentical(t *testing.T) {
 	t.Parallel()
 	body, err := os.ReadFile(filepath.Join("..", "ws", "client.go"))
 	if err != nil {
@@ -92,7 +92,7 @@ func setupRT4(t *testing.T) (string, string, string, string, *store.Store) {
 }
 
 // REG-RT4-002a — member HappyPath GET /presence → 200 + shape.
-func TestRT42_GetPresence_MemberHappyPath(t *testing.T) {
+func TestRT_GetPresence_MemberHappyPath(t *testing.T) {
 	t.Parallel()
 	url, ownerToken, _, channelID, _ := setupRT4(t)
 
@@ -112,7 +112,7 @@ func TestRT42_GetPresence_MemberHappyPath(t *testing.T) {
 }
 
 // REG-RT4-002b — non-member 403.
-func TestRT42_GetPresence_NonMemberRejected(t *testing.T) {
+func TestRT_GetPresence_NonMemberRejected(t *testing.T) {
 	t.Parallel()
 	url, ownerToken, _, _, s := setupRT4(t)
 	// Create a second channel where the calling user is NOT a member.
@@ -133,7 +133,7 @@ func TestRT42_GetPresence_NonMemberRejected(t *testing.T) {
 }
 
 // REG-RT4-002c — 401 unauthorized.
-func TestRT42_GetPresence_Unauthorized401(t *testing.T) {
+func TestRT_GetPresence_Unauthorized401(t *testing.T) {
 	t.Parallel()
 	url, _, _, channelID, _ := setupRT4(t)
 	resp, _ := testutil.JSON(t, http.MethodGet,
@@ -144,7 +144,7 @@ func TestRT42_GetPresence_Unauthorized401(t *testing.T) {
 }
 
 // REG-RT4-004 — admin god-mode 不挂 PATCH/POST/PUT/DELETE 在 admin-api/v1/.../presence.
-func TestRT43_NoAdminPresencePath(t *testing.T) {
+func TestRT_NoAdminPresencePath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT|GET)[^"]*admin-api/v[0-9]+/[^"]*presence`)
@@ -167,7 +167,7 @@ func TestRT43_NoAdminPresencePath(t *testing.T) {
 }
 
 // REG-RT4-005 — AST 锁链延伸第 18 处 forbidden 3 token.
-func TestRT43_NoPresenceQueue(t *testing.T) {
+func TestRT_NoPresenceQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingPresenceQuery",
@@ -194,7 +194,7 @@ func TestRT43_NoPresenceQueue(t *testing.T) {
 
 // REG-RT4-005b — 0 新 WS frame (反向 grep `presence_changed | presenceChanged
 // | user_online_pushed` 在 internal/ws + internal/api 0 hit).
-func TestRT43_NoNewPresenceFrame(t *testing.T) {
+func TestRT_NoNewPresenceFrame(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"presence_changed",

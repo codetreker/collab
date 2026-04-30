@@ -51,11 +51,11 @@ func cv42Setup(t *testing.T) (url string, ownerTok string, s *store.Store, chID 
 	return
 }
 
-// TestCV42_IterateOwnerOnly pins acceptance §2.1: only the channel owner
+// TestCV_IterateOwnerOnly pins acceptance §2.1: only the channel owner
 // (channel.created_by) may POST /iterate. Non-owner = 403 — admin
 // god-mode does not enter this rail (ADM-0 §1.3, anchors / artifacts 同
 // rail 隔离).
-func TestCV42_IterateOwnerOnly(t *testing.T) {
+func TestCV_IterateOwnerOnly(t *testing.T) {
 	t.Parallel()
 	url, _, s, chID, artID, agentID := cv42Setup(t)
 
@@ -82,11 +82,11 @@ func TestCV42_IterateOwnerOnly(t *testing.T) {
 	}
 }
 
-// TestCV42_AL4StubFailClosed_RuntimeNotRegistered pins acceptance §2.5:
+// TestCV_AL4StubFailClosed_RuntimeNotRegistered pins acceptance §2.5:
 // when no agent_runtimes row with status='running' exists, iteration
 // transitions pending→failed atomically with error_reason byte-identical
 // 'runtime_not_registered' (AL-1a #249 6 reason 同源 不另起字典).
-func TestCV42_AL4StubFailClosed_RuntimeNotRegistered(t *testing.T) {
+func TestCV_AL4StubFailClosed_RuntimeNotRegistered(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, artID, agentID := cv42Setup(t)
 
@@ -106,13 +106,13 @@ func TestCV42_AL4StubFailClosed_RuntimeNotRegistered(t *testing.T) {
 	}
 }
 
-// TestCV42_AL4Live_StateRunning pins acceptance §2.5 second branch: when
+// TestCV_AL4Live_StateRunning pins acceptance §2.5 second branch: when
 // agent_runtimes row exists with status='running', AL-4 stub treats this
 // as "live" and persists state='running' (real plugin dispatch lands
 // when AL-4 runtime hub plugin path is wired — out of scope CV-4.2,
 // the seam is here so AL-4 follow-up does NOT need to re-thread the
 // switch).
-func TestCV42_AL4Live_StateRunning(t *testing.T) {
+func TestCV_AL4Live_StateRunning(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, _, artID, agentID := cv42Setup(t)
 	// Seed agent_runtimes with status='running'.
@@ -135,10 +135,10 @@ func TestCV42_AL4Live_StateRunning(t *testing.T) {
 	}
 }
 
-// TestCV42_TargetAgentMustBeChannelMember pins acceptance §2.1 反断:
+// TestCV_TargetAgentMustBeChannelMember pins acceptance §2.1 反断:
 // target_agent_id 不是 channel member → 400 byte-identical error code
 // 'iteration.target_not_in_channel'.
-func TestCV42_TargetAgentMustBeChannelMember(t *testing.T) {
+func TestCV_TargetAgentMustBeChannelMember(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, _, artID, _ := cv42Setup(t)
 
@@ -163,11 +163,11 @@ func TestCV42_TargetAgentMustBeChannelMember(t *testing.T) {
 	}
 }
 
-// TestCV42_CommitWithIterationIDAtomicUpdate pins acceptance §2.2 (CV-1
+// TestCV_CommitWithIterationIDAtomicUpdate pins acceptance §2.2 (CV-1
 // commit 单源): POST /commits?iteration_id= transitions
 // running→completed atomically + writes created_artifact_version_id.
 // 反约束: 不开 /iterations/:id/commit 旁路 (verified by CI grep §4.1).
-func TestCV42_CommitWithIterationIDAtomicUpdate(t *testing.T) {
+func TestCV_CommitWithIterationIDAtomicUpdate(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, _, artID, agentID := cv42Setup(t)
 	// Seed running runtime so iterate produces state=running.
@@ -222,13 +222,13 @@ FROM artifact_iterations WHERE id = ?`, iterationID).Scan(&row).Error; err != ni
 	}
 }
 
-// TestCV42_StateMachine_RejectsCommitOnFailedIteration pins acceptance
+// TestCV_StateMachine_RejectsCommitOnFailedIteration pins acceptance
 // §2.3 反断: state machine forward-only — committing with an
 // iteration_id whose state is 'failed' (or any state != 'running') →
 // 409 conflict. 反约束: completed→running / failed→pending 等回退绝对
 // reject (CompleteIterationOnCommit 的 WHERE state='running' clause 是
 // 唯一闸位).
-func TestCV42_StateMachine_RejectsCommitOnFailedIteration(t *testing.T) {
+func TestCV_StateMachine_RejectsCommitOnFailedIteration(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, artID, agentID := cv42Setup(t)
 	// No runtime seeded → iterate fails immediately (state='failed').
@@ -253,11 +253,11 @@ func TestCV42_StateMachine_RejectsCommitOnFailedIteration(t *testing.T) {
 	}
 }
 
-// TestCV42_CommitWithoutIterationID_LegacyPathUnchanged pins acceptance
+// TestCV_CommitWithoutIterationID_LegacyPathUnchanged pins acceptance
 // §2.2 反断: when ?iteration_id= absent, commit follows CV-1.2 legacy
 // behaviour exactly (反约束 旧路径不破). No iteration row is created or
 // touched. 跟 cv_1_2_artifacts_test.go::TestCV12_CommitArtifact 同模式.
-func TestCV42_CommitWithoutIterationID_LegacyPathUnchanged(t *testing.T) {
+func TestCV_CommitWithoutIterationID_LegacyPathUnchanged(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, _, artID, _ := cv42Setup(t)
 	resp, _ := testutil.JSON(t, "POST",
@@ -279,11 +279,11 @@ func TestCV42_CommitWithoutIterationID_LegacyPathUnchanged(t *testing.T) {
 	}
 }
 
-// TestCV42_ListIterationsHistory pins GET history shape (ORDER BY
+// TestCV_ListIterationsHistory pins GET history shape (ORDER BY
 // created_at DESC + intent_text 含 — channel-member rail; admin path
 // 不入 acceptance §2.7 反断 是 admin*.go 责任, 此 endpoint 在
 // channel-member rail intent_text 必须返).
-func TestCV42_ListIterationsHistory(t *testing.T) {
+func TestCV_ListIterationsHistory(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, artID, agentID := cv42Setup(t)
 	for i := 0; i < 2; i++ {
@@ -307,11 +307,11 @@ func TestCV42_ListIterationsHistory(t *testing.T) {
 	}
 }
 
-// TestCV42_Iterate_ErrorPaths covers the 400/401/403/404 negative branches
+// TestCV_Iterate_ErrorPaths covers the 400/401/403/404 negative branches
 // of POST /iterate so coverage stays above 85% threshold (CI ci.yml:55).
 // Each branch is independently asserted — handler short-circuits before
 // the AL-4 stub fork, so a single setup suffices.
-func TestCV42_Iterate_ErrorPaths(t *testing.T) {
+func TestCV_Iterate_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, _, artID, agentID := cv42Setup(t)
 
@@ -373,9 +373,9 @@ func TestCV42_Iterate_ErrorPaths(t *testing.T) {
 	}
 }
 
-// TestCV42_ListIterations_NotFoundOrCrossChannel covers the 401/404 branches
+// TestCV_ListIterations_NotFoundOrCrossChannel covers the 401/404 branches
 // of GET /iterations (anonymous + artifact not found).
-func TestCV42_ListIterations_NotFoundOrCrossChannel(t *testing.T) {
+func TestCV_ListIterations_NotFoundOrCrossChannel(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _ := cv42Setup(t)
 
@@ -396,12 +396,12 @@ func TestCV42_ListIterations_NotFoundOrCrossChannel(t *testing.T) {
 	}
 }
 
-// TestCV42_Iterate_NonOwner_403 — 立场 ⑥ owner-only (acceptance §2.1) — a
+// TestCV_Iterate_NonOwner_403 — 立场 ⑥ owner-only (acceptance §2.1) — a
 // channel member who is not the owner gets 403 (handler runs after
-// canAccessChannel passes). Different from TestCV42_IterateOwnerOnly which
+// canAccessChannel passes). Different from TestCV_IterateOwnerOnly which
 // covers the *non-owner channel-member* 403 path; this extra case exercises
 // the full owner-check branch with explicit channel-member precondition.
-func TestCV42_Iterate_NonOwner_403(t *testing.T) {
+func TestCV_Iterate_NonOwner_403(t *testing.T) {
 	t.Parallel()
 	url, _, s, chID, artID, agentID := cv42Setup(t)
 	// Add second human channel member (non-owner).
@@ -424,11 +424,11 @@ func TestCV42_Iterate_NonOwner_403(t *testing.T) {
 	}
 }
 
-// TestCV42_CommitWithIterationID_NotFound exercises the
+// TestCV_CommitWithIterationID_NotFound exercises the
 // CompleteIterationOnCommit reject path when iteration_id references a
 // non-existent row (or wrong artifact). The atomic UPDATE WHERE clause
 // finds no row → state machine reject → 409.
-func TestCV42_CommitWithIterationID_NotFound(t *testing.T) {
+func TestCV_CommitWithIterationID_NotFound(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, artID, _ := cv42Setup(t)
 	resp, _ := testutil.JSON(t, "POST",
@@ -442,9 +442,9 @@ func TestCV42_CommitWithIterationID_NotFound(t *testing.T) {
 	}
 }
 
-// TestCV42_IsIterationStateMachineReject — direct unit test for the
+// TestCV_IsIterationStateMachineReject — direct unit test for the
 // errors.Is sentinel helper (acceptance §2.3 同源).
-func TestCV42_IsIterationStateMachineReject(t *testing.T) {
+func TestCV_IsIterationStateMachineReject(t *testing.T) {
 	t.Parallel()
 	if api.IsIterationStateMachineReject(nil) {
 		t.Error("nil should not match reject sentinel")
@@ -456,10 +456,10 @@ func TestCV42_IsIterationStateMachineReject(t *testing.T) {
 	}
 }
 
-// TestCV42_ListAnchorComments_Coverage covers the new handleListComments
+// TestCV_ListAnchorComments_Coverage covers the new handleListComments
 // endpoint introduced via merge-from-main. Boosts coverage past 85%
 // threshold without breaking CV-2.2 invariants.
-func TestCV42_ListAnchorComments_Coverage(t *testing.T) {
+func TestCV_ListAnchorComments_Coverage(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, artID, _ := cv42Setup(t)
 
@@ -499,9 +499,9 @@ func TestCV42_ListAnchorComments_Coverage(t *testing.T) {
 // TestCV42_HandleListIterations_PathValueEmpty covers the canAccessChannel
 // false branch of handleListIterations — outsider with no channel access
 // gets 404 (404 not 403 to not leak existence per立场 ⑦ defense). This
-// exercises a branch the happy-path test in TestCV42_ListIterationsHistory
+// exercises a branch the happy-path test in TestCV_ListIterationsHistory
 // doesn't reach.
-func TestCV42_HandleListIterations_NonMember404(t *testing.T) {
+func TestCV_HandleListIterations_NonMember404(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, artID, _ := cv42Setup(t)
 	// Iterate once so the artifact has history.

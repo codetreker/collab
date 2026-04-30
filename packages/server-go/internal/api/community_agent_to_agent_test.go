@@ -69,10 +69,10 @@ func cm52SetupTwoAgents(t *testing.T) (url, ownerTok, agentATok, agentBTok strin
 	return
 }
 
-// TestCM52_AgentMessagesViaHumanPath pins acceptance §2.1 立场 ① + ④ —
+// TestCM_AgentMessagesViaHumanPath pins acceptance §2.1 立场 ① + ④ —
 // agent A POST /messages 走人协作 path (POST /api/v1/channels/:id/messages).
 // 反约束: 不开 agent-only endpoint, 走人 path 同 endpoint 同源.
-func TestCM52_AgentMessagesViaHumanPath(t *testing.T) {
+func TestCM_AgentMessagesViaHumanPath(t *testing.T) {
 	t.Parallel()
 	url, _, agentATok, _, _, chID, _, _, agentBID := cm52SetupTwoAgents(t)
 
@@ -90,7 +90,7 @@ func TestCM52_AgentMessagesViaHumanPath(t *testing.T) {
 	// (反约束 grep 守见 cm5stance.TestCM51_NoBypassEndpoint.)
 }
 
-// TestCM52_AgentToAgentMentionViaDM2Router pins acceptance §2.1 立场 ④ —
+// TestCM_AgentToAgentMentionViaDM2Router pins acceptance §2.1 立场 ④ —
 // agent A → @agent B mention 走 DM-2.2 既有 mention parser + dispatcher
 // (走人协作 path 同 path). MentionPushedFrame 8 字段 byte-identical 跟
 // ArtifactUpdated 7 / AnchorCommentAdded 10 / IterationStateChanged 9
@@ -98,7 +98,7 @@ func TestCM52_AgentMessagesViaHumanPath(t *testing.T) {
 //
 // 反约束: 立场 ④ 不开 'agent_to_agent_mention' 专属 frame (反约束 grep 守
 // 见 cm5stance.TestCM51_NoBypassTable).
-func TestCM52_AgentToAgentMentionViaDM2Router(t *testing.T) {
+func TestCM_AgentToAgentMentionViaDM2Router(t *testing.T) {
 	t.Parallel()
 	url, _, agentATok, _, s, chID, _, _, agentBID := cm52SetupTwoAgents(t)
 
@@ -127,7 +127,7 @@ func TestCM52_AgentToAgentMentionViaDM2Router(t *testing.T) {
 	}
 }
 
-// TestCM52_X2ConflictReusesCV1Lock pins acceptance §2.2 立场 ③ — 同
+// TestCM_X2ConflictReusesCV1Lock pins acceptance §2.2 立场 ③ — 同
 // artifact 被两 agent (走 user.id 同 path) 在 30s lock 窗内同时 commit → 第二
 // 写者 409 (CV-1.2 single-doc lock + version mismatch 双重 gate 复用, 不引
 // 入新锁机制). 立场字面: X2 冲突走 CV-1.2 既有 30s lock 路径, 不开 CM-5
@@ -139,7 +139,7 @@ func TestCM52_AgentToAgentMentionViaDM2Router(t *testing.T) {
 // 真触发 agent↔agent X2 冲突 (跟 owner-only commit ACL 边界: CV-1.2 commit
 // 是 channel member-allowed, agent 同 channel 走人 path. 若 commit ACL
 // 限 owner-only, fallback 用 owner + agent 触发 user-level lock 路径同源).
-func TestCM52_X2ConflictReusesCV1Lock(t *testing.T) {
+func TestCM_X2ConflictReusesCV1Lock(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, agentATok, _, _, _, artID, _, _ := cm52SetupTwoAgents(t)
 
@@ -172,7 +172,7 @@ func TestCM52_X2ConflictReusesCV1Lock(t *testing.T) {
 	}
 }
 
-// TestCM52_X2ConcurrentCommitOneWins pins acceptance §2.2 立场 ③ — 真
+// TestCM_X2ConcurrentCommitOneWins pins acceptance §2.2 立场 ③ — 真
 // 并发场景: N goroutines POST /commits 同 artifact 同 expected_version,
 // 仅 1 写者成功 (200 OK + version bump), 其余全 409 (CV-1.2 lock + tx
 // re-check 双重 gate 复用, 立场字面). 验 CM-5 立场: 不引入新机制, 走
@@ -183,9 +183,9 @@ func TestCM52_X2ConflictReusesCV1Lock(t *testing.T) {
 // (per-user holder), 同 user 多并发不触发 cross-user lock — 但 tx 内
 // `UPDATE WHERE current_version=N` 严格 gate 仍保证仅 1 胜. 立场 ③ 关键
 // 验证: 不引入新机制, 走既有 path; 跨 agent X2 真路径靠 lock + tx 双重
-// gate 复用 (TestCM52_X2ConflictReusesCV1Lock 上方 agent token + ACL gate
+// gate 复用 (TestCM_X2ConflictReusesCV1Lock 上方 agent token + ACL gate
 // 同源测).
-func TestCM52_X2ConcurrentCommitOneWins(t *testing.T) {
+func TestCM_X2ConcurrentCommitOneWins(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, _, _, artID, _, _ := cm52SetupTwoAgents(t)
 
@@ -230,7 +230,7 @@ func TestCM52_X2ConcurrentCommitOneWins(t *testing.T) {
 	// 见 cm5stance.TestCM51_X2ConflictLiteralReuse).
 }
 
-// TestCM52_OwnerVisibilityIterateChain pins acceptance §2.3 立场 ⑤ —
+// TestCM_OwnerVisibilityIterateChain pins acceptance §2.3 立场 ⑤ —
 // owner_A 触发 iterate 链, GET /api/v1/artifacts/:id/iterations 返完整链;
 // channel member 视角 (含 agent B token, 走 user 同 path) 同样可见 (走人
 // 协作 path, owner-first 透明可见, 不裂 owner_visibility scope 不引
@@ -243,7 +243,7 @@ func TestCM52_X2ConcurrentCommitOneWins(t *testing.T) {
 // Cross-member 验证: agent B (channel member, 不同 user.id) 也 GET 同
 // 路径返同 chain — 立场 ⑤ 透明协作 owner-first 实证. 反约束: 不裂
 // visibility scope, response 不挂 ai_only/visibility_scope 隐藏字段.
-func TestCM52_OwnerVisibilityIterateChain(t *testing.T) {
+func TestCM_OwnerVisibilityIterateChain(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentBTok, _, _, artID, _, agentAID := cm52SetupTwoAgents(t)
 

@@ -3,11 +3,11 @@
 //
 // Pins:
 //   REG-HB6-001 TestHB61_NoSchemaChange + WindowSecondsByteIdentical
-//   REG-HB6-002 TestHB61_AggregateLag_PercentileCorrect
-//   REG-HB6-003 TestHB61_WindowCutoffExcludesStale
-//   REG-HB6-004 TestHB62_AdminHappyPath + _NonAdmin401 + _NoUserRailPath
-//   REG-HB6-005 TestHB62_AtRiskReasonByteIdentical
-//   REG-HB6-006 TestHB63_NoAdminWritePath + _NoLagSampleQueue (AST scan)
+//   REG-HB6-002 TestHB_AggregateLag_PercentileCorrect
+//   REG-HB6-003 TestHB_WindowCutoffExcludesStale
+//   REG-HB6-004 TestHB_AdminHappyPath + _NonAdmin401 + _NoUserRailPath
+//   REG-HB6-005 TestHB_AtRiskReasonByteIdentical
+//   REG-HB6-006 TestHB_NoAdminWritePath + _NoLagSampleQueue (AST scan)
 package api_test
 
 import (
@@ -42,7 +42,7 @@ func TestHB61_NoSchemaChange(t *testing.T) {
 }
 
 // REG-HB6-001b — WindowSeconds byte-identical 跟 BPP-4 BPP_HEARTBEAT_TIMEOUT_SECONDS.
-func TestHB61_WindowSecondsByteIdentical(t *testing.T) {
+func TestHB_WindowSecondsByteIdentical(t *testing.T) {
 	t.Parallel()
 	if api.WindowSeconds != 30 {
 		t.Errorf("WindowSeconds: got %d, want 30 (跟 BPP-4 BPP_HEARTBEAT_TIMEOUT_SECONDS 同源)", api.WindowSeconds)
@@ -58,7 +58,7 @@ func TestHB61_WindowSecondsByteIdentical(t *testing.T) {
 }
 
 // REG-HB6-002 — AggregateLag percentile correctness (5-sample HappyPath).
-func TestHB61_AggregateLag_PercentileCorrect(t *testing.T) {
+func TestHB_AggregateLag_PercentileCorrect(t *testing.T) {
 	t.Parallel()
 	// 5 samples 1k/5k/10k/15k/30k ms — P50≈10k, P95 ≈ 30k (top), count=5.
 	lags := []int64{1000, 5000, 10000, 15000, 30000}
@@ -82,7 +82,7 @@ func TestHB61_AggregateLag_PercentileCorrect(t *testing.T) {
 }
 
 // REG-HB6-002b — empty samples → count=0, no at_risk.
-func TestHB61_AggregateLag_EmptyNoRisk(t *testing.T) {
+func TestHB_AggregateLag_EmptyNoRisk(t *testing.T) {
 	t.Parallel()
 	snap := api.AggregateLag(nil, 1700000000000)
 	if snap.Count != 0 {
@@ -103,7 +103,7 @@ func TestHB61_AggregateLag_EmptyNoRisk(t *testing.T) {
 }
 
 // REG-HB6-002c — single-sample percentile edge case (covers len==1 branch).
-func TestHB61_AggregateLag_SingleSample(t *testing.T) {
+func TestHB_AggregateLag_SingleSample(t *testing.T) {
 	t.Parallel()
 	snap := api.AggregateLag([]int64{5000}, 1700000000000)
 	if snap.Count != 1 {
@@ -120,7 +120,7 @@ func TestHB61_AggregateLag_SingleSample(t *testing.T) {
 
 // REG-HB6-002d — empty store → SampleLagFromStore returns empty + handleGet
 // shape correct (covers handleGet HappyPath through AggregateLag path).
-func TestHB62_GetPresence_EmptyStore(t *testing.T) {
+func TestHB_GetPresence_EmptyStore(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -138,7 +138,7 @@ func TestHB62_GetPresence_EmptyStore(t *testing.T) {
 }
 
 // REG-HB6-003 — window cutoff excludes stale (>30s) samples + status≠running.
-func TestHB61_WindowCutoffExcludesStale(t *testing.T) {
+func TestHB_WindowCutoffExcludesStale(t *testing.T) {
 	t.Parallel()
 	_, s, _ := testutil.NewTestServer(t)
 	nowMs := int64(1700000000000)
@@ -168,7 +168,7 @@ func TestHB61_WindowCutoffExcludesStale(t *testing.T) {
 }
 
 // REG-HB6-004 — admin GET happy path returns LagSnapshot JSON.
-func TestHB62_AdminHappyPath(t *testing.T) {
+func TestHB_AdminHappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -193,7 +193,7 @@ func TestHB62_AdminHappyPath(t *testing.T) {
 }
 
 // REG-HB6-004b — non-admin (no admin cookie) → 401.
-func TestHB62_NonAdmin401(t *testing.T) {
+func TestHB_NonAdmin401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, http.MethodGet,
@@ -204,7 +204,7 @@ func TestHB62_NonAdmin401(t *testing.T) {
 }
 
 // REG-HB6-004c — user-rail /api/v1/heartbeat-lag NOT mounted (404).
-func TestHB62_NoUserRailPath(t *testing.T) {
+func TestHB_NoUserRailPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	userToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -217,7 +217,7 @@ func TestHB62_NoUserRailPath(t *testing.T) {
 
 // REG-HB6-005 — at-risk reason 字面 byte-identical via end-to-end (seed
 // agent_runtimes 让 P95 > LagThresholdMs, 验证 reason='network_unreachable').
-func TestHB62_AtRiskReasonByteIdentical(t *testing.T) {
+func TestHB_AtRiskReasonByteIdentical(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -249,7 +249,7 @@ func TestHB62_AtRiskReasonByteIdentical(t *testing.T) {
 }
 
 // REG-HB6-006a — admin god-mode 不挂 PATCH/POST/PUT/DELETE 在 admin-api/v1/heartbeat-lag.
-func TestHB63_NoAdminWritePath(t *testing.T) {
+func TestHB_NoAdminWritePath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/heartbeat-lag`)
@@ -272,7 +272,7 @@ func TestHB63_NoAdminWritePath(t *testing.T) {
 }
 
 // REG-HB6-006b — AST 锁链延伸第 16 处 forbidden 3 token.
-func TestHB63_NoLagSampleQueue(t *testing.T) {
+func TestHB_NoLagSampleQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingLagSample",
@@ -298,7 +298,7 @@ func TestHB63_NoLagSampleQueue(t *testing.T) {
 }
 
 // REG-HB6-006c — 0 client UI v1 (反向 grep client/src/).
-func TestHB63_NoClientUIv1(t *testing.T) {
+func TestHB_NoClientUIv1(t *testing.T) {
 	t.Parallel()
 	clientDir := filepath.Join("..", "..", "..", "client", "src")
 	if _, err := os.Stat(clientDir); err != nil {

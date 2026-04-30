@@ -17,13 +17,13 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestRT3_MultiDeviceFanout_AgentTaskStateChanged pins acceptance §1
+// TestRT_MultiDeviceFanout_AgentTaskStateChanged pins acceptance §1
 // 多端 fanout — 一 user 的 2 个 ws session 都收到
 // agent_task_state_changed frame.
 //
 // 跟 TestP1MultiDeviceWebSocket 同 pattern (phone + desktop / 2 ws conn /
 // both subscribe channel / both receive push).
-func TestRT3_MultiDeviceFanout_AgentTaskStateChanged(t *testing.T) {
+func TestRT_MultiDeviceFanout_AgentTaskStateChanged(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

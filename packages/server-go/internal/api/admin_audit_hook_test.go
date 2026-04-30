@@ -18,9 +18,9 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestADM22_ForceDeleteChannel_WritesAuditAndSystemDM pins acceptance
+// TestADM_ForceDeleteChannel_WritesAuditAndSystemDM pins acceptance
 // 4.1.a (audit row written) + 4.1.b (system DM body byte-identical).
-func TestADM22_ForceDeleteChannel_WritesAuditAndSystemDM(t *testing.T) {
+func TestADM_ForceDeleteChannel_WritesAuditAndSystemDM(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -108,9 +108,9 @@ func TestADM22_ForceDeleteChannel_WritesAuditAndSystemDM(t *testing.T) {
 	}
 }
 
-// TestADM22_PatchUserDisabled_WritesSuspendAudit pins 4.1.a — PATCH
+// TestADM_PatchUserDisabled_WritesSuspendAudit pins 4.1.a — PATCH
 // disabled=true wires action=suspend_user.
-func TestADM22_PatchUserDisabled_WritesSuspendAudit(t *testing.T) {
+func TestADM_PatchUserDisabled_WritesSuspendAudit(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -137,9 +137,9 @@ func TestADM22_PatchUserDisabled_WritesSuspendAudit(t *testing.T) {
 	}
 }
 
-// TestADM22_PatchUserPassword_WritesResetPasswordAudit pins 4.1.a — PATCH
+// TestADM_PatchUserPassword_WritesResetPasswordAudit pins 4.1.a — PATCH
 // password change wires action=reset_password.
-func TestADM22_PatchUserPassword_WritesResetPasswordAudit(t *testing.T) {
+func TestADM_PatchUserPassword_WritesResetPasswordAudit(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -183,10 +183,10 @@ func TestADM22_PatchUserPassword_WritesResetPasswordAudit(t *testing.T) {
 	}
 }
 
-// TestADM22_AuditRowMetadataNoBodyContent pins stance §3 cross-milestone
+// TestADM_AuditRowMetadataNoBodyContent pins stance §3 cross-milestone
 // 共享底线 (ADM-0 §1.3 god-mode 仅元数据): 反向断言 audit row metadata JSON
 // 不含 channel content / DM body / artifact 内容 (admin 不读用户内容).
-func TestADM22_AuditRowMetadataNoBodyContent(t *testing.T) {
+func TestADM_AuditRowMetadataNoBodyContent(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)

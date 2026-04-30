@@ -20,11 +20,11 @@ func runCV21(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestCV21_CreatesArtifactAnchorsTable pins acceptance §1 (cv-2.md §1.1):
+// TestCV_CreatesArtifactAnchorsTable pins acceptance §1 (cv-2.md §1.1):
 // artifact_anchors has the contract columns with the right NOT NULL / nullable
 // shape + the end_offset CHECK. Drift here breaks 立场 ② (锚钉死 version) or
 // the range invariant.
-func TestCV21_CreatesArtifactAnchorsTable(t *testing.T) {
+func TestCV_CreatesArtifactAnchorsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
@@ -84,10 +84,10 @@ func TestCV21_CreatesArtifactAnchorsTable(t *testing.T) {
 	}
 }
 
-// TestCV21_RejectsInvalidEndOffsetRange pins range CHECK — end_offset >=
+// TestCV_RejectsInvalidEndOffsetRange pins range CHECK — end_offset >=
 // start_offset. start>end → reject. spec §0 立场 ② anchor_range 字符索引,
 // invalid 范围让 review 跑偏.
-func TestCV21_RejectsInvalidEndOffsetRange(t *testing.T) {
+func TestCV_RejectsInvalidEndOffsetRange(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
@@ -117,12 +117,12 @@ func TestCV21_RejectsInvalidEndOffsetRange(t *testing.T) {
 	}
 }
 
-// TestCV21_CreatesAnchorCommentsTable pins acceptance §1.2 second-table
+// TestCV_CreatesAnchorCommentsTable pins acceptance §1.2 second-table
 // contract: anchor_comments captures author_kind ('agent','human') + PK
 // AUTOINCREMENT (audit 序). 注意命名: anchor 是评论作者用 author_kind, 不
 // 复用 CV-1.1 artifact_versions.committer_kind (commit 提交者) — spec v2
 // 字面锁.
-func TestCV21_CreatesAnchorCommentsTable(t *testing.T) {
+func TestCV_CreatesAnchorCommentsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
@@ -159,10 +159,10 @@ func TestCV21_CreatesAnchorCommentsTable(t *testing.T) {
 	}
 }
 
-// TestCV21_RejectsInvalidAuthorKind pins anchor_comments.author_kind CHECK
+// TestCV_RejectsInvalidAuthorKind pins anchor_comments.author_kind CHECK
 // in ('agent','human'). 立场 ① 反 agent→agent thread 由 server 校验 (至少
 // 一 'human'), 但 schema 层先把 kind enum 锁死, drift 上去 server 也兜不住.
-func TestCV21_RejectsInvalidAuthorKind(t *testing.T) {
+func TestCV_RejectsInvalidAuthorKind(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
@@ -186,13 +186,13 @@ func TestCV21_RejectsInvalidAuthorKind(t *testing.T) {
 	}
 }
 
-// TestCV21_CommentsTablePKMonotonic pins anchor_comments.id PK
+// TestCV_CommentsTablePKMonotonic pins anchor_comments.id PK
 // AUTOINCREMENT — global strictly increasing across all anchors. Same shape
 // as TestCV11_VersionsTablePKMonotonic for artifact_versions, gives audit
 // log + cursor stub a stable backfill order assumption. UNIQUE constraints
 // don't substitute (PK 是 cross-anchor 全局序; UNIQUE 这里没有, 同 anchor
 // 多 comment 合法).
-func TestCV21_CommentsTablePKMonotonic(t *testing.T) {
+func TestCV_CommentsTablePKMonotonic(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)
@@ -256,11 +256,11 @@ func TestCV21_HasIndexes(t *testing.T) {
 	}
 }
 
-// TestCV21_AnchorsAcrossVersionsCoexist pins 立场 ② 锚钉死 version (immutable
+// TestCV_AnchorsAcrossVersionsCoexist pins 立场 ② 锚钉死 version (immutable
 // across artifact 滚动). 同 artifact 不同 version 各自挂锚 row, 互不干扰
 // (artifact_version_id FK 严格不同). 反向断言: 单 anchor 不会被 version 滚动
 // "携带" — schema 层完全分行, 没有任何 update_to_next_version 字段.
-func TestCV21_AnchorsAcrossVersionsCoexist(t *testing.T) {
+func TestCV_AnchorsAcrossVersionsCoexist(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV21(t, db)

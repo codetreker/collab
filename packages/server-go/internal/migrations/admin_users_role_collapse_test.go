@@ -72,7 +72,7 @@ func runADM03(t *testing.T, db *gorm.DB) {
 // 3.A: post-migration users WHERE role='admin' = 0.
 // 3.B: legacy admin lands in admins table (login = email, hash carried).
 // 3.C: orphan user_permissions for the admin user are gone.
-func TestADM03_BackfillAndCollapse(t *testing.T) {
+func TestADM_BackfillAndCollapse(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)
@@ -130,7 +130,7 @@ func TestADM03_Idempotent(t *testing.T) {
 
 // 3.D bis: re-applying when an admins row already exists (env bootstrap path)
 // must not duplicate; ON CONFLICT(login) DO NOTHING is the gate.
-func TestADM03_PreexistingAdminLogin(t *testing.T) {
+func TestADM_PreexistingAdminLogin(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)
@@ -165,7 +165,7 @@ func TestADM03_PreexistingAdminLogin(t *testing.T) {
 
 // hasTable gate must skip cleanly when sessions / admins / user_permissions
 // don't exist in the schema (trimmed migration-test fixtures).
-func TestADM03_TolerantToTrimmedSchema(t *testing.T) {
+func TestADM_TolerantToTrimmedSchema(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	// Only the bare users table — no admins, no user_permissions, no sessions.
@@ -191,7 +191,7 @@ func TestADM03_TolerantToTrimmedSchema(t *testing.T) {
 }
 
 // hasTable gate must also skip when the users table itself is absent.
-func TestADM03_NoUsersTable(t *testing.T) {
+func TestADM_NoUsersTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	// No users table at all.
@@ -200,10 +200,10 @@ func TestADM03_NoUsersTable(t *testing.T) {
 	}
 }
 
-// TestADM03_SessionsTablePresent_DeletesAdminSessions covers the
+// TestADM_SessionsTablePresent_DeletesAdminSessions covers the
 // future-proof sessions branch (the hasTable gate returning true). When
 // a `sessions` table exists, all rows for admin users are swept.
-func TestADM03_SessionsTablePresent_DeletesAdminSessions(t *testing.T) {
+func TestADM_SessionsTablePresent_DeletesAdminSessions(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	schemaForADM03(t, db)

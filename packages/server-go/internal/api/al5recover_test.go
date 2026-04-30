@@ -11,10 +11,10 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestAL5_Recover_Owner_HappyPath pins acceptance §2.1 — owner POST recovers
+// TestAL_Recover_Owner_HappyPath pins acceptance §2.1 — owner POST recovers
 // agent from error → online via AL-1 #492 single-gate helper, returns 200
 // with reason carried forward (REFACTOR-REASONS #496 SSOT 同源).
-func TestAL5_Recover_Owner_HappyPath(t *testing.T) {
+func TestAL_Recover_Owner_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -63,8 +63,8 @@ func TestAL5_Recover_Owner_HappyPath(t *testing.T) {
 	}
 }
 
-// TestAL5_Recover_NonOwnerRejected pins 立场 ② owner-only ACL — non-owner → 403.
-func TestAL5_Recover_NonOwnerRejected(t *testing.T) {
+// TestAL_Recover_NonOwnerRejected pins 立场 ② owner-only ACL — non-owner → 403.
+func TestAL_Recover_NonOwnerRejected(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -86,8 +86,8 @@ func TestAL5_Recover_NonOwnerRejected(t *testing.T) {
 	}
 }
 
-// TestAL5_Recover_Unauthenticated401 pins user-rail auth gate.
-func TestAL5_Recover_Unauthenticated401(t *testing.T) {
+// TestAL_Recover_Unauthenticated401 pins user-rail auth gate.
+func TestAL_Recover_Unauthenticated401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, "POST",
@@ -97,8 +97,8 @@ func TestAL5_Recover_Unauthenticated401(t *testing.T) {
 	}
 }
 
-// TestAL5_Recover_AgentNotFound pins 404 path (跟 AL-1 #492 state-log endpoint 同).
-func TestAL5_Recover_AgentNotFound(t *testing.T) {
+// TestAL_Recover_AgentNotFound pins 404 path (跟 AL-1 #492 state-log endpoint 同).
+func TestAL_Recover_AgentNotFound(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -109,9 +109,9 @@ func TestAL5_Recover_AgentNotFound(t *testing.T) {
 	}
 }
 
-// TestAL5_Recover_NotInErrorStateConflict pins 立场 ② state machine gate —
+// TestAL_Recover_NotInErrorStateConflict pins 立场 ② state machine gate —
 // agent must currently be in `error` state to recover; otherwise 409.
-func TestAL5_Recover_NotInErrorStateConflict(t *testing.T) {
+func TestAL_Recover_NotInErrorStateConflict(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -137,9 +137,9 @@ func TestAL5_Recover_NotInErrorStateConflict(t *testing.T) {
 	}
 }
 
-// TestAL5_Recover_NoStateLogConflict pins behavior — agent without any
+// TestAL_Recover_NoStateLogConflict pins behavior — agent without any
 // state-log history cannot recover (no error to recover from); 409.
-func TestAL5_Recover_NoStateLogConflict(t *testing.T) {
+func TestAL_Recover_NoStateLogConflict(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -159,9 +159,9 @@ func TestAL5_Recover_NoStateLogConflict(t *testing.T) {
 	}
 }
 
-// TestAL5_Recover_AdminAPINotMounted pins ADM-0 §1.3 红线 — admin god-mode
+// TestAL_Recover_AdminAPINotMounted pins ADM-0 §1.3 红线 — admin god-mode
 // 不挂业务 recovery 路径 (跟 AL-2a admin path 同精神).
-func TestAL5_Recover_AdminAPINotMounted(t *testing.T) {
+func TestAL_Recover_AdminAPINotMounted(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminTok := testutil.LoginAsAdmin(t, ts.URL)

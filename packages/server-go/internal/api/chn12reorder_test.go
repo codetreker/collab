@@ -7,10 +7,10 @@
 //   REG-CHN12-001 TestCHN121_NoSchemaChange (filepath.Walk migrations/)
 //   REG-CHN12-002 TestCHN121_NoServerProductionCode (反向 grep `chn_12`
 //                  在 internal/api/*.go 非 _test.go 0 hit)
-//   REG-CHN12-003 TestCHN121_HandlerByteIdentical (handlePutMyLayout block
+//   REG-CHN12-003 TestCHN_HandlerByteIdentical (handlePutMyLayout block
 //                  反向 grep `chn_12` 0 hit)
-//   REG-CHN12-004 TestCHN123_NoReorderQueue (AST 锁链延伸第 20 处)
-//   REG-CHN12-005 TestCHN123_NoAdminLayoutPath
+//   REG-CHN12-004 TestCHN_NoReorderQueue (AST 锁链延伸第 20 处)
+//   REG-CHN12-005 TestCHN_NoAdminLayoutPath
 package api_test
 
 import (
@@ -62,7 +62,7 @@ func TestCHN121_NoServerProductionCode(t *testing.T) {
 // REG-CHN12-003 — 既有 handlePutMyLayout byte-identical (CHN-3.2 #357 path
 // 不变, layout.dm_not_grouped + non-member 403 + 文案锁 layoutSaveErrorMsg
 // 全套不动).
-func TestCHN121_HandlerByteIdentical(t *testing.T) {
+func TestCHN_HandlerByteIdentical(t *testing.T) {
 	t.Parallel()
 	body, err := os.ReadFile(filepath.Join("..", "api", "layout.go"))
 	if err != nil {
@@ -96,7 +96,7 @@ func TestCHN121_HandlerByteIdentical(t *testing.T) {
 }
 
 // REG-CHN12-004 — AST 锁链延伸第 20 处 forbidden 3 token.
-func TestCHN123_NoReorderQueue(t *testing.T) {
+func TestCHN_NoReorderQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingReorder",
@@ -124,7 +124,7 @@ func TestCHN123_NoReorderQueue(t *testing.T) {
 // REG-CHN12-005 — admin god-mode 不挂 PATCH/POST/PUT/DELETE 在 admin-api/
 // v1/.../layout 或 .../reorder (ADM-0 §1.3 红线; reorder 是 per-user
 // preference user-rail 立场 ⑥).
-func TestCHN123_NoAdminLayoutPath(t *testing.T) {
+func TestCHN_NoAdminLayoutPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/[^"]*(layout|reorder)`)

@@ -20,12 +20,12 @@ func runADM21(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestADM21_CreatesAdminActionsTable pins acceptance §数据契约 row 1: the
+// TestADM_CreatesAdminActionsTable pins acceptance §数据契约 row 1: the
 // table has the contract columns with the right NOT NULL shape. Drift here
 // breaks ADM-2.2 GET /api/v1/me/admin-actions or 蓝图 §1.4 红线 1
 // "受影响者必收 system message" implementation. 跟 CV-4.1 #399 +
 // CHN-3.1 #410 同模式.
-func TestADM21_CreatesAdminActionsTable(t *testing.T) {
+func TestADM_CreatesAdminActionsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
@@ -58,10 +58,10 @@ func TestADM21_CreatesAdminActionsTable(t *testing.T) {
 	}
 }
 
-// TestADM21_AcceptsAll5Actions pins acceptance §数据契约 row 2 — DB CHECK
+// TestADM_AcceptsAll5Actions pins acceptance §数据契约 row 2 — DB CHECK
 // 约束 5 个 action 类型枚举字面 byte-identical. 跟 CV-4.1 #405
 // TestCV41_AcceptsAll4States 同模式.
-func TestADM21_AcceptsAll5Actions(t *testing.T) {
+func TestADM_AcceptsAll5Actions(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
@@ -87,10 +87,10 @@ func TestADM21_AcceptsAll5Actions(t *testing.T) {
 	}
 }
 
-// TestADM21_RejectsUnknownAction pins acceptance §数据契约 row 2 反约束 —
+// TestADM_RejectsUnknownAction pins acceptance §数据契约 row 2 反约束 —
 // 同义词 / 大小写漂移 / 字典外值 / 空字符串 全 reject. 跟 CV-4.1 #405
 // TestCV41_RejectsUnknownState 12 反约束值同模式.
-func TestADM21_RejectsUnknownAction(t *testing.T) {
+func TestADM_RejectsUnknownAction(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)
@@ -167,11 +167,11 @@ func TestADM21_NoDomainBleed(t *testing.T) {
 	}
 }
 
-// TestADM21_HasIndexes pins acceptance §数据契约 row 1 索引 + 蓝图 §1.4
+// TestADM_HasIndexes pins acceptance §数据契约 row 1 索引 + 蓝图 §1.4
 // 双热路径 (受影响者 GET /me/admin-actions + admin GET /admin-api/v1/audit-log).
 // 跟 CHN-3.1 #410 TestCHN31_HasUserIDIndex / CV-4.1 #405 TestCV41_HasIndexes
 // 同模式 (双索引显式命名).
-func TestADM21_HasIndexes(t *testing.T) {
+func TestADM_HasIndexes(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runADM21(t, db)

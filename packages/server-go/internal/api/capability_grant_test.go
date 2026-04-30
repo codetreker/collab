@@ -26,7 +26,7 @@ import (
 
 // REG-BPP32-001 (acceptance §1.1) — ValidSemanticOps 7→8 + new const
 // SemanticOpRequestCapabilityGrant byte-identical 跟 spec §1 立场 ①.
-func TestBPP32_ValidSemanticOps_8Ops(t *testing.T) {
+func TestBPP_ValidSemanticOps_8Ops(t *testing.T) {
 	t.Parallel()
 	if got, want := len(bpp.ValidSemanticOps), 8; got != want {
 		t.Errorf("ValidSemanticOps count: got %d, want %d (BPP-2.1 7 + BPP-3.2.1 +1)", got, want)
@@ -42,7 +42,7 @@ func TestBPP32_ValidSemanticOps_8Ops(t *testing.T) {
 
 // REG-BPP32-002 (acceptance §1.2 + §1.3) — handler emits system DM with
 // byte-identical body literal + quick_action JSON shape锁.
-func TestBPP32_RequestGrant_WritesSystemDM(t *testing.T) {
+func TestBPP_RequestGrant_WritesSystemDM(t *testing.T) {
 	_, s, _ := testutil.NewTestServer(t)
 
 	// Seed owner + agent (agent.OwnerID = owner.ID).
@@ -131,7 +131,7 @@ func TestBPP32_RequestGrant_WritesSystemDM(t *testing.T) {
 
 // REG-BPP32-003 (acceptance §1.4) — capability 必 ∈ AP-1 auth.Capabilities,
 // 字典外值 reject + IsCapabilityDisallowed sentinel.
-func TestBPP32_RequestGrant_CapabilityWhitelistGuard(t *testing.T) {
+func TestBPP_RequestGrant_CapabilityWhitelistGuard(t *testing.T) {
 	_, s, _ := testutil.NewTestServer(t)
 	_, agent := bpp32SeedOwnerAndAgent(t, s, "owner-bpp32-2@test.com")
 
@@ -176,7 +176,7 @@ func TestBPP32_RequestGrant_CapabilityWhitelistGuard(t *testing.T) {
 
 // REG-BPP32-004 (acceptance §1.5 反约束 #2) — DM 不开新 channel 类型,
 // 走既有 type='system' channel (CM-onboarding #203). Reverse grep guard.
-func TestBPP32_ReverseGrep_NoNewChannelType(t *testing.T) {
+func TestBPP_ReverseGrep_NoNewChannelType(t *testing.T) {
 	t.Parallel()
 	apiDir := filepath.Join("..", "api")
 	// 反约束 grep: 不出现新 channel type literal (e.g. "permission_dm" /
@@ -207,7 +207,7 @@ func TestBPP32_ReverseGrep_NoNewChannelType(t *testing.T) {
 // REG-BPP32-005 (acceptance §1.5 反约束 #1 + spec §3 反约束 #1) —
 // hardcode capability 字面 hardcode 0 hit (走 auth.<Const>).
 // Equivalent to AP-1 反约束 #1 same source.
-func TestBPP32_ReverseGrep_NoHardcodedGrantCapability(t *testing.T) {
+func TestBPP_ReverseGrep_NoHardcodedGrantCapability(t *testing.T) {
 	t.Parallel()
 	apiDir := filepath.Join("..", "api")
 	bad := regexp.MustCompile(`GrantPermission[^"]*Permission:\s*"[a-z_]+"`)

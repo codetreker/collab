@@ -19,7 +19,7 @@ func runCV61(t *testing.T, db *gorm.DB) {
 }
 
 // REG-CV6-001 (acceptance §1.1) — FTS5 virtual table created.
-func TestCV61_CreatesFTS5VirtualTable(t *testing.T) {
+func TestCV_CreatesFTS5VirtualTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV61(t, db)
@@ -38,7 +38,7 @@ func TestCV61_CreatesFTS5VirtualTable(t *testing.T) {
 }
 
 // REG-CV6-001b — three triggers byte-identical names.
-func TestCV61_HasTriggers(t *testing.T) {
+func TestCV_HasTriggers(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV61(t, db)
@@ -56,7 +56,7 @@ func TestCV61_HasTriggers(t *testing.T) {
 
 // REG-CV6-001c — INSERT trigger sync. Insert an artifact, FTS should
 // match.
-func TestCV61_TriggerSyncOnInsert(t *testing.T) {
+func TestCV_TriggerSyncOnInsert(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV61(t, db)
@@ -76,7 +76,7 @@ func TestCV61_TriggerSyncOnInsert(t *testing.T) {
 }
 
 // REG-CV6-001d — UPDATE trigger sync.
-func TestCV61_TriggerSyncOnUpdate(t *testing.T) {
+func TestCV_TriggerSyncOnUpdate(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV61(t, db)
@@ -106,7 +106,7 @@ func TestCV61_TriggerSyncOnUpdate(t *testing.T) {
 }
 
 // REG-CV6-001e — DELETE trigger sync.
-func TestCV61_TriggerSyncOnDelete(t *testing.T) {
+func TestCV_TriggerSyncOnDelete(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV61(t, db)
@@ -130,7 +130,7 @@ func TestCV61_TriggerSyncOnDelete(t *testing.T) {
 
 // REG-CV6-001f — initial backfill picks up legacy rows on migration run.
 // Insert before running v=36, then run, then search.
-func TestCV61_BackfillExistingRows(t *testing.T) {
+func TestCV_BackfillExistingRows(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	// Run only CV-1.1 first.
@@ -161,7 +161,7 @@ func TestCV61_BackfillExistingRows(t *testing.T) {
 }
 
 // REG-CV6-001g — registry.go 字面锁 v=36.
-func TestCV61_RegistryHasV36(t *testing.T) {
+func TestCV_RegistryHasV36(t *testing.T) {
 	t.Parallel()
 	for _, m := range All {
 		if m.Version == 36 {

@@ -17,11 +17,11 @@ func runAL31(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestAL31_CreatesPresenceSessionsTable pins acceptance §1 (al-3.md):
+// TestAL_CreatesPresenceSessionsTable pins acceptance §1 (al-3.md):
 // presence_sessions has the contract columns with the right NOT NULL /
 // nullable shape. Drift here breaks IsOnline correctness or schema
 // equivalence with the AL-3.2 hub writer.
-func TestAL31_CreatesPresenceSessionsTable(t *testing.T) {
+func TestAL_CreatesPresenceSessionsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL31(t, db)
@@ -77,11 +77,11 @@ func TestAL31_CreatesPresenceSessionsTable(t *testing.T) {
 	}
 }
 
-// TestAL31_RejectsDuplicateSessionID pins UNIQUE(session_id). The
+// TestAL_RejectsDuplicateSessionID pins UNIQUE(session_id). The
 // constraint is acceptance-critical: a second TrackOnline call with the
 // same session_id (e.g. retry after network blip) must reject so the
 // hub's write path stays idempotent without dedup logic.
-func TestAL31_RejectsDuplicateSessionID(t *testing.T) {
+func TestAL_RejectsDuplicateSessionID(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL31(t, db)
@@ -100,10 +100,10 @@ func TestAL31_RejectsDuplicateSessionID(t *testing.T) {
 	}
 }
 
-// TestAL31_AllowsMultiSessionPerUser pins #301 spec §0 立场 ③: one user
+// TestAL_AllowsMultiSessionPerUser pins #301 spec §0 立场 ③: one user
 // can have many concurrent sessions (web tab + mobile + plugin). The
 // schema MUST NOT have UNIQUE(user_id); only session_id is unique.
-func TestAL31_AllowsMultiSessionPerUser(t *testing.T) {
+func TestAL_AllowsMultiSessionPerUser(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL31(t, db)
@@ -133,10 +133,10 @@ func TestAL31_AllowsMultiSessionPerUser(t *testing.T) {
 	}
 }
 
-// TestAL31_HasUserIDIndex pins acceptance §1.1 — IsOnline O(1) lookup
+// TestAL_HasUserIDIndex pins acceptance §1.1 — IsOnline O(1) lookup
 // requires `idx_presence_sessions_user_id`. Verified via sqlite_master
 // rather than EXPLAIN QUERY PLAN to keep the assertion deterministic.
-func TestAL31_HasUserIDIndex(t *testing.T) {
+func TestAL_HasUserIDIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL31(t, db)

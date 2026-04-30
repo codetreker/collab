@@ -6,9 +6,9 @@
 //   REG-CHN6-001 TestCHN61_NoSchemaChange — migrations/ 0 新文件
 //   REG-CHN6-002 TestCHN61_PinChannel_* — POST /pin owner-only
 //   REG-CHN6-003 TestCHN61_UnpinChannel_* — DELETE /pin idempotent
-//   REG-CHN6-004 TestCHN61_PinThreshold_ByteIdentical — 双向锁
-//   REG-CHN6-005 TestCHN61_NoAdminPinPath — admin 不挂
-//   REG-CHN6-006 TestCHN63_NoChannelPinQueue — AST 锁链
+//   REG-CHN6-004 TestCHN_PinThreshold_ByteIdentical — 双向锁
+//   REG-CHN6-005 TestCHN_NoAdminPinPath — admin 不挂
+//   REG-CHN6-006 TestCHN_NoChannelPinQueue — AST 锁链
 package api_test
 
 import (
@@ -53,7 +53,7 @@ func TestCHN61_NoSchemaChange(t *testing.T) {
 }
 
 // REG-CHN6-002a — POST /pin happy path; position < 0 (pinned 字面约定).
-func TestCHN61_PinChannel_HappyPath(t *testing.T) {
+func TestCHN_PinChannel_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -75,7 +75,7 @@ func TestCHN61_PinChannel_HappyPath(t *testing.T) {
 }
 
 // REG-CHN6-002b — non-member rejected 403.
-func TestCHN61_PinChannel_NonMemberRejected(t *testing.T) {
+func TestCHN_PinChannel_NonMemberRejected(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -91,7 +91,7 @@ func TestCHN61_PinChannel_NonMemberRejected(t *testing.T) {
 }
 
 // REG-CHN6-002c — Unauthorized 401.
-func TestCHN61_PinChannel_Unauthorized(t *testing.T) {
+func TestCHN_PinChannel_Unauthorized(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, http.MethodPost,
@@ -102,7 +102,7 @@ func TestCHN61_PinChannel_Unauthorized(t *testing.T) {
 }
 
 // REG-CHN6-003a — DELETE /pin happy path; position > 0 (unpinned).
-func TestCHN61_UnpinChannel_HappyPath(t *testing.T) {
+func TestCHN_UnpinChannel_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -126,7 +126,7 @@ func TestCHN61_UnpinChannel_HappyPath(t *testing.T) {
 }
 
 // REG-CHN6-003b — DELETE idempotent (二次 DELETE 200).
-func TestCHN61_UnpinChannel_Idempotent(t *testing.T) {
+func TestCHN_UnpinChannel_Idempotent(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -143,7 +143,7 @@ func TestCHN61_UnpinChannel_Idempotent(t *testing.T) {
 }
 
 // REG-CHN6-004 — PinThreshold byte-identical 双向锁 + IsPinned 谓词单源.
-func TestCHN61_PinThreshold_ByteIdentical(t *testing.T) {
+func TestCHN_PinThreshold_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	if api.PinThreshold != 0.0 {
 		t.Errorf("PinThreshold drift: got %v, want 0.0 (双向锁跟 client POSITION_PIN_THRESHOLD)", api.PinThreshold)
@@ -163,7 +163,7 @@ func TestCHN61_PinThreshold_ByteIdentical(t *testing.T) {
 //
 // 双 pattern: (1) admin handler 不挂 pin path; (2) 任何 admin*.go 不
 // 含 pin_channel/pin\b symbol.
-func TestCHN61_NoAdminPinPath(t *testing.T) {
+func TestCHN_NoAdminPinPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/[^"]*pin`)
@@ -205,7 +205,7 @@ func TestCHN61_NoAdminPinPath(t *testing.T) {
 }
 
 // REG-CHN6-006 — AST 锁链延伸第 11 处.
-func TestCHN63_NoChannelPinQueue(t *testing.T) {
+func TestCHN_NoChannelPinQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingChannelPin",
@@ -231,7 +231,7 @@ func TestCHN63_NoChannelPinQueue(t *testing.T) {
 }
 
 // REG-CHN6-cov — pin 404 channel not found + DM reject + unpin 401/404/non-member.
-func TestCHN61_PinChannel_NotFound404(t *testing.T) {
+func TestCHN_PinChannel_NotFound404(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -243,7 +243,7 @@ func TestCHN61_PinChannel_NotFound404(t *testing.T) {
 	}
 }
 
-func TestCHN61_PinChannel_DMRejected(t *testing.T) {
+func TestCHN_PinChannel_DMRejected(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -260,7 +260,7 @@ func TestCHN61_PinChannel_DMRejected(t *testing.T) {
 	}
 }
 
-func TestCHN61_UnpinChannel_NotFound404(t *testing.T) {
+func TestCHN_UnpinChannel_NotFound404(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -272,7 +272,7 @@ func TestCHN61_UnpinChannel_NotFound404(t *testing.T) {
 	}
 }
 
-func TestCHN61_UnpinChannel_Unauthorized401(t *testing.T) {
+func TestCHN_UnpinChannel_Unauthorized401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, http.MethodDelete,
@@ -282,7 +282,7 @@ func TestCHN61_UnpinChannel_Unauthorized401(t *testing.T) {
 	}
 }
 
-func TestCHN61_UnpinChannel_DMRejected(t *testing.T) {
+func TestCHN_UnpinChannel_DMRejected(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -296,7 +296,7 @@ func TestCHN61_UnpinChannel_DMRejected(t *testing.T) {
 	}
 }
 
-func TestCHN61_UnpinChannel_NonMemberRejected(t *testing.T) {
+func TestCHN_UnpinChannel_NonMemberRejected(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

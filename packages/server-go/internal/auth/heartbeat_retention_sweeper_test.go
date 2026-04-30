@@ -3,12 +3,12 @@
 // test.go 同模式).
 //
 // Pins:
-//   REG-HB5-001 TestHB52_RunOnceArchivesExpired
-//   REG-HB5-002 TestHB52_RunOnceSoftArchiveNotRealDelete
-//   REG-HB5-003 TestHB52_RunOnceIdempotent
-//   REG-HB5-004 TestHB52_StartCtxShutdown
-//   REG-HB5-005 TestHB52_NilSafeCtor
-//   REG-HB5-006 TestHB52_SweeperReason_ByteIdentical + TestHB53_NoHeartbeatRetentionQueue
+//   REG-HB5-001 TestHB_RunOnceArchivesExpired
+//   REG-HB5-002 TestHB_RunOnceSoftArchiveNotRealDelete
+//   REG-HB5-003 TestHB_RunOnceIdempotent
+//   REG-HB5-004 TestHB_StartCtxShutdown
+//   REG-HB5-005 TestHB_NilSafeCtor
+//   REG-HB5-006 TestHB_SweeperReason_ByteIdentical + TestHB_NoHeartbeatRetentionQueue
 package auth
 
 import (
@@ -59,7 +59,7 @@ func seedStateRow(t *testing.T, s *store.Store, agentID string, tsMs int64) {
 }
 
 // REG-HB5-001 — RunOnce archives rows older than HeartbeatRetentionDays cutoff.
-func TestHB52_RunOnceArchivesExpired(t *testing.T) {
+func TestHB_RunOnceArchivesExpired(t *testing.T) {
 	s := hb5TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -83,7 +83,7 @@ func TestHB52_RunOnceArchivesExpired(t *testing.T) {
 }
 
 // REG-HB5-002 — soft-archive: row stays + archived_at set; not real DELETE.
-func TestHB52_RunOnceSoftArchiveNotRealDelete(t *testing.T) {
+func TestHB_RunOnceSoftArchiveNotRealDelete(t *testing.T) {
 	s := hb5TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -109,7 +109,7 @@ func TestHB52_RunOnceSoftArchiveNotRealDelete(t *testing.T) {
 }
 
 // REG-HB5-003 — second tick is no-op.
-func TestHB52_RunOnceIdempotent(t *testing.T) {
+func TestHB_RunOnceIdempotent(t *testing.T) {
 	s := hb5TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clk := func() time.Time { return now }
@@ -126,7 +126,7 @@ func TestHB52_RunOnceIdempotent(t *testing.T) {
 }
 
 // REG-HB5-004 — Start ctx-aware shutdown.
-func TestHB52_StartCtxShutdown(t *testing.T) {
+func TestHB_StartCtxShutdown(t *testing.T) {
 	s := hb5TestStore(t)
 	sw := &HeartbeatRetentionSweeper{Store: s, Interval: 100 * time.Millisecond}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -136,7 +136,7 @@ func TestHB52_StartCtxShutdown(t *testing.T) {
 }
 
 // REG-HB5-005 — nil-safe ctor.
-func TestHB52_NilSafeCtor(t *testing.T) {
+func TestHB_NilSafeCtor(t *testing.T) {
 	var sw *HeartbeatRetentionSweeper
 	sw.Start(context.Background())
 	if c, err := sw.RunOnce(context.Background()); c != 0 || err != nil {
@@ -151,7 +151,7 @@ func TestHB52_NilSafeCtor(t *testing.T) {
 
 // REG-HB5-006 — const byte-identical 跟 reasons.Unknown 同源 (AL-1a 锁链
 // 第 17 处 — AL-7 #15 + AL-8 #16 承袭不漂).
-func TestHB52_SweeperReason_ByteIdentical(t *testing.T) {
+func TestHB_SweeperReason_ByteIdentical(t *testing.T) {
 	if HeartbeatSweeperReason != reasons.Unknown {
 		t.Errorf("HeartbeatSweeperReason drift: got %q, want %q",
 			HeartbeatSweeperReason, reasons.Unknown)
@@ -173,7 +173,7 @@ func TestHB52_SweeperReason_ByteIdentical(t *testing.T) {
 
 // REG-HB5-006b — 立场 ④ + 立场 ⑤ 反向 grep: cron framework + retention
 // queue tokens 0 hit in this file.
-func TestHB52_NoCronFrameworkImport(t *testing.T) {
+func TestHB_NoCronFrameworkImport(t *testing.T) {
 	body, err := os.ReadFile("heartbeat_retention_sweeper.go")
 	if err != nil {
 		t.Fatalf("read sweeper: %v", err)
@@ -190,7 +190,7 @@ func TestHB52_NoCronFrameworkImport(t *testing.T) {
 // Scans internal/auth + internal/api production *.go (excluding tests)
 // for heartbeat retention queue / dead-letter tokens (跟 AL-7 锁链延伸
 // 第 7 处 + AL-8 第 8 处 同模式).
-func TestHB53_NoHeartbeatRetentionQueue(t *testing.T) {
+func TestHB_NoHeartbeatRetentionQueue(t *testing.T) {
 	forbidden := []string{
 		"pendingHeartbeatRetention",
 		"heartbeatRetentionRetryQueue",
@@ -223,7 +223,7 @@ func TestHB53_NoHeartbeatRetentionQueue(t *testing.T) {
 }
 
 // REG-HB5-cov — explicit-set retentionDays/interval/now branches.
-func TestHB52_SweeperFieldOverrides(t *testing.T) {
+func TestHB_SweeperFieldOverrides(t *testing.T) {
 	t.Parallel()
 	customNow := func() time.Time { return time.UnixMilli(1700000000000) }
 	s := &HeartbeatRetentionSweeper{
@@ -243,7 +243,7 @@ func TestHB52_SweeperFieldOverrides(t *testing.T) {
 }
 
 // REG-HB5-cov v3 — Now=nil branch (covers default time.Now() path).
-func TestHB52_NowDefaultBranch(t *testing.T) {
+func TestHB_NowDefaultBranch(t *testing.T) {
 	t.Parallel()
 	s := &HeartbeatRetentionSweeper{} // Now=nil
 	got := s.now()
@@ -253,7 +253,7 @@ func TestHB52_NowDefaultBranch(t *testing.T) {
 }
 
 // REG-HB5-cov v3 — Start with nil store (early return covers nil-safe path).
-func TestHB52_StartNilStoreReturns(t *testing.T) {
+func TestHB_StartNilStoreReturns(t *testing.T) {
 	t.Parallel()
 	s := &HeartbeatRetentionSweeper{} // Store=nil
 	ctx, cancel := context.WithCancel(context.Background())
@@ -262,7 +262,7 @@ func TestHB52_StartNilStoreReturns(t *testing.T) {
 }
 
 // REG-HB5-cov v3 — Start nil receiver (covers s==nil branch).
-func TestHB52_StartNilReceiver(t *testing.T) {
+func TestHB_StartNilReceiver(t *testing.T) {
 	t.Parallel()
 	var s *HeartbeatRetentionSweeper
 	ctx, cancel := context.WithCancel(context.Background())

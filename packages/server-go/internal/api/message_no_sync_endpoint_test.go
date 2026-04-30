@@ -21,12 +21,12 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestDM31_NoBypassEndpoint pins 立场 ① — 不开 /api/v1/dm/sync 或
+// TestDM_NoBypassEndpoint pins 立场 ① — 不开 /api/v1/dm/sync 或
 // /dm/cursor 旁路 endpoint. DM messages 走 channel events 同 path.
 //
 // 反向 grep 在 server-go internal/api/ + internal/server/ production *.go
 // (除 _test.go), 立场 ⑤ server 0 行新增 守门.
-func TestDM31_NoBypassEndpoint(t *testing.T) {
+func TestDM_NoBypassEndpoint(t *testing.T) {
 	t.Parallel()
 	forbiddenPaths := []string{
 		`"/api/v1/dm/sync"`,
@@ -70,10 +70,10 @@ func TestDM31_NoBypassEndpoint(t *testing.T) {
 	}
 }
 
-// TestDM31_BackfillIncludesDMChannel pins 立场 ① 行为级 — DM channel
+// TestDM_BackfillIncludesDMChannel pins 立场 ① 行为级 — DM channel
 // (type='dm') messages 走 GET /api/v1/channels/{id}/messages?since=<cursor>
 // 同 path 跟 public channel 同源 (复用 RT-1.3 events backfill).
-func TestDM31_BackfillIncludesDMChannel(t *testing.T) {
+func TestDM_BackfillIncludesDMChannel(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -133,9 +133,9 @@ func TestDM31_BackfillIncludesDMChannel(t *testing.T) {
 	}
 }
 
-// TestDM31_NoBypassFrame pins 立场 ② — envelope whitelist 不含 dm-only
+// TestDM_NoBypassFrame pins 立场 ② — envelope whitelist 不含 dm-only
 // frames. 反向 grep production *.go.
-func TestDM31_NoBypassFrame(t *testing.T) {
+func TestDM_NoBypassFrame(t *testing.T) {
 	t.Parallel()
 	forbiddenFrames := []string{
 		`"dm_session_changed"`,

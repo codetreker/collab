@@ -86,10 +86,10 @@ func cv12General(t *testing.T, ts string, ownerToken string) string {
 	return ""
 }
 
-// TestCV12_CreateArtifactInChannel pins acceptance §2.1: a channel
+// TestCV_CreateArtifactInChannel pins acceptance §2.1: a channel
 // member can create an artifact and the response carries the contract
 // fields (id / channel_id / type='markdown' / version=1).
-func TestCV12_CreateArtifactInChannel(t *testing.T) {
+func TestCV_CreateArtifactInChannel(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -116,9 +116,9 @@ func TestCV12_CreateArtifactInChannel(t *testing.T) {
 	}
 }
 
-// TestCV12_RejectsNonMarkdownType pins 立场 ④ at HTTP layer (schema
+// TestCV_RejectsNonMarkdownType pins 立场 ④ at HTTP layer (schema
 // CHECK is the final gate, but we should fail-fast at 400 not 500).
-func TestCV12_RejectsNonMarkdownType(t *testing.T) {
+func TestCV_RejectsNonMarkdownType(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -163,9 +163,9 @@ func TestCV12_CrossChannel403(t *testing.T) {
 	}
 }
 
-// TestCV12_CommitBumpsVersion pins 立场 ③: commit creates a new
+// TestCV_CommitBumpsVersion pins 立场 ③: commit creates a new
 // artifact_versions row with version=N+1 + bumps artifacts.current_version.
-func TestCV12_CommitBumpsVersion(t *testing.T) {
+func TestCV_CommitBumpsVersion(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -204,10 +204,10 @@ func TestCV12_CommitBumpsVersion(t *testing.T) {
 	}
 }
 
-// TestCV12_CommitVersionMismatch409 pins 立场 ② version mismatch path
+// TestCV_CommitVersionMismatch409 pins 立场 ② version mismatch path
 // (a stale client trying to commit on top of an already-bumped head
 // gets 409 + reload hint).
-func TestCV12_CommitVersionMismatch409(t *testing.T) {
+func TestCV_CommitVersionMismatch409(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -230,7 +230,7 @@ func TestCV12_CommitVersionMismatch409(t *testing.T) {
 	}
 }
 
-// TestCV12_LockTTL30sBoundary pins 立场 ② lazy expire boundary on the
+// TestCV_LockTTL30sBoundary pins 立场 ② lazy expire boundary on the
 // handler directly with an injected fake clock. We exercise:
 //
 //   - T+0: user A acquires lock via commit
@@ -239,7 +239,7 @@ func TestCV12_CommitVersionMismatch409(t *testing.T) {
 //
 // We construct a standalone ArtifactHandler against a fresh test server's
 // store so we can drive the clock without spinning real time forward.
-func TestCV12_LockTTL30sBoundary(t *testing.T) {
+func TestCV_LockTTL30sBoundary(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 
@@ -279,13 +279,13 @@ func TestCV12_LockTTL30sBoundary(t *testing.T) {
 	}
 }
 
-// TestCV12_RollbackOwnerOnly pins 立场 ⑦ three-way reverse assertion:
+// TestCV_RollbackOwnerOnly pins 立场 ⑦ three-way reverse assertion:
 //
 //   - admin cookie → 401 (no user-rail auth, admin rail forbidden)
 //   - non-owner member → 403
 //   - 锁持有=别人 → 409 (covered by lock test, not duplicated here)
 //   - owner success → new version with rolled_back_from_version stamped
-func TestCV12_RollbackOwnerOnly(t *testing.T) {
+func TestCV_RollbackOwnerOnly(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -335,10 +335,10 @@ func TestCV12_RollbackOwnerOnly(t *testing.T) {
 	}
 }
 
-// TestCV12_RollbackProducesNewVersionNotDelete pins acceptance §2.3
+// TestCV_RollbackProducesNewVersionNotDelete pins acceptance §2.3
 // 反约束: rollback inserts a new row, never deletes intermediate
 // versions (立场 ③ + ⑦).
-func TestCV12_RollbackProducesNewVersionNotDelete(t *testing.T) {
+func TestCV_RollbackProducesNewVersionNotDelete(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -357,13 +357,13 @@ func TestCV12_RollbackProducesNewVersionNotDelete(t *testing.T) {
 	}
 }
 
-// TestCV12_AgentCommitSystemMessage pins 立场 ⑥: when the committer is
+// TestCV_AgentCommitSystemMessage pins 立场 ⑥: when the committer is
 // an agent (Role='agent'), the handler emits a system message with the
 // byte-identical文案 锁: "{agent_name} 更新 {artifact_name} v{n}".
 //
 // Reverse assertion: for a human committer, NO such system message is
 // emitted (silent for humans, only agents fanout).
-func TestCV12_AgentCommitSystemMessage(t *testing.T) {
+func TestCV_AgentCommitSystemMessage(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -421,10 +421,10 @@ func TestCV12_AgentCommitSystemMessage(t *testing.T) {
 	}
 }
 
-// TestCV12_HumanCommitNoSystemMessage pins the reverse of ⑥: a human
+// TestCV_HumanCommitNoSystemMessage pins the reverse of ⑥: a human
 // committer doesn't fanout (silence by default, only agent commits
 // trigger the system message).
-func TestCV12_HumanCommitNoSystemMessage(t *testing.T) {
+func TestCV_HumanCommitNoSystemMessage(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -441,12 +441,12 @@ func TestCV12_HumanCommitNoSystemMessage(t *testing.T) {
 	}
 }
 
-// TestCV12_PushFrameOnCreateAndCommit pins 立场 ⑤: every successful
+// TestCV_PushFrameOnCreateAndCommit pins 立场 ⑤: every successful
 // create / commit / rollback hits the ArtifactPusher exactly once with
 // (id, version, channel_id, ts, kind). We bypass the live server's
 // production hub by constructing a standalone handler with a recording
 // pusher and driving the same store.
-func TestCV12_PushFrameOnCreateAndCommit(t *testing.T) {
+func TestCV_PushFrameOnCreateAndCommit(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	owner := mustUser(t, s, "owner@test.com")

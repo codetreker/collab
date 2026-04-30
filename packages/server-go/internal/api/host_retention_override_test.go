@@ -2,9 +2,9 @@
 // admin-rail override endpoint acceptance §2.2.
 //
 // Pins:
-//   REG-HB5-007 TestHB52_OverrideEndpointWritesAudit
-//   REG-HB5-008 TestHB52_OverrideRejectsUserRail
-//   REG-HB5-009 TestHB52_OverrideClampsRetention
+//   REG-HB5-007 TestHB_OverrideEndpointWritesAudit
+//   REG-HB5-008 TestHB_OverrideRejectsUserRail
+//   REG-HB5-009 TestHB_OverrideClampsRetention
 package api_test
 
 import (
@@ -17,10 +17,10 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestHB52_OverrideEndpointWritesAudit pins acceptance §2.2 — admin POST
+// TestHB_OverrideEndpointWritesAudit pins acceptance §2.2 — admin POST
 // writes one admin_actions row with action='audit_retention_override'
 // (复用 AL-7 既有 action) + metadata.target='heartbeat'.
-func TestHB52_OverrideEndpointWritesAudit(t *testing.T) {
+func TestHB_OverrideEndpointWritesAudit(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -58,8 +58,8 @@ func TestHB52_OverrideEndpointWritesAudit(t *testing.T) {
 	}
 }
 
-// TestHB52_OverrideRejectsUserRail — 立场 ③ admin-rail only.
-func TestHB52_OverrideRejectsUserRail(t *testing.T) {
+// TestHB_OverrideRejectsUserRail — 立场 ③ admin-rail only.
+func TestHB_OverrideRejectsUserRail(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	userToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -72,9 +72,9 @@ func TestHB52_OverrideRejectsUserRail(t *testing.T) {
 	}
 }
 
-// TestHB52_OverrideClampsRetention — 立场 ⑥ clamp 1..365 (复用 auth pkg
+// TestHB_OverrideClampsRetention — 立场 ⑥ clamp 1..365 (复用 auth pkg
 // const 跟 AL-7 同源).
-func TestHB52_OverrideClampsRetention(t *testing.T) {
+func TestHB_OverrideClampsRetention(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -111,7 +111,7 @@ func TestHB52_OverrideClampsRetention(t *testing.T) {
 }
 
 // REG-HB5-cov — 401 unauthorized branch.
-func TestHB52_Override_NoAdmin401(t *testing.T) {
+func TestHB_Override_NoAdmin401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, http.MethodPost,
@@ -123,7 +123,7 @@ func TestHB52_Override_NoAdmin401(t *testing.T) {
 }
 
 // REG-HB5-cov — invalid JSON body 400.
-func TestHB52_Override_InvalidJSON(t *testing.T) {
+func TestHB_Override_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -143,7 +143,7 @@ func TestHB52_Override_InvalidJSON(t *testing.T) {
 }
 
 // REG-HB5-cov — TargetUserID specified (covers non-default target branch).
-func TestHB52_Override_WithTargetUserID(t *testing.T) {
+func TestHB_Override_WithTargetUserID(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)

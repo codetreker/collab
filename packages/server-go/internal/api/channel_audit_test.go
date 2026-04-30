@@ -19,13 +19,13 @@ import (
 	"testing"
 )
 
-// TestCHN4_DMViewHasNoWorkspaceTab pins 立场 ① + 7 源 byte-identical 反向锁.
+// TestCHN_DMViewHasNoWorkspaceTab pins 立场 ① + 7 源 byte-identical 反向锁.
 // production code (server-go internal/) 必不含 dm 视图渲染 workspace tab
 // 的字面 (跟 ChannelView.tsx + chn-2-content-lock 同源).
 //
 // 此处扫 server side production *.go 反向断言 — 客户端 7 源 byte-identical
 // 锁链由 client vitest 守 (chn-2-content-lock.test.ts 等).
-func TestCHN4_DMViewHasNoWorkspaceTab(t *testing.T) {
+func TestCHN_DMViewHasNoWorkspaceTab(t *testing.T) {
 	t.Parallel()
 	// 反向 forbidden identifiers — 7 源同根锁的硬条件.
 	forbidden := []string{
@@ -68,9 +68,9 @@ func TestCHN4_DMViewHasNoWorkspaceTab(t *testing.T) {
 	}
 }
 
-// TestCHN4_NoDMSyncBypassEndpoint pins 立场 ② — DM 走普通 channel events
+// TestCHN_NoDMSyncBypassEndpoint pins 立场 ② — DM 走普通 channel events
 // path, 不开 dm-only sync endpoint (跟 DM-3 wrapper 同精神).
-func TestCHN4_NoDMSyncBypassEndpoint(t *testing.T) {
+func TestCHN_NoDMSyncBypassEndpoint(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		`"/api/v1/dm/sync"`,

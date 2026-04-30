@@ -23,7 +23,7 @@ import (
 // REG-BPP32-201 (acceptance §3.1.a) — TTL 5 min lazy GC.
 // After 5min30s of clock advance, ShouldRetry returns (nil, nil) — entry
 // reaped on read. cache.Len() drops to 0 after the read.
-func TestBPP32_RetryCache_TTLLazyGC(t *testing.T) {
+func TestBPP_RetryCache_TTLLazyGC(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
@@ -52,7 +52,7 @@ func TestBPP32_RetryCache_TTLLazyGC(t *testing.T) {
 // REG-BPP32-202 (acceptance §3.1.b + content-lock §4) — ≤3 次重试 lock.
 // 1st/2nd/3rd ShouldRetry succeed (after backoff each); 4th returns
 // ErrRetryExhausted + entry removed (terminal).
-func TestBPP32_RetryCache_3RetryThenExhaust(t *testing.T) {
+func TestBPP_RetryCache_3RetryThenExhaust(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
@@ -99,7 +99,7 @@ func TestBPP32_RetryCache_3RetryThenExhaust(t *testing.T) {
 
 // REG-BPP32-203 (acceptance §3.1.c) — 30s 固定退避 lock + backoff 窗口
 // enforcement. ShouldRetry 在 backoff 内返 (nil, nil) — 不抢退避窗口.
-func TestBPP32_RetryCache_30sFixedBackoffEnforced(t *testing.T) {
+func TestBPP_RetryCache_30sFixedBackoffEnforced(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
@@ -139,7 +139,7 @@ func TestBPP32_RetryCache_30sFixedBackoffEnforced(t *testing.T) {
 
 // REG-BPP32-204 (acceptance §3.2 + spec §1 立场 ③ + content-lock §4) —
 // IsRetryExhausted sentinel matcher + Remove (post-success cleanup).
-func TestBPP32_RetryCache_RemoveAfterSuccess(t *testing.T) {
+func TestBPP_RetryCache_RemoveAfterSuccess(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
 	clock := func() time.Time { return now }
@@ -180,7 +180,7 @@ func TestBPP32_RetryCache_RemoveAfterSuccess(t *testing.T) {
 //   - `deadLetterQueue` (BPP-4 失败队列)
 //   - `cancel.*in.flight` (BPP-4 取消机制)
 //   - `BPP-?4.*watchdog` 引用注释 (说明跨 milestone 复用)
-func TestBPP32_RetryCache_ReverseGrep_NoBPP4Reuse(t *testing.T) {
+func TestBPP_RetryCache_ReverseGrep_NoBPP4Reuse(t *testing.T) {
 	t.Parallel()
 	bppDir := filepath.Join(".")
 	patterns := []*regexp.Regexp{

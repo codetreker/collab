@@ -18,9 +18,9 @@ func runAL14(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestAL14_CreatesAgentStateLogTable pins schema 7 列 + AUTOINCREMENT PK +
+// TestAL_CreatesAgentStateLogTable pins schema 7 列 + AUTOINCREMENT PK +
 // NOT NULL shape. Drift here breaks server reducer audit append path.
-func TestAL14_CreatesAgentStateLogTable(t *testing.T) {
+func TestAL_CreatesAgentStateLogTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
@@ -45,9 +45,9 @@ func TestAL14_CreatesAgentStateLogTable(t *testing.T) {
 	}
 }
 
-// TestAL14_InsertAndAutoIncrement pins PK AUTOINCREMENT 单调序; 多次
+// TestAL_InsertAndAutoIncrement pins PK AUTOINCREMENT 单调序; 多次
 // INSERT 同 agent 行 id 严格递增 (反向: 重复 id 由 SQLite 自动拒).
-func TestAL14_InsertAndAutoIncrement(t *testing.T) {
+func TestAL_InsertAndAutoIncrement(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)
@@ -120,10 +120,10 @@ func TestAL14_NoDomainBleed(t *testing.T) {
 	}
 }
 
-// TestAL14_HasIndex pins acceptance §数据契约 — idx_agent_state_log_agent_id_ts
+// TestAL_HasIndex pins acceptance §数据契约 — idx_agent_state_log_agent_id_ts
 // (owner GET /api/v1/agents/:id/state-log 热路径). 跟 admin_actions / chn_3_1 /
 // cv_4_1 同模式显式命名.
-func TestAL14_HasIndex(t *testing.T) {
+func TestAL_HasIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL14(t, db)

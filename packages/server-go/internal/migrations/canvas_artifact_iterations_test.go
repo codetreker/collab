@@ -21,12 +21,12 @@ func runCV41(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestCV41_CreatesArtifactIterationsTable pins acceptance §1.1 (cv-4.md):
+// TestCV_CreatesArtifactIterationsTable pins acceptance §1.1 (cv-4.md):
 // artifact_iterations has the contract columns with the right NOT NULL /
 // nullable shape. Drift here breaks CV-4.2 server iterate path or
 // AL-1a #249 6 reason 复用. 跟 AL-4.1 #398
 // TestAL41_CreatesAgentRuntimesTable 同模式.
-func TestCV41_CreatesArtifactIterationsTable(t *testing.T) {
+func TestCV_CreatesArtifactIterationsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
@@ -79,11 +79,11 @@ func TestCV41_CreatesArtifactIterationsTable(t *testing.T) {
 	}
 }
 
-// TestCV41_NoDomainBleed pins acceptance §1.5 — 立场 ① 域隔离 (跟 CHN-4
+// TestCV_NoDomainBleed pins acceptance §1.5 — 立场 ① 域隔离 (跟 CHN-4
 // #374/#378 立场 ② 同源). 反向断言列名: cursor / diff_blob / diff_lines /
 // retry_count 全无 (反约束 #380 ⑦ failed 不复用 + 立场 ③ server 不算
 // diff + RT-1 envelope cursor 拆死).
-func TestCV41_NoDomainBleed(t *testing.T) {
+func TestCV_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
@@ -109,10 +109,10 @@ func TestCV41_NoDomainBleed(t *testing.T) {
 	}
 }
 
-// TestCV41_AcceptsAll4States pins acceptance §1.2 — state CHECK 4 态
+// TestCV_AcceptsAll4States pins acceptance §1.2 — state CHECK 4 态
 // ('pending','running','completed','failed') byte-identical 跟 #380
 // 文案锁 ③ 同源.
-func TestCV41_AcceptsAll4States(t *testing.T) {
+func TestCV_AcceptsAll4States(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
@@ -130,10 +130,10 @@ func TestCV41_AcceptsAll4States(t *testing.T) {
 	}
 }
 
-// TestCV41_RejectsUnknownState pins acceptance §1.2 — state CHECK 严格
+// TestCV_RejectsUnknownState pins acceptance §1.2 — state CHECK 严格
 // reject 中间态 / 同义词 / 大小写 (跟 #380 文案锁 ③ 同源 + AL-4.1 #398
 // TestAL41_RejectsInvalidStatus 同模式 同义词漂防御).
-func TestCV41_RejectsUnknownState(t *testing.T) {
+func TestCV_RejectsUnknownState(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)
@@ -180,13 +180,13 @@ func TestCV41_HasIndexes(t *testing.T) {
 	}
 }
 
-// TestCV41_AcceptsAL1aReasonValues pins acceptance §1.1 + §2.5
+// TestCV_AcceptsAL1aReasonValues pins acceptance §1.1 + §2.5
 // error_reason 复用 AL-1a #249 6 reason 枚举 + AL-4 stub fail-closed
 // 'runtime_not_registered' 字面 byte-identical (跟 AL-4.1 #398
 // TestAL41_AcceptsAL1aReasonValues 同模式). schema 层无 CHECK enum (留
 // server 校验, 跟 AL-4.1 / 11 项 language 白名单同思路 — schema CHECK
 // 装不下产品级 enum), 此 test 仅断言 INSERT 全 OK.
-func TestCV41_AcceptsAL1aReasonValues(t *testing.T) {
+func TestCV_AcceptsAL1aReasonValues(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV41(t, db)

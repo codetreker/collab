@@ -14,9 +14,9 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestCHN142_GetHistory_ErrorBranches — sweep the 404/401 error branches
+// TestCHN_GetHistory_ErrorBranches — sweep the 404/401 error branches
 // in handleUserGet + handleAdminGet using a single shared fixture server.
-func TestCHN142_GetHistory_ErrorBranches(t *testing.T) {
+func TestCHN_GetHistory_ErrorBranches(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

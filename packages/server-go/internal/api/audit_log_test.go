@@ -116,7 +116,7 @@ func TestImpersonateGrantLifecycle(t *testing.T) {
 }
 
 // REG-covbump v3 — AL-7 audit-retention/override branches.
-func TestAL7AuditRetentionOverride(t *testing.T) {
+func TestAL_AuditRetentionOverride(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)

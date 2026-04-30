@@ -184,12 +184,12 @@ func scanRegex(t *testing.T, roots []string, exts []string, patterns []*regexp.R
 	return hits
 }
 
-// TestCM51_NoBypassTable pins acceptance §4.1 立场 ① — agent↔agent 协作走人
+// TestCM_NoBypassTable pins acceptance §4.1 立场 ① — agent↔agent 协作走人
 // 协作 path, 不裂表/不开旁路 schema. 反向断言 server-go 全包不出现
 // `agent_messages` / `ai_to_ai_channel` / `agent_only_message` /
 // `agent_to_agent_mention` 字面 (string literal context, 注释里说立场不
 // trip).
-func TestCM51_NoBypassTable(t *testing.T) {
+func TestCM_NoBypassTable(t *testing.T) {
 	root := repoRoot(t)
 	serverGo := filepath.Join(root, "packages", "server-go")
 	files := walkGoFiles(t, serverGo)
@@ -207,10 +207,10 @@ func TestCM51_NoBypassTable(t *testing.T) {
 	}
 }
 
-// TestCM51_NoBypassEndpoint pins acceptance §4.2 立场 ① — server 不开
+// TestCM_NoBypassEndpoint pins acceptance §4.2 立场 ① — server 不开
 // `POST /api/v1/agents/:id/notify-agent` 旁路 endpoint. 反向断言 server-go
 // 路由表不含此字面.
-func TestCM51_NoBypassEndpoint(t *testing.T) {
+func TestCM_NoBypassEndpoint(t *testing.T) {
 	root := repoRoot(t)
 	serverGo := filepath.Join(root, "packages", "server-go")
 
@@ -229,11 +229,11 @@ func TestCM51_NoBypassEndpoint(t *testing.T) {
 	}
 }
 
-// TestCM51_NoOwnerBypassColumn pins acceptance §4.3 立场 ② — 责任归属
+// TestCM_NoOwnerBypassColumn pins acceptance §4.3 立场 ② — 责任归属
 // owner-first, `artifact_versions.committed_by` 永远是 user 行, 不裂
 // `triggered_by_agent_id` / `committed_by_agent` 列. 反向断言 server-go
 // migrations + store 不出现此列名字面.
-func TestCM51_NoOwnerBypassColumn(t *testing.T) {
+func TestCM_NoOwnerBypassColumn(t *testing.T) {
 	root := repoRoot(t)
 	serverGo := filepath.Join(root, "packages", "server-go")
 	files := walkGoFiles(t, serverGo)
@@ -249,10 +249,10 @@ func TestCM51_NoOwnerBypassColumn(t *testing.T) {
 	}
 }
 
-// TestCM51_NoNewLockTable pins acceptance §4.4 立场 ③ — X2 冲突复用 CV-1.2
+// TestCM_NoNewLockTable pins acceptance §4.4 立场 ③ — X2 冲突复用 CV-1.2
 // single-doc lock + CV-4.1 iterations state, 不引入新锁表. 反向断言
 // migrations 不创建 `artifact_locks` / `iteration_priority` 表.
-func TestCM51_NoNewLockTable(t *testing.T) {
+func TestCM_NoNewLockTable(t *testing.T) {
 	root := repoRoot(t)
 	migrationsDir := filepath.Join(root, "packages", "server-go", "internal", "migrations")
 
@@ -274,12 +274,12 @@ func TestCM51_NoNewLockTable(t *testing.T) {
 	}
 }
 
-// TestCM51_X2ConflictLiteralReuse pins acceptance §2.2 + cm-5-spec.md §1.2
+// TestCM_X2ConflictLiteralReuse pins acceptance §2.2 + cm-5-spec.md §1.2
 // 立场 ③ — X2 冲突 409 错码字面跟 CV-4 #380 ⑦ byte-identical 同源.
 // 验证: cv_4_2_iterations.go (or 同等 server file) 含
 // `artifact.locked_by_another_iteration` 字面 (CM-5 复用此既有错码,
 // 不另起 'cm5.x2_conflict' / 'agent_collision' 等同义词).
-func TestCM51_X2ConflictLiteralReuse(t *testing.T) {
+func TestCM_X2ConflictLiteralReuse(t *testing.T) {
 	root := repoRoot(t)
 	serverGo := filepath.Join(root, "packages", "server-go")
 	files := walkGoFiles(t, serverGo)

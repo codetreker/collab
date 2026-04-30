@@ -51,7 +51,7 @@ func setPrefHelper(t *testing.T, baseURL, token, channelID, pref string) (int, m
 }
 
 // REG-CHN8-002a — set pref `all` (collapsed bits 2-3 == 0).
-func TestCHN81_SetPref_All(t *testing.T) {
+func TestCHN_SetPref_All(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -76,7 +76,7 @@ func TestCHN81_SetPref_All(t *testing.T) {
 }
 
 // REG-CHN8-002b — set pref `mention`.
-func TestCHN81_SetPref_Mention(t *testing.T) {
+func TestCHN_SetPref_Mention(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -95,7 +95,7 @@ func TestCHN81_SetPref_Mention(t *testing.T) {
 }
 
 // REG-CHN8-002c — set pref `none`.
-func TestCHN81_SetPref_None(t *testing.T) {
+func TestCHN_SetPref_None(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -114,7 +114,7 @@ func TestCHN81_SetPref_None(t *testing.T) {
 }
 
 // REG-CHN8-002d — spec 外值 → 400 invalid_value.
-func TestCHN81_SetPref_RejectsInvalidValue(t *testing.T) {
+func TestCHN_SetPref_RejectsInvalidValue(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -133,7 +133,7 @@ func TestCHN81_SetPref_RejectsInvalidValue(t *testing.T) {
 }
 
 // REG-CHN8-002e — non-member rejected 403.
-func TestCHN81_SetPref_NonMemberRejected(t *testing.T) {
+func TestCHN_SetPref_NonMemberRejected(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -147,7 +147,7 @@ func TestCHN81_SetPref_NonMemberRejected(t *testing.T) {
 }
 
 // REG-CHN8-003 — NotifPref consts byte-identical 三向锁 + GetNotifPref 谓词.
-func TestCHN81_NotifPrefConsts_ByteIdentical(t *testing.T) {
+func TestCHN_NotifPrefConsts_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	if api.NotifPrefShift != 2 {
 		t.Errorf("NotifPrefShift drift: got %d, want 2", api.NotifPrefShift)
@@ -172,7 +172,7 @@ func TestCHN81_NotifPrefConsts_ByteIdentical(t *testing.T) {
 }
 
 // REG-CHN8-004 — admin god-mode 不挂 反向断言.
-func TestCHN81_NoAdminNotifPrefPath(t *testing.T) {
+func TestCHN_NoAdminNotifPrefPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/[^"]*notification`)
@@ -214,7 +214,7 @@ func TestCHN81_NoAdminNotifPrefPath(t *testing.T) {
 
 // REG-CHN8-005 — bitmap isolation: 改 pref 不动 collapsed bit 0 (CHN-3
 // 折叠) — round-trip 验证位互不干扰.
-func TestCHN81_BitmapIsolation_PreservesOtherBits(t *testing.T) {
+func TestCHN_BitmapIsolation_PreservesOtherBits(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -262,7 +262,7 @@ func TestCHN81_BitmapIsolation_PreservesOtherBits(t *testing.T) {
 }
 
 // REG-CHN8-006a — notif pref 不 drop messages 反向断言.
-func TestCHN81_NotifPrefDoesNotDropMessages(t *testing.T) {
+func TestCHN_NotifPrefDoesNotDropMessages(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "ws"), filepath.Join("..", "api")}
 	pat := regexp.MustCompile(`(?i)notif_pref\s*[\.\s\w]*\b(skip|drop)\s*\b.*\b(broadcast|fanout|message|frame)`)
@@ -282,7 +282,7 @@ func TestCHN81_NotifPrefDoesNotDropMessages(t *testing.T) {
 }
 
 // REG-CHN8-006b — AST 锁链延伸第 13 处.
-func TestCHN83_NoNotifPrefQueue(t *testing.T) {
+func TestCHN_NoNotifPrefQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingNotifPref",
@@ -310,7 +310,7 @@ func TestCHN83_NoNotifPrefQueue(t *testing.T) {
 }
 
 // REG-CHN8-cov — 401 unauthorized branch.
-func TestCHN81_SetPref_Unauthorized401(t *testing.T) {
+func TestCHN_SetPref_Unauthorized401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -323,7 +323,7 @@ func TestCHN81_SetPref_Unauthorized401(t *testing.T) {
 }
 
 // REG-CHN8-cov — 404 channel not found.
-func TestCHN81_SetPref_NotFound404(t *testing.T) {
+func TestCHN_SetPref_NotFound404(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

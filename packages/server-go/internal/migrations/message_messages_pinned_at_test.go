@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-// TestDM101_AddsPinnedAtColumn — acceptance §1.1.
+// TestDM_AddsPinnedAtColumn — acceptance §1.1.
 // messages.pinned_at must exist as nullable INTEGER (NULL = unpinned).
-func TestDM101_AddsPinnedAtColumn(t *testing.T) {
+func TestDM_AddsPinnedAtColumn(t *testing.T) {
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE IF NOT EXISTS messages (
   id           TEXT PRIMARY KEY,
@@ -37,10 +37,10 @@ func TestDM101_AddsPinnedAtColumn(t *testing.T) {
 	}
 }
 
-// TestDM101_HasSparseIdx — acceptance §1.2.
+// TestDM_HasSparseIdx — acceptance §1.2.
 // idx_messages_pinned_at must be created with WHERE pinned_at IS NOT NULL
 // (sparse index 跟 ap_2_1 / al_7_1 / hb_5_1 同模式).
-func TestDM101_HasSparseIdx(t *testing.T) {
+func TestDM_HasSparseIdx(t *testing.T) {
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, sender_id TEXT,
@@ -68,9 +68,9 @@ func TestDM101_HasSparseIdx(t *testing.T) {
 	}
 }
 
-// TestDM101_VersionIs45 — acceptance §1.3.
+// TestDM_VersionIs45 — acceptance §1.3.
 // migration must be registered at v=45 (team-lead 占号 reservation).
-func TestDM101_VersionIs45(t *testing.T) {
+func TestDM_VersionIs45(t *testing.T) {
 	if dm101MessagesPinnedAt.Version != 45 {
 		t.Errorf("DM-10.1 version expected 45, got %d", dm101MessagesPinnedAt.Version)
 	}

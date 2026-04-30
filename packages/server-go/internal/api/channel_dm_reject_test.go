@@ -38,7 +38,7 @@ func helperFindUserID(t *testing.T, s *store.Store, email string) string {
 	return ""
 }
 
-func TestCHN21DMArtifactReject(t *testing.T) {
+func TestCHN_DMArtifactReject(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -81,11 +81,11 @@ func TestCHN21DMArtifactReject(t *testing.T) {
 	})
 }
 
-// TestCHN21DMAddMemberReject — re-pins the existing 立场 ② 反约束 (DM
+// TestCHN_DMAddMemberReject — re-pins the existing 立场 ② 反约束 (DM
 // 永远 2 人, channels.go:522 既有 400). Test exists today as part of
 // channel tests — duplicate here as CHN-2.1 stance lock so 重构 误删
 // 守门时 grep 锚明确归属 CHN-2.1.
-func TestCHN21DMAddMemberReject(t *testing.T) {
+func TestCHN_DMAddMemberReject(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

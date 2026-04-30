@@ -20,13 +20,13 @@ func runAL1B1(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestAL1B1_CreatesAgentStatusTable pins acceptance §1.1 (al-1b.md):
+// TestAL_CreatesAgentStatusTable pins acceptance §1.1 (al-1b.md):
 // agent_status has the contract columns with the right NOT NULL /
 // nullable shape. Drift here breaks AL-1b.2 server state machine路径
 // (BPP task_started/task_finished frame → state transition). 跟 AL-3.1
 // #310 TestAL31_CreatesPresenceSessionsTable + AL-4.1 #398
 // TestAL41_CreatesAgentRuntimesTable 同模式.
-func TestAL1B1_CreatesAgentStatusTable(t *testing.T) {
+func TestAL_CreatesAgentStatusTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
@@ -109,12 +109,12 @@ func TestAL1B1_NoDomainBleed(t *testing.T) {
 	}
 }
 
-// TestAL1B1_AcceptsBusyIdleEnum pins acceptance §1.2 — state CHECK
+// TestAL_AcceptsBusyIdleEnum pins acceptance §1.2 — state CHECK
 // ('busy','idle') 2 态. 立场 ③ 文案三态: schema 仅 2 态, client UI 合并
 // AL-1a 三态 (online/offline/error) + AL-3 presence 显示 5-state. 反约束:
 // 'online' / 'offline' / 'error' / 'running' / 'active' / '' 等枚举外值
 // reject (跟 AL-1a 三态拆死, 跟 AL-4 process-level 4 态拆死).
-func TestAL1B1_AcceptsBusyIdleEnum(t *testing.T) {
+func TestAL_AcceptsBusyIdleEnum(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
@@ -143,11 +143,11 @@ func TestAL1B1_AcceptsBusyIdleEnum(t *testing.T) {
 	}
 }
 
-// TestAL1B1_HasStateIndex pins acceptance §1.5 — INDEX
+// TestAL_HasStateIndex pins acceptance §1.5 — INDEX
 // idx_agent_status_state (busy 列表 lookup 热路径). 跟 AL-3.1
 // idx_presence_sessions_user_id / AL-4.1 idx_agent_runtimes_agent_id
 // 同模式 — 显式命名让 EXPLAIN QUERY PLAN 可读 + 反查 grep 可断.
-func TestAL1B1_HasStateIndex(t *testing.T) {
+func TestAL_HasStateIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)
@@ -160,12 +160,12 @@ func TestAL1B1_HasStateIndex(t *testing.T) {
 	}
 }
 
-// TestAL1B1_NoCascadeDelete pins acceptance §1.5 — 蓝图 §2.3 字面 "保留
+// TestAL_NoCascadeDelete pins acceptance §1.5 — 蓝图 §2.3 字面 "保留
 // 状态历史". agent 删后 agent_status row 留账 (admin 审计路径). 反向断言:
 // CREATE TABLE 字面不含 ON DELETE CASCADE / ON DELETE SET NULL — 跟
 // al_3_1 / al_4_1 / cv_2_1 / dm_2_1 同模式逻辑 FK (SQLite FK 默认禁用,
 // 此处 schema 字面双闸).
-func TestAL1B1_NoCascadeDelete(t *testing.T) {
+func TestAL_NoCascadeDelete(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL1B1(t, db)

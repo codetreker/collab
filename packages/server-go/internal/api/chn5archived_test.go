@@ -6,8 +6,8 @@
 //   REG-CHN5-002 TestCHN52_ListMyArchived_* — owner-only GET 用户路由
 //   REG-CHN5-003 TestCHN52_AdminListArchived_* — admin readonly
 //   REG-CHN5-004 TestCHN52_UnarchiveFanouts* — unarchive 互补二式
-//   REG-CHN5-005 TestCHN52_NoAdminPatchPath — admin god-mode 不挂 PATCH
-//   REG-CHN5-006 TestCHN53_NoChannelArchiveQueue — AST 锁链 #10
+//   REG-CHN5-005 TestCHN_NoAdminPatchPath — admin god-mode 不挂 PATCH
+//   REG-CHN5-006 TestCHN_NoChannelArchiveQueue — AST 锁链 #10
 package api_test
 
 import (
@@ -43,7 +43,7 @@ func TestCHN51_NoSchemaChange(t *testing.T) {
 }
 
 // REG-CHN5-002a — owner-only happy path.
-func TestCHN52_ListMyArchived_HappyPath(t *testing.T) {
+func TestCHN_ListMyArchived_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -74,7 +74,7 @@ func TestCHN52_ListMyArchived_HappyPath(t *testing.T) {
 }
 
 // REG-CHN5-002b — empty list when no archived.
-func TestCHN52_ListMyArchived_EmptyList(t *testing.T) {
+func TestCHN_ListMyArchived_EmptyList(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -89,7 +89,7 @@ func TestCHN52_ListMyArchived_EmptyList(t *testing.T) {
 }
 
 // REG-CHN5-002c — unauthorized rejected.
-func TestCHN52_ListMyArchived_Unauthorized(t *testing.T) {
+func TestCHN_ListMyArchived_Unauthorized(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, http.MethodGet, ts.URL+"/api/v1/me/archived-channels", "", nil)
@@ -99,7 +99,7 @@ func TestCHN52_ListMyArchived_Unauthorized(t *testing.T) {
 }
 
 // REG-CHN5-003a — admin readonly happy path.
-func TestCHN52_AdminListArchived_HappyPath(t *testing.T) {
+func TestCHN_AdminListArchived_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -120,7 +120,7 @@ func TestCHN52_AdminListArchived_HappyPath(t *testing.T) {
 }
 
 // REG-CHN5-003b — user cookie hits admin path → 401/403.
-func TestCHN52_AdminListArchived_RejectsUserRail(t *testing.T) {
+func TestCHN_AdminListArchived_RejectsUserRail(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	userToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -132,7 +132,7 @@ func TestCHN52_AdminListArchived_RejectsUserRail(t *testing.T) {
 
 // REG-CHN5-004 — unarchive fanout system DM 互补二式 byte-identical 跟
 // content-lock §1 (`channel #{name} 已被 {owner} 恢复于 {ts}`).
-func TestCHN52_UnarchiveFanoutsSystemMessage(t *testing.T) {
+func TestCHN_UnarchiveFanoutsSystemMessage(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -182,7 +182,7 @@ func TestCHN52_UnarchiveFanoutsSystemMessage(t *testing.T) {
 // 反向 grep `mux\.Handle\("(PATCH|PUT|DELETE).*admin-api/v1/channels/archived`
 // 在 internal/api/+server/ 0 hit (admin god-mode ADM-0 §1.3 红线 — admin
 // 看不能改).
-func TestCHN52_NoAdminPatchPath(t *testing.T) {
+func TestCHN_NoAdminPatchPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(PATCH|PUT|DELETE)[^"]*admin-api/v[0-9]+/channels/archived`)
@@ -220,7 +220,7 @@ func TestCHN52_NoAdminPatchPath(t *testing.T) {
 }
 
 // REG-CHN5-006 — AST 锁链延伸第 10 处 forbidden token 0 hit.
-func TestCHN53_NoChannelArchiveQueue(t *testing.T) {
+func TestCHN_NoChannelArchiveQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingChannelArchive",
@@ -247,7 +247,7 @@ func TestCHN53_NoChannelArchiveQueue(t *testing.T) {
 
 // REG-CHN5-cov — admin list happy path with seeded archived rows (covers
 // handleAdminListArchivedChannels through-path) + multi-archived listing.
-func TestCHN52_AdminListArchived_MultipleArchived(t *testing.T) {
+func TestCHN_AdminListArchived_MultipleArchived(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -274,7 +274,7 @@ func TestCHN52_AdminListArchived_MultipleArchived(t *testing.T) {
 }
 
 // REG-CHN5-cov — list my archived after self-archive (covers full path).
-func TestCHN52_ListMyArchived_AfterArchive(t *testing.T) {
+func TestCHN_ListMyArchived_AfterArchive(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -302,7 +302,7 @@ func itoaCHN5(i int) string {
 var _ = itoaCHN5 // referenced by fmt.Sprintf usage above; avoid unused-warn
 
 // REG-CHN5-cov — admin endpoint with no archived (covers 200 + empty list).
-func TestCHN52_AdminListArchived_NoArchived(t *testing.T) {
+func TestCHN_AdminListArchived_NoArchived(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -318,7 +318,7 @@ func TestCHN52_AdminListArchived_NoArchived(t *testing.T) {
 }
 
 // REG-CHN5-cov — direct admin user GET 401 (no admin token).
-func TestCHN52_AdminListArchived_NoToken(t *testing.T) {
+func TestCHN_AdminListArchived_NoToken(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, http.MethodGet,
@@ -330,7 +330,7 @@ func TestCHN52_AdminListArchived_NoToken(t *testing.T) {
 
 // REG-CHN5-cov-bump — extra HappyPath repetitions to ensure cov hits all
 // reachable statements deterministically (race-detector flake mitigation).
-func TestCHN52_ListMyArchived_RepeatedHappyPath(t *testing.T) {
+func TestCHN_ListMyArchived_RepeatedHappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -355,10 +355,10 @@ func TestCHN52_ListMyArchived_RepeatedHappyPath(t *testing.T) {
 }
 
 
-// TestCHN52_ListMyArchived_StoreError covers the 500 error path —
+// TestCHN_ListMyArchived_StoreError covers the 500 error path —
 // dropping the channels table makes the underlying SELECT fail, the
 // handler logs + returns 500.
-func TestCHN52_ListMyArchived_StoreError(t *testing.T) {
+func TestCHN_ListMyArchived_StoreError(t *testing.T) {
 	// 不能 t.Parallel — 我们破坏 store schema, 跟 NewTestServer 同 fresh DB.
 	ts, store, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -374,9 +374,9 @@ func TestCHN52_ListMyArchived_StoreError(t *testing.T) {
 	}
 }
 
-// TestCHN52_AdminListArchived_StoreError covers admin handler 500 path
-// (mirrors TestCHN52_ListMyArchived_StoreError 模式).
-func TestCHN52_AdminListArchived_StoreError(t *testing.T) {
+// TestCHN_AdminListArchived_StoreError covers admin handler 500 path
+// (mirrors TestCHN_ListMyArchived_StoreError 模式).
+func TestCHN_AdminListArchived_StoreError(t *testing.T) {
 	ts, store, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
 

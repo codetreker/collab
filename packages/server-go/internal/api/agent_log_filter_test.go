@@ -3,12 +3,12 @@
 // since/until/archived/actions). 0 schema / 0 新 endpoint.
 //
 // Pins:
-//   REG-AL8-001 TestAL81_NoSchemaChange — migrations/ 0 新 ALTER admin_actions
-//   REG-AL8-002 TestAL81_NoNewEndpoint — internal/api 0 新 audit-log path
+//   REG-AL8-001 TestAL_NoSchemaChange — migrations/ 0 新 ALTER admin_actions
+//   REG-AL8-002 TestAL_NoNewEndpoint — internal/api 0 新 audit-log path
 //   REG-AL8-003 TestAL82_ArchivedView_* — 三态 (active/archived/all + reject)
 //   REG-AL8-004 TestAL82_TimeRange_* — since/until clamp + reject
 //   REG-AL8-005 TestAL82_Actions_* — 多值 + 单值 backward-compat
-//   REG-AL8-006 TestAL82_RejectsUserRail + TestAL83_NoAuditQueryQueue
+//   REG-AL8-006 TestAL_RejectsUserRail + TestAL_NoAuditQueryQueue
 package api_test
 
 import (
@@ -46,7 +46,7 @@ func al8SeedAction(t *testing.T, s *store.Store, actorID, targetUserID, action s
 
 // REG-AL8-001 — 0 schema 改反向断言: migrations/ 不出现新 ALTER admin_actions
 // 或 al_8_* migration file (跟 al-8-spec.md §1 AL-8.1 字面单源).
-func TestAL81_NoSchemaChange(t *testing.T) {
+func TestAL_NoSchemaChange(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "migrations")
 	pat := regexp.MustCompile(`(?i)al_8_\d+|ALTER TABLE admin_actions ADD COLUMN(?:.*audit_log)|CREATE INDEX.*audit_log`)
@@ -67,7 +67,7 @@ func TestAL81_NoSchemaChange(t *testing.T) {
 
 // REG-AL8-002 — 0 新 endpoint 反向断言: internal/api/ 除 ADM-2.2 既有
 // /admin-api/v1/audit-log 单源外, 不出现新 audit-log path.
-func TestAL81_NoNewEndpoint(t *testing.T) {
+func TestAL_NoNewEndpoint(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "api")
 	// reject "audit-log/<sub>" or "/admin-api/v1/audit/<not-log>" or
@@ -91,7 +91,7 @@ func TestAL81_NoNewEndpoint(t *testing.T) {
 
 // REG-AL8-002b — user-rail 反向断言: /api/v1/.*audit-log 在 user-rail
 // handler 0 hit (反 ADM-0 §1.3 红线漂移).
-func TestAL81_NoUserRailAuditLog(t *testing.T) {
+func TestAL_NoUserRailAuditLog(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "api")
 	pat := regexp.MustCompile(`"/api/v[0-9]+/[^"]*audit-log[^"]*"`)
@@ -119,7 +119,7 @@ func al8AdminGET(t *testing.T, ts *httptest.Server, adminToken, qstr string) (*h
 }
 
 // REG-AL8-003 — archived 三态 (active/archived/all + reject).
-func TestAL82_ArchivedView_ActiveDefault(t *testing.T) {
+func TestAL_ArchivedView_ActiveDefault(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -149,7 +149,7 @@ func TestAL82_ArchivedView_ActiveDefault(t *testing.T) {
 	}
 }
 
-func TestAL82_ArchivedView_ArchivedOnly(t *testing.T) {
+func TestAL_ArchivedView_ArchivedOnly(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -171,7 +171,7 @@ func TestAL82_ArchivedView_ArchivedOnly(t *testing.T) {
 	}
 }
 
-func TestAL82_ArchivedView_All(t *testing.T) {
+func TestAL_ArchivedView_All(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -193,7 +193,7 @@ func TestAL82_ArchivedView_All(t *testing.T) {
 	}
 }
 
-func TestAL82_ArchivedView_RejectsUnknown(t *testing.T) {
+func TestAL_ArchivedView_RejectsUnknown(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -209,7 +209,7 @@ func TestAL82_ArchivedView_RejectsUnknown(t *testing.T) {
 }
 
 // REG-AL8-004 — since/until clamp + reject.
-func TestAL82_TimeRange_HappyPath(t *testing.T) {
+func TestAL_TimeRange_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -239,7 +239,7 @@ func TestAL82_TimeRange_HappyPath(t *testing.T) {
 	}
 }
 
-func TestAL82_TimeRange_RejectsBadInput(t *testing.T) {
+func TestAL_TimeRange_RejectsBadInput(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -254,7 +254,7 @@ func TestAL82_TimeRange_RejectsBadInput(t *testing.T) {
 	}
 }
 
-func TestAL82_TimeRange_RejectsInverted(t *testing.T) {
+func TestAL_TimeRange_RejectsInverted(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -269,7 +269,7 @@ func TestAL82_TimeRange_RejectsInverted(t *testing.T) {
 }
 
 // REG-AL8-005 — actions 多值 + 单值 backward-compat.
-func TestAL82_Actions_MultiValue(t *testing.T) {
+func TestAL_Actions_MultiValue(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -299,7 +299,7 @@ func TestAL82_Actions_MultiValue(t *testing.T) {
 	}
 }
 
-func TestAL82_Actions_SingleValueBackcompat(t *testing.T) {
+func TestAL_Actions_SingleValueBackcompat(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -319,7 +319,7 @@ func TestAL82_Actions_SingleValueBackcompat(t *testing.T) {
 }
 
 // REG-AL8-006 — admin-rail only + AST scan + reason chain not expanded.
-func TestAL82_RejectsUserRail(t *testing.T) {
+func TestAL_RejectsUserRail(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	userToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -332,7 +332,7 @@ func TestAL82_RejectsUserRail(t *testing.T) {
 }
 
 // REG-AL8-006b — AL-1a reason 锁链第 16 处不漂 (复用 reasons.Unknown).
-func TestAL82_ReasonChain_NotExpanded(t *testing.T) {
+func TestAL_ReasonChain_NotExpanded(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "auth"), filepath.Join("..", "api")}
 	pat := regexp.MustCompile(`runtime_recovered|al8_specific_reason|16th[ _-]?reason|audit_query_reason`)
@@ -354,7 +354,7 @@ func TestAL82_ReasonChain_NotExpanded(t *testing.T) {
 }
 
 // REG-AL8-006c — AST 锁链延伸第 8 处 forbidden token 0 hit.
-func TestAL83_NoAuditQueryQueue(t *testing.T) {
+func TestAL_NoAuditQueryQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingAuditQuery",

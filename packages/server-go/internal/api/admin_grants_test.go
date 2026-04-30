@@ -10,7 +10,7 @@ import (
 )
 
 // REG-covbump v5 — AL-5 recover error branches.
-func TestAL5RecoverErrors(t *testing.T) {
+func TestAL_RecoverErrors(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

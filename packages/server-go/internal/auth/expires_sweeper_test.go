@@ -2,16 +2,16 @@
 // sweeper goroutine + soft-delete + audit + full-flow integration.
 //
 // Pins:
-//   REG-AP2-001b TestAP21_StartCtxShutdown — Start goroutine ctx-aware
-//   REG-AP2-001c TestAP21_RunOnceFindsExpired — finds expired rows
-//   REG-AP2-001d TestAP21_RunOnceSoftDeletesNotRealDelete — UPDATE not DELETE
-//   REG-AP2-001e TestAP21_RunOnceIdempotentSecondTick — twice = count==0
-//   REG-AP2-002a TestAP22_RevokeWritesAuditEntry — admin_actions row written
-//   REG-AP2-002b TestAP22_ReasonConstByteIdentical — const byte-identical
-//   REG-AP2-002c TestAP22_SystemActorByteIdentical — actor='system' byte-identical
-//   REG-AP2-002d TestAP22_AuditPayloadShape — JSON 3-key shape
+//   REG-AP2-001b TestAP_StartCtxShutdown — Start goroutine ctx-aware
+//   REG-AP2-001c TestAP_RunOnceFindsExpired — finds expired rows
+//   REG-AP2-001d TestAP_RunOnceSoftDeletesNotRealDelete — UPDATE not DELETE
+//   REG-AP2-001e TestAP_RunOnceIdempotentSecondTick — twice = count==0
+//   REG-AP2-002a TestAP_RevokeWritesAuditEntry — admin_actions row written
+//   REG-AP2-002b TestAP_ReasonConstByteIdentical — const byte-identical
+//   REG-AP2-002c TestAP_SystemActorByteIdentical — actor='system' byte-identical
+//   REG-AP2-002d TestAP_AuditPayloadShape — JSON 3-key shape
 //   REG-AP2-003a TestAP23_FullFlow — grant expired → revoked → HasCapability false
-//   REG-AP2-003b TestAP23_ReverseGrep_5Patterns_AllZeroHit — 反约束 grep
+//   REG-AP2-003b TestAP_ReverseGrep_5Patterns_AllZeroHit — 反约束 grep
 package auth
 
 import (
@@ -44,7 +44,7 @@ func ap2TestStore(t *testing.T) *store.Store {
 
 // REG-AP2-002b — const literal byte-identical 跟 spec + migration CHECK
 // + admin_actions 6-tuple 同源.
-func TestAP22_ReasonConstByteIdentical(t *testing.T) {
+func TestAP_ReasonConstByteIdentical(t *testing.T) {
 	t.Parallel()
 	if ReasonPermissionExpired != "permission_expired" {
 		t.Errorf("ReasonPermissionExpired drift: got %q, want %q",
@@ -54,7 +54,7 @@ func TestAP22_ReasonConstByteIdentical(t *testing.T) {
 
 // REG-AP2-002c — actor='system' byte-identical 跟 BPP-4 watchdog 跨五
 // milestone 锁.
-func TestAP22_SystemActorByteIdentical(t *testing.T) {
+func TestAP_SystemActorByteIdentical(t *testing.T) {
 	t.Parallel()
 	if SystemActorID != "system" {
 		t.Errorf("SystemActorID drift: got %q, want %q",
@@ -64,7 +64,7 @@ func TestAP22_SystemActorByteIdentical(t *testing.T) {
 
 // REG-AP2-001c (acceptance §1.4) — RunOnce finds expired-but-not-revoked
 // rows and returns count.
-func TestAP21_RunOnceFindsExpired(t *testing.T) {
+func TestAP_RunOnceFindsExpired(t *testing.T) {
 	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -89,7 +89,7 @@ func TestAP21_RunOnceFindsExpired(t *testing.T) {
 
 // REG-AP2-001d (acceptance §1.5) — soft-delete: row stays in table with
 // revoked_at set; not real DELETE.
-func TestAP21_RunOnceSoftDeletesNotRealDelete(t *testing.T) {
+func TestAP_RunOnceSoftDeletesNotRealDelete(t *testing.T) {
 	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -120,7 +120,7 @@ func TestAP21_RunOnceSoftDeletesNotRealDelete(t *testing.T) {
 
 // REG-AP2-001e (acceptance §1.5) — second tick is no-op (revoked rows
 // excluded by WHERE).
-func TestAP21_RunOnceIdempotentSecondTick(t *testing.T) {
+func TestAP_RunOnceIdempotentSecondTick(t *testing.T) {
 	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -138,7 +138,7 @@ func TestAP21_RunOnceIdempotentSecondTick(t *testing.T) {
 }
 
 // REG-AP2-001b — Start ctx-aware shutdown.
-func TestAP21_StartCtxShutdown(t *testing.T) {
+func TestAP_StartCtxShutdown(t *testing.T) {
 	t.Parallel()
 	s := ap2TestStore(t)
 	sw := &ExpiresSweeper{Store: s, Interval: 100 * time.Millisecond}
@@ -153,7 +153,7 @@ func TestAP21_StartCtxShutdown(t *testing.T) {
 
 // REG-AP2-002a (acceptance §2.1) — RunOnce writes one admin_actions row
 // per revocation (复用 ADM-2.1 既有 path).
-func TestAP22_RevokeWritesAuditEntry(t *testing.T) {
+func TestAP_RevokeWritesAuditEntry(t *testing.T) {
 	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -186,7 +186,7 @@ func TestAP22_RevokeWritesAuditEntry(t *testing.T) {
 
 // REG-AP2-002d (acceptance §2.3) — audit metadata JSON shape (3-key
 // byte-identical).
-func TestAP22_AuditPayloadShape(t *testing.T) {
+func TestAP_AuditPayloadShape(t *testing.T) {
 	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -220,7 +220,7 @@ func TestAP22_AuditPayloadShape(t *testing.T) {
 // REG-AP2-003a (acceptance §3.1) — full-flow: grant w/ expired → RunOnce
 // → revoked + admin_actions row + HasCapability returns false (跟 AP-1
 // SSOT 同精神, ListUserPermissions 排除 revoked rows).
-func TestAP23_FullFlow_GrantExpired_ThenRevokedThenHasCapabilityFalse(t *testing.T) {
+func TestAP_FullFlow_GrantExpired_ThenRevokedThenHasCapabilityFalse(t *testing.T) {
 	t.Parallel()
 	s := ap2TestStore(t)
 	now := time.Date(2026, 4, 30, 12, 0, 0, 0, time.UTC)
@@ -265,7 +265,7 @@ func TestAP23_FullFlow_GrantExpired_ThenRevokedThenHasCapabilityFalse(t *testing
 // REG-AP2-003b (acceptance §3.2 + 立场 ③) — reverse grep 5 pattern in
 // internal/auth/+internal/api/+internal/migrations/ all count==0 (except
 // for sweeper file itself for the UPDATE pattern).
-func TestAP23_ReverseGrep_5Patterns_AllZeroHit(t *testing.T) {
+func TestAP_ReverseGrep_5Patterns_AllZeroHit(t *testing.T) {
 	t.Parallel()
 	patterns := []struct {
 		dir       string

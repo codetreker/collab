@@ -20,11 +20,11 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestDM5_ReactionSummaryInDMChannel pins 立场 ①: PUT reaction on a DM
+// TestDM_ReactionSummaryInDMChannel pins 立场 ①: PUT reaction on a DM
 // message → GET aggregated returns 1 chip with count=1, user_ids=[owner].
 // Then a second member (added to DM) PUTs the same emoji → count=2.
 // Same user re-PUT idempotent (count stays 2). DELETE → count drops.
-func TestDM5_ReactionSummaryInDMChannel(t *testing.T) {
+func TestDM_ReactionSummaryInDMChannel(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

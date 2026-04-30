@@ -18,11 +18,11 @@ func runCV11(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestCV11_CreatesArtifactsTable pins acceptance §1 (cv-1.md §1.1):
+// TestCV_CreatesArtifactsTable pins acceptance §1 (cv-1.md §1.1):
 // artifacts has the contract columns with the right NOT NULL / nullable
 // shape. Drift here breaks workspace tab list correctness or schema
 // equivalence with the CV-1.2 server API.
-func TestCV11_CreatesArtifactsTable(t *testing.T) {
+func TestCV_CreatesArtifactsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
@@ -81,10 +81,10 @@ func TestCV11_CreatesArtifactsTable(t *testing.T) {
 	}
 }
 
-// TestCV11_RejectsNonMarkdownType pins 立场 ④: type CHECK = 'markdown'
+// TestCV_RejectsNonMarkdownType pins 立场 ④: type CHECK = 'markdown'
 // is the v1 gate — 代码/图片/PDF/看板 留 v2+. Insert with any other type
 // must reject so the v0/v1 split stays enforced at schema layer.
-func TestCV11_RejectsNonMarkdownType(t *testing.T) {
+func TestCV_RejectsNonMarkdownType(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
@@ -108,11 +108,11 @@ func TestCV11_RejectsNonMarkdownType(t *testing.T) {
 	}
 }
 
-// TestCV11_CreatesArtifactVersionsTable pins acceptance §1.1 second-table
+// TestCV_CreatesArtifactVersionsTable pins acceptance §1.1 second-table
 // contract: artifact_versions captures committer_kind ('agent','human')
 // for 立场 ⑥ system message 路径 + UNIQUE(artifact_id, version) for 立场 ③
 // 版本线性.
-func TestCV11_CreatesArtifactVersionsTable(t *testing.T) {
+func TestCV_CreatesArtifactVersionsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
@@ -142,7 +142,7 @@ func TestCV11_CreatesArtifactVersionsTable(t *testing.T) {
 	}
 }
 
-// TestCV11_VersionsTablePKMonotonic pins artifact_versions.id PK
+// TestCV_VersionsTablePKMonotonic pins artifact_versions.id PK
 // AUTOINCREMENT — global strictly increasing across all artifacts. This
 // is a *different* invariant from UNIQUE(artifact_id, version):
 //   - PK id: cross-artifact 全局 audit 序 (每行一次性)
@@ -150,7 +150,7 @@ func TestCV11_CreatesArtifactVersionsTable(t *testing.T) {
 // CV-1.2 commit 路径需要全局 PK 单调供 audit log + cursor stub 复用 (虽然
 // CV-1.2 ArtifactUpdated frame 走 RT-1.1 cursor, 不是 PK; 但 PK 单调是
 // SQLite AUTOINCREMENT 显式契约, drift 会破坏 backfill 排序假设).
-func TestCV11_VersionsTablePKMonotonic(t *testing.T) {
+func TestCV_VersionsTablePKMonotonic(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
@@ -207,10 +207,10 @@ func TestCV11_VersionsTablePKMonotonic(t *testing.T) {
 	}
 }
 
-// TestCV11_RejectsInvalidCommitterKind pins 立场 ⑥: committer_kind
+// TestCV_RejectsInvalidCommitterKind pins 立场 ⑥: committer_kind
 // CHECK in ('agent','human'). Drift here breaks the agent-commit fanout
 // system message routing.
-func TestCV11_RejectsInvalidCommitterKind(t *testing.T) {
+func TestCV_RejectsInvalidCommitterKind(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)
@@ -234,11 +234,11 @@ func TestCV11_RejectsInvalidCommitterKind(t *testing.T) {
 	}
 }
 
-// TestCV11_RejectsDuplicateArtifactVersion pins 立场 ③ 版本线性:
+// TestCV_RejectsDuplicateArtifactVersion pins 立场 ③ 版本线性:
 // UNIQUE(artifact_id, version) enforces strictly increasing version per
 // artifact. CV-1.2 commit 路径必须 transactional bump current_version
 // + insert new artifact_versions row; dup → reject.
-func TestCV11_RejectsDuplicateArtifactVersion(t *testing.T) {
+func TestCV_RejectsDuplicateArtifactVersion(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV11(t, db)

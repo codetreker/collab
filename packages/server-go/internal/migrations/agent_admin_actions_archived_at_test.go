@@ -32,11 +32,11 @@ func runAL71(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestAL71_AddsArchivedAtColumn — acceptance §1.1.
+// TestAL_AddsArchivedAtColumn — acceptance §1.1.
 //
 // admin_actions.archived_at must exist as nullable INTEGER (NULL = active
 // row, sweeper UPDATE archived_at=now to archive).
-func TestAL71_AddsArchivedAtColumn(t *testing.T) {
+func TestAL_AddsArchivedAtColumn(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
@@ -50,11 +50,11 @@ func TestAL71_AddsArchivedAtColumn(t *testing.T) {
 	}
 }
 
-// TestAL71_HasSparseIdx — acceptance §1.1.
+// TestAL_HasSparseIdx — acceptance §1.1.
 //
 // idx_admin_actions_archived_at must be created with WHERE archived_at IS
 // NOT NULL (sparse index 跟 ap_2_1 / ap_1_1 / ap_3_1 同模式).
-func TestAL71_HasSparseIdx(t *testing.T) {
+func TestAL_HasSparseIdx(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
@@ -71,11 +71,11 @@ func TestAL71_HasSparseIdx(t *testing.T) {
 	}
 }
 
-// TestAL71_AcceptsAuditRetentionOverride — acceptance §1.2.
+// TestAL_AcceptsAuditRetentionOverride — acceptance §1.2.
 //
 // All 12 actions (6 ADM-2.1 legacy + 1 AP-2 + 5 BPP-8 + 1 AL-7) must
 // INSERT successfully.
-func TestAL71_AcceptsAuditRetentionOverride(t *testing.T) {
+func TestAL_AcceptsAuditRetentionOverride(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
@@ -102,10 +102,10 @@ func TestAL71_AcceptsAuditRetentionOverride(t *testing.T) {
 	}
 }
 
-// TestAL71_RejectsUnknownAction — acceptance §1.2.
+// TestAL_RejectsUnknownAction — acceptance §1.2.
 //
 // 5 spec-外 audit_retention_* names must be rejected by CHECK.
-func TestAL71_RejectsUnknownAction(t *testing.T) {
+func TestAL_RejectsUnknownAction(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)
@@ -127,8 +127,8 @@ func TestAL71_RejectsUnknownAction(t *testing.T) {
 	}
 }
 
-// TestAL71_VersionIs33 — registry literal lock.
-func TestAL71_VersionIs33(t *testing.T) {
+// TestAL_VersionIs33 — registry literal lock.
+func TestAL_VersionIs33(t *testing.T) {
 	t.Parallel()
 	if got, want := al71AdminActionsArchivedAt.Version, 33; got != want {
 		t.Errorf("AL-7.1 Version drift: got %d, want %d (post CV-6 v=32 sequencing)", got, want)
@@ -162,12 +162,12 @@ func TestAL71_Idempotent(t *testing.T) {
 	}
 }
 
-// TestAL71_NoSeparateArchiveTable — acceptance §1.3 立场 ① 反断.
+// TestAL_NoSeparateArchiveTable — acceptance §1.3 立场 ① 反断.
 //
 // Verifies that no audit_archive_table / audit_history_log / al7_archive_log
 // tables exist after migration chain runs (audit retention reuses
 // admin_actions.archived_at, 不裂表).
-func TestAL71_NoSeparateArchiveTable(t *testing.T) {
+func TestAL_NoSeparateArchiveTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL71(t, db)

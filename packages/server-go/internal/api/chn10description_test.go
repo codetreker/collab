@@ -3,13 +3,13 @@
 //
 // Pins:
 //   REG-CHN10-001 TestCHN101_NoSchemaChange (filepath.Walk migrations/)
-//   REG-CHN10-002 TestCHN102_PutDescription_OwnerHappyPath
+//   REG-CHN10-002 TestCHN_PutDescription_OwnerHappyPath
 //                 + _NonOwnerRejected + _Unauthorized401
-//   REG-CHN10-003 TestCHN102_PutDescription_LengthCap500
-//   REG-CHN10-004 TestCHN102_TopicPathByteIdentical (反向 grep dm_10/chn_10
+//   REG-CHN10-003 TestCHN_PutDescription_LengthCap500
+//   REG-CHN10-004 TestCHN_TopicPathByteIdentical (反向 grep dm_10/chn_10
 //                 字面 在 channels.go::handleSetTopic block 0 hit)
-//   REG-CHN10-005 TestCHN103_NoAdminDescriptionPath
-//   REG-CHN10-006 TestCHN103_NoDescriptionQueue
+//   REG-CHN10-005 TestCHN_NoAdminDescriptionPath
+//   REG-CHN10-006 TestCHN_NoDescriptionQueue
 package api_test
 
 import (
@@ -95,7 +95,7 @@ func setupCHN10(t *testing.T) (string, string, string, string, *store.Store) {
 }
 
 // REG-CHN10-002a — owner HappyPath PUT /description → 200.
-func TestCHN102_PutDescription_OwnerHappyPath(t *testing.T) {
+func TestCHN_PutDescription_OwnerHappyPath(t *testing.T) {
 	t.Parallel()
 	url, ownerToken, _, channelID, s := setupCHN10(t)
 
@@ -116,7 +116,7 @@ func TestCHN102_PutDescription_OwnerHappyPath(t *testing.T) {
 }
 
 // REG-CHN10-002b — non-owner member 403 (立场 ② owner-only).
-func TestCHN102_PutDescription_NonOwnerRejected(t *testing.T) {
+func TestCHN_PutDescription_NonOwnerRejected(t *testing.T) {
 	t.Parallel()
 	url, _, memberToken, channelID, _ := setupCHN10(t)
 
@@ -129,7 +129,7 @@ func TestCHN102_PutDescription_NonOwnerRejected(t *testing.T) {
 }
 
 // REG-CHN10-002c — 401 unauthorized (空 token).
-func TestCHN102_PutDescription_Unauthorized401(t *testing.T) {
+func TestCHN_PutDescription_Unauthorized401(t *testing.T) {
 	t.Parallel()
 	url, _, _, channelID, _ := setupCHN10(t)
 
@@ -142,7 +142,7 @@ func TestCHN102_PutDescription_Unauthorized401(t *testing.T) {
 }
 
 // REG-CHN10-003 — length cap 500 (501 reject 400).
-func TestCHN102_PutDescription_LengthCap500(t *testing.T) {
+func TestCHN_PutDescription_LengthCap500(t *testing.T) {
 	t.Parallel()
 	url, ownerToken, _, channelID, _ := setupCHN10(t)
 
@@ -167,7 +167,7 @@ func TestCHN102_PutDescription_LengthCap500(t *testing.T) {
 
 // REG-CHN10-004 — 既有 PUT /topic byte-identical 不变 — handleSetTopic
 // block 内反向 grep `chn_10|description` 0 hit (CHN-10 不漂入既有 path).
-func TestCHN102_TopicPathByteIdentical(t *testing.T) {
+func TestCHN_TopicPathByteIdentical(t *testing.T) {
 	t.Parallel()
 	body, err := os.ReadFile(filepath.Join("..", "api", "channels.go"))
 	if err != nil {
@@ -192,7 +192,7 @@ func TestCHN102_TopicPathByteIdentical(t *testing.T) {
 }
 
 // REG-CHN10-002d — channel not found → 404.
-func TestCHN102_PutDescription_ChannelNotFound(t *testing.T) {
+func TestCHN_PutDescription_ChannelNotFound(t *testing.T) {
 	t.Parallel()
 	url, ownerToken, _, _, _ := setupCHN10(t)
 	resp, _ := testutil.JSON(t, http.MethodPut,
@@ -205,7 +205,7 @@ func TestCHN102_PutDescription_ChannelNotFound(t *testing.T) {
 }
 
 // REG-CHN10-002e — invalid JSON body → 400 (bumps handler coverage).
-func TestCHN102_PutDescription_InvalidJSONBody(t *testing.T) {
+func TestCHN_PutDescription_InvalidJSONBody(t *testing.T) {
 	t.Parallel()
 	urlBase, ownerToken, _, channelID, _ := setupCHN10(t)
 	// raw HTTP request with non-JSON body.
@@ -226,7 +226,7 @@ func TestCHN102_PutDescription_InvalidJSONBody(t *testing.T) {
 }
 
 // REG-CHN10-005 — admin god-mode 不挂 PATCH/PUT/POST/DELETE 在 admin-api/v1/.../description.
-func TestCHN103_NoAdminDescriptionPath(t *testing.T) {
+func TestCHN_NoAdminDescriptionPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/[^"]*description`)
@@ -249,7 +249,7 @@ func TestCHN103_NoAdminDescriptionPath(t *testing.T) {
 }
 
 // REG-CHN10-006 — AST 锁链延伸第 17 处 forbidden 3 token.
-func TestCHN103_NoDescriptionQueue(t *testing.T) {
+func TestCHN_NoDescriptionQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingDescription",

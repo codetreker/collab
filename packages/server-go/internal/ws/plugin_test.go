@@ -12,7 +12,7 @@ import (
 	"borgee-server/internal/store"
 )
 
-func TestBPP4_PluginConn_LastSeenInitial(t *testing.T) {
+func TestBPP_PluginConn_LastSeenInitial(t *testing.T) {
 	t.Parallel()
 	pc := NewTestPluginConn("agent-1")
 	first := pc.LastSeen()
@@ -21,7 +21,7 @@ func TestBPP4_PluginConn_LastSeenInitial(t *testing.T) {
 	}
 }
 
-func TestBPP4_PluginConn_TouchLastSeen(t *testing.T) {
+func TestBPP_PluginConn_TouchLastSeen(t *testing.T) {
 	t.Parallel()
 	pc := NewTestPluginConn("agent-1")
 	first := pc.LastSeen()
@@ -34,7 +34,7 @@ func TestBPP4_PluginConn_TouchLastSeen(t *testing.T) {
 	}
 }
 
-func TestBPP4_Hub_SnapshotPluginLastSeen_Empty(t *testing.T) {
+func TestBPP_Hub_SnapshotPluginLastSeen_Empty(t *testing.T) {
 	t.Parallel()
 	h := &Hub{plugins: map[string]*PluginConn{}}
 	snap := h.SnapshotPluginLastSeen()
@@ -43,7 +43,7 @@ func TestBPP4_Hub_SnapshotPluginLastSeen_Empty(t *testing.T) {
 	}
 }
 
-func TestBPP4_Hub_SnapshotPluginLastSeen_TwoPlugins(t *testing.T) {
+func TestBPP_Hub_SnapshotPluginLastSeen_TwoPlugins(t *testing.T) {
 	t.Parallel()
 	pc1 := NewTestPluginConn("agent-1")
 	pc2 := NewTestPluginConn("agent-2")
@@ -60,10 +60,10 @@ func TestBPP4_Hub_SnapshotPluginLastSeen_TwoPlugins(t *testing.T) {
 	}
 }
 
-// TestBPP4_Hub_PluginFrameRouterSnapshot_NilByDefault — covers
+// TestBPP_Hub_PluginFrameRouterSnapshot_NilByDefault — covers
 // pluginFrameRouterSnapshot 0% path (used by plugin.go BPP frame routing
 // fallback; nil-safe in unit tests / early boot before SetPluginFrameRouter).
-func TestBPP4_Hub_PluginFrameRouterSnapshot_NilByDefault(t *testing.T) {
+func TestBPP_Hub_PluginFrameRouterSnapshot_NilByDefault(t *testing.T) {
 	t.Parallel()
 	h := &Hub{}
 	if got := h.pluginFrameRouterSnapshot(); got != nil {
@@ -71,8 +71,8 @@ func TestBPP4_Hub_PluginFrameRouterSnapshot_NilByDefault(t *testing.T) {
 	}
 }
 
-// TestBPP4_Hub_PluginFrameRouterSnapshot_AfterSet — set + read round trip.
-func TestBPP4_Hub_PluginFrameRouterSnapshot_AfterSet(t *testing.T) {
+// TestBPP_Hub_PluginFrameRouterSnapshot_AfterSet — set + read round trip.
+func TestBPP_Hub_PluginFrameRouterSnapshot_AfterSet(t *testing.T) {
 	t.Parallel()
 	h := &Hub{}
 	stub := &stubPluginFrameRouter{}
@@ -89,14 +89,14 @@ func (s *stubPluginFrameRouter) Route(raw []byte, sess PluginSessionContext) (bo
 	return false, nil
 }
 
-// TestBPP4_PushAgentConfigUpdate_DeadLetterPath_WithLogger — exercises
+// TestBPP_PushAgentConfigUpdate_DeadLetterPath_WithLogger — exercises
 // the dead-letter call path when plugin is offline AND hub.logger is
 // non-nil (real CI path). Coverage value: hits LogFrameDroppedPluginOffline
 // + audit entry construction lines (98-116) explicitly.
 //
 // Note: lives in `package ws` (this file) to access unexported fields;
 // the parallel `package ws_test` covers the same call from outside.
-func TestBPP4_PushAgentConfigUpdate_DeadLetterPath_WithLogger(t *testing.T) {
+func TestBPP_PushAgentConfigUpdate_DeadLetterPath_WithLogger(t *testing.T) {
 	t.Parallel()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	s, err := store.Open(":memory:")

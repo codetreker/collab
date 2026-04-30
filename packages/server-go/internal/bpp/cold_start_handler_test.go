@@ -120,8 +120,8 @@ func bpp6Frame(agentID string) json.RawMessage {
 
 // ---- §1 frame schema (3 项) ----
 
-// TestBPP6_FieldOrder — acceptance §1.1 byte-identical 5 字段.
-func TestBPP6_FieldOrder(t *testing.T) {
+// TestBPP_FieldOrder — acceptance §1.1 byte-identical 5 字段.
+func TestBPP_FieldOrder(t *testing.T) {
 	t.Parallel()
 	want := []struct{ name, tag string }{
 		{"Type", "type"},
@@ -145,8 +145,8 @@ func TestBPP6_FieldOrder(t *testing.T) {
 	}
 }
 
-// TestBPP6_DirectionLock — acceptance §1.2 plugin→server.
-func TestBPP6_DirectionLock(t *testing.T) {
+// TestBPP_DirectionLock — acceptance §1.2 plugin→server.
+func TestBPP_DirectionLock(t *testing.T) {
 	t.Parallel()
 	f := ColdStartHandshakeFrame{}
 	if got, want := f.FrameDirection(), DirectionPluginToServer; got != want {
@@ -157,9 +157,9 @@ func TestBPP6_DirectionLock(t *testing.T) {
 	}
 }
 
-// TestBPP6_FrameSet_NoReconnectFields — acceptance §1.3 字段集与
+// TestBPP_FrameSet_NoReconnectFields — acceptance §1.3 字段集与
 // ReconnectHandshakeFrame 互斥反断 (spec §0.1 立场守门).
-func TestBPP6_FrameSet_NoReconnectFields(t *testing.T) {
+func TestBPP_FrameSet_NoReconnectFields(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{"LastKnownCursor", "DisconnectAt", "ReconnectAt"}
 	typ := reflect.TypeOf(ColdStartHandshakeFrame{})
@@ -175,7 +175,7 @@ func TestBPP6_FrameSet_NoReconnectFields(t *testing.T) {
 
 // ---- §2 server handler (3 项) ----
 
-func TestBPP6_Handler_TransitionsToOnline_FromInitial(t *testing.T) {
+func TestBPP_Handler_TransitionsToOnline_FromInitial(t *testing.T) {
 	t.Parallel()
 	st := &bpp6StubStateAppender{}
 	owner := &bpp6StubOwner{owners: map[string]string{"agent-1": "user-1"}}
@@ -203,7 +203,7 @@ func TestBPP6_Handler_TransitionsToOnline_FromInitial(t *testing.T) {
 	}
 }
 
-func TestBPP6_Handler_TransitionsToOnline_FromError(t *testing.T) {
+func TestBPP_Handler_TransitionsToOnline_FromError(t *testing.T) {
 	t.Parallel()
 	st := &bpp6StubStateAppender{
 		listLog: []store.AgentStateLogRow{{
@@ -222,7 +222,7 @@ func TestBPP6_Handler_TransitionsToOnline_FromError(t *testing.T) {
 	}
 }
 
-func TestBPP6_Handler_TransitionsToOnline_FromOffline(t *testing.T) {
+func TestBPP_Handler_TransitionsToOnline_FromOffline(t *testing.T) {
 	t.Parallel()
 	st := &bpp6StubStateAppender{
 		listLog: []store.AgentStateLogRow{{
@@ -260,7 +260,7 @@ func TestBPP6_Handler_CrossOwnerReject(t *testing.T) {
 	}
 }
 
-func TestBPP6_Handler_NilSafeCtor(t *testing.T) {
+func TestBPP_Handler_NilSafeCtor(t *testing.T) {
 	t.Parallel()
 	st := &bpp6StubStateAppender{}
 	owner := &bpp6StubOwner{}
@@ -287,10 +287,10 @@ func TestBPP6_Handler_NilSafeCtor(t *testing.T) {
 
 // ---- §3 restart count derive + AST 兜底 (3 项) ----
 
-// TestBPP6_RestartCount_DerivedFromStateLog — acceptance §3.1 立场 ③
+// TestBPP_RestartCount_DerivedFromStateLog — acceptance §3.1 立场 ③
 // restart 计数走 state-log COUNT(WHERE to_state='online' AND
 // reason='runtime_crashed') 反向 derive (不另开 plugin_restart_count 列).
-func TestBPP6_RestartCount_DerivedFromStateLog(t *testing.T) {
+func TestBPP_RestartCount_DerivedFromStateLog(t *testing.T) {
 	t.Parallel()
 	st := &bpp6StubStateAppender{}
 	owner := &bpp6StubOwner{owners: map[string]string{"agent-1": "user-1"}}
@@ -321,10 +321,10 @@ func TestBPP6_RestartCount_DerivedFromStateLog(t *testing.T) {
 	}
 }
 
-// TestBPP6_Handler_DoesNotInvokeResolveResume — acceptance §2.3 立场 ②
+// TestBPP_Handler_DoesNotInvokeResolveResume — acceptance §2.3 立场 ②
 // 不重放历史 — handler 源 AST identifier scan 不 reference ResolveResume /
 // SessionResumeRequest (注释里说明立场承袭 OK, 实际 ident 调用必 0 hit).
-func TestBPP6_Handler_DoesNotInvokeResolveResume(t *testing.T) {
+func TestBPP_Handler_DoesNotInvokeResolveResume(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"ResolveResume",
@@ -356,10 +356,10 @@ func TestBPP6_Handler_DoesNotInvokeResolveResume(t *testing.T) {
 	}
 }
 
-// TestBPP6_NoColdStartQueueInBPPPackage — acceptance §3.3 立场 ⑥
+// TestBPP_NoColdStartQueueInBPPPackage — acceptance §3.3 立场 ⑥
 // best-effort 锁链延伸第 3 处 (BPP-4 dead_letter_test +
 // BPP-5 reconnect_handler_test 同模式).
-func TestBPP6_NoColdStartQueueInBPPPackage(t *testing.T) {
+func TestBPP_NoColdStartQueueInBPPPackage(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingColdStart",

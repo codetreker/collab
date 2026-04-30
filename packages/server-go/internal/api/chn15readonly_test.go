@@ -19,8 +19,8 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestCHN151_ReadonlyBit_ByteIdentical pins ReadonlyBit=16 + truth table.
-func TestCHN151_ReadonlyBit_ByteIdentical(t *testing.T) {
+// TestCHN_ReadonlyBit_ByteIdentical pins ReadonlyBit=16 + truth table.
+func TestCHN_ReadonlyBit_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	if api.ReadonlyBit != 16 {
 		t.Errorf("ReadonlyBit drift: got %d, want 16 (双向锁 跟 client READONLY_BIT)", api.ReadonlyBit)
@@ -60,17 +60,17 @@ func TestCHN151_NoSchemaChange(t *testing.T) {
 	}
 }
 
-// TestCHN15_ChannelErrCode_ByteIdentical — server const 字面单源.
-func TestCHN15_ChannelErrCode_ByteIdentical(t *testing.T) {
+// TestCHN_ChannelErrCode_ByteIdentical — server const 字面单源.
+func TestCHN_ChannelErrCode_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	if got, want := api.ChannelErrCodeReadonlyNoSend, "channel.readonly_no_send"; got != want {
 		t.Errorf("ChannelErrCodeReadonlyNoSend = %q, want %q", got, want)
 	}
 }
 
-// TestCHN152_SetReadonly_OwnerOnly_HappyPath — owner sets readonly,
+// TestCHN_SetReadonly_OwnerOnly_HappyPath — owner sets readonly,
 // response carries readonly=true + collapsed bit 4.
-func TestCHN152_SetReadonly_OwnerOnly_HappyPath(t *testing.T) {
+func TestCHN_SetReadonly_OwnerOnly_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -89,8 +89,8 @@ func TestCHN152_SetReadonly_OwnerOnly_HappyPath(t *testing.T) {
 	}
 }
 
-// TestCHN152_SetReadonly_NonOwner_403 — non-creator → 403.
-func TestCHN152_SetReadonly_NonOwner_403(t *testing.T) {
+// TestCHN_SetReadonly_NonOwner_403 — non-creator → 403.
+func TestCHN_SetReadonly_NonOwner_403(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -106,8 +106,8 @@ func TestCHN152_SetReadonly_NonOwner_403(t *testing.T) {
 	}
 }
 
-// TestCHN152_UnsetReadonly_Idempotent — DELETE twice both 200.
-func TestCHN152_UnsetReadonly_Idempotent(t *testing.T) {
+// TestCHN_UnsetReadonly_Idempotent — DELETE twice both 200.
+func TestCHN_UnsetReadonly_Idempotent(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -125,9 +125,9 @@ func TestCHN152_UnsetReadonly_Idempotent(t *testing.T) {
 	}
 }
 
-// TestCHN152_SendBlockedForNonCreator_WhenReadonly — non-creator POST
+// TestCHN_SendBlockedForNonCreator_WhenReadonly — non-creator POST
 // /messages → 403 channel.readonly_no_send.
-func TestCHN152_SendBlockedForNonCreator_WhenReadonly(t *testing.T) {
+func TestCHN_SendBlockedForNonCreator_WhenReadonly(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -149,9 +149,9 @@ func TestCHN152_SendBlockedForNonCreator_WhenReadonly(t *testing.T) {
 	}
 }
 
-// TestCHN152_SendAllowedForCreator_WhenReadonly — creator's own send
+// TestCHN_SendAllowedForCreator_WhenReadonly — creator's own send
 // passes when readonly=true.
-func TestCHN152_SendAllowedForCreator_WhenReadonly(t *testing.T) {
+func TestCHN_SendAllowedForCreator_WhenReadonly(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -166,9 +166,9 @@ func TestCHN152_SendAllowedForCreator_WhenReadonly(t *testing.T) {
 	}
 }
 
-// TestCHN152_SendAllowedForNonCreator_WhenNotReadonly — control: non-
+// TestCHN_SendAllowedForNonCreator_WhenNotReadonly — control: non-
 // creator can send when channel is NOT readonly (反向断言不误伤).
-func TestCHN152_SendAllowedForNonCreator_WhenNotReadonly(t *testing.T) {
+func TestCHN_SendAllowedForNonCreator_WhenNotReadonly(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -182,11 +182,11 @@ func TestCHN152_SendAllowedForNonCreator_WhenNotReadonly(t *testing.T) {
 	}
 }
 
-// TestCHN152_NoAdminReadonlyPath — admin-rail does NOT mount any
+// TestCHN_NoAdminReadonlyPath — admin-rail does NOT mount any
 // CHN-15 readonly toggle endpoint. Reverse-grep for the specific path
 // (avoids false-positive matches on the word "readonly" that legitimately
 // appears in admin GET-only doc comments for other milestones).
-func TestCHN152_NoAdminReadonlyPath(t *testing.T) {
+func TestCHN_NoAdminReadonlyPath(t *testing.T) {
 	t.Parallel()
 	root := chn15RepoRoot(t)
 	dir := filepath.Join(root, "packages/server-go/internal")
@@ -197,8 +197,8 @@ func TestCHN152_NoAdminReadonlyPath(t *testing.T) {
 	}
 }
 
-// TestCHN152_ReadonlyEndpoint_Unauthorized — no auth → 401.
-func TestCHN152_ReadonlyEndpoint_Unauthorized(t *testing.T) {
+// TestCHN_ReadonlyEndpoint_Unauthorized — no auth → 401.
+func TestCHN_ReadonlyEndpoint_Unauthorized(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, "PUT", ts.URL+"/api/v1/channels/whatever/readonly", "", nil)

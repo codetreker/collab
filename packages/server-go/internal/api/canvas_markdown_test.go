@@ -18,9 +18,9 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestCV11_ServerStoresRawMarkdown pins 立场 ①: comment POST stores body
+// TestCV_ServerStoresRawMarkdown pins 立场 ①: comment POST stores body
 // raw, GET round-trip returns exact same bytes. Server never renders.
-func TestCV11_ServerStoresRawMarkdown(t *testing.T) {
+func TestCV_ServerStoresRawMarkdown(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

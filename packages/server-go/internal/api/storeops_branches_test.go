@@ -14,7 +14,7 @@ import (
 
 // REG-WORKTREE-cov-v6 — HB-5 heartbeat-retention override branches
 // (mirror of AL-7 audit-retention/override 7-branch test).
-func TestHB5RetentionOverride(t *testing.T) {
+func TestHB_RetentionOverride(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)

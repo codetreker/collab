@@ -21,14 +21,14 @@ import (
 	"borgee-server/internal/bpp"
 )
 
-// TestAL2B1_AgentConfigUpdateFrameFieldOrder pins acceptance §1.1 — 7
+// TestAL_AgentConfigUpdateFrameFieldOrder pins acceptance §1.1 — 7
 // 字段 byte-identical envelope:
 //
 //   {type, cursor, agent_id, schema_version, blob, idempotency_key, created_at}
 //
 // JSON key order follows struct declaration order. Drift here breaks
 // the BPP-2 dispatcher contract + AL-2a SSOT round-trip simultaneously.
-func TestAL2B1_AgentConfigUpdateFrameFieldOrder(t *testing.T) {
+func TestAL_AgentConfigUpdateFrameFieldOrder(t *testing.T) {
 	t.Parallel()
 
 	frame := bpp.AgentConfigUpdateFrame{
@@ -68,13 +68,13 @@ func TestAL2B1_AgentConfigUpdateFrameFieldOrder(t *testing.T) {
 	}
 }
 
-// TestAL2B1_AgentConfigAckFrameFieldOrder pins acceptance §1.2 — 7 字段
+// TestAL_AgentConfigAckFrameFieldOrder pins acceptance §1.2 — 7 字段
 // byte-identical:
 //
 //   {type, cursor, agent_id, schema_version, status, reason, applied_at}
 //
 // Direction lock = plugin→server (反向断言 server_to_plugin 不在此 frame).
-func TestAL2B1_AgentConfigAckFrameFieldOrder(t *testing.T) {
+func TestAL_AgentConfigAckFrameFieldOrder(t *testing.T) {
 	t.Parallel()
 
 	applied := bpp.AgentConfigAckFrame{
@@ -135,10 +135,10 @@ func TestAL2B1_AgentConfigAckFrameFieldOrder(t *testing.T) {
 	}
 }
 
-// TestAL2B1_AgentConfigAckDirectionLock pins acceptance §1.2 direction
+// TestAL_AgentConfigAckDirectionLock pins acceptance §1.2 direction
 // 锁 — plugin→server only (反向断言 DirectionServerToPlugin 不在此
 // frame). 跟 BPP-1 #304 direction lock 同模式 reflect 自动覆盖.
-func TestAL2B1_AgentConfigAckDirectionLock(t *testing.T) {
+func TestAL_AgentConfigAckDirectionLock(t *testing.T) {
 	t.Parallel()
 
 	got := bpp.AgentConfigAckFrame{}.FrameDirection()
@@ -155,14 +155,14 @@ func TestAL2B1_AgentConfigAckDirectionLock(t *testing.T) {
 	}
 }
 
-// TestAL2B1_AgentConfigAckStatusEnum pins acceptance §1.2 status CHECK
+// TestAL_AgentConfigAckStatusEnum pins acceptance §1.2 status CHECK
 // — 3 态 byte-identical ('applied' | 'rejected' | 'stale'). 反约束:
 // fail-closed 校验 reject 'unknown' / '' / 同义词漂.
 //
 // schema 层无 CHECK enum (BPP frame 是 wire format, 不是 SQL); 此 test
 // 跟 al_4_1 TestAL41_RejectsInvalidStatus / cv_3_2 ValidArtifactKinds
 // 同模式 — server-side validator function gate.
-func TestAL2B1_AgentConfigAckStatusEnum(t *testing.T) {
+func TestAL_AgentConfigAckStatusEnum(t *testing.T) {
 	t.Parallel()
 
 	// 白名单 3 态合法.
@@ -199,10 +199,10 @@ func isValidAckStatus(s string) bool {
 		s == bpp.AgentConfigAckStatusStale
 }
 
-// TestAL2B1_AgentConfigUpdate7Fields + Ack7Fields pin acceptance §4.1
+// TestAL_AgentConfigUpdate7Fields + Ack7Fields pin acceptance §4.1
 // — 字段顺序漂移防御. Reflection-based field count + JSON tag scan.
 // 跟 BPP-1 #304 reflect 自动覆盖同模式.
-func TestAL2B1_AgentConfigUpdate7Fields(t *testing.T) {
+func TestAL_AgentConfigUpdate7Fields(t *testing.T) {
 	t.Parallel()
 
 	want := []struct {
@@ -233,7 +233,7 @@ func TestAL2B1_AgentConfigUpdate7Fields(t *testing.T) {
 	}
 }
 
-func TestAL2B1_AgentConfigAck7Fields(t *testing.T) {
+func TestAL_AgentConfigAck7Fields(t *testing.T) {
 	t.Parallel()
 
 	want := []struct {
@@ -264,13 +264,13 @@ func TestAL2B1_AgentConfigAck7Fields(t *testing.T) {
 	}
 }
 
-// TestAL2B1_NoBlobRuntimeOnlyFields pins acceptance §3.2 — SSOT 立场承袭.
+// TestAL_NoBlobRuntimeOnlyFields pins acceptance §3.2 — SSOT 立场承袭.
 // frame `Blob` 是 opaque JSON wire payload (server 端 marshal SSOT 字段);
 // 此 test 反向断言 Blob 不是结构体直嵌 runtime-only 字段 (api_key /
 // temperature / token_limit / retry_policy). 真实校验在 AL-2b.2 server
 // PATCH hook (fail-closed 跟 AL-2a #447 TestAL2A1_NoDomainBleed 同源),
 // 此 PR frame 层仅锁 Blob 是 string opaque (反约束 schema 层 NoDomainBleed).
-func TestAL2B1_NoBlobRuntimeOnlyFields(t *testing.T) {
+func TestAL_NoBlobRuntimeOnlyFields(t *testing.T) {
 	t.Parallel()
 
 	typ := reflect.TypeOf(bpp.AgentConfigUpdateFrame{})

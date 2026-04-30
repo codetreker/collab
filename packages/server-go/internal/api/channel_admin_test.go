@@ -6,10 +6,10 @@
 //   REG-CHN11-001 TestCHN111_NoSchemaChange (filepath.Walk migrations/)
 //   REG-CHN11-002 TestCHN111_NoServerProductionCode (反向 grep `chn_11`
 //                  在 internal/api/*.go 非 _test.go 0 hit)
-//   REG-CHN11-003 TestCHN111_HandlersByteIdentical (handleAddMember +
+//   REG-CHN11-003 TestCHN_HandlersByteIdentical (handleAddMember +
 //                  handleRemoveMember block 反向 grep `chn_11` 0 hit)
-//   REG-CHN11-004 TestCHN113_NoMemberAdminQueue (AST 锁链延伸第 19 处)
-//   REG-CHN11-005 TestCHN113_NoAdminMembersPath
+//   REG-CHN11-004 TestCHN_NoMemberAdminQueue (AST 锁链延伸第 19 处)
+//   REG-CHN11-005 TestCHN_NoAdminMembersPath
 package api_test
 
 import (
@@ -65,7 +65,7 @@ func TestCHN111_NoServerProductionCode(t *testing.T) {
 // REG-CHN11-003 — 既有 handleAddMember + handleRemoveMember byte-identical.
 // channels.go 内 2 个 handler block 不漂入 chn_11 字面 (CHN-1 #276 既有
 // path byte-identical 不变).
-func TestCHN111_HandlersByteIdentical(t *testing.T) {
+func TestCHN_HandlersByteIdentical(t *testing.T) {
 	t.Parallel()
 	body, err := os.ReadFile(filepath.Join("..", "api", "channels.go"))
 	if err != nil {
@@ -92,7 +92,7 @@ func TestCHN111_HandlersByteIdentical(t *testing.T) {
 }
 
 // REG-CHN11-004 — AST 锁链延伸第 19 处 forbidden 3 token.
-func TestCHN113_NoMemberAdminQueue(t *testing.T) {
+func TestCHN_NoMemberAdminQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingMemberAdmin",
@@ -119,7 +119,7 @@ func TestCHN113_NoMemberAdminQueue(t *testing.T) {
 
 // REG-CHN11-005 — admin god-mode 不挂 PATCH/POST/PUT/DELETE 在 admin-api/
 // v1/.../members (ADM-0 §1.3 红线; member admin 是 owner-only user-rail).
-func TestCHN113_NoAdminMembersPath(t *testing.T) {
+func TestCHN_NoAdminMembersPath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/[^"]*members`)

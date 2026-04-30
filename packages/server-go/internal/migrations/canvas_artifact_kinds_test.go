@@ -21,10 +21,10 @@ func runCV31(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestCV31_AcceptsCodeAndImageLinkKinds pins acceptance §1.1 — kind enum
+// TestCV_AcceptsCodeAndImageLinkKinds pins acceptance §1.1 — kind enum
 // CHECK accepts 'markdown' (CV-1 既有) + 'code' / 'image_link' (CV-3.1 新).
 // Drift here means CV-3.2 client renderer 三分支会被 schema 拒, 整段崩.
-func TestCV31_AcceptsCodeAndImageLinkKinds(t *testing.T) {
+func TestCV_AcceptsCodeAndImageLinkKinds(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV31(t, db)
@@ -41,10 +41,10 @@ func TestCV31_AcceptsCodeAndImageLinkKinds(t *testing.T) {
 	}
 }
 
-// TestCV31_RejectsPdfKanbanMindmap pins acceptance §1.2 — CHECK reject
+// TestCV_RejectsPdfKanbanMindmap pins acceptance §1.2 — CHECK reject
 // 'pdf' / 'kanban' / 'mindmap' (蓝图 §2 v1 不做字面禁守住). 立场 ① enum
 // 收窄: 不开 v2+ kind 漏口.
-func TestCV31_RejectsPdfKanbanMindmap(t *testing.T) {
+func TestCV_RejectsPdfKanbanMindmap(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runCV31(t, db)
@@ -62,10 +62,10 @@ func TestCV31_RejectsPdfKanbanMindmap(t *testing.T) {
 	}
 }
 
-// TestCV31_PreservesMarkdownRowsAcrossRebuild pins data preservation —
+// TestCV_PreservesMarkdownRowsAcrossRebuild pins data preservation —
 // CV-1 既有 markdown rows MUST survive the v=17 table-recreate copy.
 // 反约束: 数据丢失即立场 ① "enum 扩不裂表" 字面破 (拆表 ≈ 老数据丢).
-func TestCV31_PreservesMarkdownRowsAcrossRebuild(t *testing.T) {
+func TestCV_PreservesMarkdownRowsAcrossRebuild(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	// Run only CV-1.1 first so we can seed pre-CV-3.1 data, then CV-3.1.

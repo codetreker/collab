@@ -20,12 +20,12 @@ func runAL41(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestAL41_CreatesAgentRuntimesTable pins acceptance §1.1 (al-4.md):
+// TestAL_CreatesAgentRuntimesTable pins acceptance §1.1 (al-4.md):
 // agent_runtimes has the contract columns with the right NOT NULL /
 // nullable shape. Drift here breaks AL-4.2 server registry路径 or
 // AL-1a #249 三态机 reason 复用. 跟 AL-3.1 #310
 // TestAL31_CreatesPresenceSessionsTable 同模式.
-func TestAL41_CreatesAgentRuntimesTable(t *testing.T) {
+func TestAL_CreatesAgentRuntimesTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
@@ -73,12 +73,12 @@ func TestAL41_CreatesAgentRuntimesTable(t *testing.T) {
 	}
 }
 
-// TestAL41_NoLLMOrPresenceColumns pins acceptance §1.5 — 立场 ① "Borgee
+// TestAL_NoLLMOrPresenceColumns pins acceptance §1.5 — 立场 ① "Borgee
 // 不带 runtime" + 立场 ③ runtime status ≠ presence. 反向断言列名:
 // llm_provider / model_name / api_key / prompt_template 全无 (蓝图
 // 立场 #7 字面 — 那是 plugin 内部事); is_online 全无 (跟 AL-3
 // presence_sessions 拆死, 立场 ③ 字面).
-func TestAL41_NoLLMOrPresenceColumns(t *testing.T) {
+func TestAL_NoLLMOrPresenceColumns(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
@@ -106,11 +106,11 @@ func TestAL41_NoLLMOrPresenceColumns(t *testing.T) {
 	}
 }
 
-// TestAL41_RejectsInvalidProcessKind pins acceptance §1.2 — process_kind
+// TestAL_RejectsInvalidProcessKind pins acceptance §1.2 — process_kind
 // CHECK ('openclaw','hermes'). v1 仅 'openclaw' 蓝图 §2.2 v1 边界字面,
 // 'hermes' 占号 v2+ (CHECK 已含 — schema 早就支持新值不需 v2 改 CHECK).
 // 反约束: 'unknown' / '' / 'remote' 等枚举外值 reject.
-func TestAL41_RejectsInvalidProcessKind(t *testing.T) {
+func TestAL_RejectsInvalidProcessKind(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
@@ -135,11 +135,11 @@ func TestAL41_RejectsInvalidProcessKind(t *testing.T) {
 	}
 }
 
-// TestAL41_RejectsInvalidStatus pins acceptance §1.2 — status CHECK
+// TestAL_RejectsInvalidStatus pins acceptance §1.2 — status CHECK
 // ('registered','running','stopped','error') 4 态. 反约束: 'busy' /
 // 'idle' / 'starting' 等中间态 reject (立场 ③ 反约束 + 文案锁 §2 字面
 // "v0 不允许 starting/stopping/restarting 中间态").
-func TestAL41_RejectsInvalidStatus(t *testing.T) {
+func TestAL_RejectsInvalidStatus(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)
@@ -164,12 +164,12 @@ func TestAL41_RejectsInvalidStatus(t *testing.T) {
 	}
 }
 
-// TestAL41_RejectsDuplicateRuntimePerAgent pins acceptance §1.3 —
+// TestAL_RejectsDuplicateRuntimePerAgent pins acceptance §1.3 —
 // UNIQUE(agent_id). 立场 ① v1 不优化多 runtime 并行 (蓝图 §2.2 字面);
 // 同 agent 二次 INSERT runtime reject (跟 AL-3.1 #310
 // TestAL31_RejectsDuplicateSessionID 同模式 但语义反 — agent 单 runtime
 // vs user 多 session).
-func TestAL41_RejectsDuplicateRuntimePerAgent(t *testing.T) {
+func TestAL_RejectsDuplicateRuntimePerAgent(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAL41(t, db)

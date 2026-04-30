@@ -54,7 +54,7 @@ func runCHN11(t *testing.T, db *gorm.DB) {
 	}
 }
 
-func TestCHN11_AddsArchivedAtAndSilentColumns(t *testing.T) {
+func TestCHN_AddsArchivedAtAndSilentColumns(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedChn11Schema(t, db)
@@ -88,7 +88,7 @@ func TestCHN11_AddsArchivedAtAndSilentColumns(t *testing.T) {
 	}
 }
 
-func TestCHN11_DropsGlobalNameUniqueAndAddsPerOrgIndex(t *testing.T) {
+func TestCHN_DropsGlobalNameUniqueAndAddsPerOrgIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedChn11Schema(t, db)
@@ -137,7 +137,7 @@ func TestCHN11_DropsGlobalNameUniqueAndAddsPerOrgIndex(t *testing.T) {
 	}
 }
 
-func TestCHN11_HardFailsOnHistoricDuplicateNoAutoRename(t *testing.T) {
+func TestCHN_HardFailsOnHistoricDuplicateNoAutoRename(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	// Seed without inline UNIQUE so we can plant a duplicate (org_id, name) row.
@@ -183,7 +183,7 @@ func TestCHN11_HardFailsOnHistoricDuplicateNoAutoRename(t *testing.T) {
 	}
 }
 
-func TestCHN11_BackfillsAgentSilentAndOrgIDAtJoin(t *testing.T) {
+func TestCHN_BackfillsAgentSilentAndOrgIDAtJoin(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedChn11Schema(t, db)
@@ -220,7 +220,7 @@ func TestCHN11_BackfillsAgentSilentAndOrgIDAtJoin(t *testing.T) {
 	}
 }
 
-func TestCHN11_IsIdempotentOnRerun(t *testing.T) {
+func TestCHN_IsIdempotentOnRerun(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedChn11Schema(t, db)
@@ -240,7 +240,7 @@ func TestCHN11_IsIdempotentOnRerun(t *testing.T) {
 	}
 }
 
-func TestCHN11_ToleratesTrimmedSchema(t *testing.T) {
+func TestCHN_ToleratesTrimmedSchema(t *testing.T) {
 	t.Parallel()
 	// Trimmed scaffold (matches TestDefaultRegistryRunsClean shape):
 	// channels(id) + channels.created_by, no channel_members. Migration must
@@ -256,9 +256,9 @@ func TestCHN11_ToleratesTrimmedSchema(t *testing.T) {
 	}
 }
 
-// TestCHN11_NameWithoutOrgID covers the "channels has name but missing
+// TestCHN_NameWithoutOrgID covers the "channels has name but missing
 // org_id" trimmed-schema branch (steps 1-3 skip but step 4-6 run).
-func TestCHN11_NameWithoutOrgID(t *testing.T) {
+func TestCHN_NameWithoutOrgID(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	if err := db.Exec(`CREATE TABLE channels (id TEXT PRIMARY KEY, name TEXT, created_by TEXT)`).Error; err != nil {

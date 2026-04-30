@@ -2,11 +2,11 @@ package migrations
 
 import "testing"
 
-// TestADM01_CreatesAdminsTable verifies that migration v=4 creates the
+// TestADM_CreatesAdminsTable verifies that migration v=4 creates the
 // `admins` table with the strict 4-field schema locked by ADM-0 review
 // checklist §ADM-0.1: id / login / password_hash / created_at and nothing
 // else (no org_id, role, is_admin, email — admin-model §1.2 hardline).
-func TestADM01_CreatesAdminsTable(t *testing.T) {
+func TestADM_CreatesAdminsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
@@ -33,10 +33,10 @@ func TestADM01_CreatesAdminsTable(t *testing.T) {
 	}
 }
 
-// TestADM01_LoginUnique verifies the UNIQUE(login) invariant. Bootstrap
+// TestADM_LoginUnique verifies the UNIQUE(login) invariant. Bootstrap
 // idempotency relies on this — see admin.BootstrapWith ON CONFLICT(login)
 // DO NOTHING.
-func TestADM01_LoginUnique(t *testing.T) {
+func TestADM_LoginUnique(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	seedLegacyTables(t, db)
@@ -62,11 +62,11 @@ func TestADM01_LoginUnique(t *testing.T) {
 	}
 }
 
-// TestADM01_VersionPosition pins the migration version to 4. The migration
+// TestADM_VersionPosition pins the migration version to 4. The migration
 // version is immutable once on main; this test fails loud if a future PR
 // renumbers (review checklist §ADM-0.1: schema_migrations v 号必须紧跟 main
 // 当前最大 v + 1, 单调递增, 不准跳号).
-func TestADM01_VersionPosition(t *testing.T) {
+func TestADM_VersionPosition(t *testing.T) {
 	t.Parallel()
 	if adm01Admins.Version != 4 {
 		t.Fatalf("adm_0_1_admins version = %d, want 4", adm01Admins.Version)

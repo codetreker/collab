@@ -20,10 +20,10 @@ func runDM21(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestDM21_CreatesMessageMentionsTable pins acceptance §1.0.a (dm-2.md):
+// TestDM_CreatesMessageMentionsTable pins acceptance §1.0.a (dm-2.md):
 // message_mentions has the contract columns with the right NOT NULL /
 // PK shape. Drift here breaks mention routing or the dedup contract.
-func TestDM21_CreatesMessageMentionsTable(t *testing.T) {
+func TestDM_CreatesMessageMentionsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
@@ -52,11 +52,11 @@ func TestDM21_CreatesMessageMentionsTable(t *testing.T) {
 	}
 }
 
-// TestDM21_NoCursorOrFanoutOwnerColumns pins acceptance §1.0.e —
+// TestDM_NoCursorOrFanoutOwnerColumns pins acceptance §1.0.e —
 // 反约束 column list. cursor / fanout_to_owner_id / cc_owner_id /
 // target_kind / read_at must NOT exist. spec §0 立场 ③ (mention 永不
 // 抄送 owner) + 立场 ⑥ (user / agent 同语义, 不分叉 target_kind).
-func TestDM21_NoCursorOrFanoutOwnerColumns(t *testing.T) {
+func TestDM_NoCursorOrFanoutOwnerColumns(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
@@ -77,11 +77,11 @@ func TestDM21_NoCursorOrFanoutOwnerColumns(t *testing.T) {
 	}
 }
 
-// TestDM21_RejectsDuplicateMentionPerMessage pins acceptance §1.0.b —
+// TestDM_RejectsDuplicateMentionPerMessage pins acceptance §1.0.b —
 // UNIQUE(message_id, target_user_id) — 同 message 同 target 二次 INSERT
 // reject (dedup, 立场 ⑥ agent=同事 同语义). 重复 `@<id>` 同 message
 // 只持久化一行.
-func TestDM21_RejectsDuplicateMentionPerMessage(t *testing.T) {
+func TestDM_RejectsDuplicateMentionPerMessage(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
@@ -108,11 +108,11 @@ func TestDM21_RejectsDuplicateMentionPerMessage(t *testing.T) {
 	}
 }
 
-// TestDM21_AllowsMultiTargetPerMessage pins #312 spec §1 DM-2.1 —
+// TestDM_AllowsMultiTargetPerMessage pins #312 spec §1 DM-2.1 —
 // single message 多 `@` 不同 target 合法 (§4 反约束 batch mention 留
 // Phase 5+, 但 单 message 多 target 是基础语义). schema MUST NOT have
 // UNIQUE(message_id) — only the (message_id, target_user_id) pair.
-func TestDM21_AllowsMultiTargetPerMessage(t *testing.T) {
+func TestDM_AllowsMultiTargetPerMessage(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
@@ -138,11 +138,11 @@ func TestDM21_AllowsMultiTargetPerMessage(t *testing.T) {
 	}
 }
 
-// TestDM21_HasTargetUserIDIndex pins acceptance §1.0.c — mention 路由
+// TestDM_HasTargetUserIDIndex pins acceptance §1.0.c — mention 路由
 // 热路径要 idx_message_mentions_target_user_id (fanout 时按 target 查).
 // Verified via sqlite_master rather than EXPLAIN QUERY PLAN to keep
 // the assertion deterministic (跟 #310 TestAL31_HasUserIDIndex 同模式).
-func TestDM21_HasTargetUserIDIndex(t *testing.T) {
+func TestDM_HasTargetUserIDIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)
@@ -156,11 +156,11 @@ func TestDM21_HasTargetUserIDIndex(t *testing.T) {
 	}
 }
 
-// TestDM21_MentionsPKMonotonic pins acceptance §1.0.a id PK AUTOINCREMENT
+// TestDM_MentionsPKMonotonic pins acceptance §1.0.a id PK AUTOINCREMENT
 // — global strictly increasing across all messages. Same shape as
 // TestCV21_CommentsTablePKMonotonic for anchor_comments; gives audit
 // log a stable order assumption regardless of message_id grouping.
-func TestDM21_MentionsPKMonotonic(t *testing.T) {
+func TestDM_MentionsPKMonotonic(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM21(t, db)

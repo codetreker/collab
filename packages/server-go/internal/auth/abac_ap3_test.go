@@ -23,7 +23,7 @@ import (
 
 // REG-AP3-001 (acceptance §1.3) — ErrCodeCrossOrgDenied byte-identical
 // 字面单源 (跟 AP-1 const 同模式, 改 = 改 const 一处).
-func TestAP32_ErrCodeCrossOrgDeniedConst(t *testing.T) {
+func TestAP_ErrCodeCrossOrgDeniedConst(t *testing.T) {
 	t.Parallel()
 	if ErrCodeCrossOrgDenied != "abac.cross_org_denied" {
 		t.Errorf("ErrCodeCrossOrgDenied drift: got %q, want %q",
@@ -67,7 +67,7 @@ func seedChannelOrg(t *testing.T, s *store.Store, channelID, orgID string) {
 
 // REG-AP3-002a (acceptance §2.1) — cross-org user reject (即使有显式
 // permission 行 also reject; cross-org 闸高于 wildcard).
-func TestAP32_CrossOrgUser_Rejected(t *testing.T) {
+func TestAP_CrossOrgUser_Rejected(t *testing.T) {
 	t.Parallel()
 	s := ap3TestStore(t)
 	seedChannelOrg(t, s, "ch-A", "org-A")
@@ -85,7 +85,7 @@ func TestAP32_CrossOrgUser_Rejected(t *testing.T) {
 }
 
 // REG-AP3-002a' — wildcard does NOT short-circuit cross-org gate.
-func TestAP32_CrossOrg_WildcardDoesNotShortCircuit(t *testing.T) {
+func TestAP_CrossOrg_WildcardDoesNotShortCircuit(t *testing.T) {
 	t.Parallel()
 	s := ap3TestStore(t)
 	seedChannelOrg(t, s, "ch-A", "org-A")
@@ -104,7 +104,7 @@ func TestAP32_CrossOrg_WildcardDoesNotShortCircuit(t *testing.T) {
 
 // REG-AP3-002b (acceptance §2.2) — same-org user 接受 (跟 AP-1 既有
 // 完全兼容).
-func TestAP32_SameOrgUser_PermissionGranted(t *testing.T) {
+func TestAP_SameOrgUser_PermissionGranted(t *testing.T) {
 	t.Parallel()
 	s := ap3TestStore(t)
 	seedChannelOrg(t, s, "ch-A", "org-A")
@@ -123,7 +123,7 @@ func TestAP32_SameOrgUser_PermissionGranted(t *testing.T) {
 
 // REG-AP3-002c (acceptance §2.3) — cross-org agent 拒 (BPP-1 #304 org
 // sandbox 同源).
-func TestAP32_CrossOrgAgent_Rejected(t *testing.T) {
+func TestAP_CrossOrgAgent_Rejected(t *testing.T) {
 	t.Parallel()
 	s := ap3TestStore(t)
 	seedChannelOrg(t, s, "ch-A", "org-A")
@@ -142,7 +142,7 @@ func TestAP32_CrossOrgAgent_Rejected(t *testing.T) {
 
 // REG-AP3-002d (acceptance §2.4 + 立场 ⑥) — legacy NULL/empty org_id
 // 走 AP-1 既有路径, 行为零变.
-func TestAP32_LegacyNullOrgID_FallsThroughToAP1(t *testing.T) {
+func TestAP_LegacyNullOrgID_FallsThroughToAP1(t *testing.T) {
 	t.Parallel()
 	s := ap3TestStore(t)
 	// channel.OrgID = "" — legacy / unset.
@@ -162,7 +162,7 @@ func TestAP32_LegacyNullOrgID_FallsThroughToAP1(t *testing.T) {
 
 // REG-AP3-002d'' — wildcard scope skips org gate entirely (no resource
 // bound to compare against, 立场 ① 高于 wildcard 仅当有 resource 时 enforce).
-func TestAP32_WildcardScope_SkipsOrgGate(t *testing.T) {
+func TestAP_WildcardScope_SkipsOrgGate(t *testing.T) {
 	t.Parallel()
 	s := ap3TestStore(t)
 	user := &store.User{ID: "u-wild", DisplayName: "W", Role: "member", OrgID: "org-A"}
@@ -178,7 +178,7 @@ func TestAP32_WildcardScope_SkipsOrgGate(t *testing.T) {
 
 // REG-AP3-002d' — user.OrgID NULL but channel.OrgID set — also legacy
 // (任一 NULL 走 legacy, 立场 ⑥).
-func TestAP32_UserNullOrgID_FallsThroughToAP1(t *testing.T) {
+func TestAP_UserNullOrgID_FallsThroughToAP1(t *testing.T) {
 	t.Parallel()
 	s := ap3TestStore(t)
 	seedChannelOrg(t, s, "ch-A", "org-A")
@@ -198,7 +198,7 @@ func TestAP32_UserNullOrgID_FallsThroughToAP1(t *testing.T) {
 // REG-AP3-002e (acceptance §2.5 + 立场 ⑤) — admin god-mode 不入此路径.
 // 反向 grep filepath.Walk 扫 internal/api/ count==0 含 admin.*HasCapability
 // .*org / HasCapability(.*admin_ 模式.
-func TestAP32_AdminGodMode_NotInThisPath(t *testing.T) {
+func TestAP_AdminGodMode_NotInThisPath(t *testing.T) {
 	t.Parallel()
 	apiDir := filepath.Join("..", "api")
 	patterns := []*regexp.Regexp{
@@ -232,7 +232,7 @@ func TestAP32_AdminGodMode_NotInThisPath(t *testing.T) {
 // REG-AP3-003 (acceptance §3.2 + 立场 ③) — reverse grep cross-org bypass
 // in internal/api/ count==0 (跟 AP-1 #493 5 grep 反约束同模式守 future
 // drift).
-func TestAP32_ReverseGrep_NoCrossOrgBypass(t *testing.T) {
+func TestAP_ReverseGrep_NoCrossOrgBypass(t *testing.T) {
 	t.Parallel()
 	apiDir := filepath.Join("..", "api")
 	patterns := []*regexp.Regexp{
@@ -268,7 +268,7 @@ func TestAP32_ReverseGrep_NoCrossOrgBypass(t *testing.T) {
 
 // REG-AP3-003' — reverse grep migrations/ has no FK org_id REFERENCES
 // organizations (立场 ② + spec §3 反约束 #4).
-func TestAP31_ReverseGrep_NoFKOrganizations(t *testing.T) {
+func TestAP_ReverseGrep_NoFKOrganizations(t *testing.T) {
 	t.Parallel()
 	migDir := filepath.Join("..", "migrations")
 	pat := regexp.MustCompile(`user_permissions.*FOREIGN KEY.*organizations`)

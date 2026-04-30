@@ -13,12 +13,12 @@ import (
 	"borgee-server/internal/store"
 )
 
-// TestCHN142_HandleUserGet_DBError_500 — owner+channel exist (gateDM
+// TestCHN_HandleUserGet_DBError_500 — owner+channel exist (gateDM
 // passes), then DROP TABLE channels mid-request; second store call
 // (history fetch via channel record) → SQL error → 500 branch.
 //
 // state-based fault injection (跟 TestClosedStoreInternalErrorBranches 同模式 — SQLite read-only / missing-table 真 driver 错误路径)
-func TestCHN142_HandleUserGet_DBError_500(t *testing.T) {
+func TestCHN_HandleUserGet_DBError_500(t *testing.T) {
 	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
 	ownerToken := loginAs(t, ts.URL, "owner@test.com", "password123")
@@ -59,10 +59,10 @@ func TestCHN142_HandleUserGet_DBError_500(t *testing.T) {
 	}
 }
 
-// TestCHN142_HandleAdminGet_DBError_500 — admin path same fault injection.
+// TestCHN_HandleAdminGet_DBError_500 — admin path same fault injection.
 //
 // state-based fault injection (跟 TestClosedStoreInternalErrorBranches 同模式 — SQLite read-only / missing-table 真 driver 错误路径)
-func TestCHN142_HandleAdminGet_DBError_500(t *testing.T) {
+func TestCHN_HandleAdminGet_DBError_500(t *testing.T) {
 	t.Parallel()
 	ts, s, cfg := setupFullTestServer(t)
 	owner, _ := s.GetUserByEmail("owner@test.com")

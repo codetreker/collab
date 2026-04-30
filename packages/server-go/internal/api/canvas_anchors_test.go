@@ -36,9 +36,9 @@ func cv22Setup(t *testing.T) (url string, ownerTok string, s *store.Store, chID 
 	return
 }
 
-// TestCV22_CreateAnchorOnHead pins 立场 ② default-version path: omitted
+// TestCV_CreateAnchorOnHead pins 立场 ② default-version path: omitted
 // `version` defaults to head (current_version), anchor row written.
-func TestCV22_CreateAnchorOnHead(t *testing.T) {
+func TestCV_CreateAnchorOnHead(t *testing.T) {
 	t.Parallel()
 	url, tok, _, _, artID := cv22Setup(t)
 
@@ -63,9 +63,9 @@ func TestCV22_CreateAnchorOnHead(t *testing.T) {
 	}
 }
 
-// TestCV22_CreateAnchor_RejectInvertedRange pins range 反向校验: handler
+// TestCV_CreateAnchor_RejectInvertedRange pins range 反向校验: handler
 // 400 before the schema CHECK fires (fail-fast).
-func TestCV22_CreateAnchor_RejectInvertedRange(t *testing.T) {
+func TestCV_CreateAnchor_RejectInvertedRange(t *testing.T) {
 	t.Parallel()
 	url, tok, _, _, artID := cv22Setup(t)
 	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/artifacts/"+artID+"/anchors", tok, map[string]any{
@@ -77,10 +77,10 @@ func TestCV22_CreateAnchor_RejectInvertedRange(t *testing.T) {
 	}
 }
 
-// TestCV22_AgentCannotCreateAnchor pins 立场 ① 反约束三连之一: agent role
+// TestCV_AgentCannotCreateAnchor pins 立场 ① 反约束三连之一: agent role
 // POST /anchors → 403 + 错码 byte-identical "anchor.create_owner_only".
 // 反查 grep: server kind='agent' 0 hit.
-func TestCV22_AgentCannotCreateAnchor(t *testing.T) {
+func TestCV_AgentCannotCreateAnchor(t *testing.T) {
 	t.Parallel()
 	url, _, s, chID, artID := cv22Setup(t)
 	agentTok := seedAgentInChannel(t, s, url, chID, "agent-cv22@test.com", "AgentNope")
@@ -124,10 +124,10 @@ func TestCV22_CrossChannel403(t *testing.T) {
 	}
 }
 
-// TestCV22_AnchorPinnedToVersion_Immutable pins 立场 ② 反约束: artifact
+// TestCV_AnchorPinnedToVersion_Immutable pins 立场 ② 反约束: artifact
 // rolls forward to v=2, the anchor created on v=1 STILL references the
 // v=1 artifact_version_id (does not auto-migrate).
-func TestCV22_AnchorPinnedToVersion_Immutable(t *testing.T) {
+func TestCV_AnchorPinnedToVersion_Immutable(t *testing.T) {
 	t.Parallel()
 	url, tok, _, _, artID := cv22Setup(t)
 	// anchor on head=v=1.
@@ -155,13 +155,13 @@ func TestCV22_AnchorPinnedToVersion_Immutable(t *testing.T) {
 	}
 }
 
-// TestCV22_AddCommentPushesFrame pins 立场 ③: AddComment hits the
+// TestCV_AddCommentPushesFrame pins 立场 ③: AddComment hits the
 // AnchorCommentPusher with the 10-field tuple. We use a recording pusher
 // via standalone AnchorHandler since the live mux's hub already pushes
 // to ws clients (and we can't observe the internal tuple from the HTTP
 // response alone). HTTP path coverage is exercised in the
 // TestCV22_AddCommentByHuman test below; this one drills the push tuple.
-func TestCV22_AddCommentPushesFrame(t *testing.T) {
+func TestCV_AddCommentPushesFrame(t *testing.T) {
 	t.Parallel()
 	url, tok, _, _, artID := cv22Setup(t)
 	// Create anchor via HTTP (head version).
@@ -190,7 +190,7 @@ func TestCV22_AddCommentPushesFrame(t *testing.T) {
 // Negative path: re-test the helper directly using thread without human
 // (impossible via real API since create is human-locked) — this test
 // 反断 the positive path: an agent CAN reply iff anchor creator is human.
-func TestCV22_AgentCanReplyAfterHumanCreate(t *testing.T) {
+func TestCV_AgentCanReplyAfterHumanCreate(t *testing.T) {
 	t.Parallel()
 	url, tok, s, chID, artID := cv22Setup(t)
 	agentTok := seedAgentInChannel(t, s, url, chID, "agent-reply@test.com", "AgentReply")
@@ -209,9 +209,9 @@ func TestCV22_AgentCanReplyAfterHumanCreate(t *testing.T) {
 	}
 }
 
-// TestCV22_ResolveOwnerOrCreator pins resolve permission: anchor creator
+// TestCV_ResolveOwnerOrCreator pins resolve permission: anchor creator
 // OR channel owner → 200; third party → 403.
-func TestCV22_ResolveOwnerOrCreator(t *testing.T) {
+func TestCV_ResolveOwnerOrCreator(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, _, artID := cv22Setup(t)
 	memberTok := testutil.LoginAs(t, url, "member@test.com", "password123")
@@ -244,9 +244,9 @@ func TestCV22_ResolveOwnerOrCreator(t *testing.T) {
 	}
 }
 
-// TestCV22_ListAnchorsOrdering pins list order: by version asc, then
+// TestCV_ListAnchorsOrdering pins list order: by version asc, then
 // start_offset asc (CV-2.3 client right-rail relies on this stable order).
-func TestCV22_ListAnchorsOrdering(t *testing.T) {
+func TestCV_ListAnchorsOrdering(t *testing.T) {
 	t.Parallel()
 	url, tok, _, _, artID := cv22Setup(t)
 	// Create three anchors with mixed offsets on head version.

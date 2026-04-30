@@ -59,9 +59,9 @@ func (f *fakePusher) Calls() []fakePush {
 	return out
 }
 
-// TestAL2B_AgentConfigPusherInterface — compile-time gate, prevents seam
+// TestAL_AgentConfigPusherInterface — compile-time gate, prevents seam
 // drift (any change to AgentConfigPusher signature breaks this).
-func TestAL2B_AgentConfigPusherInterface(t *testing.T) {
+func TestAL_AgentConfigPusherInterface(t *testing.T) {
 	t.Parallel()
 	var p api.AgentConfigPusher = newFakePusher()
 	cur, sent := p.PushAgentConfigUpdate("agent-X", 1, "{}", "agent-X:1", 1700000000000)
@@ -73,9 +73,9 @@ func TestAL2B_AgentConfigPusherInterface(t *testing.T) {
 	}
 }
 
-// TestAL2B_FakePusherTracksCalls — test-double records all calls in order
+// TestAL_FakePusherTracksCalls — test-double records all calls in order
 // + thread-safe (used by integration tests that wire fanout via interface).
-func TestAL2B_FakePusherTracksCalls(t *testing.T) {
+func TestAL_FakePusherTracksCalls(t *testing.T) {
 	t.Parallel()
 	p := newFakePusher()
 
@@ -101,9 +101,9 @@ func TestAL2B_FakePusherTracksCalls(t *testing.T) {
 	}
 }
 
-// TestAL2B_HandlerPusherFieldExists — pin AgentConfigHandler exposes the
+// TestAL_HandlerPusherFieldExists — pin AgentConfigHandler exposes the
 // Pusher field (server boot wires *ws.Hub here; nil-safe).
-func TestAL2B_HandlerPusherFieldExists(t *testing.T) {
+func TestAL_HandlerPusherFieldExists(t *testing.T) {
 	t.Parallel()
 	pusher := newFakePusher()
 	h := &api.AgentConfigHandler{Pusher: pusher}
@@ -118,16 +118,16 @@ func TestAL2B_HandlerPusherFieldExists(t *testing.T) {
 	}
 }
 
-// TestAL2B_PatchInvokesPusher_Live exercises the full PATCH endpoint via
+// TestAL_PatchInvokesPusher_Live exercises the full PATCH endpoint via
 // testutil.NewTestServer. The server boot wires *ws.Hub as Pusher, but the
 // wired hub returns sent=false (no plugin connected in test) — we verify
 // PATCH still returns 200 (best-effort fanout, plugin reconnect 后 GET
 // 主动拉, 跟蓝图 §1.5 "runtime 不缓存" 同源).
 //
 // The "did Pusher get called" assertion is in the unit-level
-// TestAL2B_FakePusherTracksCalls + TestAL2B_HandlerPusherFieldExists; this
+// TestAL_FakePusherTracksCalls + TestAL_HandlerPusherFieldExists; this
 // test only proves the wired path doesn't panic / 5xx when plugin offline.
-func TestAL2B_PatchInvokesPusher_Live(t *testing.T) {
+func TestAL_PatchInvokesPusher_Live(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	token := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

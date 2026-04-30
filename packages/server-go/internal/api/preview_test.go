@@ -19,7 +19,7 @@ import (
 
 // REG-CV2V2-002 (acceptance §1.1 happy + §1.2 owner-only) — owner posts
 // an https preview_url for an image_link artifact, server persists it.
-func TestCV2V2_PreviewHappyPathImageLink(t *testing.T) {
+func TestCV_PreviewHappyPathImageLink(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -54,7 +54,7 @@ func TestCV2V2_PreviewHappyPathImageLink(t *testing.T) {
 }
 
 // REG-CV2V2-002b — POST /preview accepts video_link + pdf_link kinds.
-func TestCV2V2_PreviewAcceptsVideoAndPDFKinds(t *testing.T) {
+func TestCV_PreviewAcceptsVideoAndPDFKinds(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -81,7 +81,7 @@ func TestCV2V2_PreviewAcceptsVideoAndPDFKinds(t *testing.T) {
 
 // REG-CV2V2-003 (acceptance §1.2 owner-only) — non-owner authenticated
 // user → 403 + preview.not_owner.
-func TestCV2V2_PreviewNonOwner403(t *testing.T) {
+func TestCV_PreviewNonOwner403(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -113,7 +113,7 @@ func TestCV2V2_PreviewNonOwner403(t *testing.T) {
 
 // REG-CV2V2-004 (acceptance §1.3 https-only XSS 红线) — non-https
 // schemes rejected: javascript: / data: / http: / file: / scheme-relative.
-func TestCV2V2_PreviewURLHttpsOnly(t *testing.T) {
+func TestCV_PreviewURLHttpsOnly(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -152,7 +152,7 @@ func TestCV2V2_PreviewURLHttpsOnly(t *testing.T) {
 
 // REG-CV2V2-005 (立场 ③) — kind ∉ PreviewableKinds → 400
 // preview.kind_not_previewable.
-func TestCV2V2_PreviewKindNotPreviewable(t *testing.T) {
+func TestCV_PreviewKindNotPreviewable(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -178,7 +178,7 @@ func TestCV2V2_PreviewKindNotPreviewable(t *testing.T) {
 }
 
 // REG-CV2V2-006 — admin (no auth user) → 401.
-func TestCV2V2_PreviewAdmin401(t *testing.T) {
+func TestCV_PreviewAdmin401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -204,7 +204,7 @@ func TestCV2V2_PreviewAdmin401(t *testing.T) {
 // (round-trip via current artifact handler — we don't yet expose preview_url
 // in serializeArtifact response, but the field IS persisted; subsequent
 // preview calls overwrite).
-func TestCV2V2_PreviewOverwrite(t *testing.T) {
+func TestCV_PreviewOverwrite(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

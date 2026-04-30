@@ -2,10 +2,10 @@ package store
 
 import "testing"
 
-// TestCM3OrgIDQueries covers MessageOrgID / WorkspaceFileOrgID /
+// TestCM_OrgIDQueries covers MessageOrgID / WorkspaceFileOrgID /
 // RemoteNodeOrgID — CM-3 cross-org backfill query helpers (uncovered
 // 0% → tested smoke; coverage follow-up to cross 85% threshold).
-func TestCM3OrgIDQueries(t *testing.T) {
+func TestCM_OrgIDQueries(t *testing.T) {
 	t.Parallel()
 	s := testStore(t)
 	if err := s.Migrate(); err != nil {

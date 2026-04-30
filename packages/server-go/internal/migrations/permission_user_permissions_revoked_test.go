@@ -31,7 +31,7 @@ func runAP21(t *testing.T, db *gorm.DB) {
 }
 
 // REG-AP2-001 (acceptance §1.1) — schema adds nullable revoked_at column.
-func TestAP21_AddsRevokedAtColumn(t *testing.T) {
+func TestAP_AddsRevokedAtColumn(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAP21(t, db)
@@ -47,7 +47,7 @@ func TestAP21_AddsRevokedAtColumn(t *testing.T) {
 }
 
 // REG-AP2-001b (acceptance §1.1) — sparse index covers revoked_at IS NOT NULL.
-func TestAP21_HasRevokedAtIndex(t *testing.T) {
+func TestAP_HasRevokedAtIndex(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAP21(t, db)
@@ -65,7 +65,7 @@ func TestAP21_HasRevokedAtIndex(t *testing.T) {
 
 // REG-AP2-001c (acceptance §1.2) — admin_actions CHECK accepts the new
 // 'permission_expired' enum value (5 → 6 项扩).
-func TestAP21_AdminActionsCHECKAcceptsPermissionExpired(t *testing.T) {
+func TestAP_AdminActionsCHECKAcceptsPermissionExpired(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAP21(t, db)
@@ -87,7 +87,7 @@ func TestAP21_AdminActionsCHECKAcceptsPermissionExpired(t *testing.T) {
 
 // REG-AP2-001d (acceptance §1.2 + 反约束) — admin_actions CHECK rejects
 // values outside the 6-tuple (反 hardcode drift).
-func TestAP21_AdminActionsRejectsUnknownAction(t *testing.T) {
+func TestAP_AdminActionsRejectsUnknownAction(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runAP21(t, db)
@@ -102,7 +102,7 @@ func TestAP21_AdminActionsRejectsUnknownAction(t *testing.T) {
 }
 
 // REG-AP2-001e — registry.go 字面锁 v=30.
-func TestAP21_RegistryHasV30(t *testing.T) {
+func TestAP_RegistryHasV30(t *testing.T) {
 	t.Parallel()
 	for _, m := range All {
 		if m.Version == 30 {

@@ -31,8 +31,8 @@ func runDM71(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestDM71_AddsEditHistoryColumn — acceptance §1.1.
-func TestDM71_AddsEditHistoryColumn(t *testing.T) {
+// TestDM_AddsEditHistoryColumn — acceptance §1.1.
+func TestDM_AddsEditHistoryColumn(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runDM71(t, db)
@@ -46,8 +46,8 @@ func TestDM71_AddsEditHistoryColumn(t *testing.T) {
 	}
 }
 
-// TestDM71_VersionIs34 — registry literal lock.
-func TestDM71_VersionIs34(t *testing.T) {
+// TestDM_VersionIs34 — registry literal lock.
+func TestDM_VersionIs34(t *testing.T) {
 	t.Parallel()
 	if got, want := dm71MessagesEditHistory.Version, 34; got != want {
 		t.Errorf("DM-7.1 Version drift: got %d, want %d", got, want)

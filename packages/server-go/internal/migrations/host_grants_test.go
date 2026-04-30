@@ -18,9 +18,9 @@ func runHB31(t *testing.T, db *gorm.DB) {
 	}
 }
 
-// TestHB31_CreatesHostGrantsTable pins acceptance §1.1 — 表 9 列 byte-
+// TestHB_CreatesHostGrantsTable pins acceptance §1.1 — 表 9 列 byte-
 // identical 跟 hb-3-spec.md §1 BPP-3.1 + stance §1 立场 ① schema SSOT.
-func TestHB31_CreatesHostGrantsTable(t *testing.T) {
+func TestHB_CreatesHostGrantsTable(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runHB31(t, db)
@@ -88,10 +88,10 @@ func TestHB31_CreatesHostGrantsTable(t *testing.T) {
 	}
 }
 
-// TestHB31_GrantTypeEnumReject pins acceptance §1.2 — CHECK constraint
+// TestHB_GrantTypeEnumReject pins acceptance §1.2 — CHECK constraint
 // rejects 4-enum 外值 (跟蓝图 §1.3 字面 byte-identical: install/exec/
 // filesystem/network).
-func TestHB31_GrantTypeEnumReject(t *testing.T) {
+func TestHB_GrantTypeEnumReject(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runHB31(t, db)
@@ -116,9 +116,9 @@ func TestHB31_GrantTypeEnumReject(t *testing.T) {
 	}
 }
 
-// TestHB31_TtlKindEnumReject pins acceptance §1.2 + content-lock §1.② —
+// TestHB_TtlKindEnumReject pins acceptance §1.2 + content-lock §1.② —
 // ttl_kind 2-enum CHECK (one_shot/always 跟弹窗 UX 字面 byte-identical).
-func TestHB31_TtlKindEnumReject(t *testing.T) {
+func TestHB_TtlKindEnumReject(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runHB31(t, db)
@@ -133,10 +133,10 @@ func TestHB31_TtlKindEnumReject(t *testing.T) {
 	}
 }
 
-// TestHB31_NoDomainBleed pins stance §2 立场 ② 字典分立 (host vs runtime),
+// TestHB_NoDomainBleed pins stance §2 立场 ② 字典分立 (host vs runtime),
 // 反向断言 schema 不挂 user_permissions / runtime / cursor / org_id 等
 // 跨域字段 (跟 al_2a_1_agent_configs_test::TestAL2A1_NoDomainBleed 同模式).
-func TestHB31_NoDomainBleed(t *testing.T) {
+func TestHB_NoDomainBleed(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runHB31(t, db)
@@ -182,9 +182,9 @@ func TestHB31_NoDomainBleed(t *testing.T) {
 	}
 }
 
-// TestHB31_HasIndexes pins acceptance §1.1 idx_user_id + idx_agent_id 守
+// TestHB_HasIndexes pins acceptance §1.1 idx_user_id + idx_agent_id 守
 // (cross-user 403 ACL + daemon SELECT 热路径).
-func TestHB31_HasIndexes(t *testing.T) {
+func TestHB_HasIndexes(t *testing.T) {
 	t.Parallel()
 	db := openMem(t)
 	runHB31(t, db)
@@ -221,9 +221,9 @@ func TestHB31_Idempotent(t *testing.T) {
 	}
 }
 
-// TestHB31_VersionIs27 pins registry sequencing (HB-3.1 = v=27, after
+// TestHB_VersionIs27 pins registry sequencing (HB-3.1 = v=27, after
 // AL-1.4 v=25 + DL-4.1 v=26).
-func TestHB31_VersionIs27(t *testing.T) {
+func TestHB_VersionIs27(t *testing.T) {
 	t.Parallel()
 	if hb31HostGrants.Version != 27 {
 		t.Errorf("hb31HostGrants.Version=%d, want 27 (sequencing 跟 spec brief §1 byte-identical)", hb31HostGrants.Version)

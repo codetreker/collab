@@ -18,12 +18,12 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestCV12_SearchInArtifactNamespace pins 立场 ①: seed 3 messages with
+// TestCV_SearchInArtifactNamespace pins 立场 ①: seed 3 messages with
 // content_type='artifact_comment' in a private channel (acting as the
 // artifact: namespace channel), search for a unique substring, expect
 // the existing search endpoint to return the matching row — proves
 // 0-server-code path works for artifact-comment search.
-func TestCV12_SearchInArtifactNamespace(t *testing.T) {
+func TestCV_SearchInArtifactNamespace(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

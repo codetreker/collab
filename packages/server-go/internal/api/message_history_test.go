@@ -29,7 +29,7 @@ func sendDM(t *testing.T, baseURL, token, channelID, content string) string {
 }
 
 // REG-DM7-002a — UpdateMessage appends edit_history JSON entry.
-func TestDM72_UpdateMessage_AppendsEditHistory(t *testing.T) {
+func TestDM_UpdateMessage_AppendsEditHistory(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -67,7 +67,7 @@ func TestDM72_UpdateMessage_AppendsEditHistory(t *testing.T) {
 }
 
 // REG-DM7-002b — multiple edits append each entry; ts monotonic.
-func TestDM72_UpdateMessage_MultipleEdits_AppendsAll(t *testing.T) {
+func TestDM_UpdateMessage_MultipleEdits_AppendsAll(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -98,7 +98,7 @@ func TestDM72_UpdateMessage_MultipleEdits_AppendsAll(t *testing.T) {
 }
 
 // REG-DM7-002c — idempotent: same-content edit does not append.
-func TestDM72_UpdateMessage_IdempotentSameContent(t *testing.T) {
+func TestDM_UpdateMessage_IdempotentSameContent(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -120,7 +120,7 @@ func TestDM72_UpdateMessage_IdempotentSameContent(t *testing.T) {
 }
 
 // REG-DM7-003a — GET user-rail HappyPath.
-func TestDM72_GetEditHistory_HappyPath(t *testing.T) {
+func TestDM_GetEditHistory_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -143,7 +143,7 @@ func TestDM72_GetEditHistory_HappyPath(t *testing.T) {
 }
 
 // REG-DM7-003b — non-sender 403.
-func TestDM72_GetEditHistory_NonSenderRejected(t *testing.T) {
+func TestDM_GetEditHistory_NonSenderRejected(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -162,7 +162,7 @@ func TestDM72_GetEditHistory_NonSenderRejected(t *testing.T) {
 }
 
 // REG-DM7-003c — empty history returns [].
-func TestDM72_GetEditHistory_EmptyHistory(t *testing.T) {
+func TestDM_GetEditHistory_EmptyHistory(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -184,7 +184,7 @@ func TestDM72_GetEditHistory_EmptyHistory(t *testing.T) {
 }
 
 // REG-DM7-004a — admin readonly HappyPath.
-func TestDM72_GetEditHistoryAdmin_HappyPath(t *testing.T) {
+func TestDM_GetEditHistoryAdmin_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -208,7 +208,7 @@ func TestDM72_GetEditHistoryAdmin_HappyPath(t *testing.T) {
 }
 
 // REG-DM7-004b — admin god-mode 不挂 PATCH/DELETE 双反向断言.
-func TestDM72_NoAdminPatchDeletePath(t *testing.T) {
+func TestDM_NoAdminPatchDeletePath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/[^"]*edit-history`)
@@ -232,7 +232,7 @@ func TestDM72_NoAdminPatchDeletePath(t *testing.T) {
 
 // REG-DM7-005 — DM-4 既有 dm_4_message_edit.go production byte-identical
 // 反向断言 (反向 grep dm_7 在 dm_4*.go 0 hit).
-func TestDM72_DM4ProductionByteIdentical(t *testing.T) {
+func TestDM_DM4ProductionByteIdentical(t *testing.T) {
 	t.Parallel()
 	body, err := os.ReadFile(filepath.Join("..", "api", "message_edit.go"))
 	if err != nil {
@@ -244,7 +244,7 @@ func TestDM72_DM4ProductionByteIdentical(t *testing.T) {
 }
 
 // REG-DM7-006 — AST 锁链延伸第 16 处.
-func TestDM73_NoEditHistoryQueue(t *testing.T) {
+func TestDM_NoEditHistoryQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingEditHistory",

@@ -15,9 +15,9 @@ import (
 	"borgee-server/internal/bpp"
 )
 
-// TestBPP23_ValidConfigFieldsWhitelist pins content-lock §1 ② — 6 项
+// TestBPP_ValidConfigFieldsWhitelist pins content-lock §1 ② — 6 项
 // byte-identical 跟蓝图 §1.4 表左列字面.
-func TestBPP23_ValidConfigFieldsWhitelist(t *testing.T) {
+func TestBPP_ValidConfigFieldsWhitelist(t *testing.T) {
 	t.Parallel()
 	want := []string{
 		"name",
@@ -37,10 +37,10 @@ func TestBPP23_ValidConfigFieldsWhitelist(t *testing.T) {
 	}
 }
 
-// TestBPP23_ValidatePayload_AcceptsWhitelistedFields pins acceptance
+// TestBPP_ValidatePayload_AcceptsWhitelistedFields pins acceptance
 // §3.2 happy path — payload with 6-whitelist fields parses + returns
 // the typed map.
-func TestBPP23_ValidatePayload_AcceptsWhitelistedFields(t *testing.T) {
+func TestBPP_ValidatePayload_AcceptsWhitelistedFields(t *testing.T) {
 	t.Parallel()
 	cases := []string{
 		`{"name":"Helper"}`,
@@ -69,10 +69,10 @@ func TestBPP23_ValidatePayload_AcceptsWhitelistedFields(t *testing.T) {
 	}
 }
 
-// TestBPP23_ValidatePayload_RejectsRuntimeFields pins acceptance §3.2
+// TestBPP_ValidatePayload_RejectsRuntimeFields pins acceptance §3.2
 // 反断 + content-lock §2 ⑤ — runtime 调优字段 (蓝图 §1.4 右列) MUST
 // reject (Borgee 不带 runtime 立场 ① 字面).
-func TestBPP23_ValidatePayload_RejectsRuntimeFields(t *testing.T) {
+func TestBPP_ValidatePayload_RejectsRuntimeFields(t *testing.T) {
 	t.Parallel()
 	for _, payload := range []string{
 		`{"api_key":"sk-..."}`,
@@ -101,9 +101,9 @@ func TestBPP23_ValidatePayload_RejectsRuntimeFields(t *testing.T) {
 	}
 }
 
-// TestBPP23_ValidatePayload_RejectsMalformedJSON pins payload parse
+// TestBPP_ValidatePayload_RejectsMalformedJSON pins payload parse
 // branch — non-object JSON / syntax error → errConfigPayloadMalformed.
-func TestBPP23_ValidatePayload_RejectsMalformedJSON(t *testing.T) {
+func TestBPP_ValidatePayload_RejectsMalformedJSON(t *testing.T) {
 	t.Parallel()
 	for _, payload := range []string{
 		`{not json`,
@@ -129,10 +129,10 @@ func TestBPP23_ValidatePayload_RejectsMalformedJSON(t *testing.T) {
 	}
 }
 
-// TestBPP23_ConfigRevTracker_IdempotentReload pins acceptance §3.4 +
+// TestBPP_ConfigRevTracker_IdempotentReload pins acceptance §3.4 +
 // 蓝图 §1.5 字面 "幂等 reload" — same (agent_id, config_rev) pushed
 // twice = ShouldApply returns true once + false on duplicates.
-func TestBPP23_ConfigRevTracker_IdempotentReload(t *testing.T) {
+func TestBPP_ConfigRevTracker_IdempotentReload(t *testing.T) {
 	t.Parallel()
 	tr := bpp.NewConfigRevTracker()
 
@@ -170,9 +170,9 @@ func TestBPP23_ConfigRevTracker_IdempotentReload(t *testing.T) {
 	}
 }
 
-// TestBPP23_ConfigRevTracker_NegativeRev pins defensive — negative
+// TestBPP_ConfigRevTracker_NegativeRev pins defensive — negative
 // rev (never expected) returns false (treated as stale).
-func TestBPP23_ConfigRevTracker_NegativeRev(t *testing.T) {
+func TestBPP_ConfigRevTracker_NegativeRev(t *testing.T) {
 	t.Parallel()
 	tr := bpp.NewConfigRevTracker()
 	if tr.ShouldApply("agent-X", -1) {

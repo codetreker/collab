@@ -45,8 +45,8 @@ func hb3v2SeedAgentWithHeartbeat(t *testing.T, ts *httptest.Server,
 	return ownerToken, agent.ID
 }
 
-// TestHB3V2_DecayList_HappyPath — acceptance §2.2 (fresh).
-func TestHB3V2_DecayList_HappyPath(t *testing.T) {
+// TestHB_DecayList_HappyPath — acceptance §2.2 (fresh).
+func TestHB_DecayList_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, agentID := hb3v2SeedAgentWithHeartbeat(t, ts, s, 5_000) // 5s ago → fresh
@@ -64,8 +64,8 @@ func TestHB3V2_DecayList_HappyPath(t *testing.T) {
 	}
 }
 
-// TestHB3V2_DecayList_StaleState — acceptance §2.2 (stale).
-func TestHB3V2_DecayList_StaleState(t *testing.T) {
+// TestHB_DecayList_StaleState — acceptance §2.2 (stale).
+func TestHB_DecayList_StaleState(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, agentID := hb3v2SeedAgentWithHeartbeat(t, ts, s, 45_000) // 45s ago → stale
@@ -77,8 +77,8 @@ func TestHB3V2_DecayList_StaleState(t *testing.T) {
 	}
 }
 
-// TestHB3V2_DecayList_DeadState — acceptance §2.2 (dead).
-func TestHB3V2_DecayList_DeadState(t *testing.T) {
+// TestHB_DecayList_DeadState — acceptance §2.2 (dead).
+func TestHB_DecayList_DeadState(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken, agentID := hb3v2SeedAgentWithHeartbeat(t, ts, s, 120_000) // 120s ago → dead
@@ -90,8 +90,8 @@ func TestHB3V2_DecayList_DeadState(t *testing.T) {
 	}
 }
 
-// TestHB3V2_DecayList_CrossOwnerReject — acceptance §2.2.
-func TestHB3V2_DecayList_CrossOwnerReject(t *testing.T) {
+// TestHB_DecayList_CrossOwnerReject — acceptance §2.2.
+func TestHB_DecayList_CrossOwnerReject(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	_, agentID := hb3v2SeedAgentWithHeartbeat(t, ts, s, 5_000)
@@ -103,8 +103,8 @@ func TestHB3V2_DecayList_CrossOwnerReject(t *testing.T) {
 	}
 }
 
-// TestHB3V2_DecayList_Unauthorized401 — acceptance §2.2.
-func TestHB3V2_DecayList_Unauthorized401(t *testing.T) {
+// TestHB_DecayList_Unauthorized401 — acceptance §2.2.
+func TestHB_DecayList_Unauthorized401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, "GET",
@@ -114,8 +114,8 @@ func TestHB3V2_DecayList_Unauthorized401(t *testing.T) {
 	}
 }
 
-// TestHB3V2_DecayList_AgentNotFound404 — acceptance §2.2.
-func TestHB3V2_DecayList_AgentNotFound404(t *testing.T) {
+// TestHB_DecayList_AgentNotFound404 — acceptance §2.2.
+func TestHB_DecayList_AgentNotFound404(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -126,10 +126,10 @@ func TestHB3V2_DecayList_AgentNotFound404(t *testing.T) {
 	}
 }
 
-// TestHB3V2_DecayList_NoRuntimeRowYieldsDead — acceptance §1.3 nil-safe.
+// TestHB_DecayList_NoRuntimeRowYieldsDead — acceptance §1.3 nil-safe.
 // agent without agent_runtimes row → dead state (DeriveDecayState
 // last=0 nil-safe behavior).
-func TestHB3V2_DecayList_NoRuntimeRowYieldsDead(t *testing.T) {
+func TestHB_DecayList_NoRuntimeRowYieldsDead(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")

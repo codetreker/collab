@@ -62,9 +62,9 @@ func dm10Setup(t *testing.T) (string, string, string, *store.Store, string, stri
 	return ts.URL, ownerTok, memberTok, s, chID, msgID
 }
 
-// TestDM10_PinUnpin_HappyPath — POST pin → GET sees msg → DELETE unpin
+// TestDM_PinUnpin_HappyPath — POST pin → GET sees msg → DELETE unpin
 // → GET empty.
-func TestDM10_PinUnpin_HappyPath(t *testing.T) {
+func TestDM_PinUnpin_HappyPath(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, chID, msgID := dm10Setup(t)
 
@@ -114,9 +114,9 @@ func TestDM10_PinUnpin_HappyPath(t *testing.T) {
 	}
 }
 
-// TestDM10_DMOnly_NonDMRejected — POST pin on a non-DM channel → 400
+// TestDM_DMOnly_NonDMRejected — POST pin on a non-DM channel → 400
 // `pin.dm_only_path` (立场 ②).
-func TestDM10_DMOnly_NonDMRejected(t *testing.T) {
+func TestDM_DMOnly_NonDMRejected(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -140,8 +140,8 @@ func TestDM10_DMOnly_NonDMRejected(t *testing.T) {
 	}
 }
 
-// TestDM10_Unauthorized_401 — POST pin without auth → 401.
-func TestDM10_Unauthorized_401(t *testing.T) {
+// TestDM_Unauthorized_401 — POST pin without auth → 401.
+func TestDM_Unauthorized_401(t *testing.T) {
 	t.Parallel()
 	url, _, _, _, chID, msgID := dm10Setup(t)
 	resp, _ := testutil.JSON(t, "POST",
@@ -151,9 +151,9 @@ func TestDM10_Unauthorized_401(t *testing.T) {
 	}
 }
 
-// TestDM10_NonMember_404 — non-member trying to pin DM message → 404
+// TestDM_NonMember_404 — non-member trying to pin DM message → 404
 // "Channel not found" fail-closed (跟 AP-4 + AP-5 同 fail-closed).
-func TestDM10_NonMember_404(t *testing.T) {
+func TestDM_NonMember_404(t *testing.T) {
 	t.Parallel()
 	url, _, _, s, chID, msgID := dm10Setup(t)
 	// Find a third user not in this DM.
@@ -176,10 +176,10 @@ func TestDM10_NonMember_404(t *testing.T) {
 	}
 }
 
-// TestDM10_DeletedMessage_404 — pin a deleted message → 404 because
+// TestDM_DeletedMessage_404 — pin a deleted message → 404 because
 // GetMessageByID filters deleted_at IS NULL (soft-delete tombstones
 // invisible at lookup, fail-closed before pin path).
-func TestDM10_DeletedMessage_404(t *testing.T) {
+func TestDM_DeletedMessage_404(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, chID, msgID := dm10Setup(t)
 	// Soft-delete the message.
@@ -194,9 +194,9 @@ func TestDM10_DeletedMessage_404(t *testing.T) {
 	}
 }
 
-// TestDM10_CrossChannelMessage_404 — pin a messageId that exists but
+// TestDM_CrossChannelMessage_404 — pin a messageId that exists but
 // is in a different channel → 404 (反 cross-channel pin).
-func TestDM10_CrossChannelMessage_404(t *testing.T) {
+func TestDM_CrossChannelMessage_404(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, chID, msgID := dm10Setup(t)
 	// Use msgID but a wrong channel ID.
@@ -208,9 +208,9 @@ func TestDM10_CrossChannelMessage_404(t *testing.T) {
 	_ = chID
 }
 
-// TestDM10_Idempotent_PinTwice — pin same message twice → 200 + 200
+// TestDM_Idempotent_PinTwice — pin same message twice → 200 + 200
 // (last-write-wins, second pinned_at overwrites first).
-func TestDM10_Idempotent_PinTwice(t *testing.T) {
+func TestDM_Idempotent_PinTwice(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, chID, msgID := dm10Setup(t)
 	r1, _ := testutil.JSON(t, "POST",
@@ -228,9 +228,9 @@ func TestDM10_Idempotent_PinTwice(t *testing.T) {
 	}
 }
 
-// TestDM10_UnpinUnpinned_Idempotent — DELETE on unpinned message → 200 +
+// TestDM_UnpinUnpinned_Idempotent — DELETE on unpinned message → 200 +
 // pinned=false (反 fail-closed).
-func TestDM10_UnpinUnpinned_Idempotent(t *testing.T) {
+func TestDM_UnpinUnpinned_Idempotent(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, chID, msgID := dm10Setup(t)
 	resp, body := testutil.JSON(t, "DELETE",
@@ -248,8 +248,8 @@ func TestDM10_UnpinUnpinned_Idempotent(t *testing.T) {
 // 真补 cov 不 mask, 不调阈值, 不 skip. 立场: gate/handler 错误分支 byte-identical.
 // =============================================================================
 
-// 1) TestDM10_GateDM_AuthNil_401 — POST 不带 token → 401 (gateDM auth==nil 分支).
-func TestDM10_GateDM_AuthNil_401(t *testing.T) {
+// 1) TestDM_GateDM_AuthNil_401 — POST 不带 token → 401 (gateDM auth==nil 分支).
+func TestDM_GateDM_AuthNil_401(t *testing.T) {
 	t.Parallel()
 	url, _, _, _, chID, msgID := dm10Setup(t)
 	r, _ := testutil.JSON(t, "POST",
@@ -259,8 +259,8 @@ func TestDM10_GateDM_AuthNil_401(t *testing.T) {
 	}
 }
 
-// 2) TestDM10_GateDM_NonDMChannel_400 — 建非 DM channel + pin → 400 dm_only_path.
-func TestDM10_GateDM_NonDMChannel_400(t *testing.T) {
+// 2) TestDM_GateDM_NonDMChannel_400 — 建非 DM channel + pin → 400 dm_only_path.
+func TestDM_GateDM_NonDMChannel_400(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -301,9 +301,9 @@ func TestDM10_GateDM_NonDMChannel_400(t *testing.T) {
 	}
 }
 
-// 3) TestDM10_GateDM_NonMember_404 — third user pin on someone else's DM → 404
+// 3) TestDM_GateDM_NonMember_404 — third user pin on someone else's DM → 404
 // (channel-member ACL fail-closed; do not leak existence).
-func TestDM10_GateDM_NonMember_404(t *testing.T) {
+func TestDM_GateDM_NonMember_404(t *testing.T) {
 	t.Parallel()
 	url, _, _, s, chID, msgID := dm10Setup(t)
 	// Create a third user not in this DM.
@@ -332,8 +332,8 @@ func TestDM10_GateDM_NonMember_404(t *testing.T) {
 	_ = s
 }
 
-// 4) TestDM10_HandleListPinned_Empty_200 — DM with no pin → 200 messages=[].
-func TestDM10_HandleListPinned_Empty_200(t *testing.T) {
+// 4) TestDM_HandleListPinned_Empty_200 — DM with no pin → 200 messages=[].
+func TestDM_HandleListPinned_Empty_200(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, chID, _ := dm10Setup(t)
 	r, body := testutil.JSON(t, "GET",
@@ -347,9 +347,9 @@ func TestDM10_HandleListPinned_Empty_200(t *testing.T) {
 	}
 }
 
-// 5) TestDM10_HandleUnpin_AlreadyUnpinned_Idempotent — pin → unpin → unpin
+// 5) TestDM_HandleUnpin_AlreadyUnpinned_Idempotent — pin → unpin → unpin
 // (second unpin still returns 200, pinned_at IS NULL update no-op).
-func TestDM10_HandleUnpin_AlreadyUnpinned_Idempotent(t *testing.T) {
+func TestDM_HandleUnpin_AlreadyUnpinned_Idempotent(t *testing.T) {
 	t.Parallel()
 	url, _, memberTok, _, chID, msgID := dm10Setup(t)
 	// Pin.

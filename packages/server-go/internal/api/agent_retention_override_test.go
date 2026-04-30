@@ -2,9 +2,9 @@
 // admin-rail override endpoint acceptance §2.2.
 //
 // Pins:
-//   REG-AL7-007 TestAL72_OverrideEndpointWritesAudit — POST writes admin_actions row
-//   REG-AL7-008 TestAL72_OverrideRejectsUserRail — user cookie 401
-//   REG-AL7-009 TestAL72_OverrideClampsRetention — 0/-5/999 reject 400
+//   REG-AL7-007 TestAL_OverrideEndpointWritesAudit — POST writes admin_actions row
+//   REG-AL7-008 TestAL_OverrideRejectsUserRail — user cookie 401
+//   REG-AL7-009 TestAL_OverrideClampsRetention — 0/-5/999 reject 400
 package api_test
 
 import (
@@ -15,9 +15,9 @@ import (
 	"borgee-server/internal/testutil"
 )
 
-// TestAL72_OverrideEndpointWritesAudit pins acceptance §2.2 — admin POST
+// TestAL_OverrideEndpointWritesAudit pins acceptance §2.2 — admin POST
 // writes one admin_actions row with action='audit_retention_override'.
-func TestAL72_OverrideEndpointWritesAudit(t *testing.T) {
+func TestAL_OverrideEndpointWritesAudit(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -45,9 +45,9 @@ func TestAL72_OverrideEndpointWritesAudit(t *testing.T) {
 	}
 }
 
-// TestAL72_OverrideRejectsUserRail pins 立场 ③ admin-rail only — user
+// TestAL_OverrideRejectsUserRail pins 立场 ③ admin-rail only — user
 // cookie 调 admin-api 必 401 (admin.RequireAdmin middleware).
-func TestAL72_OverrideRejectsUserRail(t *testing.T) {
+func TestAL_OverrideRejectsUserRail(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	userToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -61,10 +61,10 @@ func TestAL72_OverrideRejectsUserRail(t *testing.T) {
 	}
 }
 
-// TestAL72_OverrideClampsRetention pins 立场 ⑥ — clamp 1..365.
+// TestAL_OverrideClampsRetention pins 立场 ⑥ — clamp 1..365.
 //
 // 0 / -5 / 999 / missing field (decoder 默认 0) 全 reject 400.
-func TestAL72_OverrideClampsRetention(t *testing.T) {
+func TestAL_OverrideClampsRetention(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)

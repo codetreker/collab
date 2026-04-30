@@ -4,9 +4,9 @@
 // Pins:
 //   REG-CHN14-002 TestCHN142_UpdateChannelDescription_AppendsHistory + MultipleEdits + SameContent_NoAppend
 //   REG-CHN14-003 TestCHN142_GetHistory_HappyPath + NonOwnerRejected + EmptyHistory + Unauthorized
-//   REG-CHN14-004 TestCHN142_GetHistoryAdmin_HappyPath + NoAdminPatchDeletePath
-//   REG-CHN14-005 TestCHN142_CHN10HandlePutByteIdentical
-//   REG-CHN14-006 TestCHN143_NoDescriptionHistoryQueue (AST 锁链延伸第 22 处)
+//   REG-CHN14-004 TestCHN_GetHistoryAdmin_HappyPath + NoAdminPatchDeletePath
+//   REG-CHN14-005 TestCHN_CHN10HandlePutByteIdentical
+//   REG-CHN14-006 TestCHN_NoDescriptionHistoryQueue (AST 锁链延伸第 22 处)
 package api_test
 
 import (
@@ -24,7 +24,7 @@ import (
 // REG-CHN14-002a/b/c — UpdateChannelDescription store-layer behaviors.
 // Consolidated into one parent test sharing one fixture server (reduces
 // race-detector load: 3 servers → 1; 团队 race budget 优化).
-func TestCHN142_UpdateChannelDescription_Behaviors(t *testing.T) {
+func TestCHN_UpdateChannelDescription_Behaviors(t *testing.T) {
 	t.Parallel()
 	_, s, _ := testutil.NewTestServer(t)
 	owner, _ := s.GetUserByEmail("owner@test.com")
@@ -105,7 +105,7 @@ func TestCHN142_UpdateChannelDescription_Behaviors(t *testing.T) {
 
 // REG-CHN14-003 GET endpoints — consolidated into one parent server
 // (4 servers → 1 server; 减 race-detector 重复 setup 负担).
-func TestCHN142_GetHistory_Endpoints(t *testing.T) {
+func TestCHN_GetHistory_Endpoints(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -180,7 +180,7 @@ func TestCHN142_GetHistory_Endpoints(t *testing.T) {
 }
 
 // REG-CHN14-004a — admin readonly GET HappyPath.
-func TestCHN142_GetHistoryAdmin_HappyPath(t *testing.T) {
+func TestCHN_GetHistoryAdmin_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	adminToken := testutil.LoginAsAdmin(t, ts.URL)
@@ -208,7 +208,7 @@ func TestCHN142_GetHistoryAdmin_HappyPath(t *testing.T) {
 }
 
 // REG-CHN14-004b — admin god-mode 不挂 PATCH/DELETE 反向 grep 守门.
-func TestCHN142_NoAdminPatchDeletePath(t *testing.T) {
+func TestCHN_NoAdminPatchDeletePath(t *testing.T) {
 	t.Parallel()
 	dirs := []string{filepath.Join("..", "api"), filepath.Join("..", "server")}
 	pat := regexp.MustCompile(`mux\.Handle\("(POST|DELETE|PATCH|PUT)[^"]*admin-api/v[0-9]+/channels/[^"]*description`)
@@ -233,7 +233,7 @@ func TestCHN142_NoAdminPatchDeletePath(t *testing.T) {
 // REG-CHN14-005 — CHN-10 #561 chn_10_description.go::handlePut byte-identical
 // (owner-only ACL + length cap 500 + 5 既有锚 must-contain; UpdateChannel 改
 // UpdateChannelDescription 包装单字符串改, 其它 byte-identical).
-func TestCHN142_CHN10HandlePutByteIdentical(t *testing.T) {
+func TestCHN_CHN10HandlePutByteIdentical(t *testing.T) {
 	t.Parallel()
 	body, err := os.ReadFile(filepath.Join("..", "api", "channel_description.go"))
 	if err != nil {
@@ -270,7 +270,7 @@ func TestCHN142_CHN10HandlePutByteIdentical(t *testing.T) {
 }
 
 // REG-CHN14-006 — AST 锁链延伸第 22 处 forbidden 3 token.
-func TestCHN143_NoDescriptionHistoryQueue(t *testing.T) {
+func TestCHN_NoDescriptionHistoryQueue(t *testing.T) {
 	t.Parallel()
 	forbidden := []string{
 		"pendingDescriptionAudit",

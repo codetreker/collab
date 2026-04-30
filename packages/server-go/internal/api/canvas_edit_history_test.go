@@ -33,8 +33,8 @@ func cv15SeedArtifactComment(t *testing.T, tsURL, ownerTok string) (string, stri
 	return chID, id
 }
 
-// TestCV15_ErrCode_ByteIdentical pins the 3 const literals.
-func TestCV15_ErrCode_ByteIdentical(t *testing.T) {
+// TestCV_ErrCode_ByteIdentical pins the 3 const literals.
+func TestCV_ErrCode_ByteIdentical(t *testing.T) {
 	t.Parallel()
 	cases := map[string]string{
 		"NotArtifactComment": "comment.not_artifact_comment",
@@ -65,9 +65,9 @@ func TestCV151_NoSchemaChange(t *testing.T) {
 	}
 }
 
-// TestCV151_ReusesMessagesEditHistory — 复用 messages.edit_history 列
+// TestCV_ReusesMessagesEditHistory — 复用 messages.edit_history 列
 // (DM-7.1 v=34 既有, 不重新加).
-func TestCV151_ReusesMessagesEditHistory(t *testing.T) {
+func TestCV_ReusesMessagesEditHistory(t *testing.T) {
 	t.Parallel()
 	// Verify DM-7.1 migration still defines edit_history on messages.
 	root := cv15RepoRoot(t)
@@ -81,8 +81,8 @@ func TestCV151_ReusesMessagesEditHistory(t *testing.T) {
 	}
 }
 
-// TestCV152_GetUserHistory_HappyPath — sender owner-only happy.
-func TestCV152_GetUserHistory_HappyPath(t *testing.T) {
+// TestCV_GetUserHistory_HappyPath — sender owner-only happy.
+func TestCV_GetUserHistory_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, s, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -108,8 +108,8 @@ func TestCV152_GetUserHistory_HappyPath(t *testing.T) {
 	_ = s
 }
 
-// TestCV152_NonSenderRejected — non-sender → 403.
-func TestCV152_NonSenderRejected(t *testing.T) {
+// TestCV_NonSenderRejected — non-sender → 403.
+func TestCV_NonSenderRejected(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -127,9 +127,9 @@ func TestCV152_NonSenderRejected(t *testing.T) {
 	}
 }
 
-// TestCV151_NonArtifactCommentRejects404 — text message → 404
+// TestCV_NonArtifactCommentRejects404 — text message → 404
 // `comment.not_artifact_comment`.
-func TestCV151_NonArtifactCommentRejects404(t *testing.T) {
+func TestCV_NonArtifactCommentRejects404(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -152,9 +152,9 @@ func TestCV151_NonArtifactCommentRejects404(t *testing.T) {
 	}
 }
 
-// TestCV152_EmptyHistory_ReturnsArray — empty edit_history → returns
+// TestCV_EmptyHistory_ReturnsArray — empty edit_history → returns
 // `history: []` (not nil).
-func TestCV152_EmptyHistory_ReturnsArray(t *testing.T) {
+func TestCV_EmptyHistory_ReturnsArray(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -174,8 +174,8 @@ func TestCV152_EmptyHistory_ReturnsArray(t *testing.T) {
 	}
 }
 
-// TestCV152_Unauthorized401 — no auth → 401.
-func TestCV152_Unauthorized401(t *testing.T) {
+// TestCV_Unauthorized401 — no auth → 401.
+func TestCV_Unauthorized401(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	resp, _ := testutil.JSON(t, "GET",
@@ -185,8 +185,8 @@ func TestCV152_Unauthorized401(t *testing.T) {
 	}
 }
 
-// TestCV152_MessageNotFound404 — missing message → 404 comment.message_not_found.
-func TestCV152_MessageNotFound404(t *testing.T) {
+// TestCV_MessageNotFound404 — missing message → 404 comment.message_not_found.
+func TestCV_MessageNotFound404(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -201,8 +201,8 @@ func TestCV152_MessageNotFound404(t *testing.T) {
 	}
 }
 
-// TestCV152_GetAdminHistory_HappyPath — admin readonly happy.
-func TestCV152_GetAdminHistory_HappyPath(t *testing.T) {
+// TestCV_GetAdminHistory_HappyPath — admin readonly happy.
+func TestCV_GetAdminHistory_HappyPath(t *testing.T) {
 	t.Parallel()
 	ts, _, _ := testutil.NewTestServer(t)
 	ownerTok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
@@ -222,9 +222,9 @@ func TestCV152_GetAdminHistory_HappyPath(t *testing.T) {
 	}
 }
 
-// TestCV152_NoAdminPatchDeletePath — admin-rail does NOT mount any
+// TestCV_NoAdminPatchDeletePath — admin-rail does NOT mount any
 // PATCH/DELETE/PUT for comment-edit-history. Reverse-grep.
-func TestCV152_NoAdminPatchDeletePath(t *testing.T) {
+func TestCV_NoAdminPatchDeletePath(t *testing.T) {
 	t.Parallel()
 	root := cv15RepoRoot(t)
 	dir := filepath.Join(root, "packages/server-go/internal")

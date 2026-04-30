@@ -58,12 +58,12 @@ func al42Register(t *testing.T, url, tok, agentID string) map[string]any {
 	return data
 }
 
-// TestAL42_RegisterRuntime_OwnerOnly pins acceptance §2.1 owner-only.
+// TestAL_RegisterRuntime_OwnerOnly pins acceptance §2.1 owner-only.
 // Non-owner POST /runtime/register → 403. admin god-mode 走 admin rail
 // (admin token is `borgee_admin_session` cookie — user JSON helper sends
 // `Authorization: Bearer`, so admin token never enters this rail —
 // 反断 by construction).
-func TestAL42_RegisterRuntime_OwnerOnly(t *testing.T) {
+func TestAL_RegisterRuntime_OwnerOnly(t *testing.T) {
 	t.Parallel()
 	url, _, s, agentID := al42Setup(t)
 	// Seed second human (non-owner).
@@ -85,10 +85,10 @@ func TestAL42_RegisterRuntime_OwnerOnly(t *testing.T) {
 	}
 }
 
-// TestAL42_RegisterRejectsInvalidProcessKind pins acceptance §1.2-§2.1
+// TestAL_RegisterRejectsInvalidProcessKind pins acceptance §1.2-§2.1
 // boundary: server handler rejects 'unknown' / '' before schema CHECK
 // fires. v1 仅 'openclaw' + 'hermes' (蓝图 §2.2 v1 边界字面).
-func TestAL42_RegisterRejectsInvalidProcessKind(t *testing.T) {
+func TestAL_RegisterRejectsInvalidProcessKind(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentID := al42Setup(t)
 	resp, _ := testutil.JSON(t, "POST", url+"/api/v1/agents/"+agentID+"/runtime/register", ownerTok, map[string]any{
@@ -100,10 +100,10 @@ func TestAL42_RegisterRejectsInvalidProcessKind(t *testing.T) {
 	}
 }
 
-// TestAL42_RegisterDuplicateRejected pins UNIQUE(agent_id) — 立场 ①
+// TestAL_RegisterDuplicateRejected pins UNIQUE(agent_id) — 立场 ①
 // v1 不优化多 runtime 并行 (蓝图 §2.2 字面). Second register on same
 // agent → 409.
-func TestAL42_RegisterDuplicateRejected(t *testing.T) {
+func TestAL_RegisterDuplicateRejected(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -115,10 +115,10 @@ func TestAL42_RegisterDuplicateRejected(t *testing.T) {
 	}
 }
 
-// TestAL42_StartTransitionsRunning pins acceptance §2.1 + §2.7: start
+// TestAL_StartTransitionsRunning pins acceptance §2.1 + §2.7: start
 // transitions status → running + emits owner system DM "BotZ 已启动"
 // byte-identical (#321 §1 文案锁). Idempotent re-call does NOT spam DM.
-func TestAL42_StartTransitionsRunning(t *testing.T) {
+func TestAL_StartTransitionsRunning(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -159,9 +159,9 @@ func TestAL42_StartTransitionsRunning(t *testing.T) {
 	}
 }
 
-// TestAL42_StopIdempotent pins acceptance §2.2 — stop transitions →
+// TestAL_StopIdempotent pins acceptance §2.2 — stop transitions →
 // stopped, repeated stop is no-op (no duplicate system DM).
-func TestAL42_StopIdempotent(t *testing.T) {
+func TestAL_StopIdempotent(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -202,10 +202,10 @@ func TestAL42_StopIdempotent(t *testing.T) {
 	}
 }
 
-// TestAL42_HeartbeatUpdatesRuntimeNotPresence pins acceptance §2.4: 立场
+// TestAL_HeartbeatUpdatesRuntimeNotPresence pins acceptance §2.4: 立场
 // ③ heartbeat 写 agent_runtimes.last_heartbeat_at, 不写
 // presence_sessions.last_heartbeat_at (那是 AL-3 hub WS lifecycle).
-func TestAL42_HeartbeatUpdatesRuntimeNotPresence(t *testing.T) {
+func TestAL_HeartbeatUpdatesRuntimeNotPresence(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -237,10 +237,10 @@ func TestAL42_HeartbeatUpdatesRuntimeNotPresence(t *testing.T) {
 	}
 }
 
-// TestAL42_ErrorReasonsMatchAL1aEnum pins acceptance §2.5: 6 reason
+// TestAL_ErrorReasonsMatchAL1aEnum pins acceptance §2.5: 6 reason
 // 枚举字面 byte-identical 跟 agent/state.go Reason* 同源. 反断: 字典外
 // reason → 400.
-func TestAL42_ErrorReasonsMatchAL1aEnum(t *testing.T) {
+func TestAL_ErrorReasonsMatchAL1aEnum(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -272,9 +272,9 @@ func TestAL42_ErrorReasonsMatchAL1aEnum(t *testing.T) {
 	}
 }
 
-// TestAL42_ErrorEmitsSystemDMByteIdentical pins acceptance §2.7 文案锁
+// TestAL_ErrorEmitsSystemDMByteIdentical pins acceptance §2.7 文案锁
 // "{agent_name} 出错: {reason}" byte-identical 跟 #321 §1 同源.
-func TestAL42_ErrorEmitsSystemDMByteIdentical(t *testing.T) {
+func TestAL_ErrorEmitsSystemDMByteIdentical(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -299,10 +299,10 @@ func TestAL42_ErrorEmitsSystemDMByteIdentical(t *testing.T) {
 	}
 }
 
-// TestAL42_AdminGodModeOmitsErrorReason pins acceptance §2.6 + §4.3:
+// TestAL_AdminGodModeOmitsErrorReason pins acceptance §2.6 + §4.3:
 // admin god-mode read endpoint white-list 不返 last_error_reason raw
 // 文本 (隐私 立场 ⑦ ADM-0 §1.3 红线). 跟 REG-ADM0-003 同模式.
-func TestAL42_AdminGodModeOmitsErrorReason(t *testing.T) {
+func TestAL_AdminGodModeOmitsErrorReason(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -333,12 +333,12 @@ func TestAL42_AdminGodModeOmitsErrorReason(t *testing.T) {
 	}
 }
 
-// TestAL42_AdminCannotStartStop pins acceptance §4.3: admin god-mode rail
+// TestAL_AdminCannotStartStop pins acceptance §4.3: admin god-mode rail
 // has no start/stop endpoint — 反向断言 admin path 仅 GET. 反向 grep
 // `admin.*runtime.*start|admin.*runtime.*stop` count==0 是 CI 闸位 (#4.3).
 // 此 test 反向断言: admin POST /admin-api/v1/runtimes/start → 404 (route
 // 未注册).
-func TestAL42_AdminCannotStartStop(t *testing.T) {
+func TestAL_AdminCannotStartStop(t *testing.T) {
 	t.Parallel()
 	url, _, _, _ := al42Setup(t)
 	adminTok := testutil.LoginAsAdmin(t, url)
@@ -356,10 +356,10 @@ func msgsContents(ms []store.Message) []string {
 	return out
 }
 
-// TestAL42_Endpoints_AnonAndNotFound covers 401/404 branches across all
+// TestAL_Endpoints_AnonAndNotFound covers 401/404 branches across all
 // runtime endpoints to lift coverage past 85% threshold (CI ci.yml:55,
 // 跟 #409 d5a2e70 同 pattern).
-func TestAL42_Endpoints_AnonAndNotFound(t *testing.T) {
+func TestAL_Endpoints_AnonAndNotFound(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentID := al42Setup(t)
 
@@ -422,11 +422,11 @@ func TestAL42_Endpoints_AnonAndNotFound(t *testing.T) {
 	}
 }
 
-// TestAL42_GetRuntime_ReturnsRow covers handleGet (was 0% in coverage).
+// TestAL_GetRuntime_ReturnsRow covers handleGet (was 0% in coverage).
 // Verifies serializeRuntime nil-safe paths for last_heartbeat_at /
 // last_error_reason both NULL (registered fresh) and both populated
 // (after heartbeat + error).
-func TestAL42_GetRuntime_ReturnsRow(t *testing.T) {
+func TestAL_GetRuntime_ReturnsRow(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -463,10 +463,10 @@ func TestAL42_GetRuntime_ReturnsRow(t *testing.T) {
 	}
 }
 
-// TestAL42_RegisterMalformedBody covers the 400 branch on register +
+// TestAL_RegisterMalformedBody covers the 400 branch on register +
 // error endpoints (empty endpoint_url + readJSON malformed via raw
 // http.NewRequest with cookie auth).
-func TestAL42_RegisterMalformedBody(t *testing.T) {
+func TestAL_RegisterMalformedBody(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentID := al42Setup(t)
 
@@ -508,9 +508,9 @@ func TestAL42_RegisterMalformedBody(t *testing.T) {
 	}
 }
 
-// TestAL42_AdminListReturnsEmptyAndPopulated covers admin handleListRuntimes
+// TestAL_AdminListReturnsEmptyAndPopulated covers admin handleListRuntimes
 // 0-row + multi-row branches + reflect-scan privacy invariant.
-func TestAL42_AdminListReturnsEmptyAndPopulated(t *testing.T) {
+func TestAL_AdminListReturnsEmptyAndPopulated(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, _, agentID := al42Setup(t)
 
@@ -545,10 +545,10 @@ func TestAL42_AdminListReturnsEmptyAndPopulated(t *testing.T) {
 	}
 }
 
-// TestAL42_StartStopGet_NonOwner_403 covers the OwnerID inline check on
+// TestAL_StartStopGet_NonOwner_403 covers the OwnerID inline check on
 // start/stop/heartbeat/error/GET — non-owner who passes auth gets 403.
 // This walks the OwnerID branch that anonymous tests can't reach.
-func TestAL42_StartStopGet_NonOwner_403(t *testing.T) {
+func TestAL_StartStopGet_NonOwner_403(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -581,12 +581,12 @@ func TestAL42_StartStopGet_NonOwner_403(t *testing.T) {
 	}
 }
 
-// TestAL42_StartTransitionsRunning_FromError pins state-machine forward
+// TestAL_StartTransitionsRunning_FromError pins state-machine forward
 // progress: a runtime in 'error' state can be brought back to 'running'
 // via start (last_error_reason cleared). Adds coverage on handleStart's
 // "source state != 'running' so emit DM" branch from a non-default
 // starting state.
-func TestAL42_StartTransitionsRunning_FromError(t *testing.T) {
+func TestAL_StartTransitionsRunning_FromError(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, s, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
@@ -612,11 +612,11 @@ func TestAL42_StartTransitionsRunning_FromError(t *testing.T) {
 // Compile-time guard: ensures strings import not removed by a stray edit.
 var _ = strings.Contains
 
-// TestAL42_ListAnchorComments_Coverage covers the new handleListComments
+// TestAL_ListAnchorComments_Coverage covers the new handleListComments
 // endpoint introduced via merge-from-main (anchors.go:467, 0% before this).
 // Paired with the CV-4.2 #409 sister patch — same fix lifts AL-4.2 #414
 // past the 85% threshold (CI ci.yml:55 strict `< 85`).
-func TestAL42_ListAnchorComments_Coverage(t *testing.T) {
+func TestAL_ListAnchorComments_Coverage(t *testing.T) {
 	t.Parallel()
 	url, ownerTok, st, _ := al42Setup(t)
 	// Need a channel + artifact + anchor + comment to exercise list.
@@ -660,11 +660,11 @@ func TestAL42_ListAnchorComments_Coverage(t *testing.T) {
 	_ = st
 }
 
-// TestAL42_FanoutOwnerSystemDM_CreateMessageFails covers the
+// TestAL_FanoutOwnerSystemDM_CreateMessageFails covers the
 // fanoutOwnerSystemDM error branch where Store.DB().Create(msg) fails —
 // drop the messages table after agent registration so the system DM
 // insert fails. The handler logs + returns 200 (best-effort fanout).
-func TestAL42_FanoutOwnerSystemDM_CreateMessageFails(t *testing.T) {
+func TestAL_FanoutOwnerSystemDM_CreateMessageFails(t *testing.T) {
 	url, ownerTok, s, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
 	// Drop messages so the system DM Create fails. CreateDmChannel still
@@ -680,13 +680,13 @@ func TestAL42_FanoutOwnerSystemDM_CreateMessageFails(t *testing.T) {
 	}
 }
 
-// TestAL42_FanoutOwnerSystemDM_CreateChannelFails covers the
+// TestAL_FanoutOwnerSystemDM_CreateChannelFails covers the
 // CreateDmChannel error branch — drop channels table to break it.
 // Note: dropping channels also breaks runtime status update path, so
 // we use a different approach: drop the dm_extras-style table or
 // simulate via FK violation. Easiest: drop both messages and channel_members
 // (CreateDmChannel inserts into channels + channel_members).
-func TestAL42_FanoutOwnerSystemDM_CreateChannelFails(t *testing.T) {
+func TestAL_FanoutOwnerSystemDM_CreateChannelFails(t *testing.T) {
 	url, ownerTok, s, agentID := al42Setup(t)
 	al42Register(t, url, ownerTok, agentID)
 	s.DB().Exec(`PRAGMA foreign_keys = OFF`)
