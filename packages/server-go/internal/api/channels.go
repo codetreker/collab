@@ -137,8 +137,10 @@ func (h *ChannelHandler) handleCreateChannel(w http.ResponseWriter, r *http.Requ
 	if body.Visibility == "" {
 		body.Visibility = "public"
 	}
-	if body.Visibility != "public" && body.Visibility != "private" {
-		writeJSONError(w, http.StatusBadRequest, "Visibility must be 'public' or 'private'")
+	// CHN-9 立场 ① + ④: visibility 三态校验 byte-identical 跟 IsValidVisibility
+	// 谓词单源 (原 'public'/'private' 二态扩到三态加 'creator_only').
+	if !IsValidVisibility(body.Visibility) {
+		writeJSONError(w, http.StatusBadRequest, VisibilityRejectMessage)
 		return
 	}
 	if len(body.Topic) > 250 {
@@ -345,8 +347,9 @@ func (h *ChannelHandler) handleUpdateChannel(w http.ResponseWriter, r *http.Requ
 		updates["topic"] = *body.Topic
 	}
 	if body.Visibility != nil {
-		if *body.Visibility != "public" && *body.Visibility != "private" {
-			writeJSONError(w, http.StatusBadRequest, "Visibility must be 'public' or 'private'")
+		// CHN-9 立场 ④: visibility 三态校验 byte-identical 跟 create handler 同源.
+		if !IsValidVisibility(*body.Visibility) {
+			writeJSONError(w, http.StatusBadRequest, VisibilityRejectMessage)
 			return
 		}
 		updates["visibility"] = *body.Visibility
