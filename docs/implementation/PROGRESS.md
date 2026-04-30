@@ -22,7 +22,7 @@
 | Phase 1 身份闭环 | ✅ DONE | G1.1~G1.5 + G1.audit 全过 | CM-1 + AP-0 + CM-3 全 merged; G1 全签 #210, G1.4 closed by #208 + #210. detail → [`progress/phase-1.md`](progress/phase-1.md) |
 | Phase 2 协作闭环 ⭐ | ✅ DONE | 4 角色联签 + 5+1 闸 SIGNED | closure #284; 锚 `phase-2-exit-announcement.md`. → [`phase-2.md`](progress/phase-2.md) |
 | Phase 3 第二维度产品 | ✅ DONE | 11 milestone + G3.1-G3.4 + G3.audit | RT-1/CHN-1/AL-3/CV-1/CV-2/3/4/CHN-2/3/4/DM-2/AL-4 全 ✅; G3 evidence #442. → [`phase-3.md`](progress/phase-3.md) |
-| Phase 4+ 剩余模块 | 🔄 IN PROGRESS | 各模块自身完成判定 + G4.audit | Phase 4/5/6 同期推; **in-flight**: HB-1 #589 / CV-15 #592 / INFRA-3 (本 PR) / CS-1 占位. detail → [`progress/phase-4.md`](progress/phase-4.md) |
+| Phase 4+ 剩余模块 | 🔄 IN PROGRESS | 各模块完成判定 + G4.audit | in-flight 见 §In-flight; Phase 4+ 含全剩余 module groups → [`progress/phase-4.md`](progress/phase-4.md) |
 
 ---
 

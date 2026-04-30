@@ -56,5 +56,5 @@
 
 - 数据契约 3 项 + 行为不变量 5 项 + 用户感知 3 项**全绿** (一票否决)
 - 反查锚 4.a-b 每 PR 必跑 0 命中 / 全注释
-- 登记 `docs/qa/regression-registry.md` REG-DM2-001..010 (3 server + 5 行为 + 3 client + 1 ⏸️ `@channel` 留 DM-3)
+- 登记 `docs/qa/regression-registry.md` REG-DM2-001..010 (3 server + 5 行为 + 3 client + 1 ✅ `@channel` DM-3 #508 兑现)
 - 蓝图行 §4.2 跨 org 邀请审批 (`agent_invitations` 表) 由 ADM-1/CHN-2 落, 不挡 DM-2 闭合; DM-2 仅锁 mention 路由本身 (蓝图 §4 / §4.1)

@@ -26,7 +26,7 @@
 | **CHN-1** workspace ↔ channel | ✅ 全闭 | #276 v=11 / #286 server / #288 client | chn-1.md ✅ | REG-CHN1-001..010 (10 行) |
 | **RT-1** ArtifactUpdated frame | ✅ 全闭 | #290 RT-1.1 / #292 RT-1.2 backfill / #296 RT-1.3 resume | rt-1.md ✅ | REG-RT1-001..010 (10 行) |
 | **AL-3** presence (Phase 3 提前) | ✅ 全闭 | #310/#317/#324/#327/#336 + #345 audit | al-3.md ✅ | REG-AL3-001..011 (15 行, 12🟢+3⚪) |
-| **CV-1** ⭐ artifact + 版本 (3 段 + e2e) | ✅ 主体闭 | #334 CV-1.1 / #342 CV-1.2 / #346 CV-1.3 / #348 e2e | cv-1.md ⚪→✅ pending #347 | REG-CV1-001..017 (17 行) |
+| **CV-1** ⭐ artifact + 版本 (3 段 + e2e) | ✅ 全闭 | #334 CV-1.1 / #342 CV-1.2 / #346 CV-1.3 / #348 e2e | cv-1.md ✅ closed #347 | REG-CV1-001..017 (17 行) |
 
 ## 3. Phase 3 章程未完 milestone (5/9 → Phase 4)
 
@@ -115,8 +115,8 @@
 
 | 留账 | PR # | 状态 |
 |---|---|---|
-| REG-DM2-010 (mention render @{display_name} + 反向 raw UUID) | DM-2.3 实施待 | ⚪ pending |
-| e2e `dm-2-3-mention.spec.ts` | DM-2.3 实施待 | ⚪ pending |
+| REG-DM2-010 (mention render @{display_name} + 反向 raw UUID) | DM-2.3 ✅ #388 76fb0f8 merged | 🟢 active |
+| e2e `dm-2-3-mention.spec.ts` | DM-2.3 ✅ #388 e2e merged | 🟢 active |
 | 野马 G3.3 demo 3 截屏 (CV-1 用户感知签字) | 待野马起 | ⏳ |
 | 野马 G3.4 双 tab 截屏 (CHN-4 退出闸三签依据) | CHN-4.3 实施 + 野马签 | ⏳ |
 | #347 CV-1 acceptance flip admin merge | (检查现状, 可能已 merged) | ⏳ |
@@ -130,7 +130,7 @@
 | CHN-3 个人分组 | UX path | DEFERRED |
 | CV-3/4 D-lite + iterate | CV-2 后顺位 | DEFERRED |
 | CHN-4 协作场骨架 demo | CHN-2/3 + CV-2 后 | DEFERRED |
-| AL-4 agent runtime metrics | Phase 4 (10 行 ⚪ pending in registry) | DEFERRED |
+| AL-4 agent runtime metrics | Phase 4 ✅ DONE (10/10🟢 in registry post #414/#417/#427 全 merged) | DONE |
 | ADM-1 admin UI (G2.4 #6 留) | Phase 4 (战马B Phase 4 已开 ADM-1 acceptance template #262) | IN-FLIGHT |
 | BPP-1 envelope CI lint (G2.6 留) | Phase 3 已落 ✅ #304 | CLOSED |
 

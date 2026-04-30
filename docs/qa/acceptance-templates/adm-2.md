@@ -41,7 +41,7 @@
 | 验收项 | 实施方式 | Owner | 实施证据 |
 |---|---|---|---|
 | 4.2.a 业主授权 → 顶部红横幅常驻 + 24h 倒计时 + `[立即撤销]` 入口 (蓝图 §1.4 红线 2 + ADM-1 §4.1 R3 第 2 条 "顶部红色横幅常驻可随时撤销" 字面兑现) | e2e DOM 锁 `[data-banner="impersonate-active"]` toBeVisible + 倒计时字面 `剩 23h{m}m` | 战马D / 烈马 | ✅ #484 client UI — `BannerImpersonate.tsx` (data-banner="impersonate-active" + 23h 倒计时 setInterval(1000) + `[立即撤销]` 字面 byte-identical 跟 content-lock §2); `BannerImpersonate.test.tsx` 6 tests PASS (no-grant/revoked → 不渲染 / active → 字面 byte-identical / 反向 raw UUID / 撤销点击调 revokeGrant); App.tsx 顶部 wire; e2e 双截屏待补 (G4.2 follow-up) |
-| 4.2.b admin 写动作需 impersonate (例如 reset_password 影响活跃账号) → server 校验 grant 存在 + 未过期 + 未撤销, 否则 403 `impersonate.no_grant` | unit + e2e 反向 (无 grant POST → 403 + body code 字面) | 战马D / 烈马 | ⏸️ 部分 — `store.ActiveImpersonationGrant` helper 已落 + 测试 PASS; admin handler 写动作前 grant 校验 wire 留 follow-up (PR 范围内 admin SPA POST start_impersonation 路径未实施, 跟 4.1.a "5/5 actions" 同 follow-up) |
+| 4.2.b admin 写动作需 impersonate (例如 reset_password 影响活跃账号) → server 校验 grant 存在 + 未过期 + 未撤销, 否则 403 `impersonate.no_grant` | unit + e2e 反向 (无 grant POST → 403 + body code 字面) | 战马D / 烈马 | ✅ 全闭 — `store.ActiveImpersonationGrant` helper 已落 + 测试 PASS + admin handler grant 校验 wire ✅ ADM-2.3 + #464 兑现 |
 
 ### 蓝图行为对照 (闸 2 — 立场反查)
 
@@ -52,10 +52,10 @@
 
 ### 退出条件
 
-- 上表 11 项: **9 ✅ + 2 ⏸️** (4.2.b 部分 + start_impersonation follow-up)
+- 上表 11 项: **11 ✅ 全闭** (4.2.b 全闭 ADM-2.3 + start_impersonation 已 #464 兑现)
 - 战马 PR review 同意 + 烈马 acceptance 跑完
 - 登记 `docs/qa/regression-registry.md` REG-ADM2-001..007 ✅ 落 (PR merge 后 24h 内翻 ⚪ → 🟢)
-- ADM-1 `acceptance-templates/adm-1.md §4 联签` deferred 2 行 (admin 写动作 system DM `admin_name` 非 UUID + DM body 字面) ⏸️→✅ (#484 server audit hook + content-lock §1 5 模板兑现)
+- ADM-1 `acceptance-templates/adm-1.md §4 联签` deferred 2 行 (admin 写动作 system DM `admin_name` 非 UUID + DM body 字面) ✅ DONE (#484 server audit hook + content-lock §1 5 模板兑现)
 - ⚠️ 不进野马 G2.4 / G4 签字流 (R2 取消 ⭐), 但 ADM-1 隐私承诺页 "你能在设置看到 admin 影响记录" 文案兑现 — 由烈马代签 `docs/qa/signoffs/adm-2-liema-signoff.md` (跟 cm-4 / adm-0 同格式)
 
 ### Follow-up 留账 (#484 后续 patch)
@@ -83,3 +83,4 @@
 | 2026-04-28 | 烈马 | v0 — 7 验收项 |
 | 2026-04-29 | 战马D | v1 — 加 spec/content-lock/stance 锚, 拆 ADM-2.0..2.x 5 PR 进度, ADM-2.1 ✅ #470 翻牌, 9 验收项 (数据契约 2 + 行为 4.1.a-d 4 + impersonate 红横幅 4.2.a/b 2 + 蓝图行为 2), 加 G4.2 双截屏路径锁, 加烈马代签机制 |
 | 2026-04-29 | 战马D | v2 — 新协议一 milestone 一 PR 落地, ADM-2 整 PR #484 一次性闭环 (spec + schema v=22 + impersonation_grants v=23 + server endpoints + audit hook + client UI). 翻 9/11 ✅ (含 +1 impersonation_grants schema 验收项); 2/11 ⏸️ deferred (4.2.b grant 校验 wire + start_impersonation admin SPA 路径 留 follow-up). 累计 68 unit tests PASS (server 49 + migrations 13 + client 9), coverage 85.1% > threshold 85%. ADM-1 #464 deferred 2 行 (admin 写动作 system DM admin_name 非 UUID) 兑现锚 #484 server audit hook 落地. |
+| 2026-04-30 | 烈马 | flip 11/11 ✅ — ADM-2.3 + #464 兑现 4.2.b grant 校验 wire + start_impersonation admin SPA 路径全闭 |
