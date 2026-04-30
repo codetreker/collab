@@ -608,8 +608,11 @@ func TestChannelsMessagesWorkspaceAdditionalBranches(t *testing.T) {
 		{"search-limit", "GET", "/api/v1/channels/" + publicID + "/messages/search?q=branch&limit=999", adminToken, nil, http.StatusOK},
 		{"create-message-missing-content", "POST", "/api/v1/channels/" + publicID + "/messages", adminToken, map[string]string{"content": "   "}, http.StatusBadRequest},
 		{"create-message-forbidden", "POST", "/api/v1/channels/" + privateID + "/messages", memberToken, map[string]string{"content": "x"}, http.StatusNotFound},
-		{"update-message-forbidden", "PUT", "/api/v1/messages/" + msgID, memberToken, map[string]string{"content": "member edit"}, http.StatusForbidden},
-		{"delete-message-forbidden", "DELETE", "/api/v1/messages/" + msgID, memberToken, nil, http.StatusForbidden},
+		// AP-5: post-leave-public (line 600) member is no longer in publicID,
+		// so channel-member ACL gate fires before sender_id check → 404
+		// "Channel not found" fail-closed (跟 AP-4 reactions 同模式).
+		{"update-message-forbidden", "PUT", "/api/v1/messages/" + msgID, memberToken, map[string]string{"content": "member edit"}, http.StatusNotFound},
+		{"delete-message-forbidden", "DELETE", "/api/v1/messages/" + msgID, memberToken, nil, http.StatusNotFound},
 		// ADM-0.3: admin fixture is the sender (line 565), so sender-only
 		// delete on the user-rail succeeds with 204.
 		{"delete-message-admin", "DELETE", "/api/v1/messages/" + msgID, adminToken, nil, http.StatusNoContent},

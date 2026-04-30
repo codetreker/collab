@@ -43,3 +43,7 @@
 - 0 schema 改 + 0 新错码 + 0 新 endpoint
 - 反向 grep 4 锚通过
 - REG-AP5-001..005 5 行 + REG-AP4 cross-link
+
+## 关闭
+
+✅ 2026-04-30 战马E — server-go ./... 25 packages 全绿; TestAP5_* 5 unit PASS (含 TestAP5_PatchDM_PostRemovalReject DM 路径真路 admin role 解析); error_branches_test.go 副作用更新 (update/delete-message-forbidden 翻 403 → 404 因 post-leave-public gap fix 真生效); REG-AP5-001..005 + 跨 milestone cross-link AP-4 #551 + DM-5 #549 双轨 ACL 收紧成对.

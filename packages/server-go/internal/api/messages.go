@@ -354,8 +354,20 @@ func (h *MessageHandler) handleUpdateMessage(w http.ResponseWriter, r *http.Requ
 	}
 
 	// CM-3.2: cross-org 403 (#200 §3 row 1).
+	// MUST run BEFORE the AP-5 channel-member gate — cross-org contract
+	// (cm-3-resource-ownership-checklist.md §3) explicitly returns 403 for
+	// foreign-org callers (TestCrossOrgRead403 lock).
 	if store.CrossOrg(user.OrgID, existing.OrgID) {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	// AP-5 立场 ① — channel-member ACL gate (跟 AP-4 reactions 同模式).
+	// Closes the post-removal gap: a same-org user removed from the
+	// channel must not be able to edit messages they previously sent
+	// there. byte-identical "Channel not found" 404 fail-closed.
+	if !h.Store.IsChannelMember(existing.ChannelID, user.ID) || !h.Store.CanAccessChannel(existing.ChannelID, user.ID) {
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
@@ -424,9 +436,18 @@ func (h *MessageHandler) handleDeleteMessage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// CM-3.2: cross-org 403.
+	// CM-3.2: cross-org 403. MUST run BEFORE the AP-5 channel-member gate
+	// — cross-org contract returns 403 for foreign-org callers
+	// (TestCrossOrgRead403 lock).
 	if store.CrossOrg(user.OrgID, existing.OrgID) {
 		writeJSONError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	// AP-5 立场 ① — channel-member ACL gate (跟 AP-4 + handleUpdateMessage 同模式).
+	// Closes the post-removal gap on DELETE.
+	if !h.Store.IsChannelMember(existing.ChannelID, user.ID) || !h.Store.CanAccessChannel(existing.ChannelID, user.ID) {
+		writeJSONError(w, http.StatusNotFound, "Channel not found")
 		return
 	}
 
