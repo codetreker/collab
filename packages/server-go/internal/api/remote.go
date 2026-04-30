@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"borgee-server/internal/auth"
+	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
 
@@ -17,8 +18,10 @@ type RemoteProxy interface {
 
 type RemoteHandler struct {
 	Store  *store.Store
-	Logger *slog.Logger
-	Hub    RemoteProxy
+	// DataLayer — DL-1.2 SSOT 4-interface bundle (nil-safe; see UserHandler).
+	DataLayer *datalayer.DataLayer
+	Logger    *slog.Logger
+	Hub       RemoteProxy
 }
 
 func (h *RemoteHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {

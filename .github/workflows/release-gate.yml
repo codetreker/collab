@@ -187,3 +187,61 @@ jobs:
           # placeholder: assert HB-1 spec contract not drifted
           test -f docs/implementation/modules/hb-1-spec.md
           grep -q 'signature' docs/implementation/modules/hb-1-spec.md
+
+      # INFRA-3 progress-line-budget — PROGRESS.md 主文件瘦身锁
+      # (反战马 commit 塞 1500+ 字符到 milestone 行 + 反主文件行膨胀).
+      # 锁链第 5 处 (BPP-4 AST scan / HB-3 dict-isolation / AP-4-enum / HB-4 audit-schema 同模式).
+      - name: progress-line-budget
+        run: |
+          # ① 主 PROGRESS.md 单行 ≤200 字符
+          longLines=$(awk '{ if (length > 200) print NR":"length }' docs/implementation/PROGRESS.md || true)
+          if [ -n "$longLines" ]; then
+            echo "::error::INFRA-3 立场 ① — PROGRESS.md 单行超 200 字符 (战马 commit 历史塞主文件):"
+            echo "$longLines"
+            echo "::notice::长 milestone detail 应入 progress/phase-N.md 子文件"
+            exit 1
+          fi
+          # ② 主 PROGRESS.md 总行 ≤100
+          totalLines=$(wc -l < docs/implementation/PROGRESS.md)
+          if [ "$totalLines" -gt 100 ]; then
+            echo "::error::INFRA-3 立场 ① — PROGRESS.md 总行 $totalLines > 100 (主文件瘦身锁)"
+            exit 1
+          fi
+          # ③ 5 子文件存在
+          for p in 0 1 2 3 4; do
+            if [ ! -f "docs/implementation/progress/phase-$p.md" ]; then
+              echo "::error::INFRA-3 立场 ② — progress/phase-$p.md 缺失"
+              exit 1
+            fi
+          done
+          # ④ 主 PROGRESS.md 不含 checkbox (单一翻牌点入子文件)
+          checkboxHits=$(grep -cE '^- \[ \]|^- \[x\]' docs/implementation/PROGRESS.md || true)
+          if [ "$checkboxHits" -gt 0 ]; then
+            echo "::error::INFRA-3 立场 ③ — PROGRESS.md 主文件含 $checkboxHits 行 checkbox; milestone 翻牌点应入 progress/phase-N.md"
+            exit 1
+          fi
+          # ⑤ 跳转锚 ≥5 hit
+          jumpHits=$(grep -cE 'progress/phase-[0-4]\.md' docs/implementation/PROGRESS.md || true)
+          if [ "$jumpHits" -lt 5 ]; then
+            echo "::error::INFRA-3 立场 ② — PROGRESS.md 跳转锚 $jumpHits < 5 (5 phase 全锚)"
+            exit 1
+          fi
+          echo "::notice::progress-line-budget PASS — PROGRESS.md $totalLines 行 / 0 长行 / 0 checkbox / $jumpHits 跳转锚 / 5 子文件就位"
+
+      # DL-1.2 (蓝图 data-layer.md §4 B): direct-store import budget.
+      # 锁 internal/api/* 直接 import borgee-server/internal/store 文件数 ≤
+      # baseline (108 at DL-1.2 wire-up). DL-1.3+ 渐进迁移 handler 走
+      # datalayer.Repository / Storage / Presence / EventBus interface seam,
+      # 计数应单调下降. 反 over-engineer: 不要求一次清零, 锁不增长 (反向
+      # commit drift handler 直 store 突击).
+      # 锁链第 6 处 (跟 BPP-4 / HB-3 / AP-4 / HB-4 / INFRA-3 同模式).
+      - name: dl1-no-direct-store
+        run: |
+          baseline=108
+          actual=$(grep -rl "borgee-server/internal/store" packages/server-go/internal/api/ --include="*.go" | wc -l | tr -d ' ')
+          echo "::notice::dl1-no-direct-store: $actual files import internal/store directly under internal/api/ (baseline=$baseline)"
+          if [ "$actual" -gt "$baseline" ]; then
+            echo "::error::DL-1.2 立场 ② — internal/api 直 import internal/store 文件数 $actual > baseline $baseline (handler 应走 datalayer.* interface seam)"
+            grep -rl "borgee-server/internal/store" packages/server-go/internal/api/ --include="*.go"
+            exit 1
+          fi

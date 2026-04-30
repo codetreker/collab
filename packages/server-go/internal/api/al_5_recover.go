@@ -24,13 +24,18 @@ import (
 	"net/http"
 
 	"borgee-server/internal/auth"
+	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
 
 // AL5Handler hosts AL-5 agent error recovery POST endpoint.
 type AL5Handler struct {
 	Store  *store.Store
-	Logger *slog.Logger
+	// DataLayer — DL-1.2 SSOT 4-interface bundle. When non-nil, owner-only
+	// ACL agent lookup walks UserRepo.GetByID instead of store.GetUserByID.
+	// nil-safe (legacy boot / unit tests fall back to Store).
+	DataLayer *datalayer.DataLayer
+	Logger    *slog.Logger
 }
 
 // RegisterRoutes wires the user-rail endpoint behind authMw.
@@ -81,7 +86,15 @@ func (h *AL5Handler) handleRecover(w http.ResponseWriter, r *http.Request) {
 	_ = payload // request_id not used in v1; reserved for future idempotency.
 
 	// Owner-only ACL — load agent, check role + OwnerID.
-	agent, err := h.Store.GetUserByID(agentID)
+	// DL-1.2: prefer UserRepo.GetByID (interface seam) when DataLayer wired;
+	// fall back to legacy store.GetUserByID (nil-safe, byte-identical).
+	var agent *store.User
+	var err error
+	if h.DataLayer != nil {
+		agent, err = h.DataLayer.UserRepo.GetByID(r.Context(), agentID)
+	} else {
+		agent, err = h.Store.GetUserByID(agentID)
+	}
 	if err != nil || agent == nil || agent.Role != "agent" {
 		writeJSONError(w, http.StatusNotFound, "Agent not found")
 		return

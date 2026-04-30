@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"borgee-server/internal/auth"
+	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
 
@@ -33,8 +34,10 @@ type CommandStoreReader interface {
 
 type CommandHandler struct {
 	Store  *store.Store
-	Logger *slog.Logger
-	Hub    CommandSource
+	// DataLayer — DL-1.2 SSOT 4-interface bundle (nil-safe; see UserHandler).
+	DataLayer *datalayer.DataLayer
+	Logger    *slog.Logger
+	Hub       CommandSource
 }
 
 type CommandSource interface {

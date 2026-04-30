@@ -17,6 +17,7 @@ import (
 	"borgee-server/internal/auth"
 	"borgee-server/internal/bpp"
 	"borgee-server/internal/config"
+	"borgee-server/internal/datalayer"
 	"borgee-server/internal/presence"
 	"borgee-server/internal/push"
 	"borgee-server/internal/store"
@@ -28,6 +29,10 @@ type Server struct {
 	cfg          *config.Config
 	logger       *slog.Logger
 	store        *store.Store
+	// dl is the DL-1 SSOT bundle (Storage / Presence / EventBus / 3 Repository).
+	// Wired once in New(); handlers receive it via DI to avoid direct store
+	// dependency. v3+ swap underlying impls 仅改 datalayer.NewDataLayer factory.
+	dl           *datalayer.DataLayer
 	mux          *http.ServeMux
 	hub          *ws.Hub
 	agentTracker *agent.Tracker
@@ -67,16 +72,23 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger, s *store.
 	// AL-3.2: wire the presence write end so /ws lifecycle hooks can
 	// fan in TrackOnline / TrackOffline. NewSessionsTracker only errors
 	// on a nil DB handle, which is a boot-time programming error.
+	var presenceTracker presence.PresenceTracker
 	if pw, err := presence.NewSessionsTracker(s.DB()); err == nil {
 		hub.SetPresenceWriter(pw)
+		presenceTracker = pw
 	} else {
 		logger.Error("presence tracker init failed (continuing without presence_sessions writes)", "err", err)
 	}
+
+	// DL-1.2: wire the SSOT 4-interface bundle (Storage / Presence / EventBus
+	// / 3 Repository). v1 wraps existing store + presence byte-identical.
+	dl := datalayer.NewDataLayer(s, presenceTracker)
 
 	srv := &Server{
 		cfg:          cfg,
 		logger:       logger,
 		store:        s,
+		dl:           dl,
 		mux:          http.NewServeMux(),
 		hub:          hub,
 		agentTracker: agent.NewTracker(),
@@ -220,8 +232,9 @@ func (s *Server) SetupRoutes() {
 
 	// Users
 	userHandler := &api.UserHandler{
-		Store:  s.store,
-		Logger: s.logger,
+		Store:     s.store,
+		DataLayer: s.dl,
+		Logger:    s.logger,
 	}
 	userHandler.RegisterRoutes(s.mux, authMw)
 
@@ -268,7 +281,7 @@ func (s *Server) SetupRoutes() {
 	// AL-5 agent error recovery — owner-only POST /api/v1/agents/:id/recover
 	// (蓝图 §2.3 5-state error → online recovery; 复用 AL-1 #492 single-gate
 	// helper, 不裂状态机).
-	al5Handler := &api.AL5Handler{Store: s.store, Logger: s.logger}
+	al5Handler := &api.AL5Handler{Store: s.store, DataLayer: s.dl, Logger: s.logger}
 	al5Handler.RegisterRoutes(s.mux, authMw)
 
 	// BPP-8.2 plugin lifecycle audit list — owner-only GET
@@ -426,7 +439,7 @@ func (s *Server) SetupRoutes() {
 
 	// Agents
 	agentStateAdapter := &agentRuntimeAdapter{hub: s.hub, tracker: s.agentTracker}
-	agentHandler := &api.AgentHandler{Store: s.store, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}, State: agentStateAdapter}
+	agentHandler := &api.AgentHandler{Store: s.store, DataLayer: s.dl, Logger: s.logger, Hub: &hubPluginAdapter{s.hub}, State: agentStateAdapter}
 	agentHandler.RegisterRoutes(s.mux, authMw)
 
 	// AL-4.2 runtime registry user-rail (acceptance §2.1-§2.5 + §2.7) —
@@ -445,7 +458,7 @@ func (s *Server) SetupRoutes() {
 	reactionHandler.RegisterRoutes(s.mux, authMw)
 
 	// Commands
-	commandHandler := &api.CommandHandler{Store: s.store, Logger: s.logger, Hub: &hubCommandAdapter{s.hub}}
+	commandHandler := &api.CommandHandler{Store: s.store, DataLayer: s.dl, Logger: s.logger, Hub: &hubCommandAdapter{s.hub}}
 	commandHandler.RegisterRoutes(s.mux, authMw)
 
 	// Upload
@@ -457,7 +470,7 @@ func (s *Server) SetupRoutes() {
 	workspaceHandler.RegisterRoutes(s.mux, authMw)
 
 	// Remote
-	remoteHandler := &api.RemoteHandler{Store: s.store, Logger: s.logger, Hub: &hubRemoteAdapter{s.hub}}
+	remoteHandler := &api.RemoteHandler{Store: s.store, DataLayer: s.dl, Logger: s.logger, Hub: &hubRemoteAdapter{s.hub}}
 	remoteHandler.RegisterRoutes(s.mux, authMw)
 
 	// Poll/SSE
