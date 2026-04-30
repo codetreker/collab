@@ -112,8 +112,8 @@ jobs:
         env:
           CI: "true"
           THRESHOLD_TOTAL: "85"
-          THRESHOLD_FUNC: "0"
-          THRESHOLD_PACKAGE: "0"
+          THRESHOLD_FUNC: "50"
+          THRESHOLD_PACKAGE: "70"
           THRESHOLD_PRINT: "85"
           BUILD_TAGS: "sqlite_fts5 race_heavy"
           COVERPROFILE: "coverage.out"

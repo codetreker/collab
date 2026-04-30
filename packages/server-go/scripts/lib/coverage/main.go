@@ -34,6 +34,7 @@ type Config struct {
 	ShowTestCounts  bool   // Show TESTS column in package summary
 	BuildTags       string // Build tags to pass to `go test` (e.g. "sqlite_fts5 race_heavy")
 	CoverPkg        string // -coverpkg arg (comma-separated import paths); empty = per-package mode
+	PackageGateInclude string // If non-empty, package threshold gate ONLY enforced on packages matching one of these prefixes (comma-separated). Other packages still display but never CRITICAL.
 }
 
 const ModulePrefix = "borgee-server/"
@@ -216,6 +217,13 @@ func parseConfig() Config {
 	// determinism). Explicit "false" lets cov-only job opt out.
 	if v := os.Getenv("RACE_DETECTION"); v != "" {
 		c.RaceDetection = v == "true"
+	}
+	// TEST-FIX-3-COV: PACKAGE_GATE_INCLUDE — when COVERPKG narrows
+	// statement universe to N specific packages, per-package threshold
+	// only makes sense for those N (others naturally show 0% / very low).
+	// Empty default = haystack legacy behavior (gate all packages).
+	if v := os.Getenv("PACKAGE_GATE_INCLUDE"); v != "" {
+		c.PackageGateInclude = v
 	}
 
 	return c
@@ -446,7 +454,22 @@ func printPackageSummary(results []PackageResult, topLevelCounts, subTestCounts 
 
 			total := topLevelCounts[r.Name] + subTestCounts[r.Name]
 			coverageStr := r.CoverageStr
-			isCritical := r.Coverage < cfg.ThresholdPackage
+			// TEST-FIX-3-COV: only enforce package threshold for packages
+			// matching PackageGateInclude prefixes (when set). Packages
+			// outside this list still display their cov% but never trip
+			// CRITICAL — useful when COVERPKG narrows the statement universe.
+			gated := true
+			if cfg.PackageGateInclude != "" {
+				gated = false
+				for _, prefix := range strings.Split(cfg.PackageGateInclude, ",") {
+					prefix = strings.TrimSpace(prefix)
+					if prefix != "" && strings.HasPrefix(r.Name, prefix) {
+						gated = true
+						break
+					}
+				}
+			}
+			isCritical := gated && r.Coverage < cfg.ThresholdPackage
 
 			if isCritical {
 				hasCritical = true
