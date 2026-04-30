@@ -11,6 +11,7 @@
 package api_test
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -242,4 +243,87 @@ func TestCHN53_NoChannelArchiveQueue(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+// REG-CHN5-cov — admin list happy path with seeded archived rows (covers
+// handleAdminListArchivedChannels through-path) + multi-archived listing.
+func TestCHN52_AdminListArchived_MultipleArchived(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+
+	// Create + archive 2 channels via PUT with archived: true.
+	for i := 0; i < 2; i++ {
+		ch := testutil.CreateChannel(t, ts.URL, ownerToken,
+			fmt.Sprintf("adm-arch-%d", i), "public")
+		chID := ch["id"].(string)
+		testutil.JSON(t, http.MethodPut,
+			ts.URL+"/api/v1/channels/"+chID, ownerToken,
+			map[string]any{"archived": true})
+	}
+	resp, body := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/channels/archived", adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("admin list: got %d", resp.StatusCode)
+	}
+	chs, _ := body["channels"].([]any)
+	if len(chs) < 2 {
+		t.Errorf("admin archived count: got %d, want >= 2", len(chs))
+	}
+}
+
+// REG-CHN5-cov — list my archived after self-archive (covers full path).
+func TestCHN52_ListMyArchived_AfterArchive(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	ownerToken := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
+
+	ch := testutil.CreateChannel(t, ts.URL, ownerToken, "my-arch-1", "public")
+	chID := ch["id"].(string)
+	testutil.JSON(t, http.MethodPut,
+		ts.URL+"/api/v1/channels/"+chID, ownerToken,
+		map[string]any{"archived": true})
+	resp, body := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/api/v1/me/archived-channels", ownerToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("my list: got %d", resp.StatusCode)
+	}
+	chs, _ := body["channels"].([]any)
+	if len(chs) < 1 {
+		t.Errorf("my archived count: got %d, want >= 1", len(chs))
+	}
+}
+
+func itoaCHN5(i int) string {
+	return fmt.Sprintf("%d", i)
+}
+
+var _ = itoaCHN5 // referenced by fmt.Sprintf usage above; avoid unused-warn
+
+// REG-CHN5-cov — admin endpoint with no archived (covers 200 + empty list).
+func TestCHN52_AdminListArchived_NoArchived(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	adminToken := testutil.LoginAsAdmin(t, ts.URL)
+	resp, body := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/channels/archived", adminToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("admin list empty: got %d", resp.StatusCode)
+	}
+	chs, _ := body["channels"].([]any)
+	if len(chs) != 0 {
+		t.Errorf("admin archived empty: got %d, want 0", len(chs))
+	}
+}
+
+// REG-CHN5-cov — direct admin user GET 401 (no admin token).
+func TestCHN52_AdminListArchived_NoToken(t *testing.T) {
+	t.Parallel()
+	ts, _, _ := testutil.NewTestServer(t)
+	resp, _ := testutil.JSON(t, http.MethodGet,
+		ts.URL+"/admin-api/v1/channels/archived", "", nil)
+	if resp.StatusCode == http.StatusOK {
+		t.Errorf("admin no-token: got 200, expected non-200")
+	}
 }
