@@ -11,7 +11,7 @@
 |---|---|---|---|
 | ① | release gate = 硬条件清单 ≥10 项, 任意一行不过 ⭐ 不能关 — **不允许人工 sign-off 跳过任一项** | host-bridge.md §1.5 + 模块 §HB-4 字面 "任意一行不达标 → ⭐ milestone 不能关" + 烈马 R2 立场 | 反向 grep `release.gate.*skip\|release.gate.*manual.*sign\|allow.*bypass` 在 `.github/workflows/release-gate.yml` + `docs/release/` count==0 |
 | ② | 每项可机器验 (CI test / grep / lint, 不是人工 review) — 三元组 (蓝图 § 锚 + CI workflow path + assertion) byte-identical | 烈马 R2 立场 + 蓝图 §1.5 "硬指标 必须数字化" 字面 | release-gate.yml step 数 ≥ 10; 每 step 含真 assertion (test 失败 / grep count != expected / benchmark > 阈值 → workflow red) |
-| ③ | audit schema 5 字段跨五 milestone byte-identical (HB-1+HB-2+BPP-4+HB-3+HB-4) — drift 防御链至 release 收口 | host-bridge.md §2 信任五支柱第 3 条 (可审计日志) + HB-4 §1.5 release gate 第 4 行 "审计日志格式锁定 JSON schema" | release-gate.yml 跑 cross-source reflect lint + grep `"actor".*"action".*"target".*"when".*"scope"` ≥4 hit (HB-1/HB-2 待 Rust 真实施补到 5) |
+| ③ | audit schema 5 字段跨五 milestone byte-identical (HB-1+HB-2+BPP-4+HB-3+HB-4) — drift 防御链至 release 收口 | host-bridge.md §2 信任五支柱第 3 条 (可审计日志) + HB-4 §1.5 release gate 第 4 行 "审计日志格式锁定 JSON schema" | release-gate.yml 跑 cross-source reflect lint + grep `"actor".*"action".*"target".*"when".*"scope"` ≥4 hit (HB-1/HB-2 待 Go binary 真实施补到 5; HB stack Go 重审拍板, 撤 Rust crate 路径) |
 | ④ (边界) | 4.1 行为不变量 vs 4.2 demo 签字拆死 — 4.1 数字化 CI / 4.2 野马截屏 (3 张) 走独立路径, **不混入 release gate 自动门** | 模块 §HB-4 字面 "⭐ 4.1+4.2 双挂" + 烈马 R2 拆轨 | 反向 grep `release.gate.*human.review\|release.gate.*demo.signoff` 在 release-gate.yml count==0 |
 | ⑤ (边界) | release gate 数字单源 — 跨 milestone 常量 (BPP-4 30s heartbeat / HB-3 撤销 100ms / 启动 800ms) 反向 grep ≥1 hit 单源单测锁 | BPP-4 #499 + HB-3 #504 + 蓝图 §1.5 字面 | release-gate.yml 跑 grep `BPP_HEARTBEAT_TIMEOUT_SECONDS\s*=\s*30` ≥1 hit (BPP-4 单源) + 启动 benchmark ≤ 800ms |
 | ⑥ (边界) | AST scan 锁链跨三 milestone 单源 (BPP-4 forbidden + BPP-5 forbidden + HB-3 forbidden) — release 前再次 verify, 防 PR review 后 drift | BPP-4 #499 + BPP-5 #503 + HB-3 #504 锁链 | release-gate.yml 跑 BPP-4/5/HB-3 三组 forbidden tokens AST scan, 任一 hit → workflow red |
@@ -47,7 +47,7 @@
 
 - [ ] release-gate.yml 跑 reflect lint 跨五 milestone audit schema (HB-3 已就绪 4 处, HB-4 是 5th lock chain link)
 - [ ] grep `"actor".*"action".*"target".*"when".*"scope"` 在 `internal/api/host_grants.go` + `internal/bpp/dead_letter.go` 各 ≥1 hit
-- [ ] HB-1 / HB-2 Rust crate 真实施 PR 加同 schema reflect 测 (留账, HB-4 doc 锁字面 contract)
+- [ ] HB-1 / HB-2 Go binary 真实施 PR 加同 schema reflect 测 (留账, HB-4 doc 锁字面 contract; Go 走 `encoding/json` reflect 替代 Rust serde)
 
 ## §4 蓝图边界 ④⑤⑥⑦ — 4.1 vs 4.2 拆死 / 数字单源 / AST scan 锁链 / admin 不入
 
