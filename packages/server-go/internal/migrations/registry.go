@@ -68,6 +68,8 @@ var All = []Migration{
 	auditEventsRename,
 	channelsDescriptionEditHistory,
 	messagesPinnedAt,
+	channelEvents,
+	globalEvents,
 }
 
 // Default returns an Engine wired to db with All registered.

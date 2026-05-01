@@ -140,14 +140,28 @@ func (l *localDBStorage) Delete(_ context.Context, key string) error {
 // ----- EventBus v1 (in-process map + buffered chan) -----
 
 type inProcessEventBus struct {
-	subs map[string][]chan Event
+	subs  map[string][]chan Event
+	store EventStore // optional cold-stream consumer (DL-2)
 }
 
 func NewInProcessEventBus() EventBus {
 	return &inProcessEventBus{subs: make(map[string][]chan Event)}
 }
 
+// NewInProcessEventBusWithStore wires a cold-stream EventStore consumer.
+// Publish forks an async INSERT to channel_events / global_events; failures
+// are logging-only and do NOT block the hot stream (蓝图 §4 立场).
+//
+// DL-2 spec §0 立场 ② — hot stream byte-identical, cold stream is additive.
+func NewInProcessEventBusWithStore(store EventStore) EventBus {
+	return &inProcessEventBus{
+		subs:  make(map[string][]chan Event),
+		store: store,
+	}
+}
+
 func (b *inProcessEventBus) Publish(_ context.Context, topic string, payload []byte) error {
+	// hot stream: live fanout to subscribers (byte-identical pre-DL-2).
 	for _, ch := range b.subs[topic] {
 		select {
 		case ch <- Event{Topic: topic, Payload: payload}:
@@ -155,6 +169,19 @@ func (b *inProcessEventBus) Publish(_ context.Context, topic string, payload []b
 			// best-effort: subscriber buffer 满则 drop (跟 BPP-4 dead_letter
 			// 立场承袭, RT-1.3 cursor replay 兜底).
 		}
+	}
+	// cold stream: async persist (DL-2). Failures logging-only, no-op when
+	// store is nil (DL-1 backward compat).
+	if b.store != nil {
+		kind, chID := splitTopicKind(topic)
+		go func() {
+			persistCtx := context.Background()
+			if IsChannelScopedKind(kind) && chID != "" {
+				_ = b.store.PersistChannel(persistCtx, chID, kind, payload)
+			} else {
+				_ = b.store.PersistGlobal(persistCtx, kind, payload)
+			}
+		}()
 	}
 	return nil
 }
@@ -166,6 +193,17 @@ func (b *inProcessEventBus) Subscribe(ctx context.Context, topic string) (<-chan
 		close(ch)
 	}()
 	return ch, nil
+}
+
+// splitTopicKind parses a topic in form "<kind>:<channelID>" — channelID
+// after first ':' if present. Returns (kind, channelID).
+func splitTopicKind(topic string) (kind, channelID string) {
+	for i := 0; i < len(topic); i++ {
+		if topic[i] == ':' {
+			return topic[:i], topic[i+1:]
+		}
+	}
+	return topic, ""
 }
 
 // ----- helpers -----
