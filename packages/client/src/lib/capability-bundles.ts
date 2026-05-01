@@ -37,9 +37,9 @@ export const BUNDLE_LABELS: Record<BundleID, string> = {
  *     ladder (蓝图 §1.3 A')
  */
 export const CAPABILITY_BUNDLES: Record<BundleID, CapabilityToken[]> = {
-  workspace: ['write_channel', 'write_artifact', 'commit_artifact'],
-  reader: ['read_channel', 'read_artifact', 'read_dm'],
-  mention: ['mention_user', 'send_dm'],
+  workspace: ['channel.write', 'artifact.write', 'artifact.commit'],
+  reader: ['channel.read', 'artifact.read', 'dm.read'],
+  mention: ['user.mention', 'dm.send'],
 };
 
 /** Resolve a bundle to its capability list (反 inline 散落). */

@@ -49,7 +49,7 @@ describe('AP-2 ⭐ PermissionsView — capability 透明 UI 无 role 名', () =>
     const entries: PermissionEntry[] = [
       {
         id: 1,
-        permission: 'read_channel',
+        permission: 'channel.read',
         scope: 'channel:abc',
         granted_by: null,
         granted_at: 0,
@@ -59,7 +59,7 @@ describe('AP-2 ⭐ PermissionsView — capability 透明 UI 无 role 名', () =>
     const list = container!.querySelector('[data-ap2-permissions-view]');
     expect(list).not.toBeNull();
     const row = container!.querySelector('[data-ap2-capability-row]');
-    expect(row?.getAttribute('data-ap2-capability-token')).toBe('read_channel');
+    expect(row?.getAttribute('data-ap2-capability-token')).toBe('channel.read');
     expect(row?.getAttribute('data-ap2-scope')).toBe('channel:abc');
     expect(row?.getAttribute('data-ap2-known')).toBe('true');
     const label = container!.querySelector('[data-ap2-capability-label]');
@@ -68,10 +68,10 @@ describe('AP-2 ⭐ PermissionsView — capability 透明 UI 无 role 名', () =>
 
   it('§1.3 multi-row 14 capability — 全 byte-identical 中文 label, 0 RBAC role 字面', async () => {
     const entries: PermissionEntry[] = [
-      { id: 1, permission: 'read_channel', scope: '*', granted_by: null, granted_at: 0 },
-      { id: 2, permission: 'write_channel', scope: '*', granted_by: null, granted_at: 0 },
-      { id: 3, permission: 'commit_artifact', scope: '*', granted_by: null, granted_at: 0 },
-      { id: 4, permission: 'mention_user', scope: '*', granted_by: null, granted_at: 0 },
+      { id: 1, permission: 'channel.read', scope: '*', granted_by: null, granted_at: 0 },
+      { id: 2, permission: 'channel.write', scope: '*', granted_by: null, granted_at: 0 },
+      { id: 3, permission: 'artifact.commit', scope: '*', granted_by: null, granted_at: 0 },
+      { id: 4, permission: 'user.mention', scope: '*', granted_by: null, granted_at: 0 },
     ];
     await render(<PermissionsView entries={entries} />);
     const rows = container!.querySelectorAll('[data-ap2-capability-row]');

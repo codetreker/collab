@@ -53,20 +53,20 @@ describe('AP-2 ⭐ reverse-grep — content-lock §1+§3 anti-constraints', () =
     const body = read(AP2_FILES[0]);
     // count 14 的字面 token 单引号串.
     const tokens = [
-      'read_channel',
-      'write_channel',
-      'delete_channel',
-      'read_artifact',
-      'write_artifact',
-      'commit_artifact',
-      'iterate_artifact',
-      'rollback_artifact',
-      'mention_user',
-      'read_dm',
-      'send_dm',
-      'manage_members',
-      'invite_user',
-      'change_role',
+      'channel.read',
+      'channel.write',
+      'channel.delete',
+      'artifact.read',
+      'artifact.write',
+      'artifact.commit',
+      'artifact.iterate',
+      'artifact.rollback',
+      'user.mention',
+      'dm.read',
+      'dm.send',
+      'channel.manage_members',
+      'channel.invite',
+      'channel.change_role',
     ];
     for (const t of tokens) {
       expect(body).toContain(`'${t}'`);

@@ -30,11 +30,11 @@ import (
 func TestCapabilities_WhitelistByteIdentical(t *testing.T) {
 	t.Parallel()
 	want := map[string]bool{
-		"read_channel": true, "write_channel": true, "delete_channel": true,
-		"read_artifact": true, "write_artifact": true, "commit_artifact": true,
-		"iterate_artifact": true, "rollback_artifact": true,
-		"mention_user": true, "read_dm": true, "send_dm": true,
-		"manage_members": true, "invite_user": true, "change_role": true,
+		"channel.read": true, "channel.write": true, "channel.delete": true,
+		"artifact.read": true, "artifact.write": true, "artifact.commit": true,
+		"artifact.iterate": true, "artifact.rollback": true,
+		"user.mention": true, "dm.read": true, "dm.send": true,
+		"channel.manage_members": true, "channel.invite": true, "channel.change_role": true,
 	}
 	if len(Capabilities) != len(want) {
 		t.Errorf("Capabilities count: got %d, want %d", len(Capabilities), len(want))
@@ -50,10 +50,10 @@ func TestCapabilities_WhitelistByteIdentical(t *testing.T) {
 		}
 	}
 	// const 字面锁: 防 typo / rename.
-	if CommitArtifact != "commit_artifact" {
-		t.Errorf("CommitArtifact const drift: got %q, want %q", CommitArtifact, "commit_artifact")
+	if CommitArtifact != "artifact.commit" {
+		t.Errorf("CommitArtifact const drift: got %q, want %q", CommitArtifact, "artifact.commit")
 	}
-	if ReadChannel != "read_channel" {
+	if ReadChannel != "channel.read" {
 		t.Errorf("ReadChannel const drift: got %q", ReadChannel)
 	}
 }

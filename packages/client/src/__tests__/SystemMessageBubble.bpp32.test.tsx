@@ -32,7 +32,7 @@ afterEach(() => {
 const validBPP32: BPP32GrantPayload = {
   action: 'grant',
   agent_id: 'agent-x',
-  capability: 'commit_artifact',
+  capability: 'artifact.commit',
   scope: 'artifact:art-1',
   request_id: 'req-1',
 };

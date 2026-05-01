@@ -27,8 +27,8 @@ func TestBPP_PushPermissionDenied_Basic(t *testing.T) {
 	cur, sent := hub.PushPermissionDenied(
 		"agent-A",
 		"req-trace-1",
-		"commit_artifact",
-		"commit_artifact",
+		"artifact.commit",
+		"artifact.commit",
 		"artifact:art-1",
 		1700000000000,
 	)
@@ -45,7 +45,7 @@ func TestBPP_PushPermissionDenied_Basic(t *testing.T) {
 	}
 	want := `{"type":"permission_denied","cursor":` + itoa(cur) +
 		`,"agent_id":"agent-A","request_id":"req-trace-1",` +
-		`"attempted_action":"commit_artifact","required_capability":"commit_artifact",` +
+		`"attempted_action":"artifact.commit","required_capability":"artifact.commit",` +
 		`"current_scope":"artifact:art-1","denied_at":1700000000000}`
 	if wire != want {
 		t.Fatalf("wire byte-identity broken:\n got: %s\nwant: %s", wire, want)
@@ -59,7 +59,7 @@ func TestBPP_PushPermissionDenied_Basic(t *testing.T) {
 	if frame.Type != bpp.FrameTypeBPPPermissionDenied {
 		t.Errorf("frame.Type = %q, want %q", frame.Type, bpp.FrameTypeBPPPermissionDenied)
 	}
-	if frame.RequiredCapability != "commit_artifact" || frame.CurrentScope != "artifact:art-1" {
+	if frame.RequiredCapability != "artifact.commit" || frame.CurrentScope != "artifact:art-1" {
 		t.Errorf("payload byte-identity broken: %+v", frame)
 	}
 }
@@ -90,8 +90,8 @@ func TestBPP_PushPermissionDenied_PluginOffline(t *testing.T) {
 	hub, _ := setupTestHub(t)
 
 	cur, sent := hub.PushPermissionDenied(
-		"agent-OFFLINE", "req-2", "commit_artifact",
-		"commit_artifact", "artifact:art-9", 1700000000000,
+		"agent-OFFLINE", "req-2", "artifact.commit",
+		"artifact.commit", "artifact:art-9", 1700000000000,
 	)
 	if sent {
 		t.Error("plugin offline → sent must be false (frame dropped, no queue)")
@@ -115,8 +115,8 @@ func TestBPP_PushPermissionDenied_SharedSequence(t *testing.T) {
 	if !ok1 {
 		t.Fatal("seed RT-1 push failed")
 	}
-	c2, ok2 := hub.PushPermissionDenied("agent-A", "req", "commit_artifact",
-		"commit_artifact", "artifact:art-1", 1700000000001)
+	c2, ok2 := hub.PushPermissionDenied("agent-A", "req", "artifact.commit",
+		"artifact.commit", "artifact:art-1", 1700000000001)
 	if !ok2 {
 		t.Fatal("BPP-3.1 push failed")
 	}

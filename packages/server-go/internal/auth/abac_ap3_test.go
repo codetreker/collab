@@ -75,11 +75,11 @@ func TestAP_CrossOrgUser_Rejected(t *testing.T) {
 	user := &store.User{ID: "u-orgB", DisplayName: "Bob", Role: "member", OrgID: "org-B"}
 	s.CreateUser(user)
 	s.GrantPermission(&store.UserPermission{
-		UserID: "u-orgB", Permission: "write_channel", Scope: "channel:ch-A",
+		UserID: "u-orgB", Permission: "channel.write", Scope: "channel:ch-A",
 	})
 
 	ctx := context.WithValue(context.Background(), userContextKey, user)
-	if HasCapability(ctx, s, "write_channel", "channel:ch-A") {
+	if HasCapability(ctx, s, "channel.write", "channel:ch-A") {
 		t.Error("cross-org user 应 false (org-B user 调 org-A channel)")
 	}
 }
@@ -97,7 +97,7 @@ func TestAP_CrossOrg_WildcardDoesNotShortCircuit(t *testing.T) {
 	})
 
 	ctx := context.WithValue(context.Background(), userContextKey, user)
-	if HasCapability(ctx, s, "write_channel", "channel:ch-A") {
+	if HasCapability(ctx, s, "channel.write", "channel:ch-A") {
 		t.Error("cross-org (*,*) 不应短路 — org gate 高于 wildcard (立场 ①)")
 	}
 }
@@ -112,11 +112,11 @@ func TestAP_SameOrgUser_PermissionGranted(t *testing.T) {
 	user := &store.User{ID: "u-orgA", DisplayName: "Alice", Role: "member", OrgID: "org-A"}
 	s.CreateUser(user)
 	s.GrantPermission(&store.UserPermission{
-		UserID: "u-orgA", Permission: "write_channel", Scope: "channel:ch-A",
+		UserID: "u-orgA", Permission: "channel.write", Scope: "channel:ch-A",
 	})
 
 	ctx := context.WithValue(context.Background(), userContextKey, user)
-	if !HasCapability(ctx, s, "write_channel", "channel:ch-A") {
+	if !HasCapability(ctx, s, "channel.write", "channel:ch-A") {
 		t.Error("same-org user 应 true (org-A user 调 org-A channel)")
 	}
 }
@@ -131,11 +131,11 @@ func TestAP_CrossOrgAgent_Rejected(t *testing.T) {
 	agent := &store.User{ID: "ag-orgB", DisplayName: "Agent", Role: "agent", OrgID: "org-B"}
 	s.CreateUser(agent)
 	s.GrantPermission(&store.UserPermission{
-		UserID: "ag-orgB", Permission: "write_channel", Scope: "channel:ch-A",
+		UserID: "ag-orgB", Permission: "channel.write", Scope: "channel:ch-A",
 	})
 
 	ctx := context.WithValue(context.Background(), userContextKey, agent)
-	if HasCapability(ctx, s, "write_channel", "channel:ch-A") {
+	if HasCapability(ctx, s, "channel.write", "channel:ch-A") {
 		t.Error("cross-org agent 应 false (org-B agent 调 org-A channel)")
 	}
 }
@@ -151,11 +151,11 @@ func TestAP_LegacyNullOrgID_FallsThroughToAP1(t *testing.T) {
 	user := &store.User{ID: "u-legacy", DisplayName: "Legacy", Role: "member", OrgID: ""}
 	s.CreateUser(user)
 	s.GrantPermission(&store.UserPermission{
-		UserID: "u-legacy", Permission: "write_channel", Scope: "channel:ch-legacy",
+		UserID: "u-legacy", Permission: "channel.write", Scope: "channel:ch-legacy",
 	})
 
 	ctx := context.WithValue(context.Background(), userContextKey, user)
-	if !HasCapability(ctx, s, "write_channel", "channel:ch-legacy") {
+	if !HasCapability(ctx, s, "channel.write", "channel:ch-legacy") {
 		t.Error("legacy NULL org_id 应走 AP-1 路径 = true (现网行为零变, 立场 ⑥)")
 	}
 }
@@ -168,10 +168,10 @@ func TestAP_WildcardScope_SkipsOrgGate(t *testing.T) {
 	user := &store.User{ID: "u-wild", DisplayName: "W", Role: "member", OrgID: "org-A"}
 	s.CreateUser(user)
 	s.GrantPermission(&store.UserPermission{
-		UserID: "u-wild", Permission: "write_channel", Scope: "*",
+		UserID: "u-wild", Permission: "channel.write", Scope: "*",
 	})
 	ctx := context.WithValue(context.Background(), userContextKey, user)
-	if !HasCapability(ctx, s, "write_channel", "*") {
+	if !HasCapability(ctx, s, "channel.write", "*") {
 		t.Error("scope=='*' 应跳过 org gate (wildcard 无 resource bound)")
 	}
 }
@@ -186,11 +186,11 @@ func TestAP_UserNullOrgID_FallsThroughToAP1(t *testing.T) {
 	user := &store.User{ID: "u-no-org", DisplayName: "NoOrg", Role: "member", OrgID: ""}
 	s.CreateUser(user)
 	s.GrantPermission(&store.UserPermission{
-		UserID: "u-no-org", Permission: "write_channel", Scope: "channel:ch-A",
+		UserID: "u-no-org", Permission: "channel.write", Scope: "channel:ch-A",
 	})
 
 	ctx := context.WithValue(context.Background(), userContextKey, user)
-	if !HasCapability(ctx, s, "write_channel", "channel:ch-A") {
+	if !HasCapability(ctx, s, "channel.write", "channel:ch-A") {
 		t.Error("user.OrgID NULL 应走 AP-1 legacy 路径 (任一 NULL = legacy, 立场 ⑥)")
 	}
 }

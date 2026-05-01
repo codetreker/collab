@@ -10,41 +10,41 @@ describe('AP-2 ⭐ capability label SSOT — 14 const + 反 role bleed', () => {
   it('§1 14 capability tokens byte-identical 跟 server `auth.ALL` 顺序', () => {
     expect(CAPABILITY_TOKENS).toEqual([
       // channel scope
-      'read_channel',
-      'write_channel',
-      'delete_channel',
+      'channel.read',
+      'channel.write',
+      'channel.delete',
       // artifact scope
-      'read_artifact',
-      'write_artifact',
-      'commit_artifact',
-      'iterate_artifact',
-      'rollback_artifact',
+      'artifact.read',
+      'artifact.write',
+      'artifact.commit',
+      'artifact.iterate',
+      'artifact.rollback',
       // messaging
-      'mention_user',
-      'read_dm',
-      'send_dm',
+      'user.mention',
+      'dm.read',
+      'dm.send',
       // channel admin
-      'manage_members',
-      'invite_user',
-      'change_role',
+      'channel.manage_members',
+      'channel.invite',
+      'channel.change_role',
     ]);
   });
 
   it('§2 capabilityLabel — 14 token 各 byte-identical 中文 label', () => {
-    expect(capabilityLabel('read_channel')).toBe('查看频道');
-    expect(capabilityLabel('write_channel')).toBe('在频道发消息');
-    expect(capabilityLabel('delete_channel')).toBe('删除频道');
-    expect(capabilityLabel('read_artifact')).toBe('查看产物');
-    expect(capabilityLabel('write_artifact')).toBe('编辑产物');
-    expect(capabilityLabel('commit_artifact')).toBe('提交产物');
-    expect(capabilityLabel('iterate_artifact')).toBe('迭代产物');
-    expect(capabilityLabel('rollback_artifact')).toBe('回滚产物');
-    expect(capabilityLabel('mention_user')).toBe('提及用户');
-    expect(capabilityLabel('read_dm')).toBe('查看私信');
-    expect(capabilityLabel('send_dm')).toBe('发送私信');
-    expect(capabilityLabel('manage_members')).toBe('管理频道成员');
-    expect(capabilityLabel('invite_user')).toBe('邀请用户');
-    expect(capabilityLabel('change_role')).toBe('调整成员能力');
+    expect(capabilityLabel('channel.read')).toBe('查看频道');
+    expect(capabilityLabel('channel.write')).toBe('在频道发消息');
+    expect(capabilityLabel('channel.delete')).toBe('删除频道');
+    expect(capabilityLabel('artifact.read')).toBe('查看产物');
+    expect(capabilityLabel('artifact.write')).toBe('编辑产物');
+    expect(capabilityLabel('artifact.commit')).toBe('提交产物');
+    expect(capabilityLabel('artifact.iterate')).toBe('迭代产物');
+    expect(capabilityLabel('artifact.rollback')).toBe('回滚产物');
+    expect(capabilityLabel('user.mention')).toBe('提及用户');
+    expect(capabilityLabel('dm.read')).toBe('查看私信');
+    expect(capabilityLabel('dm.send')).toBe('发送私信');
+    expect(capabilityLabel('channel.manage_members')).toBe('管理频道成员');
+    expect(capabilityLabel('channel.invite')).toBe('邀请用户');
+    expect(capabilityLabel('channel.change_role')).toBe('调整成员能力');
   });
 
   it('§3 capabilityLabel — unknown token forward-compat 渲染原 token (反 silent drop)', () => {

@@ -31,14 +31,14 @@ func TestAP2_DeriveCapabilities_MemberFullGrant(t *testing.T) {
 }
 
 func TestAP2_DeriveCapabilities_AgentNarrowed(t *testing.T) {
-	// agent permissions like ["read_channel:channel:abc", "send_dm:*"]
+	// agent permissions like ["channel.read:channel:abc", "dm.send:*"]
 	got := deriveAP2Capabilities("agent", []string{
-		"read_channel:channel:abc",
-		"read_channel:channel:def", // dedupe
-		"send_dm:*",
+		"channel.read:channel:abc",
+		"channel.read:channel:def", // dedupe
+		"dm.send:*",
 		"unknown_capability:*", // unknown forward-compat drop
 	})
-	want := []string{"read_channel", "send_dm"}
+	want := []string{"channel.read", "dm.send"}
 	if len(got) != len(want) {
 		t.Fatalf("narrow want %d, got %d (%v)", len(want), len(got), got)
 	}
