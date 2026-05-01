@@ -90,6 +90,13 @@ const (
 	TaskErrCodeOutcomeUnknown   = "bpp.task_outcome_unknown"
 	TaskErrCodeReasonUnknown    = "bpp.task_reason_unknown"
 	TaskErrCodeFinishedNoReason = "bpp.task_finished_no_reason"
+
+	// ThinkingErrCodeSubjectRequired — RT-3 ⭐ wire-level reason code for
+	// thinking subject 反约束 (rt-3-spec.md §0.2 + 蓝图 §1.1 ⭐). Surfaced
+	// at endpoints where thinking state is exposed to clients (跟 chn-3
+	// content-lock 5 源 byte-identical 守门模式承袭). 改 = 改三处: 此 const
+	// + acceptance §2.3 + content-lock §3.
+	ThinkingErrCodeSubjectRequired = "thinking.subject_required"
 )
 
 // errSubjectEmpty / errOutcomeUnknown / errReasonUnknown / errFinishedNoReason
