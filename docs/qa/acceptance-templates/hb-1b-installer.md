@@ -35,14 +35,15 @@
 | 4.1 既有全包 unit + e2e + vitest 全绿不破 + post-#621 haystack gate 三轨过 | full test + CI | go-test-cov SUCCESS |
 | 4.2 反 admin god-mode + 反平行 fetcher 实施 — `admin.*manifest\|admin.*install` 在 install-butler/ 0 hit (ADM-0 §1.3 红线) + reverse grep `func.*FetchManifest` 单源 | grep | reverse grep tests PASS |
 
-## REG-HB1B-* 占号 (initial ⚪)
+## REG-HB1B-* 占号 (🟢 active)
 
-- REG-HB1B-001 ⚪ HB-1b daemon 真接 HB-1 #589 server endpoint + 真 ed25519 验签 (反 v0(C) skip)
-- REG-HB1B-002 ⚪ 7-reason 字典 byte-identical 跟 HB-1 #589 server-side 同源 (跨层锁)
-- REG-HB1B-003 ⚪ install/{service,plist,sb} 3 文件 (systemd / launchd / sandbox-exec, 跟 HB-2 v0(D) 同模式)
-- REG-HB1B-004 ⚪ 0 server-go diff + 独立 Go module + 反 borgee-server import 0 hit
-- REG-HB1B-005 ⚪ ⭐ 5 截屏 demo (yema G4.x signoff) + Playwright 5 case PASS
-- REG-HB1B-006 ⚪ 全包 PASS + haystack gate + 反 admin god-mode + 反平行 fetcher + 立场承袭跨十七 milestone (HB stack 4 步路径完整 + WIRE-1 + CAPABILITY-DOT + HB-1B)
+- REG-HB1B-001 🟢 HB-1b daemon 真接 HB-1 #589 server endpoint + 真 ed25519 验签 (反 v0(C) skip)
+- REG-HB1B-002 🟢 7-reason 字典 byte-identical 跟 HB-1 #589 server-side 同源 (跨层锁)
+- REG-HB1B-003 🟢 install/{service,plist} 2 文件 + Linux/Darwin Plan (windows 留 v2)
+- REG-HB1B-004 🟢 0 server-go diff + 独立 Go module + 反 borgee-server import 0 hit + admin god-mode 永久不挂
+- REG-HB1B-005 🟢 4 grant_type 字面 byte-identical 跟 HB-3 #520 + permission popup UX
+- REG-HB1B-006 🟢 ⭐ 5 截屏 demo (yema G4.x signoff) + Playwright 6 case PASS
+- REG-HB1B-007 🟢 CI build matrix linux+darwin (windows 留 v2) + cross-compile + SHA256
 
 ## 退出条件
 
@@ -58,3 +59,4 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-05-01 | 烈马 | v0 — acceptance template. 立场承袭 HB-1 #589 server endpoint v0 [A] + HB stack Go 重审决策 + HB-2 v0(D) #617 真 sandbox 同模式 + ADM-0 §1.3 红线 + post-#621 G4.audit closure pattern. |
+| 2026-04-30 | 战马E | v1 实施 — `packages/borgee-installer/` 独立 Go module + 3 internal pkg (manifest/dialog/deploy) + 2 cmd binary (linux/darwin, windows v2 留账) + 14 unit tests PASS + 5 G4.x 截屏 ≥3000 bytes + Playwright e2e 6 case + CI build matrix `.github/workflows/installer.yml` (fail-fast: false, linux+darwin + SHA256). REG-HB1B-001..007 ⚪→🟢. 0 server-go diff + 0 borgee-helper diff verified. |
