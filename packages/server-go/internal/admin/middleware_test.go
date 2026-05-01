@@ -42,7 +42,7 @@ func readSource(t *testing.T, name string) string {
 func TestMiddleware_1F_DualRailCoexistence(t *testing.T) {
 	t.Parallel()
 	db := openMigratedDB(t)
-	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10)); err != nil {
+	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10), ""); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 

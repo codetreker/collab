@@ -50,6 +50,11 @@ const CookieName = "borgee_admin_session"
 const (
 	EnvAdminLogin        = "BORGEE_ADMIN_LOGIN"
 	EnvAdminPasswordHash = "BORGEE_ADMIN_PASSWORD_HASH"
+	// EnvAdminPassword (ADMIN-PASSWORD-PLAIN-ENV B 方案): 明文 password env.
+	// 启动时 bcrypt.GenerateFromPassword 哈希后内存存, 不写盘. 跟
+	// EnvAdminPasswordHash **二选一** (两者同时设 → panic, 反 surprise).
+	// 推荐 prod 用 HASH (env 泄露仅泄哈希); dev/testing 用 PLAIN 简化部署.
+	EnvAdminPassword = "BORGEE_ADMIN_PASSWORD"
 )
 
 // SessionTTL is the lifetime of an admin session cookie. v0: 7 days.
@@ -351,17 +356,39 @@ func writeJSONError(w http.ResponseWriter, status int, msg string) {
 func Bootstrap(db *gorm.DB) error {
 	login := os.Getenv(EnvAdminLogin)
 	hash := os.Getenv(EnvAdminPasswordHash)
-	return BootstrapWith(db, login, hash)
+	plain := os.Getenv(EnvAdminPassword)
+	return BootstrapWith(db, login, hash, plain)
 }
 
 // BootstrapWith is the testable form of Bootstrap. cmd/collab uses Bootstrap;
 // tests inject explicit values.
-func BootstrapWith(db *gorm.DB, login, hash string) error {
+//
+// ADMIN-PASSWORD-PLAIN-ENV B 方案: hash + plain 二选一.
+//   - hash != "" + plain == "": legacy path, 直接用 stored bcrypt hash.
+//   - hash == "" + plain != "": 新 path, bcrypt.GenerateFromPassword(plain) 内存哈希.
+//   - hash != "" + plain != "": panic 提示二选一 (反 surprise / 反 silent priority).
+//   - hash == "" + plain == "": panic 提示至少设一个.
+func BootstrapWith(db *gorm.DB, login, hash, plain string) error {
 	if login == "" {
 		panic(fmt.Sprintf("admin bootstrap: %s is required (set to the admin login)", EnvAdminLogin))
 	}
-	if hash == "" {
-		panic(fmt.Sprintf("admin bootstrap: %s is required (set to a bcrypt hash, cost ≥ %d)", EnvAdminPasswordHash, MinBcryptCost))
+	if hash != "" && plain != "" {
+		panic(fmt.Sprintf("admin bootstrap: %s and %s are mutually exclusive (二选一); set exactly one", EnvAdminPasswordHash, EnvAdminPassword))
+	}
+	if hash == "" && plain == "" {
+		panic(fmt.Sprintf("admin bootstrap: either %s (bcrypt hash, cost ≥ %d) or %s (plain text, hashed at startup) is required", EnvAdminPasswordHash, MinBcryptCost, EnvAdminPassword))
+	}
+
+	// PLAIN path: hash plaintext at startup with MinBcryptCost. The result is
+	// only ever held in memory + persisted to admins table once (idempotent
+	// INSERT below); the env var itself is never written to disk by this
+	// function. Operators are warned in docs that env leakage = plain leakage.
+	if plain != "" {
+		generated, err := bcrypt.GenerateFromPassword([]byte(plain), MinBcryptCost)
+		if err != nil {
+			panic(fmt.Sprintf("admin bootstrap: bcrypt hash of %s failed: %v", EnvAdminPassword, err))
+		}
+		hash = string(generated)
 	}
 
 	// Reject obviously-non-bcrypt or low-cost hashes — review checklist 红线

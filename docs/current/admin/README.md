@@ -194,3 +194,24 @@ Schema 不挂 `updated_at` 列, server 不开 UPDATE/DELETE 路径. 反向 grep 
 **D6 admin-rail handleGrantPermission gate**: `internal/api/admin.go::handleGrantPermission` 加 `auth.IsValidCapability(body.Permission)` 守门, invalid → 400 `invalid_capability` (CAPABILITY-DOT #628 backfill 守存量, 此 gate 守入口 SSOT 第 5 处链 — user-rail 4 处 + admin-rail 1 处 = 5).
 
 **反约束**: server diff ≤13 行 production (D4 sanitizer +5 + D6 gate +5 + struct field +3); 0 endpoint URL / 0 schema migration / 0 routes.go 改; admin-rail SSOT (CookieName `borgee_admin_session` / loginRequest / handleMe writeJSON) 字面 byte-identical 不动. ADM-0 §1.3 admin/user 路径分叉红线守.
+
+### ADMIN-PASSWORD-PLAIN-ENV (PR feat/admin-password-plain-env) — B 方案明文 env
+
+ADM-0.1 bootstrap env 加二选一支持: 推荐 prod 用 hash, dev/testing 用 plain.
+
+| Env | 用途 | 安全 note |
+|---|---|---|
+| `BORGEE_ADMIN_LOGIN` | admin 登录名 (legacy, 必设) | 不变 |
+| `BORGEE_ADMIN_PASSWORD_HASH` | bcrypt hash, cost ≥ 10 (legacy 推荐 prod) | 即使 env 泄露, 攻击者拿哈希仍需暴破 |
+| `BORGEE_ADMIN_PASSWORD` | 明文密码 (新, 推荐 dev/testing) | env 泄露 = 明文泄露; 启动时 server bcrypt.GenerateFromPassword(MinBcryptCost) 内存哈希后写表, env 不再读 |
+
+**二选一**: `HASH` 跟 `PASSWORD` 同时设 → bootstrap panic 提示 mutually exclusive. 都不设 → bootstrap panic 提示至少设一个.
+
+**legacy backward-compat**: 仅设 `HASH` (旧路径) → 行为 byte-identical 不变 (server 直存 hash 字面到 admins.password_hash, login verify 走 bcrypt.CompareHashAndPassword).
+
+**新 plain 路径**: 仅设 `PASSWORD` → server 启动时 `bcrypt.GenerateFromPassword([]byte(plain), MinBcryptCost)` 哈希 → 写 admins.password_hash. 简化 deploy (不再要先 htpasswd 算 hash 再填 env).
+
+**反约束**:
+- 0 endpoint URL / 0 schema / 0 cookie / 0 admin login/logout/me 行为改 (字面 byte-identical)
+- bcrypt cost ≥ MinBcryptCost (10) 守 (review checklist 红线)
+- env 中明文 plain 永不写盘 (只内存哈希后写 admins 表 hash 字段)
