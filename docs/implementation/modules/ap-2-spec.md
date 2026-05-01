@@ -1,72 +1,93 @@
-# AP-2 spec brief — expires_at sweeper 业务化 (Phase 5+ 续作)
+# AP-2 spec brief — capability 透明 UI 无角色名 (≤80 行) [v1 推断 scope]
 
-> 战马C · 2026-04-29 · ≤80 行 spec lock (4 件套之一; AP-1 #493 留账之二 wrapper milestone)
-> **蓝图锚**: [`auth-permissions.md`](../../blueprint/auth-permissions.md) §1.2 (Scope 层级 v1 三层 + expires_at "schema 保留, UI 不做") + §5 与现状的差距 ("expires_at 列 — 加列 schema 不破, 暂不业务化") + [`admin-model.md`](../../blueprint/admin-model.md) §1.4 (admin_actions audit forward-only)
-> **关联**: AP-1.1 #493 user_permissions.expires_at 列 ✅ (NULL = 永久) + AP-3 #521 cross-org owner-only ✅ (AP-1 留账之一闭) + ADM-2.1 admin_actions audit table ✅ + ADM-0 §1.3 admin god-mode 红线 + AL-1 #492 ValidateTransition forward-only audit 同精神
-> **命名**: AP-1 已落 (单组织 ABAC + capability 白名单 + 严格 403); AP-3 #521 已落 (cross-org owner-only); AP-2 接 AP-1 留账之二 — expires_at runtime 业务化 sweeper, 命名跟 AP-1.bis spec stance 同精神 (AP-1 schema 列已就位, AP-2 仅补 runtime sweep)
+> 飞马 · 2026-05-01 · 用户拍板待 PR review (推断 scope: capability 透明 UI 反 role bleed) · zhanma 主战 + 飞马 review
+> **关联**: AP-1 #493 ✅ user_permissions + 14 capability const · AP-3 #521 ✅ cross-org · AP-4-enum #591 ✅ enum SSOT · AP-5 #555 messages ACL · ADM-0 §1.3 admin god-mode 红线
+> **命名**: AP-2 = auth-permissions 第二件 (UI 层透明)
 
-> ⚠️ AP-2 是 **wrapper milestone** (跟 AL-5 / CV-2 v2 #517 / AP-3 #521 wrapper 同模式) — 复用既有 AP-1.1 expires_at 列 + ADM-2.1 admin_actions audit + AL-1 #492 forward-only audit 精神, 仅补 runtime sweeper goroutine, **不裂新组件**, 不另起 cron 框架.
+> ⚠️ 推断 scope (PROGRESS [ ] **AP-2** UI bundle 无角色名一句话, 用户无明确细则) — 本 spec v1 按 (a) capability 透明 UI 写, PR review 用户拍板再调.
+> ⚠️ Client + server response shape milestone — **0 schema 改 / 0 endpoint URL 改 / 0 user-facing API 行为改** (仅 response payload 字段映射 + UI label).
 
-## 0. 关键约束 (3 条立场, 蓝图字面承袭)
+## 0. 关键约束 (3 条立场)
 
-1. **expires_at sweeper 周期扫 + soft-delete (forward-only audit)** (蓝图 `auth-permissions.md` §5 + AL-1 #492 forward-only 同精神 + ADM-2.1 admin_actions audit forward-only): sweeper goroutine 1h interval (跟 AL-1b agent_status 周期 stale-detect 同精神 / DL-4 web-push 周期 GC 同模式), 扫 `user_permissions WHERE expires_at IS NOT NULL AND expires_at < now AND revoked_at IS NULL` → soft-delete: 写 `revoked_at = expires_at` (NOT real DELETE — audit 留账); 反约束: 不真删 row (跟 ADM-2.1 admin_actions forward-only 同精神, audit 不可改写); 反向 grep `DELETE FROM user_permissions` 在 internal/auth/ + internal/api/ count==0 (跟 AP-1 立场 ② SSOT 同精神, 删 = 走 sweeper 单源)
-2. **audit log entry 复用 admin_actions 跨 milestone** (ADM-2.1 #484 admin_actions 表既有, 跟 BPP-4 watchdog audit / AL-1 state_log 五 milestone 跨 schema 共享精神): sweeper revoke 时写 `admin_actions(actor_id='system', action_type='ap2.permission_expired', target_user_id=<grantee>, payload={permission, scope, original_expires_at})`; 反约束: 不另起 expires_audit 表 (跟 ADM-2.1 既有 path 复用, 跟 AL-1 state_log forward-only 同模式); reason 字面 `'ap2.permission_expired'` const 单源 (跟 AP-1/AP-3 const 同模式, 改 = 改 const 一处)
-3. **反向 grep DELETE FROM user_permissions 0 hit (forward-only)** (跟 AL-1 #492 + ADM-2.1 forward-only audit 同模式守 future drift): 反向 grep `DELETE FROM user_permissions\|s\.db.*Delete.*&UserPermission` 在 internal/auth/ + internal/api/ 除 sweeper 文件 count==0; sweeper 路径用 `UPDATE user_permissions SET revoked_at = ?` (forward-only)
+1. **AP-1 14 capability const + AP-4-enum #591 reflect-lint SSOT byte-identical 不破** (跨 AP stack 锁链承袭): UI 显示**只走 capability token 字面** (如 `messages.write` / `channels.create` / `agent.invite`), 反向不映射"管理员/编辑者/查看者"等 RBAC role 名 (反 role bleed). 反约束: 反向 grep client/src/ + server-go response payload 字面 `管理员|编辑者|查看者|admin\.role|editor\.role|viewer\.role` 0 hit (除 admin god-mode 路径独立 ACL 系统).
 
-## 1. 拆段实施 (AP-2.1 / 2.2 / 2.3, ≤3 PR 同 branch 叠 commit, 一 milestone 一 PR 默认 1 PR)
+2. **client UI bundle + server response shape SSOT + i18n 字面 SSOT**:
+   - **client 改**: `permission 视图组件` 走 capability token 字面渲染 — `packages/client/src/components/PermissionsView.tsx` 改 (~60 行) + `packages/client/src/i18n/capabilities.ts` 新 (~50 行 14 const 各 i18n label SSOT, 反 inline 字面散落)
+   - **server 响应 shape**: `/api/v1/me/grants` + `/api/v1/users/{id}/permissions` 返回 `{capabilities: ["messages.write", ...]}` 单源, **不返回** `{role: "editor"}` 字段
+   - **i18n SSOT**: 14 const 各 i18n key (e.g. `messages.write` → "发送消息" / "Send messages"), `capabilities.ts` 单源 helper `capabilityLabel(token)` 走 t() 翻译
+   - 反约束: client + server `"role"` JSON key 在 permission/grant response 0 hit + i18n key 14 hit per 语言
 
-| 段 | 范围 | 闭锁 | owner |
-|---|---|---|---|
-| **AP-2.1** sweeper goroutine + revoked_at 列 | `internal/migrations/ap_2_1_user_permissions_revoked.go` v=N (`ALTER TABLE user_permissions ADD COLUMN revoked_at INTEGER NULL` + `idx_user_permissions_revoked WHERE revoked_at IS NOT NULL` sparse index, 跟 AP-1.1 expires_at 同模式); `internal/auth/expires_sweeper.go` 新 `ExpiresSweeper{Store, Logger, Interval, Now}` struct + `Start(ctx)` goroutine 启动 (1h tick, ctx-aware shutdown — 跟 AL-1b agent_status sweeper 同精神 nil-safe); `RunOnce(ctx) (count int, err error)` 单次扫描 helper (testable 同步入口); 反约束: 不开 cron 框架 (复用 time.Ticker, 跟 AL-1b 同模式); 6 unit (TestAP21_AddsRevokedAtColumn + sparse idx + RunOnceFindsExpired + RunOnceSoftDeletesNotRealDelete + RunOnceIdempotentSecondTick + RegistryHasVN) | 待 PR (战马C) | 战马C |
-| **AP-2.2** audit log entry + reason const 复用 admin_actions | `internal/auth/expires_sweeper.go` revoke 时写 `admin_actions` (复用 store.CreateAdminAction 既有 path, ADM-2.1 #484 同精神); `auth.ReasonPermissionExpired = "ap2.permission_expired"` const 字面单源 (跟 AP-1 capability const + AP-3 ErrCodeCrossOrgDenied 同模式); 反约束: 不另起 expires_audit 表 (跟 ADM-2.1 既有 path 复用); 不裂 system actor — actor_id='system' string literal byte-identical 跟 BPP-4 watchdog actor 同模式 (跨 milestone 锁); 5 unit (TestAP22_RevokeWritesAuditEntry + ReasonConstByteIdentical + SystemActorByteIdentical + AuditPayloadShape + 反向 grep no_separate_audit_table) | 待 PR (战马C) | 战马C |
-| **AP-2.3** server full-flow integration + closure | server-side full-flow: insert grant with expires_at < now → sweeper RunOnce → revoked_at 落库 + admin_actions 行写入 + HasCapability 后续返 false (revoked_at 行被 AP-1 ListUserPermissions 排除, 跟 expires_at runtime gate 同精神); 反约束 grep 5 (DELETE FROM user_permissions 0 / 不另起 expires_audit 表 / 不开 cron 框架 / actor_id='system' 单源 / reason const 单源); registry §3 REG-AP2-001..N + acceptance + PROGRESS [x] AP-2 + docs/current sync (server/auth.md §expires_sweeper + blueprint auth-permissions.md §5 expires_at 业务化字面承袭) | 待 PR (战马C) | 战马C / 烈马 |
+3. **0 schema / 0 endpoint URL / 0 routes.go / admin god-mode UI 永久独立路径** (跟 INFRA-3/4 / REFACTOR-1/2 / NAMING-1 / RT-3 / DL-2/3 / HB-2 v0(D) 系列承袭): PR diff 仅 (a) client `PermissionsView.tsx` 改 (b) `i18n/capabilities.ts` 新 (c) server 响应 shape 字段映射改 (~30 行 helper) (d) `me_grants.go` / `users_permissions.go` 走 helper. 反约束: 0 endpoint URL / 0 schema / 0 migration v 号 + admin god-mode UI 永久独立 (`/admin-api/users/*` 不走本 helper, ADM-0 §1.3 红线).
 
-## 2. 留账边界 (不接 v2+)
+## 1. 拆段实施 (3 段, 一 milestone 一 PR)
 
-- v2 cross-org admin revoke (留 ADM-3+) — AP-2 仅 expires_at 自动 sweep, 主动 revoke (admin / owner 触发) 走 ADM-3+ 既有 admin god-mode path
-- ABAC condition (time-of-day / ip-range) v2+ — 蓝图 §5 留账, AP-2 仅 expires_at 一种触发条件
-- granular 权限恢复 (revoked_at 行 un-revoke) v3+ — v1 forward-only audit, 不接 un-revoke (跟 AL-1 #492 state_log forward-only 同精神)
-- multi-org user expires sweep v3+ — v1 假设 user.org_id 单值 (跟 AP-3 立场 ②同源)
-- expires_at sweeper UI / 历史看 (走 ADM-2 既有 admin_actions audit UI, 不另起)
+| 段 | 范围 |
+|---|---|
+| **AP2.1 server response shape** | `internal/api/me_grants.go` + `users_permissions.go` 改走 ResponseShape helper (~30 行) returns capabilities 数组不返 role 名; 反向断言 unit test ≥2 (response 不含 role JSON key) |
+| **AP2.2 client UI bundle + i18n** | `packages/client/src/i18n/capabilities.ts` 新 (14 const i18n key SSOT, capabilityLabel(token) helper); `PermissionsView.tsx` 改 ~60 行 走 capabilityLabel + vitest ~6 case (14 const 渲染 + 反 role 名 grep + i18n 切换 + admin path 独立) |
+| **AP2.3 closure** | REG-AP2-001..006 (8 反向 grep + 14 capability const 不破 + AP-4-enum reflect-lint 不破 + role 名 0 hit + i18n 14 key + admin god-mode 独立 + haystack 三轨过 + 既有 test 全 PASS) + acceptance + content-lock §1+§2 (i18n 14 key 字面锁 + 反 role 名双语锁) + 4 件套 |
 
-## 3. 反查 grep 锚 (5 反约束, count==0)
+## 2. 反向 grep 锚 (8 反约束)
 
 ```bash
-# 1) DELETE FROM user_permissions — 反向 forward-only 守 (sweeper 走 UPDATE)
-git grep -nE 'DELETE FROM user_permissions|s\.db.*Delete.*&UserPermission' \
-  packages/server-go/internal/auth/ packages/server-go/internal/api/  # 0 hit (除 sweeper revoke path UPDATE)
-# 2) 不另起 expires_audit 表 (复用 admin_actions ADM-2.1 #484 既有)
-git grep -nE 'CREATE TABLE.*expires_audit|CREATE TABLE.*permission_revocations' \
-  packages/server-go/internal/migrations/  # 0 hit
-# 3) 不开 cron 框架 (time.Ticker 单源, 跟 AL-1b agent_status sweeper 同模式)
-git grep -nE 'github\.com/.*cron|robfig/cron|gocron' \
-  packages/server-go/  # 0 hit
-# 4) reason 字面 + actor_id 字面单源 (反 hardcode 错码 / actor 字符串)
-git grep -nE '"ap2\.permission_expired"' packages/server-go/internal/  # ≥1 hit (auth/expires_sweeper.go const) + 0 hit hardcode in handler
-# 5) admin god-mode 不入此 sweeper path (ADM-0 §1.3 红线)
-git grep -nE 'admin.*ExpiresSweeper|ExpiresSweeper.*admin_' \
-  packages/server-go/internal/  # 0 hit (sweeper 是 system actor, admin 走 /admin-api 单独 mw)
+# 1) AP-1 14 capability const byte-identical 不破
+grep -rcE 'CapabilityMessagesWrite|CapabilityChannelsCreate|CapabilityAgentInvite' packages/server-go/internal/auth/  # ≥3 hit (字面不动)
+
+# 2) AP-4-enum reflect-lint SSOT 不破
+git diff origin/main -- packages/server-go/internal/auth/capabilities_lint_test.go | grep -cE '^-|^\+'  # 0 hit
+
+# 3) role 名 0 hit in permission/grant response (反 role bleed)
+grep -rE '"role":\s*"(admin|editor|viewer|owner)"' packages/server-go/internal/api/me_grants.go packages/server-go/internal/api/users_permissions.go  # 0 hit
+grep -rE '管理员|编辑者|查看者' packages/client/src/components/PermissionsView.tsx packages/client/src/i18n/capabilities.ts  # 0 hit
+
+# 4) i18n 14 key SSOT 单源
+grep -cE 'messages\.write|channels\.create|agent\.invite' packages/client/src/i18n/capabilities.ts  # ≥14 hit per 语言
+
+# 5) admin god-mode UI 独立路径 (ADM-0 §1.3 红线)
+grep -rE 'capabilityLabel\(' packages/client/src/components/admin/  # 0 hit (admin UI 走独立 ACL helper)
+
+# 6) 0 schema / 0 endpoint URL 改
+git diff origin/main -- packages/server-go/internal/server/server.go | grep -cE '^\+.*HandleFunc|^\+.*Handle\('  # 0 hit
+git diff origin/main -- packages/server-go/internal/migrations/ | grep -cE '^\+\s*Version:'  # 0 hit
+
+# 7) capabilityLabel helper 单源 (反 inline 字面散落)
+grep -rE 'function capabilityLabel|export.*capabilityLabel' packages/client/src/  # ==1 hit (SSOT)
+
+# 8) haystack gate 三轨 + 既有 test
+THRESHOLD_FUNC=50 THRESHOLD_PACKAGE=70 THRESHOLD_TOTAL=85 BUILD_TAGS="sqlite_fts5" go run ./scripts/lib/coverage/  # ALL ≥阈值
+go test -tags 'sqlite_fts5' -timeout=300s ./... && pnpm vitest run --testTimeout=10000  # ALL PASS
 ```
 
-## 4. 不在范围
+## 3. 不在范围 (留账)
 
-- v2 admin/owner 主动 revoke UI (ADM-3+)
-- ABAC condition (time/ip) (留 v2+)
-- granular un-revoke v3+
-- multi-org user expires v3+
-- audit UI 看 (走 ADM-2 既有 admin_actions UI, 不另起)
+- ❌ **admin role hierarchy UI** — admin 路径独立 ACL 系统 (ADM-0 §1.3 红线)
+- ❌ **capability 排序/分组 UI** — 留 v3+ (本 v1 走字母序简单渲染)
+- ❌ **per-user capability 编辑 UI** — 走 admin /admin-api/* 独立路径
+- ❌ **AP-1 expires_at sweeper UI 显示** — 留 AP-1.bis 续作 (前 stale spec 真值)
+- ❌ **i18n 切换 UI** — 假定既有 i18n provider, 本 spec 仅加 14 key
 
-## 5. 跨 milestone byte-identical 锁
+## 4. 跨 milestone byte-identical 锁
 
-- 跟 AP-1 #493 HasCapability SSOT + capabilities.go const 同源 (sweeper revoke 后 HasCapability 自动返 false, ListUserPermissions 排除 revoked_at IS NOT NULL 行 — 改 = 改 abac.go ListUserPermissions WHERE 一处)
-- 跟 AP-1.1 #493 user_permissions.expires_at NULL = 永久 同精神 (sweeper 仅扫 NOT NULL 行)
-- 跟 AP-3 #521 user_permissions.org_id NULL = legacy 同精神 (sweeper 路径不动 org gate)
-- 跟 ADM-2.1 #484 admin_actions audit forward-only 同模式 (sweeper revoke 写 audit, 跟 admin god-mode 写 audit 同 path)
-- 跟 AL-1 #492 ValidateTransition forward-only state_log 同精神 (forward-only audit, revoked_at 是 soft-delete 不真删)
-- 跟 BPP-4 watchdog actor_id='system' 同模式 (system actor 字面 byte-identical 跨五 milestone 锁)
+- AP-1 #493 14 capability const + AP-4-enum #591 reflect-lint SSOT 不动
+- AP-3 #521 cross-org / AP-5 #555 messages ACL helper 不破
+- ADM-0 §1.3 admin god-mode 独立 (capability 透明 UI 仅 user-rail)
+- NAMING-1 #614 命名规范 (me_grants.go / users_permissions.go)
+- 0-行为-改 wrapper 决策树**变体**: 跟 RT-3 / DL-2/3 / HB-2 v0(D) 同源
 
-## 6. 更新日志
+## 5. 派活 + 双签 + 飞马自审
+
+派 **zhanma-d** (RT-3 #616 client 主战熟手). 飞马 review.
+
+✅ **APPROVED with 2 必修条件**:
+🟡 必修-1: scope 推断 (capability 透明 UI), PR body 必明示"等用户拍板再调"
+🟡 必修-2: 14 const + AP-4-enum reflect-lint byte-identical 不破
+
+担忧 (1 项): role 名双语 SSOT (英 admin/editor/viewer/owner + 中 管理员/编辑者/查看者) 跟 RT-3 #616 typing-indicator 双语反向 grep 同模式承袭, 战马走双语 grep CI 守.
+
+**ROI 拍**: AP-2 ⭐⭐ — capability 透明真兑现 (反 role bleed). PR review 时用户可调 scope.
+
+## 7. 更新日志
 
 | 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 战马C | v0 spec brief — Phase 5+ wrapper milestone (跟 AL-5 / CV-2 v2 #517 / AP-3 #521 同期, AP-1 #493 留账之二 expires_at 业务化 sweeper). 3 立场 (sweeper 周期扫 + soft-delete forward-only / audit log 复用 admin_actions / 反向 grep DELETE 0 hit) + 5 反约束 grep + 3 段拆 (sweeper goroutine + revoked_at 列 / audit + reason const 复用 / e2e+closure) + 4 件套 spec 第一件 (acceptance + stance + content-lock 后续). 命名 AP-2 — AP-1 留账之二 expires_at runtime 业务化, 跟 AP-3 #521 (留账之一 cross-org) 顺位. 一 milestone 一 PR 协议默认 1 PR (跟 AP-3 #521 / CV-2 v2 #517 同模式). |
+|---|---|---|
+| 2026-05-01 | 飞马 | v1 spec brief 重写 — AP-2 capability 透明 UI 无角色名 (推断 scope, 用户拍板待 PR review). 替前 72 行 AP-1 expires_at sweeper stale spec. 3 立场 + 3 段拆 + 8 反向 grep + 2 必修. zhanma-d 主战 + 飞马 ✅ APPROVED. teamlead 唯一开 PR. |
