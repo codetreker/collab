@@ -14,7 +14,8 @@ import (
 	"borgee-server/internal/store"
 
 	"github.com/coder/websocket"
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 )
 
 const (
@@ -62,7 +63,7 @@ func newClient(hub *Hub, conn *websocket.Conn, user *store.User) *Client {
 		conn:       conn,
 		userID:     user.ID,
 		user:       user,
-		sessionID:  uuid.NewString(),
+		sessionID:  idgen.NewID(),
 		agentID:    agentID,
 		send:       make(chan []byte, sendBufSize),
 		done:       make(chan struct{}),
@@ -489,7 +490,7 @@ func mustJSON(v any) string {
 }
 
 func newID() string {
-	return uuid.NewString()
+	return idgen.NewID()
 }
 
 func nowMs() int64 {

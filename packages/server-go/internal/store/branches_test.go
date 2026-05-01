@@ -188,8 +188,10 @@ func TestShortPrefix(t *testing.T) {
 	if got := shortPrefix("abc"); got != "abc" {
 		t.Fatalf("shortPrefix short: got %q want abc", got)
 	}
-	if got := shortPrefix("12345678abcd"); got != "12345678" {
-		t.Fatalf("shortPrefix long: got %q want 12345678", got)
+	// ULID-MIGRATION: shortPrefix returns the LAST 8 chars (entropy tail
+	// for ULID, last hex segment for UUID) — collision-resistant for both.
+	if got := shortPrefix("12345678abcd"); got != "5678abcd" {
+		t.Fatalf("shortPrefix long: got %q want 5678abcd", got)
 	}
 	if got := shortPrefix(""); got != "" {
 		t.Fatalf("shortPrefix empty: got %q", got)

@@ -29,7 +29,12 @@ import { test, expect, request as apiRequest } from '@playwright/test';
 const ADMIN_LOGIN = 'e2e-admin';
 const ADMIN_PASSWORD = 'e2e-admin-pass-12345';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// ID_RE matches either UUID v4 (RFC 4122 8-4-4-4-12 lowercase hex) for
+// legacy rows or ULID (Crockford base32, 26 upper-alnum chars) for
+// post-ULID-MIGRATION rows. The bug-029 regression intent is: invitation
+// DTO returns opaque IDs (UUID *or* ULID) — both are non-name-shaped, so
+// names cannot leak through ID fields.
+const UUID_RE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9A-HJKMNP-TV-Z]{26})$/i;
 
 interface InvitationDTO {
   id: string;

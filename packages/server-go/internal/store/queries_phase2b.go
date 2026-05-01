@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -149,7 +150,7 @@ type AggregatedReaction struct {
 
 func (s *Store) AddReaction(messageID, userID, emoji string) error {
 	reaction := &MessageReaction{
-		ID:        uuid.NewString(),
+		ID:        idgen.NewID(),
 		MessageID: messageID,
 		UserID:    userID,
 		Emoji:     emoji,
@@ -218,7 +219,7 @@ func (s *Store) GetWorkspaceFile(id string) (*WorkspaceFile, error) {
 
 func (s *Store) InsertWorkspaceFile(file *WorkspaceFile) (*WorkspaceFile, error) {
 	if file.ID == "" {
-		file.ID = uuid.NewString()
+		file.ID = idgen.NewID()
 	}
 	now := time.Now().UnixMilli()
 	if file.CreatedAt == 0 {
@@ -277,7 +278,7 @@ func (s *Store) MkdirWorkspace(userID, channelID string, parentID *string, name 
 	var u User
 	s.db.Select("org_id").Where("id = ?", userID).First(&u)
 	f := &WorkspaceFile{
-		ID:          uuid.NewString(),
+		ID:          idgen.NewID(),
 		UserID:      userID,
 		ChannelID:   channelID,
 		ParentID:    parentID,
@@ -348,7 +349,7 @@ func (s *Store) CreateRemoteNode(userID, machineName string) (*RemoteNode, error
 	var u User
 	s.db.Select("org_id").Where("id = ?", userID).First(&u)
 	node := &RemoteNode{
-		ID:              uuid.NewString(),
+		ID:              idgen.NewID(),
 		UserID:          userID,
 		MachineName:     machineName,
 		ConnectionToken: hex.EncodeToString(b),
@@ -385,7 +386,7 @@ func (s *Store) DeleteRemoteNode(id string) error {
 
 func (s *Store) CreateRemoteBinding(nodeID, channelID, path, label string) (*RemoteBinding, error) {
 	b := &RemoteBinding{
-		ID:        uuid.NewString(),
+		ID:        idgen.NewID(),
 		NodeID:    nodeID,
 		ChannelID: channelID,
 		Path:      path,

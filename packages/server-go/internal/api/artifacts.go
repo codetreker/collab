@@ -50,7 +50,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 
 	"borgee-server/internal/auth"
@@ -123,7 +124,7 @@ func (h *ArtifactHandler) newID() string {
 	if h.NewID != nil {
 		return h.NewID()
 	}
-	return uuid.NewString()
+	return idgen.NewID()
 }
 
 func (h *ArtifactHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {
@@ -680,7 +681,7 @@ var errArtifactConflict = errors.New("artifact version conflict")
 func (h *ArtifactHandler) fanoutAgentCommitMessage(channelID, agentName, artifactTitle string, version int64, ts int64) {
 	content := fmt.Sprintf("%s 更新 %s v%d", agentName, artifactTitle, version)
 	msg := &store.Message{
-		ID:          uuid.NewString(),
+		ID:          idgen.NewID(),
 		ChannelID:   channelID,
 		SenderID:    "system",
 		Content:     content,

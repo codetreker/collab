@@ -38,7 +38,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 
 	"borgee-server/internal/store"
@@ -93,7 +94,7 @@ func (h *AnchorHandler) newID() string {
 	if h.NewID != nil {
 		return h.NewID()
 	}
-	return uuid.NewString()
+	return idgen.NewID()
 }
 
 func (h *AnchorHandler) RegisterRoutes(mux *http.ServeMux, authMw func(http.Handler) http.Handler) {

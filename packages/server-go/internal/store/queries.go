@@ -9,7 +9,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -158,7 +159,7 @@ func (s *Store) GetUserByAPIKey(apiKey string) (*User, error) {
 
 func (s *Store) CreateUser(user *User) error {
 	if user.ID == "" {
-		user.ID = uuid.NewString()
+		user.ID = idgen.NewID()
 	}
 	if user.CreatedAt == 0 {
 		user.CreatedAt = time.Now().UnixMilli()
@@ -190,7 +191,7 @@ func (s *Store) CreateOrgForUser(user *User, orgName string) (*Organization, err
 		return nil, nil
 	}
 	org := &Organization{
-		ID:        uuid.NewString(),
+		ID:        idgen.NewID(),
 		Name:      orgName,
 		CreatedAt: time.Now().UnixMilli(),
 	}
@@ -266,7 +267,7 @@ func (s *Store) GrantPermission(perm *UserPermission) error {
 
 func (s *Store) CreateChannel(ch *Channel) error {
 	if ch.ID == "" {
-		ch.ID = uuid.NewString()
+		ch.ID = idgen.NewID()
 	}
 	if ch.CreatedAt == 0 {
 		ch.CreatedAt = time.Now().UnixMilli()
@@ -323,7 +324,7 @@ func (s *Store) RemoveChannelMember(channelID, userID string) error {
 
 func (s *Store) CreateMessage(msg *Message) error {
 	if msg.ID == "" {
-		msg.ID = uuid.NewString()
+		msg.ID = idgen.NewID()
 	}
 	if msg.CreatedAt == 0 {
 		msg.CreatedAt = time.Now().UnixMilli()
@@ -349,7 +350,7 @@ func (s *Store) CreateEvent(event *Event) error {
 
 func (s *Store) CreateMention(mention *Mention) error {
 	if mention.ID == "" {
-		mention.ID = uuid.NewString()
+		mention.ID = idgen.NewID()
 	}
 	return s.db.Create(mention).Error
 }
@@ -489,7 +490,7 @@ func (s *Store) SearchMessages(channelID string, query string, limit int) ([]Mes
 // CreateMessageFull creates a message, resolves mentions, inserts mention records and events.
 // Returns the complete message with sender_name.
 func (s *Store) CreateMessageFull(channelID, senderID, content, contentType string, replyToID *string, clientMentionIDs []string) (*MessageWithSender, error) {
-	msgID := uuid.NewString()
+	msgID := idgen.NewID()
 	now := time.Now().UnixMilli()
 
 	// Parse <@userId> from content
@@ -542,7 +543,7 @@ func (s *Store) CreateMessageFull(channelID, senderID, content, contentType stri
 
 		for _, uid := range validMentions {
 			m := &Mention{
-				ID:        uuid.NewString(),
+				ID:        idgen.NewID(),
 				MessageID: msgID,
 				UserID:    uid,
 				ChannelID: channelID,
@@ -1434,7 +1435,7 @@ func (s *Store) DeletePermissionsByScope(scope string) error {
 
 func (s *Store) CreateChannelGroup(group *ChannelGroup) error {
 	if group.ID == "" {
-		group.ID = uuid.NewString()
+		group.ID = idgen.NewID()
 	}
 	if group.CreatedAt == 0 {
 		group.CreatedAt = time.Now().UnixMilli()
@@ -1529,7 +1530,7 @@ func (s *Store) CreateDmChannel(userID1, userID2 string) (*Channel, error) {
 	}
 
 	ch := &Channel{
-		ID:         uuid.NewString(),
+		ID:         idgen.NewID(),
 		Name:       name,
 		Type:       "dm",
 		Visibility: "private",

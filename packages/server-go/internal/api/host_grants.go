@@ -39,7 +39,8 @@ import (
 
 	"borgee-server/internal/store"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -141,7 +142,7 @@ func (h *HostGrantsHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	now := h.now()
 	row := hostGrantRow{
-		ID:        uuid.NewString(),
+		ID:        idgen.NewID(),
 		UserID:    user.ID,
 		AgentID:   req.AgentID,
 		GrantType: req.GrantType,

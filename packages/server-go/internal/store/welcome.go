@@ -4,7 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -66,7 +67,7 @@ func (s *Store) CreateWelcomeChannelForUser(userID, displayName string) (channel
 	}
 
 	ch := &Channel{
-		ID:         uuid.NewString(),
+		ID:         idgen.NewID(),
 		Name:       "welcome-" + shortPrefix(userID),
 		Topic:      "",
 		Visibility: "private",
@@ -94,7 +95,7 @@ func (s *Store) CreateWelcomeChannelForUser(userID, displayName string) (channel
 		// column (added by migration v=7) is populated. The message FK
 		// requires sender_id='system' to exist; that row is seeded by the
 		// same migration.
-		msgID := uuid.NewString()
+		msgID := idgen.NewID()
 		if err := tx.Exec(`
 			INSERT INTO messages (id, channel_id, sender_id, content, content_type, created_at, quick_action)
 			VALUES (?, ?, 'system', ?, 'text', ?, ?)
@@ -114,10 +115,17 @@ func (s *Store) CreateWelcomeChannelForUser(userID, displayName string) (channel
 	return ch, systemMessageOK, nil
 }
 
-// shortPrefix returns up to the first 8 chars of the given uuid.
+// shortPrefix returns up to the first 8 chars of the given id.
+//
+// ULID-MIGRATION caveat: ULID first 10 chars encode timestamp millis; users
+// registered in the same millisecond/second window share identical prefix
+// and collide on channels (org_id, name) UNIQUE. UUID-36 first 8 chars
+// are random hex (collision-resistant). To preserve uniqueness regardless
+// of ID format, we use the LAST 8 chars (entropy tail in ULID, last hex
+// segment in UUID), giving ≥40 bits of randomness either way.
 func shortPrefix(id string) string {
 	if len(id) >= 8 {
-		return id[:8]
+		return id[len(id)-8:]
 	}
 	return id
 }

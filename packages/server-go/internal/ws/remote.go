@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 )
 
 type RemoteConn struct {
@@ -107,7 +108,7 @@ func HandleRemote(hub *Hub) http.HandlerFunc {
 }
 
 func (rc *RemoteConn) SendRequest(data any) (json.RawMessage, error) {
-	id := uuid.NewString()
+	id := idgen.NewID()
 	ch := make(chan json.RawMessage, 1)
 
 	rc.pendingMu.Lock()
