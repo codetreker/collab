@@ -186,3 +186,38 @@ export async function fetchAdminAuditLog(filters: AuditLogFilters = {}): Promise
   const data = await request<{ actions: AdminActionRow[] }>(path);
   return data.actions;
 }
+
+// ADM-3 multi-source audit query (蓝图 admin-model.md §1.4 来源透明 4 类:
+// server / plugin / host_bridge / agent). 4 source enum byte-identical 跟
+// server-side AuditSources 同源 (改 = 改 server const + 此处 + i18n 三处).
+//
+// admin god-mode 路径独立 (ADM-0 §1.3 红线): 仅 /admin-api/v1/audit/multi-source
+// 暴露, 反 user-rail 漂.
+export const AUDIT_SOURCES = ['server', 'plugin', 'host_bridge', 'agent'] as const;
+export type AuditSource = typeof AUDIT_SOURCES[number];
+
+export interface MultiSourceAuditRow {
+  source: AuditSource;
+  ts: number;
+  actor: string;
+  action: string;
+  payload: string;
+}
+
+export interface MultiSourceAuditFilters {
+  source?: AuditSource;
+  since?: number;
+  until?: number;
+  limit?: number;
+}
+
+export async function fetchMultiSourceAudit(filters: MultiSourceAuditFilters = {}): Promise<MultiSourceAuditRow[]> {
+  const qs = new URLSearchParams();
+  if (filters.source) qs.set('source', filters.source);
+  if (filters.since) qs.set('since', String(filters.since));
+  if (filters.until) qs.set('until', String(filters.until));
+  if (filters.limit) qs.set('limit', String(filters.limit));
+  const path = qs.toString() ? `/audit/multi-source?${qs.toString()}` : '/audit/multi-source';
+  const data = await request<{ sources: AuditSource[]; rows: MultiSourceAuditRow[] }>(path);
+  return data.rows;
+}

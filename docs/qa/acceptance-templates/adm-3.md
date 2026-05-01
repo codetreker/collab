@@ -38,13 +38,13 @@
 | 4.2 反平行 audit query / 反 admin god-mode bypass user-scoped — 反向 grep `func.*GetAuditEventsForAdmin` 在 internal/ 除 internal/admin/ 0 hit (admin path 单源走 /admin-api/* 单独 mw 不污染 /api/* user path) | CI grep | reverse grep test PASS |
 | 4.3 4 件套全闭: spec brief + stance + acceptance + content-lock (audit_events 9 字段 + actor_kind const + 错码字面 byte-identical) | inspect | 文件存在 verify ≥3 件 |
 
-## REG-ADM3-* (v0 #586 RENAME 已 🟢 / v1 query API 待翻)
+## REG-ADM3-* (v0 #586 RENAME 已 🟢 / v1 multi-source 🟢 flipped 2026-05-01)
 
 - REG-ADM3-001..006 🟢 (v0 PR #586 merged) — admin_actions → audit_events RENAME + view alias backward compat + actor_kind 三处单测锁
 
-**v1 新增** (待本 milestone PR 翻):
-- REG-ADM3-007 ⚪ `GET /admin-api/v1/audit-events` admin 互可见全行 + 走 /admin-api/* 单独 mw (ADM-0 §1.3 红线) + audit_events 9 字段 byte-identical 跟蓝图 §1.4 同源
-- REG-ADM3-008 ⚪ `GET /me/audit-events` user-scoped owner-only (反 cross-user leak) + Playwright e2e 3 case + 反平行 admin query (反向 grep 0 hit) + post-#614 haystack gate 三轨过
+**v1 multi-source audit 合并** (本 milestone PR 翻 🟢):
+- REG-ADM3-007 🟢 4 source enum SSOT (`AuditSourceServer/Plugin/HostBridge/Agent` byte-identical "server"/"plugin"/"host_bridge"/"agent") + AuditSources ordering 单源 (server const + client AUDIT_SOURCES + i18n SOURCE_LABEL 三处锁)
+- REG-ADM3-008 🟢 `GET /admin-api/v1/audit/multi-source` admin-rail UNION ALL 4 源 (audit_events server/plugin 走 plugin_* prefix 区分 + DL-2 channel_events/global_events agent + host_bridge placeholder 0 行 留 HB-1 follow-up) + admin god-mode 路径独立 (反 user-rail 漂 ADM-0 §1.3 红线) + post-#618 haystack gate 三轨过 (TOTAL 85.6%) + 9 unit + 7 vitest 全 PASS
 
 ## 退出条件
 
@@ -65,3 +65,4 @@
 |---|---|---|
 | 2026-04-30 | 烈马 | v0 — RENAME + view alias acceptance (REG-ADM3-001..006 全 🟢, PR #586 merged). |
 | 2026-05-01 | 烈马 | v1 — 扩 4 段验收覆盖 audit_events query API + admin 视图. REG-ADM3-007..008 ⚪ 占号. 立场承袭 ADM-2 #484 system DM 5 模板 + audit forward-only 锁链跨七 milestone (ADM-2.1 + AP-2 + BPP-4 + BPP-7 + BPP-8 + AL-7 + ADM-3) + ADM-0 §1.3 admin god-mode 红线 (admin 走 /admin-api/* 单独 mw) + post-#614 haystack gate + actor_kind 三处单测锁 byte-identical. |
+| 2026-05-01 | 战马C | v2 — multi-source audit 合并查询落地 (飞马 spec brief v1 重写后实施). REG-ADM3-007..008 🟢 翻牌. 实施 scope: server-side `internal/api/admin_audit_query.go` (4 source enum SSOT + UNION ALL helper + admin endpoint) + `internal/server/server.go` +5 行 wire + `packages/client/src/admin/api.ts` AUDIT_SOURCES + fetchMultiSourceAudit + `packages/client/src/admin/pages/MultiSourceAuditPage.tsx` (4 source badge + filter + DOM 锚) + 9 server unit + 7 vitest. Bypass: 改 AL-8 既有 reverse-grep test 加 `/admin-api/v1/audit/multi-source` 白名单单一例外 (spec §0 立场 ② 授权端点). 反向 grep 8 锚: 4 source const ==4 hit / 0 schema 改 / admin god-mode 路径独立 / UNION ALL 跨表 / admin auth 复用 / DL-2 mustPersistKinds 不破 / i18n SOURCE_LABEL 4 key / haystack gate TOTAL 85.6% datalayer pkg 89.0%. host_bridge HB-1 audit 表未落 v1, 走 placeholder 0 行 (留 HB-1 follow-up). |

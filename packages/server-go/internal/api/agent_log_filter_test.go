@@ -66,13 +66,16 @@ func TestAL_NoSchemaChange(t *testing.T) {
 }
 
 // REG-AL8-002 — 0 新 endpoint 反向断言: internal/api/ 除 ADM-2.2 既有
-// /admin-api/v1/audit-log 单源外, 不出现新 audit-log path.
+// /admin-api/v1/audit-log 单源外, 不出现新 audit-log path. ADM-3 multi-source
+// audit query (`/admin-api/v1/audit/multi-source`) 是 spec §0 立场 ② 授权
+// 端点 (蓝图 admin-model.md §1.4 来源透明), 单一允许例外.
 func TestAL_NoNewEndpoint(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("..", "api")
 	// reject "audit-log/<sub>" or "/admin-api/v1/audit/<not-log>" or
-	// alternative audit-log path variants.
+	// alternative audit-log path variants. Whitelist ADM-3 multi-source.
 	pat := regexp.MustCompile(`audit-log/(?:query|search)|/admin-api/v[0-9]+/audit/[a-z]+`)
+	allow := regexp.MustCompile(`/admin-api/v[0-9]+/audit/multi-source`)
 	_ = filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
@@ -82,6 +85,11 @@ func TestAL_NoNewEndpoint(t *testing.T) {
 		}
 		body, _ := os.ReadFile(p)
 		if loc := pat.FindIndex(body); loc != nil {
+			// Re-check via allow (full ADM-3 path includes "/multi-source"
+			// which the deny pattern truncates at the dash).
+			if allow.Match(body) && !regexp.MustCompile(`audit-log/(?:query|search)`).Match(body) {
+				return nil
+			}
 			t.Errorf("AL-8 立场 ① broken — new audit-log endpoint in %s: %q",
 				p, body[loc[0]:loc[1]])
 		}
