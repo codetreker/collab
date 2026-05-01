@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
+	"borgee-server/internal/auth"
 	"borgee-server/internal/datalayer"
 	"borgee-server/internal/store"
 )
@@ -64,12 +66,64 @@ func (h *UserHandler) handleMyPermissions(w http.ResponseWriter, r *http.Request
 		details = []map[string]any{}
 	}
 
+	// AP-2 立场 ② — capability 透明 UI: response 加 `capabilities` 数组,
+	// 走 14 const SSOT byte-identical (`auth.ALL`). UI 走 capability token
+	// 渲染, 反 role 名 (admin/editor/viewer/owner) bleed. Member humans
+	// 全权 → 全 14 const; agents/bundle-narrowed 仅 derive permissions
+	// 中已授权的 token (反向 grep `"role":\s*"(admin|editor|viewer|owner)"`
+	// 0 hit in this response — `role` 字段保留 legacy caller 兼容, 但
+	// `capabilities` 是 AP-2 SSOT 单源).
+	capabilities := deriveAP2Capabilities(user.Role, permissions)
+
 	writeJSONResponse(w, http.StatusOK, map[string]any{
-		"user_id":     user.ID,
-		"role":        user.Role,
-		"permissions": permissions,
-		"details":     details,
+		"user_id": user.ID,
+		// role kept for legacy callers; AP-2 client UI 不显此字段
+		// (反 role bleed; 立场 ② content-lock §1).
+		"role":         user.Role,
+		"permissions":  permissions,
+		"details":      details,
+		"capabilities": capabilities,
 	})
+}
+
+// deriveAP2Capabilities maps user.Role + permissions[] → 14-const capability
+// tokens (AP-2 立场 ② SSOT 单源).
+//
+//   - Member humans (Role=="member" + permissions=["*"]) → full 14 const
+//     (蓝图 §1.1 + AP-0 default 全权)
+//   - Agents / bundle-narrowed → filter `auth.ALL` keep only granted tokens
+//     (走 capability part before `:` of `permissions[]` entries like
+//     `read_channel:*` or `commit_artifact:channel:abc`)
+//
+// 反约束: 不返回 role-derived 字面 (反 admin/editor/viewer/owner bleed).
+func deriveAP2Capabilities(role string, permissions []string) []string {
+	if role == "member" && len(permissions) == 1 && permissions[0] == "*" {
+		// Full grant — return 14-const SSOT byte-identical 跟 auth.ALL.
+		out := make([]string, 0, len(auth.ALL))
+		out = append(out, auth.ALL...)
+		return out
+	}
+	// Bundle-narrowed: derive token from `permission:scope` entries.
+	seen := make(map[string]bool, len(permissions))
+	out := make([]string, 0, len(permissions))
+	for _, entry := range permissions {
+		idx := strings.Index(entry, ":")
+		var token string
+		if idx >= 0 {
+			token = entry[:idx]
+		} else {
+			token = entry
+		}
+		if !auth.IsValidCapability(token) {
+			// Forward-compat: drop unknown tokens (反 leak v3+ 字面).
+			continue
+		}
+		if !seen[token] {
+			seen[token] = true
+			out = append(out, token)
+		}
+	}
+	return out
 }
 
 // GET /api/v1/online
