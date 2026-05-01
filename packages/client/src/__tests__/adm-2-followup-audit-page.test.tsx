@@ -11,11 +11,20 @@
 //   - data-adm2-actor-kind row attribute
 
 import { describe, expect, test } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+// @ts-expect-error — node:module 没 @types/node, vitest node 上下文可达.
+import { createRequire } from 'module';
 
-const PAGE_PATH = resolve(__dirname, '../admin/pages/AdminAuditLogPage.tsx');
-const SRC = readFileSync(PAGE_PATH, 'utf-8');
+const nodeRequire = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fs: any = nodeRequire('fs');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nodePath: any = nodeRequire('path');
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const url: any = nodeRequire('url');
+
+const HERE = nodePath.dirname(url.fileURLToPath(import.meta.url));
+const PAGE_PATH = nodePath.resolve(HERE, '../admin/pages/AdminAuditLogPage.tsx');
+const SRC: string = fs.readFileSync(PAGE_PATH, 'utf-8');
 
 describe('AdminAuditLogPage — ADM-2-FOLLOWUP REG-011 content lock', () => {
   test('REG-011.1 root has data-page="admin-audit-log" + data-adm2-audit-list="true"', () => {
