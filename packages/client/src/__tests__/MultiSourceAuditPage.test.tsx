@@ -45,7 +45,7 @@ async function flushPromises() {
 }
 
 function mockFetchOnce(rows: any[], sources = ['server', 'plugin', 'host_bridge', 'agent']) {
-  fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () => ({
+  fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => ({
     ok: true,
     status: 200,
     json: async () => ({ sources, rows }),
@@ -102,7 +102,7 @@ describe('MultiSourceAuditPage', () => {
   });
 
   it('error response renders [role="alert"]', async () => {
-    fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () => ({
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => ({
       ok: false,
       status: 500,
       statusText: 'boom',
