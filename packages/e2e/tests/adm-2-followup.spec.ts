@@ -78,7 +78,15 @@ test.describe('ADM-2-FOLLOWUP — REG-ADM2-011 admin SPA audit-log 页 + G4.2 �
     await attachAdminCookie(ctx, adminToken);
     const page = await ctx.newPage();
 
-    await page.goto(`${clientURL()}/admin/audit-log`);
+    // Vite dev does not auto-serve admin.html for /admin/* paths; push
+    // history so BrowserRouter mounts at /admin/audit-log target. (跟
+    // adm-3-audit-events.spec.ts case-1 admin SPA 加载模式同源 — Prod
+    // 走 server-go SPA fallback, dev 走 admin.html.)
+    await page.addInitScript(() => {
+      window.history.replaceState({}, '', '/admin/audit-log');
+    });
+    await page.goto(`${clientURL()}/admin.html`);
+    await page.waitForLoadState('domcontentloaded');
 
     // DOM 锚反查 — admin SPA AdminAuditLogPage 渲染.
     await expect(page.locator('[data-page="admin-audit-log"]')).toBeVisible();
@@ -105,7 +113,11 @@ test.describe('ADM-2-FOLLOWUP — REG-ADM2-011 admin SPA audit-log 页 + G4.2 �
     await attachAdminCookie(ctx, adminToken);
     const page = await ctx.newPage();
 
-    await page.goto(`${clientURL()}/admin/audit-log`);
+    await page.addInitScript(() => {
+      window.history.replaceState({}, '', '/admin/audit-log');
+    });
+    await page.goto(`${clientURL()}/admin.html`);
+    await page.waitForLoadState('domcontentloaded');
 
     // 红 banner DOM 锚 + 字面 byte-identical (蓝图 §1.4 红线 1).
     const banner = page.locator('[data-adm2-red-banner="active"]');
