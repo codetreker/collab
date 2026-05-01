@@ -35,7 +35,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -375,7 +376,7 @@ func BootstrapWith(db *gorm.DB, login, hash string) error {
 
 	// Idempotent insert: ON CONFLICT(login) DO NOTHING via the UNIQUE index.
 	row := Admin{
-		ID:           uuid.NewString(),
+		ID:           idgen.NewID(),
 		Login:        login,
 		PasswordHash: hash,
 		CreatedAt:    time.Now().UnixMilli(),

@@ -30,7 +30,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 )
 
 // AdminAction is one row of admin_actions table (ADM-2.1 schema v=22).
@@ -80,7 +81,7 @@ func (s *Store) InsertAdminAction(actorID, targetUserID, action, metadata string
 		return "", errors.New("actor_id, target_user_id, action all required (蓝图 §1.4 红线 1 受影响者必有)")
 	}
 	row := AdminAction{
-		ID:           uuid.NewString(),
+		ID:           idgen.NewID(),
 		ActorID:      actorID,
 		TargetUserID: targetUserID,
 		Action:       action,
@@ -238,7 +239,7 @@ func (s *Store) GrantImpersonation(userID string) (*ImpersonationGrant, error) {
 		return nil, errors.New("impersonate.grant_already_active")
 	}
 	g := &ImpersonationGrant{
-		ID:        uuid.NewString(),
+		ID:        idgen.NewID(),
 		UserID:    userID,
 		GrantedAt: now,
 		ExpiresAt: now + 24*60*60*1000, // 24h
@@ -305,7 +306,7 @@ func (s *Store) EmitAdminActionSystemDM(actorLogin, targetUserID, action string,
 		return nil
 	}
 	now := time.Now().UnixMilli()
-	msgID := uuid.NewString()
+	msgID := idgen.NewID()
 	return s.db.Exec(`
 		INSERT INTO messages (id, channel_id, sender_id, content, content_type, created_at)
 		VALUES (?, ?, 'system', ?, 'text', ?)

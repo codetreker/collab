@@ -1,7 +1,8 @@
 package migrations
 
 import (
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -84,7 +85,7 @@ var cmOnboardingWelcome = Migration{
 			// Channel name must be globally UNIQUE (channels.name); embed the
 			// owner's UUID short-prefix so backfills don't collide. The full
 			// channel id is a fresh UUID.
-			chID := uuid.NewString()
+			chID := idgen.NewID()
 			chName := "welcome-" + shortPrefix(u.ID)
 			if err := tx.Exec(`
 				INSERT OR IGNORE INTO channels
@@ -106,7 +107,7 @@ var cmOnboardingWelcome = Migration{
 				INSERT OR IGNORE INTO messages
 				  (id, channel_id, sender_id, content, content_type, created_at, quick_action)
 				VALUES (?, ?, 'system', ?, 'text', ?, ?)
-			`, uuid.NewString(), chID, WelcomeMessageBody, now, WelcomeQuickActionJSON).Error
+			`, idgen.NewID(), chID, WelcomeMessageBody, now, WelcomeQuickActionJSON).Error
 		}
 		return nil
 	},

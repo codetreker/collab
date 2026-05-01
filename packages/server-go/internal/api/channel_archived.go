@@ -27,7 +27,8 @@ import (
 	"borgee-server/internal/admin"
 	"borgee-server/internal/store"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 )
 
 // RegisterCHN5Routes wires the user-rail archived channels GET endpoint.
@@ -133,7 +134,7 @@ func (h *ChannelHandler) fanoutChannelStateMessage(a channelStateMessageArgs) {
 	content := fmt.Sprintf("channel #%s 已被 %s %s %s", a.channelName, ownerName, a.verbLiteral, tsLabel)
 	now := nowMillis()
 	msg := &store.Message{
-		ID:          uuid.NewString(),
+		ID:          idgen.NewID(),
 		ChannelID:   a.channelID,
 		SenderID:    "system",
 		Content:     content,

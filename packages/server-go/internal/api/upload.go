@@ -12,7 +12,8 @@ import (
 
 	"borgee-server/internal/config"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 )
 
 type UploadHandler struct {
@@ -76,7 +77,7 @@ func (h *UploadHandler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ext := mimeToExt[contentType]
-	filename := uuid.NewString() + ext
+	filename := idgen.NewID() + ext
 
 	if err := os.MkdirAll(h.Config.UploadDir, 0o755); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to create upload directory")

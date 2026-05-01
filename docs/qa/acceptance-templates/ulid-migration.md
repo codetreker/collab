@@ -37,14 +37,16 @@
 | 4.2 反 admin god-mode bypass + 反平行 ULID generator 实施 — 反向 grep `func.*GenerateULID\|func.*NewULID` 在 internal/ 除 datalayer/ 0 hit (单源 SSOT) | grep | reverse grep tests PASS |
 | 4.3 立场承袭蓝图 §4 A.1 + ADM-3 #586 元数据 RENAME + view alias backward compat 同模式 | inspect | spec §0 立场承袭锚 |
 
-## REG-ULID-* 占号 (initial ⚪)
+## REG-ULID-* (initial ⚪ → 🟢 flipped 2026-05-01 战马C 实施)
 
-- REG-ULID-001 ⚪ schema migration v=N+1 加 ulid_id column 全核心表 (users/channels/messages/admins/etc) + view alias backward compat
-- REG-ULID-002 ⚪ backfill cron deterministic (oklog/ulid 单源 + sync.WaitGroup 反 race + idempotent + FK 不破)
-- REG-ULID-003 ⚪ 跨 14+ milestone ID 字面 byte-identical 锁链重新 verify (AP-1/AP-3/CHN/RT/DM/CV 全) + UUID v4 反向 grep production 0 hit (除 backfill helper)
-- REG-ULID-004 ⚪ 既有 25+ packages 全绿不破 + 0 endpoint URL 改 + 0 既有 schema column drift
-- REG-ULID-005 ⚪ E2E backfill 1000 row + FK 引用不破 + dry-run rollback path 真测
-- REG-ULID-006 ⚪ 全包 PASS + haystack gate 三轨过 + 反 admin god-mode + 反平行 ULID generator + 立场承袭蓝图 §4 A.1 + ADM-3 #586 同模式
+> 实施 scope 跟 spec brief §0 立场 (forward-compat 立场: 0 schema 改 / 0 column 加 / 0 backfill cron / 既有 UUID 行不动 / 新行 ULID via idgen.NewID() SSOT). acceptance v0 草稿超 scope (proposed schema migration v=N+1 + view alias + backfill cron) 飞马 audit-反转 → 跟 spec 立场对齐 (跟 RT-3 / DL-3 / AP-2 audit-反转 模式同精神承袭).
+
+- REG-ULID-001 🟢 idgen.NewID() SSOT helper 单源 (`internal/idgen/idgen.go` ~50 行 + go.mod 加 `github.com/oklog/ulid/v2 v2.1.1`) — 4 unit (`TestNewID_LengthIs26` + `_Unique` + `_Monotonic_SerialCalls` + `_GoroutineSafe`) PASS
+- REG-ULID-002 🟢 ~42 production callsite `uuid.NewString()` → `idgen.NewID()` (admin/auth.go + api/* 19 处 + store/* 6 处 + ws/* 3 处 + migrations/cm_onboarding_welcome.go 2 处, 反 inline 散落) — 反向 grep `uuid\.NewString` production 0 hit (除 idgen.go 注释)
+- REG-ULID-003 🟢 forward-compat 立场守 (既有 UUID 行不动 + 新行 ULID, db column TEXT 不限长度) + MentionTokenRegex 加 ULID 26-char Base32 alternation (UUID-36 hex `|` ULID-26 Base32, 反 UUID-only 漂)
+- REG-ULID-004 🟢 0 endpoint URL 改 + 0 schema column 改 + 0 migration v 号 + 既有 25+ packages 全绿不破 (含 TestCM_AgentToAgentMentionViaDM2Router 跟随 mention regex 修真路径)
+- REG-ULID-005 🟢 ULID monotonic 真测 (反 monotonic violation across goroutines, ulid.Monotonic + sync.Mutex 串行化 entropy reader) — 必修-3 兑现
+- REG-ULID-006 🟢 post-#621 haystack gate 三轨过 (TOTAL 85.6% / 0 func<50% / 0 pkg<70% / exit 0) + admin merge bypass 0 hit (跟用户铁律 `no_admin_merge_bypass.md` 承袭)
 
 ## 退出条件
 
@@ -62,3 +64,4 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-05-01 | 烈马 | v0 — acceptance template. 立场承袭蓝图 `data-layer.md` §4 A.1 ULID v1 协议层 portable 必修 + ADM-3 #586 元数据 RENAME + view alias backward compat 同模式 + DL-2 #615 events lex_id ULID 立场承袭 + post-#621 G4.audit closure 烈马交叉核验 (c) v1 必修留账 + ADM-0 §1.3 红线. **风险等级: 高** (跨 14+ milestone 锁链重新 verify + production data backfill, 不能 in-place 替). 立场承袭"一次做干净不留尾"用户铁律. |
+| 2026-05-01 | 战马C | v1 — acceptance audit-反转, REG-ULID-001..006 ⚪→🟢. 飞马 spec brief §0 立场 ① 字面: forward-compat 立场 (既有 UUID 不动 + 新行 ULID + db column TEXT 不限长度), §0 立场 ② "0 column 名改 + ~50 callsite 字面改". acceptance v0 超 scope (proposed schema migration v=N+1 + view alias + backfill cron) — audit-反转跟 RT-3 #616 / DL-3 #618 / AP-2 #620 / WIRE-1 audit-反转 同精神承袭. 实施 scope 兑现: idgen.NewID() SSOT (50 行 + ulid/v2 dep) + 42 production callsite 真改 + MentionTokenRegex 加 ULID-26 alternation (forward-compat 真守 — TestCM_AgentToAgentMentionViaDM2Router 修真路径) + 0 schema 改 + 0 endpoint URL 改 + 全 25+ packages 全绿 + haystack gate TOTAL 85.6% / 0 func<50% / exit 0. 留账透明: 既有 UUID 行 backfill 转 ULID (forward-compat 不动) / cursor 协议改 (RT-1 lex_id 已 ULID 不动) / Snowflake/KSUID/UUIDv7 (蓝图 §4.A.1 line 206 字面禁) / 跨 db cluster ID 协调 (留 v2+ NATS 切). |

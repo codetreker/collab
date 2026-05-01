@@ -13,7 +13,8 @@ import (
 	"borgee-server/internal/config"
 	"borgee-server/internal/store"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 )
 
 type WorkspaceHandler struct {
@@ -103,7 +104,7 @@ func (h *WorkspaceHandler) handleUploadFile(w http.ResponseWriter, r *http.Reque
 	siblings, _ := h.Store.GetSiblingNames(user.ID, channelID, parentID)
 	filename := store.ResolveConflict(header.Filename, siblings)
 
-	fileID := uuid.NewString()
+	fileID := idgen.NewID()
 	dirPath := filepath.Join(h.Config.WorkspaceDir, user.ID, channelID)
 	if err := os.MkdirAll(dirPath, 0o755); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to create directory")

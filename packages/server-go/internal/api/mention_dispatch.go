@@ -52,17 +52,20 @@ import (
 	"borgee-server/internal/store"
 	"borgee-server/internal/ws"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 )
 
-// MentionTokenRegex matches `@<uuid>` tokens. UUID grammar mirrors RFC 4122
-// lowercase hex (8-4-4-4-12). Word boundary `\b` keeps `email@host` /
-// `@username-without-uuid` from being captured (acceptance §1.2 反约束).
+// MentionTokenRegex matches `@<id>` tokens — either UUID v4 (RFC 4122
+// 8-4-4-4-12 lowercase hex) for legacy rows or ULID (Crockford base32, 26
+// upper-alnum chars) for ULID-MIGRATION post-#WIRE-1 wave. Word boundary
+// kept by `@` literal prefix; downstream resolver tolerates either.
 //
 // 立场 ⑥ user / agent 同语义: regex 不区分 role, downstream 走
-// users.role / users.owner_id 决定 fallback.
-var MentionTokenRegex = regexp.MustCompile(`@([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`)
+// users.role / users.owner_id 决定 fallback. ULID-MIGRATION forward-compat:
+// 既有 UUID + 新 ULID 共存 (db column TEXT, 不限长度).
+var MentionTokenRegex = regexp.MustCompile(`@([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9A-HJKMNP-TV-Z]{26})`)
 
 // OfflineOwnerDMTemplate is the byte-identical fallback DM body locked
 // by content-lock #314 §1 ③ + acceptance §2.2. {agent_name} / {channel}
@@ -306,7 +309,7 @@ func (d *MentionDispatcher) enqueueOwnerSystemDM(ownerID, agentDisplayName, chan
 	body := fmt.Sprintf(OfflineOwnerDMTemplate, agentDisplayName, channelName)
 	now := d.now().UnixMilli()
 	msg := &store.Message{
-		ID:          uuid.NewString(),
+		ID:          idgen.NewID(),
 		ChannelID:   dmCh.ID,
 		SenderID:    "system",
 		Content:     body,

@@ -39,7 +39,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 
 	"borgee-server/internal/auth"
 	"borgee-server/internal/bpp"
@@ -213,5 +214,5 @@ func (h *CapabilityGrantHandler) newID() string {
 	if h.NewID != nil {
 		return h.NewID()
 	}
-	return uuid.NewString()
+	return idgen.NewID()
 }

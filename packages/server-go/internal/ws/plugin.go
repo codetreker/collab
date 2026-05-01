@@ -12,7 +12,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 )
 
 type PluginConn struct {
@@ -250,7 +251,7 @@ func (pc *PluginConn) Send(data []byte) {
 }
 
 func (pc *PluginConn) SendRequest(method, path string, body []byte) (PluginResponse, error) {
-	id := uuid.NewString()
+	id := idgen.NewID()
 	ch := make(chan PluginResponse, 1)
 
 	pc.pendingMu.Lock()

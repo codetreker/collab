@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 
 	"borgee-server/internal/auth"
 	"borgee-server/internal/config"
@@ -1046,7 +1047,7 @@ func (h *ChannelHandler) emitAgentJoinSystemMessage(channelID, agentName string)
 	content := agentName + " joined"
 	now := nowMillis()
 	msg := &store.Message{
-		ID:          uuid.NewString(),
+		ID:          idgen.NewID(),
 		ChannelID:   channelID,
 		SenderID:    "system",
 		Content:     content,

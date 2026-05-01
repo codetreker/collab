@@ -4,7 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -66,7 +67,7 @@ func (s *Store) CreateWelcomeChannelForUser(userID, displayName string) (channel
 	}
 
 	ch := &Channel{
-		ID:         uuid.NewString(),
+		ID:         idgen.NewID(),
 		Name:       "welcome-" + shortPrefix(userID),
 		Topic:      "",
 		Visibility: "private",
@@ -94,7 +95,7 @@ func (s *Store) CreateWelcomeChannelForUser(userID, displayName string) (channel
 		// column (added by migration v=7) is populated. The message FK
 		// requires sender_id='system' to exist; that row is seeded by the
 		// same migration.
-		msgID := uuid.NewString()
+		msgID := idgen.NewID()
 		if err := tx.Exec(`
 			INSERT INTO messages (id, channel_id, sender_id, content, content_type, created_at, quick_action)
 			VALUES (?, ?, 'system', ?, 'text', ?, ?)

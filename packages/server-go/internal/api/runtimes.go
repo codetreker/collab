@@ -69,7 +69,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 
 	agentpkg "borgee-server/internal/agent"
@@ -125,7 +126,7 @@ func (h *RuntimeHandler) newID() string {
 	if h.NewID != nil {
 		return h.NewID()
 	}
-	return uuid.NewString()
+	return idgen.NewID()
 }
 
 // RegisterRoutes mounts the user-rail runtime endpoints. The admin
@@ -475,7 +476,7 @@ func (h *RuntimeHandler) fanoutOwnerSystemDM(ownerID, body string, ts int64) {
 		return
 	}
 	msg := &store.Message{
-		ID:          uuid.NewString(),
+		ID:          idgen.NewID(),
 		ChannelID:   dmCh.ID,
 		SenderID:    "system",
 		Content:     body,

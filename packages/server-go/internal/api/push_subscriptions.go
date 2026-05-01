@@ -30,7 +30,8 @@ import (
 
 	"borgee-server/internal/store"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 )
 
 // PushSubscriptionsHandler handles DL-4 web_push_subscriptions REST
@@ -117,7 +118,7 @@ func (h *PushSubscriptionsHandler) handleSubscribe(w http.ResponseWriter, r *htt
 		  p256dh_key = excluded.p256dh_key,
 		  auth_key   = excluded.auth_key,
 		  user_agent = excluded.user_agent`,
-		uuid.NewString(), user.ID, req.Endpoint, req.P256DH, req.Auth, ua, now).Error; err != nil {
+		idgen.NewID(), user.ID, req.Endpoint, req.P256DH, req.Auth, ua, now).Error; err != nil {
 		h.logErr("push subscribe upsert", err)
 		writeJSONError(w, http.StatusInternalServerError, "Failed to save subscription")
 		return

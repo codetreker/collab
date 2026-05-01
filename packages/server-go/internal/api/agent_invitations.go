@@ -25,7 +25,8 @@ import (
 	"borgee-server/internal/store"
 	"borgee-server/internal/ws"
 
-	"github.com/google/uuid"
+
+	"borgee-server/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -206,7 +207,7 @@ func (h *AgentInvitationHandler) handleCreate(w http.ResponseWriter, r *http.Req
 	}
 
 	inv := &store.AgentInvitation{
-		ID:          uuid.NewString(),
+		ID:          idgen.NewID(),
 		ChannelID:   body.ChannelID,
 		AgentID:     agent.ID,
 		RequestedBy: user.ID,
