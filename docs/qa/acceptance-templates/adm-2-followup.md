@@ -29,14 +29,14 @@
 | 3.2 ADM-2 #484 ⏸ deferred 2 项 follow-up ⏸→🟢 翻牌 (跟 P1.2 ⏸ 32 行回收同精神) | inspect | acceptance template 翻牌 verify |
 | 3.3 立场承袭 audit forward-only 锁链跨七 milestone (ADM-2.1 + AP-2 + BPP-4 + BPP-7 + BPP-8 + AL-7 + ADM-3) + ADM-0 §1.3 admin god-mode 红线 | grep | reverse grep test PASS |
 
-## REG-ADM2FU-* 占号 (initial ⚪)
+## REG-ADM2FU-* 占号 (🟢 active)
 
-- REG-ADM2FU-001 ⚪ admin audit list UI 真渲染 Playwright e2e
-- REG-ADM2FU-002 ⚪ admin god-mode 红 banner 常驻 真测 (蓝图 §1.4 红线 1)
-- REG-ADM2FU-003 ⚪ ⭐ g4.2-adm2-audit-list.png 真生成 ≥3000 bytes
-- REG-ADM2FU-004 ⚪ ⭐ g4.2-adm2-red-banner.png 真生成 ≥3000 bytes
-- REG-ADM2FU-005 ⚪ ADM-2 #484 ⏸ deferred 2 项 follow-up ⏸→🟢 翻牌
-- REG-ADM2FU-006 ⚪ 全包 PASS + haystack gate + 立场承袭 audit forward-only 锁链跨七 milestone + ADM-0 §1.3
+- REG-ADM2FU-001 🟢 admin audit list UI 真渲染 Playwright e2e
+- REG-ADM2FU-002 🟢 admin god-mode 红 banner 常驻 真测 (蓝图 §1.4 红线 1)
+- REG-ADM2FU-003 🟢 ⭐ g4.2-adm2-audit-list.png 真生成 ≥3000 bytes (5202 bytes)
+- REG-ADM2FU-004 🟢 ⭐ g4.2-adm2-red-banner.png 真生成 ≥3000 bytes (5202 bytes)
+- REG-ADM2FU-005 🟢 ADM-2 #484 ⏸ deferred 2 项 follow-up ⏸→🟢 翻牌
+- REG-ADM2FU-006 🟢 全包 PASS + haystack gate + 立场承袭 audit forward-only 锁链跨七 milestone + ADM-0 §1.3
 
 ## 退出条件
 
@@ -51,3 +51,4 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-05-01 | 烈马 | v0 — acceptance template. 立场承袭 G4.audit closure P0.2 漏件 + ADM-2 #484 acceptance ⏸ deferred 2 项 follow-up + audit forward-only 锁链跨七 milestone + 跨四 milestone audit 反转锁链 e2e 真补 + ADM-0 §1.3 红线. |
+| 2026-04-30 | 战马E | v1 实施 — REG-ADM2-010 audit hook (handleCreateMyImpersonateGrant + RequireImpersonationGrant helper) + REG-ADM2-011 admin SPA AdminAuditLogPage.tsx (data-page + data-adm2-audit-list + data-adm2-red-banner + 中文 title/empty + 红 banner 字面 byte-identical) + adm-2-followup.spec.ts e2e 2 case + g4.2 双截屏 5202 bytes + REG-ADM2FU-001..006 ⚪→🟢. ADM-2 #484 ⏸ 2 项收口. |

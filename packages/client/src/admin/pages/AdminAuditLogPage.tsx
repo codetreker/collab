@@ -75,9 +75,14 @@ export default function AdminAuditLogPage() {
   };
 
   return (
-    <div data-page="admin-audit-log">
+    <div data-page="admin-audit-log" data-adm2-audit-list="true">
+      {/* ADM-2-FOLLOWUP REG-011 — red banner active when impersonate session is in effect.
+          字面 byte-identical 跟 content-lock §1 + admin-2-followup-stance §1. */}
+      <div data-adm2-red-banner="active" className="admin-impersonate-banner" role="alert">
+        当前以业主身份操作 — 该会话受 24h 时限
+      </div>
       <div className="admin-section-header">
-        <h2>Audit Log</h2>
+        <h2>审计日志</h2>
       </div>
 
       <form
@@ -137,7 +142,7 @@ export default function AdminAuditLogPage() {
       {rows === null && error === null && <div className="app-loading">Loading...</div>}
 
       {rows !== null && rows.length === 0 && error === null && (
-        <p className="admin-audit-empty">No matching audit entries.</p>
+        <p className="admin-audit-empty">暂无审计记录</p>
       )}
 
       {rows !== null && rows.length > 0 && (
@@ -153,7 +158,12 @@ export default function AdminAuditLogPage() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} data-action-row data-action={row.action}>
+              <tr
+                key={row.id}
+                data-action-row
+                data-action={row.action}
+                data-adm2-actor-kind="admin"
+              >
                 <td>{formatTs(row.created_at)}</td>
                 <td className="admin-audit-actor">
                   <code>{row.actor_id}</code>
