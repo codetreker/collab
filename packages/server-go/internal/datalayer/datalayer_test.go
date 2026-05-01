@@ -23,7 +23,7 @@ func newTestDataLayer(t *testing.T) *DataLayer {
 	if err != nil {
 		t.Fatalf("presence.NewSessionsTracker: %v", err)
 	}
-	return NewDataLayer(s, pt)
+	return NewDataLayer(s, pt, nil)
 }
 
 func newTestUser(t *testing.T, dl *DataLayer, displayName, email string) *store.User {

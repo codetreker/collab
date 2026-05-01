@@ -38,15 +38,20 @@ type EventsArchiveOffloader struct {
 	archiveDir string       // base directory for archive_<yyyy-mm>.db files
 	threshold int64         // row count above which offload triggers
 	cutoffAge time.Duration // rows with created_at older than now-cutoffAge offload
+	interval  time.Duration // background ticker cadence (0 disables; caller drives via RunOnce)
 	now       func() time.Time
 
-	mu sync.Mutex
+	mu       sync.Mutex
+	stopOnce sync.Once
+	stopped  chan struct{}
 }
 
 // NewEventsArchiveOffloader constructs an offloader. archiveDir is created
 // on first run. threshold=0 → use default 1_000_000 (蓝图 §5 events_row_count
-// WARN). cutoffAge=0 → 30 days (channel.* default retention).
-func NewEventsArchiveOffloader(db *gorm.DB, bus EventBus, logger *slog.Logger, archiveDir string, threshold int64, cutoffAge time.Duration) *EventsArchiveOffloader {
+// WARN). cutoffAge=0 → 30 days (channel.* default retention). interval=0
+// disables background ticker (caller drives via RunOnce for tests); WIRE-1
+// production wires interval=time.Hour 跟 ThresholdMonitor 同精神 ctx-aware.
+func NewEventsArchiveOffloader(db *gorm.DB, bus EventBus, logger *slog.Logger, archiveDir string, threshold int64, cutoffAge, interval time.Duration) *EventsArchiveOffloader {
 	if threshold <= 0 {
 		threshold = 1_000_000
 	}
@@ -63,7 +68,54 @@ func NewEventsArchiveOffloader(db *gorm.DB, bus EventBus, logger *slog.Logger, a
 		archiveDir: archiveDir,
 		threshold:  threshold,
 		cutoffAge:  cutoffAge,
+		interval:   interval,
 		now:        time.Now,
+		stopped:    make(chan struct{}),
+	}
+}
+
+// Start runs the offloader loop until ctx cancels. Returns immediately;
+// caller may `<-offloader.Done()` after ctx cancel to ensure clean shutdown
+// (反 goroutine leak, 跟 DL-2 EventsRetentionSweeper / DL-3 ThresholdMonitor
+// 同模式承袭).
+func (o *EventsArchiveOffloader) Start(ctx context.Context) {
+	if o.interval <= 0 {
+		o.stopOnce.Do(func() { close(o.stopped) })
+		return
+	}
+	go func() {
+		defer o.stopOnce.Do(func() { close(o.stopped) })
+		ticker := time.NewTicker(o.interval)
+		defer ticker.Stop()
+		o.runOnceLog(ctx)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				o.runOnceLog(ctx)
+			}
+		}
+	}()
+}
+
+// Done returns a chan closed when the background loop has exited.
+func (o *EventsArchiveOffloader) Done() <-chan struct{} { return o.stopped }
+
+// runOnceLog wraps RunOnce + logger output for the ticker driver.
+func (o *EventsArchiveOffloader) runOnceLog(ctx context.Context) {
+	res, err := o.RunOnce(ctx)
+	if err != nil {
+		if o.logger != nil {
+			o.logger.Error("dl3.archive_offload_failed", "error", err)
+		}
+		return
+	}
+	if res.Triggered && o.logger != nil {
+		o.logger.Info("dl3.archive_offload_tick_done",
+			"archive", res.ArchivePath,
+			"rows_archived", res.RowsArchived,
+			"rows_deleted", res.RowsDeleted)
 	}
 }
 

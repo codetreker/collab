@@ -91,6 +91,24 @@ func TestChannelScopeAdapter_ChannelIDsForOwner(t *testing.T) {
 	}
 }
 
+// TestChannelMemberFetcherAdapter_ListUserIDs 真测 WIRE-1 wire-3
+// channelMemberFetcherAdapter 桥 (store.ListChannelMembers →
+// bpp.ChannelMemberFetcher.ListChannelMemberUserIDs). 不存在 channel
+// 返空 slice + nil err (store 层 容错).
+func TestChannelMemberFetcherAdapter_ListUserIDs(t *testing.T) {
+	t.Parallel()
+	_, s := newCovTestHub(t)
+	adapter := &channelMemberFetcherAdapter{store: s}
+
+	ids, err := adapter.ListChannelMemberUserIDs("nonexistent-channel")
+	if err != nil {
+		t.Errorf("expected nil err, got %v", err)
+	}
+	if len(ids) != 0 {
+		t.Errorf("expected empty slice for unknown channel, got %d", len(ids))
+	}
+}
+
 // TestHubAgentTaskPusherAdapter_PushAgentTaskStateChanged 真测 hub
 // agentTaskPusher 桥. Hub 无 client subscriber 时, push 应 no-op (cursor==0
 // 或类似零值, ok==false).

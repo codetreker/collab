@@ -144,9 +144,10 @@ type inProcessEventBus struct {
 	store EventStore // optional cold-stream consumer (DL-2)
 }
 
-func NewInProcessEventBus() EventBus {
-	return &inProcessEventBus{subs: make(map[string][]chan Event)}
-}
+// WIRE-1 #1: removed NewInProcessEventBus (hot-only constructor) —
+// production factory.go always wires NewInProcessEventBusWithStore (DL-2
+// cold consumer 真接 channel_events / global_events 表). Hot-only path
+// 仅 v0 spec stub, post-WIRE-1 已无 callsite (反 dead code 立场承袭).
 
 // NewInProcessEventBusWithStore wires a cold-stream EventStore consumer.
 // Publish forks an async INSERT to channel_events / global_events; failures
