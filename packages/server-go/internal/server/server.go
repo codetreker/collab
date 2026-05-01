@@ -449,6 +449,11 @@ func (s *Server) SetupRoutes() {
 	// (must-persist 4 类永久 / channel/message 30d / agent_task/artifact 60d /
 	// 默认 90d). 跟 AL-7 / HB-5 retention sweeper 同精神承袭.
 	datalayer.NewEventsRetentionSweeper(s.store.DB(), s.logger, time.Hour).Start(s.ctx)
+	// DL-3 §1 阈值哨 — 4 metric (db_size_mb / wal_pending_pages /
+	// write_lock_wait_ms / events_row_count) WARN/CRITICAL slog 输出, ctx-aware
+	// shutdown (蓝图 data-layer.md §5). 反 admin god-mode endpoint
+	// (ADM-0 §1.3 红线): 仅 slog stdout, 不挂 /admin-api/threshold.
+	datalayer.NewThresholdMonitor(s.store.DB(), s.logger, time.Hour).Start(s.ctx)
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
