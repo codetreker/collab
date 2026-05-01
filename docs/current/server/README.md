@@ -360,3 +360,18 @@ Hub 维护 `onlineUsers map[userId]map[*Client]bool` 支持多端在线。Heartb
 **测试**:
 - `internal/api/admin_grant_permission_gate_test.go` 4 case PASS (valid dot 200 / legacy snake 400 / typo 400 / empty 400)
 - 既有 ADM-2 + ADM-2-FOLLOWUP + ADM-3 全包 unit 不破
+
+### ADMIN-PASSWORD-PLAIN-ENV (#635 PR feat/admin-password-plain-env) — bootstrap env 二选一
+
+`internal/admin/auth.go::Bootstrap()` 加 plain env path:
+
+- `BORGEE_ADMIN_PASSWORD_HASH` (legacy, 推荐 prod) — bcrypt cost ≥ MinBcryptCost (10) 的 hash 字面, server 直存到 admins.password_hash.
+- `BORGEE_ADMIN_PASSWORD` (新, 推荐 dev/testing) — 明文密码, server 启动时 `bcrypt.GenerateFromPassword([]byte(plain), MinBcryptCost)` 内存哈希后写表; env 中明文永不写盘.
+
+**二选一** (反 surprise / 反 silent priority): 同设 → bootstrap panic mutually exclusive; 都不设 → bootstrap panic 提示至少设一个. panic msg 反向锚提两个 env 名.
+
+**legacy backward-compat**: 仅设 HASH 时行为 byte-identical 不变, login verify path 走 bcrypt.CompareHashAndPassword 不动. Bootstrap()/BootstrapWith() 加 plain string 第 4 参数, 既有 9 BootstrapWith 调用 (auth_bootstrap_test ×5 + auth_handlers_test ×3 + auth_test ×1 + middleware_test ×1) 全加 `""` 兼容.
+
+**反约束**: 0 endpoint URL / 0 schema / 0 routes / 0 cookie / 0 admin login/logout/me 行为改 (cmd/collab unchanged 因 Bootstrap 读 os.Getenv 已透传新 env). bcrypt cost ≥ MinBcryptCost (10) review checklist 红线守.
+
+**测试**: 4 新 unit (TestBootstrap_PlainEnv 真验 cost ≥ 10 + CompareHashAndPassword 真匹配 / BothEnvSet_Panics msg 反向锚 / HashPriority_BackwardCompat byte-identical / NeitherEnv_Panics) + 既有 1A 4 sub-case + 1B Idempotent 全不破.
