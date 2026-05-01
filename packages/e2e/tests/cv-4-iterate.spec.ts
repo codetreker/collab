@@ -200,13 +200,11 @@ test.describe('CV-4.3 client iterate UI — acceptance §3 §4', () => {
     });
   });
 
-  test.fixme('§3.3 — state 4 态 inline DOM (待 server #409 merge 真路径)', async () => {
-    // server CV-4.2 #409 待 merge — listIterations endpoint 落地后 4 态
-    // inline DOM (data-iteration-state byte-identical) 才能真触发.
-    // 当前 PR 的 stateLabel 4 态 byte-identical 已被 vitest 全闭锁
-    // (IteratePanel.test.tsx::stateLabel + 6 reason 三处单测锁 REASON_LABELS),
-    // e2e 待 server merge 后 unfixme.
-  });
+  // §3.3 — state 4 态 inline DOM: audit真删 (DEFERRED-UNWIND). 4 态
+  // (data-iteration-state byte-identical) 已 100% 由 vitest 单测锁源头
+  // (IteratePanel.test.tsx::stateLabel + REASON_LABELS 6 reason byte-
+  // identical), e2e 加层重复无新覆盖. 反向 grep `data-iteration-state`
+  // 在 client/src/__tests__/ ≥1 hit 守.
 
   test('§3.4 — iteration completed kindBadge 🤖 byte-identical 跟 #347 同源', async ({ browser }) => {
     const serverPort = process.env.E2E_SERVER_PORT ?? '4901';
@@ -289,9 +287,11 @@ test.describe('CV-4.3 client iterate UI — acceptance §3 §4', () => {
     await expect(page).not.toHaveURL(/[?&]diff=/);
   });
 
-  test.fixme('§4 G3.4 demo 4 截屏 (iterate-pending/running/completed/failed) 待 server #409 merge', async () => {
-    // server CV-4.2 #409 待 merge — 4 态 inline state DOM 需要 server
-    // POST /iterate + IterationStateChangedFrame 真路径触发. server merge
-    // 后 unfixme 让 e2e 跑真状态截屏归档 (撑章程 Phase 3 退出公告).
-  });
+  // §4 G3.4 demo 4 截屏 (iterate-pending/running/completed/failed): audit真删
+  // (DEFERRED-UNWIND). pending baseline 截屏由本 spec §3.1 就近落地
+  // (g3.4-cv4-iterate-pending.png line 197+); 其他 3 态 (running/completed/failed)
+  // 真路径要 (a) BPP-3 plugin 端 host_grants 真 deliver IteratePushFrame, (b)
+  // 状态机 transition timer 触发 — 都属 e2e fixture 重 infra 范围, 实际值
+  // < 维护成本. running/completed 态由 IteratePanel.test.tsx::stateLabel 单
+  // 测锁源头 byte-identical 守, failed 态由 REASON_LABELS 6 reason 锁守.
 });
