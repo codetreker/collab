@@ -1,57 +1,64 @@
-# Acceptance Template — AP-2: expires_at sweeper 业务化 wrapper milestone
+# Acceptance Template — AP-2 (UI bundle 抽象 + capability 一键授予 v2)
 
-> Spec: `docs/implementation/modules/ap-2-spec.md` (战马C v0, cfa3869)
-> 蓝图: `auth-permissions.md` §5 expires_at "暂不业务化" 解锁 + `admin-model.md` §1.4 audit forward-only
-> 前置: AP-1.1 #493 user_permissions.expires_at 列 ✅ + AP-3 #521 user_permissions.org_id 列 ✅ + ADM-2.1 #484 admin_actions audit table ✅ + AL-1 #492 forward-only state_log ✅ + BPP-4 watchdog actor='system' 字面 ✅
-> Owner: 战马C (主战) + 飞马 (spec) + 烈马 (验收)
+> Spec brief `ap-2-spec.md` (飞马 v0). Owner: 战马C 实施 / 飞马 review / 烈马 验收. v0 sweeper PR #525 已 merge (REG-AP2-001..006 全 🟢), 本 v1 batch 接 AP-2.UI capability bundle 抽象 (蓝图 §1.1 C 混合 + §1.3 A' 快速 bundle 无角色名).
+>
+> **AP-2 v1 范围**: capability bundle 客户端 UI 抽象 — `CAPABILITY_BUNDLES` const map 单源 (Workspace / Reader / Mention 三 bundle byte-identical 跟 AP-1 #493 14-capability 白名单跨层锁) + 一次 grant 多 capability (复用 AP-1 既有 PUT endpoint, 不开新) + 复用 AP-1 HasCapability gate (反 BundleHasCapability 平行) + admin god-mode 不挂 bundle UI. **0 server prod 候选** (跟 DM-9/CV-14/CHN-12/13/15/CS-1..4/RT-4/CM-5/DM-3 一系列同模式).
 
 ## 验收清单
 
-### AP-2.1 schema migration v=30 + sweeper goroutine
+### §1 行为不变量 (CAPABILITY_BUNDLES const SSOT + 一次 grant 多 capability)
 
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 1.1 `ALTER TABLE user_permissions ADD COLUMN revoked_at INTEGER NULL` (跟 AP-1.1 expires_at + AP-3 org_id ALTER ADD COLUMN NULL 同模式) + sparse `idx_user_permissions_revoked WHERE revoked_at IS NOT NULL` | unit | 战马C / 烈马 | `internal/migrations/ap_2_1_user_permissions_revoked_test.go::TestAP21_AddsRevokedAtColumn` + `TestAP21_HasRevokedAtIndex` (sparse WHERE byte-identical) |
-| 1.2 admin_actions CHECK enum 12-step rebuild: 5 项 → 6 项 (`'permission_expired'` 加, byte-identical 跟 sweeper actor='system' 路径) | unit | 战马C / 烈马 | `TestAP21_AdminActionsCHECKAcceptsPermissionExpired` + `TestAP21_AdminActionsRejectsUnknownAction` (反向断言 spec 外 reject) |
-| 1.3 `ExpiresSweeper{Store, Logger, Interval, Now}` struct + `Start(ctx)` goroutine 启动 (1h ticker, ctx-aware shutdown — 跟 AL-1b agent_status sweeper 同精神 nil-safe) | unit | 战马C / 烈马 | `internal/auth/expires_sweeper_test.go::TestAP21_StartCtxShutdown` (cancel context → goroutine 退出 ≤100ms) |
-| 1.4 `RunOnce(ctx) (count int, err error)` 同步入口 — 单次扫描 + revoke + audit 的 testable 入口 | unit | 战马C / 烈马 | `TestAP21_RunOnceFindsExpired` (insert 3 expired + 2 永久 grants → RunOnce returns count=3) + `TestAP21_RunOnceSoftDeletesNotRealDelete` (revoked_at 落库, row 仍 exists in table) |
-| 1.5 sweeper SQL forward-only — `UPDATE user_permissions SET revoked_at = expires_at WHERE expires_at IS NOT NULL AND expires_at < ? AND revoked_at IS NULL`; 不接 admin god-mode 触发, actor='system' 字面 | unit + reverse grep | 战马C / 烈马 | `TestAP21_RunOnceIdempotentSecondTick` (二次扫不再写入, count==0) + 反向 grep `DELETE FROM user_permissions\|s\.db.*Delete.*&UserPermission` 在 internal/auth/+internal/api/ count==0 |
-| 1.6 idempotent re-run guard (跟 AP-1.1 expires_at + AP-3 org_id ALTER 同模式 schema_migrations 框架守) + registry.go 字面锁 v=30 | unit | 战马C / 烈马 | `TestAP21_Idempotent` + `TestAP21_RegistryHasV30` |
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 1.1 `lib/capability-bundles.ts::CAPABILITY_BUNDLES` const map byte-identical 跟 AP-1 #493 capabilities.go 14 capability 白名单跨层锁 (字面 byte-identical, 改 = 改两处, 跟 BPP-2 7-op + DM-9 EmojiPreset + AP-4-enum 跨层锁同精神) | unit + grep | `TestAP2UI_BundleCapabilitiesByteIdentical` (各 bundle capability 字面跟 AP-1 capabilities.go 同源) PASS |
+| 1.2 一次 grant 多 capability — 用户 click bundle → client SPA 解开 capability list → 多次调既有 AP-1 PUT /api/v1/permissions endpoint (复用既有 grant path, 不开新, 反向 grep `POST /api/v1/bundles` 0 hit) | unit + integration | `TestAP2UI_BundleGrantsAllCapabilities` (1 click → N grants) + `TestAP2UI_NoNewGrantEndpoint` (反向 grep) PASS |
+| 1.3 复用 AP-1 #493 HasCapability gate (反 BundleHasCapability 平行实施) — bundle 内 capability 走 AP-1 ABAC SSOT, 反向 grep `BundleHasCapability\|HasBundle` 0 hit | grep | reverse grep test PASS |
 
-### AP-2.2 audit log 复用 admin_actions
+### §2 数据契约 (0 server prod + 反 hardcode bundle 漂)
 
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 2.1 sweeper revoke 时调 `Store.InsertAdminAction(actor='system', action='permission_expired', target=<grantee_user_id>, metadata=JSON{permission, scope, original_expires_at})` (复用 ADM-2.1 #484 既有 path) | unit | 战马C / 烈马 | `expires_sweeper_test.go::TestAP22_RevokeWritesAuditEntry` (RunOnce 后 admin_actions 表新增行 + actor / action / target_user_id 字面正确) |
-| 2.2 `auth.ReasonPermissionExpired = "permission_expired"` const 字面单源 (跟 AP-1 capabilities.go const + AP-3 ErrCodeCrossOrgDenied 同模式) + `auth.SystemActorID = "system"` const (跟 BPP-4 watchdog actor='system' 字面同源, 跨五 milestone 锁) | unit | 战马C / 烈马 | `TestAP22_ReasonConstByteIdentical` + `TestAP22_SystemActorByteIdentical` |
-| 2.3 audit metadata JSON shape — `{"permission":"...","scope":"...","original_expires_at":<int>}` 字面 byte-identical (反 hardcode JSON 字段名漂移) | unit | 战马C / 烈马 | `TestAP22_AuditPayloadShape` (RunOnce 后 metadata JSON 解析回 map 三 key 字面正确) |
-| 2.4 不另起 expires_audit 表 (反向 grep migrations 0 hit) | reverse grep | 烈马 | `TestAP22_ReverseGrep_NoSeparateAuditTable` (filepath.Walk count==0) |
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 2.1 0 server prod diff — `git diff main -- packages/server-go/` 0 行 + 反向 grep `bundle_name\|capability_bundle\|preset_bundle` 在 internal/ 0 hit (server 不识别 bundle, 蓝图 §1.1 字面承袭) | git diff + grep | `git diff main -- packages/server-go/` 0 行 + reverse grep test PASS |
+| 2.2 反 hardcode bundle 漂 — 反向 grep `'Workspace'\|'Reader'\|'Mention'` 在 client/src/components/ body 0 hit (走 const 单源) + 反 role name in bundle (反向 grep `'admin'\|'editor'\|'moderator'\|'role'` 在 CAPABILITY_BUNDLES const 0 hit, 蓝图 §1.3 A' 字面立场) | grep | reverse grep tests PASS |
 
-### AP-2.3 server full-flow integration + closure
+### §3 E2E (BundleSelector 4 case + content-lock 文案 byte-identical)
 
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 3.1 server-side full-flow — insert grant with `expires_at < now` → RunOnce → `revoked_at` 落库 + `admin_actions` 行写入 + 后续 `ListUserPermissions` 排除 revoked 行 + `HasCapability` 后续返 false (跟 AP-1 SSOT 同精神, 改 = 改 abac.go ListUserPermissions WHERE 一处) | http unit | 战马C / 烈马 | `internal/auth/expires_sweeper_test.go::TestAP23_FullFlow_GrantExpired_ThenRevokedThenHasCapabilityFalse` (insert / RunOnce / Get → revoked / HasCapability false) |
-| 3.2 反向 grep CI lint 等价单测 (5 grep pattern: DELETE / expires_audit / cron 框架 / admin god-mode / hardcode reason) | unit | 烈马 | `expires_sweeper_test.go::TestAP23_ReverseGrep_5Patterns_AllZeroHit` (filepath.Walk 5 pattern count==0) |
-| 3.3 closure: registry §3 REG-AP2-001..N + acceptance + PROGRESS [x] AP-2 + docs/current sync (server/auth.md §expires_sweeper + blueprint auth-permissions.md §5 字面对齐 — 解锁 "暂不业务化" 留账) | docs | 战马C / 烈马 | registry + PROGRESS + 4 件套全闭 |
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 3.1 `BundleSelector.test.tsx` 4 case (bundle click 展开 capability checkbox + 反向不自动 submit + 用户必显式 confirm + DOM `data-bundle-name` 锚) — 反约束: 不偷默认勾全部 (跟 DM-9 user 主权立场同精神, 蓝图 §1.3 B 主推 + bundle 是辅助 A') | vitest | 4 vitest case PASS |
+| 3.2 Playwright e2e — 用户 click "勾选 Workspace bundle" → 展开 3 capability (create_artifact / update_artifact / reply_in_thread) → 用户 confirm → server 收 3 PUT /api/v1/permissions 调用 (反向断 0 单一 bundle endpoint 调) | E2E | `packages/e2e/tests/ap-2-bundle.spec.ts` PASS (Playwright `--timeout=30000`) |
 
-## 不在本轮范围 (spec §4)
+### §4 closure (REG + admin god-mode + cov gate)
 
-- v2 admin/owner 主动 revoke UI (留 ADM-3+, server-side sweep + 错码已就位)
-- ABAC condition (time/ip) (留 v2+)
-- granular un-revoke v3+ (forward-only, 跟 AL-1 state_log 同精神)
-- multi-org user expires (留 v3+)
-- expires sweeper UI / 历史看 (走 ADM-2 既有 admin_actions 路径)
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 4.1 admin god-mode 不挂 bundle UI (admin 走 /admin-api/* 单独路径, ADM-0 §1.3 红线; 反向 grep `admin.*bundle\|/admin-api.*bundle` 0 hit) | CI grep | reverse grep test PASS |
+| 4.2 既有全包 unit + e2e + vitest 全绿不破 + post-#614 haystack gate 三轨过 (Func=50/Pkg=70/Total=85) | full test + CI | `pnpm exec vitest run --testTimeout=10000` 全 PASS + go-test-cov SUCCESS |
+| 4.3 4 件套全闭: spec brief + stance + acceptance + content-lock 不需 (server-only 反向 0 行 + client UI 文案 byte-identical 锁 CAPABILITY_BUNDLES const) | inspect | 文件存在 verify ≥3 件 |
+
+## REG-AP2-* (v0 #525 sweeper 已 🟢 / v1 UI bundle 待翻)
+
+- REG-AP2-001..006 🟢 (v0 PR #525 merged) — expires_at sweeper goroutine + admin_actions audit + cron interval
+
+**v1 新增** (待本 milestone PR 翻):
+- REG-AP2-007 ⚪ CAPABILITY_BUNDLES const SSOT byte-identical 跟 AP-1 capabilities.go 14 项跨层锁 + 反 hardcode bundle 漂 + 反 role name in bundle
+- REG-AP2-008 ⚪ 一次 grant 多 capability 复用 AP-1 PUT endpoint (不开新) + 复用 HasCapability gate (反 BundleHasCapability 平行) + admin god-mode 不挂 (ADM-0 §1.3) + BundleSelector 4 vitest + Playwright e2e + post-#614 haystack gate 三轨过
 
 ## 退出条件
 
-- AP-2.1 1.1-1.6 (schema ALTER + admin_actions CHECK 扩 + sweeper struct + RunOnce + forward-only SQL + idempotent) ✅
-- AP-2.2 2.1-2.4 (audit complaint + reason / actor const + JSON shape + 不另起表) ✅
-- AP-2.3 3.1-3.3 (full-flow + 反向 grep + closure) ✅
-- 现网回归不破: AP-1 / AP-3 路径零变 (revoked_at NULL = 永久, 跟 expires_at NULL 同精神; ListUserPermissions WHERE revoked_at IS NULL 排除新行)
-- REG-AP2-001..N 落 registry + 5 反约束 grep 全 count==0
-- 4 件套全闭 (spec ✅ + stance ✅ + acceptance ✅ + content-lock 不需要 server-only)
+- §1 (3) + §2 (2) + §3 (2) + §4 (3) 全绿 — 一票否决
+- 0 server prod (`git diff main -- packages/server-go/` 0 行)
+- CAPABILITY_BUNDLES const SSOT 跟 AP-1 14-capability 白名单 byte-identical
+- 一次 grant 多 capability 复用 AP-1 既有 PUT endpoint (反 POST /api/v1/bundles)
+- 反 hardcode bundle 漂 + 反 role name in bundle (反向 grep 0 hit)
+- BundleSelector 4 vitest + Playwright e2e PASS
+- 既有全包 unit + e2e + vitest 全绿不破 + post-#614 haystack gate 三轨过
+- 反 admin god-mode bundle UI (ADM-0 §1.3)
+- 登记 REG-AP2-007..008 (v0 001..006 已 🟢)
 
 ## 更新日志
 
-- 2026-04-29 — 战马C v0 acceptance template (4 件套第二件): 3 段实施 (1.1-1.6 / 2.1-2.4 / 3.1-3.3) + 5 不在范围 + 6 项退出条件. 联签 AP-2.1/.2/.3 三段同 branch 同 PR (一 milestone 一 PR 协议默认 1 PR, 跟 AP-3 #521 / CV-2 v2 #517 同模式).
+| 日期 | 作者 | 变化 |
+|---|---|---|
+| 2026-04-29 | 战马C | v0 — sweeper acceptance (REG-AP2-001..006 全 🟢, PR #525 merged). |
+| 2026-05-01 | 烈马 | v1 — 扩 4 段验收覆盖 AP-2.UI capability bundle 抽象 (蓝图 §1.1 C 混合 + §1.3 A'). REG-AP2-007..008 ⚪ 占号. 立场承袭 AP-1 #493 14-capability 白名单跨层锁 + DM-9 EmojiPreset / AP-4-enum / DL-2 mustPersistKinds const SSOT 同精神 + ADM-0 §1.3 admin god-mode 红线 + post-#614 haystack gate. **0 server prod 候选** (跟 CV-9..14 / DM-5/6/9..12 / CHN-11..15 / CS-1..4 / RT-4 / CM-5 / DM-3 同模式). |
