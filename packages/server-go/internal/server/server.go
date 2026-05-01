@@ -410,6 +410,10 @@ func (s *Server) SetupRoutes() {
 	adm2Handler := &api.AdminEndpointsHandler{Store: s.store, Logger: s.logger}
 	adm2Handler.RegisterUserRoutes(s.mux, authMw)
 	adm2Handler.RegisterAdminRoutes(s.mux, adminMw)
+	// ADM-3 multi-source audit 合并查询 (admin-rail only, ADM-0 §1.3 红线).
+	// 4 source UNION ALL: server (audit_events) / plugin (audit_events kind=plugin.*) /
+	// host_bridge (HB-1 placeholder) / agent (DL-2 channel_events + global_events).
+	(&api.AdminAuditMultiSourceHandler{Store: s.store, Logger: s.logger}).RegisterAdminRoutes(s.mux, adminMw)
 	// DM-7 message edit history — sender-only user-rail GET + admin readonly
 	// admin-rail GET (admin god-mode 不挂 PATCH/DELETE — ADM-0 §1.3 红线).
 	dm7EditHistoryHandler := &api.MessageEditHistoryHandler{Store: s.store, Logger: s.logger}

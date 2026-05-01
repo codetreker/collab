@@ -1,91 +1,104 @@
-# ADM-3 admin_actions → audit_events 重命名 — spec brief (飞马 v0)
+# ADM-3 spec brief — multi-source audit 合并查询 + source enum 4 类 (≤80 行) [v1 推断 scope]
 
-> 飞马 · 2026-04-30 · ≤80 行 · BPP-8 #532 名实不符 follow-up
-> 关联: ADM-2 #484 admin_actions 表 / BPP-8 #532 5 plugin lifecycle 事件 → admin_actions / Phase 4 batch1 audit (`docs/qa/phase-4-review-batch1.md` §2.2) / ADM-0 §1.3 红线
-> Owner: 战马待派 (主战) + 飞马 spec 协作
+> 飞马 · 2026-05-01 · 用户拍板待 PR review (推断 scope: 来源 C 混合 = multi-source audit 合并查询) · zhanma 主战 + 飞马 review
+> **关联**: ADM-2 #484 ✅ admin_actions table · ADM-3 rename #586 ✅ admin_actions→audit_events · BPP-8 #532 ✅ plugin lifecycle audit · HB-1 #491 ✅ install-butler audit · DL-2 #615 ✅ events 双流 · ADM-0 §1.3 admin god-mode 红线
+> **命名**: ADM-3 = admin 第三件 (multi-source audit 合并); 跟 #586 rename milestone 同等级但不同 scope (本 v1 是 query 层合并, #586 是 schema rename)
 
----
+> ⚠️ 推断 scope (PROGRESS [ ] **ADM-3** 来源 C 混合一句话, 用户无明确细则) — 本 spec v1 按 (a) multi-source audit 合并查询 写, PR review 用户拍板再调.
+> ⚠️ Server-side query layer + admin UI milestone — **0 schema 改 / 0 endpoint URL 改 / 0 user-facing API 行为改** (复用 #586 audit_events 表 + DL-2 channel_events / global_events).
 
-## 0. 立场 (3 项)
+## 0. 关键约束 (3 条立场)
 
-### 立场 ① — 表名改 `audit_events` (audit-forward-only 单表跨所有 actor type)
-- 现状: `admin_actions` 既装 admin events (actor=human admin) 又装 plugin lifecycle events (actor=`LifecycleSystemActor` 常量, BPP-8). 名实不符.
-- 目标: RENAME TABLE → `audit_events`, 语义统一为 "全 audit-forward-only 单表, 任意 actor type".
-- **数据迁移 0 行** — SQLite RENAME 是元数据操作, 0 拷贝.
+1. **复用既有 4 源 audit 表 + DL-2 events_archive byte-identical 不破** (跨 audit 链锁定): 4 来源 enum SSOT:
+   - `server` — `audit_events` (#586 rename 后, ADM-2 既有, server-side action audit)
+   - `plugin` — `audit_events` source='plugin' (BPP-8 #532 lifecycle)
+   - `host_bridge` — install-butler audit log (HB-1 #491 5-field SSOT) + HB-2 v0(D) 真 IO audit
+   - `agent` — DL-2 #615 channel_events / global_events (agent.state 等必落 kind)
+   
+   反约束: 反向 grep 4 source enum const SSOT count==4 hit (跟 reasons.IsValid #496 / NAMING-1 enum 模式承袭) + audit_events / channel_events / global_events / hb-1 audit 表 schema 不动 (0 column add / 0 migration v 号).
 
-### 立场 ② — alias view `admin_actions` 保 backward compat
-- `CREATE VIEW admin_actions AS SELECT * FROM audit_events WHERE actor_kind = 'admin'` (或不带 WHERE 全直通, 看 ADM-2 既有读路径)
-- 战马原代码 0 改 (InsertAdminAction / GetAdminActionsByTarget 等查 view 跟查 table 一样)
-- 后续 milestone 渐进迁移到 `audit_events` 直接调用, view 留 deprecated 至 Phase 5+
+2. **multi-source 合并查询 SSOT + admin UI source enum 4 类 + admin god-mode 永久独立**:
+   - **server query helper SSOT**: `internal/api/admin_audit_query.go` 新 (~120 行) — `MultiSourceAuditQuery(ctx, filter)` UNION ALL across 4 source tables + 统一 ResponseShape (source enum 4 类标识 + ts + actor + action + payload), 走 admin /admin-api/audit/multi-source endpoint **(NEW endpoint OK, 走 admin god-mode 独立 ACL, 跟 ADM-0 §1.3 红线 byte-identical 不破)**
+   - **client admin UI**: `packages/client/src/components/admin/MultiSourceAuditView.tsx` 新 (~80 行) — source enum 4 类 filter dropdown + table view 走 capabilityLabel-style i18n (跟 AP-2 风格承袭)
+   - **admin god-mode 路径独立**: 仅 `/admin-api/audit/multi-source` 暴露, **不挂 user-rail**, 反向 grep `/api/v1/audit/multi-source` 0 hit (ADM-0 §1.3 红线)
+   - 反约束: 反向 grep `auditSource` enum 4 const SSOT count==4 hit + admin /admin-api/audit/multi-source endpoint 在 user-rail handler 0 hit + UNION ALL 跨 4 表查询单源.
 
-### 立场 ③ — ADM-0 §1.3 红线字面扩展
-- 红线原: "admin god-mode 不入业务路径"
-- 扩展: "audit-forward-only 单表 = 全 actor type (admin / system / plugin lifecycle / 未来类型), forward-only 不可 DELETE/UPDATE, admin 仍走 /admin-api/* 单独路径"
-- 立场写进 ADM-0 §1.3 (本 spec 不改蓝图, 实施 PR 顺手改)
+3. **0 schema / 0 column add / 0 migration v 号 + admin god-mode 独立 ACL** (ADM-3 立场, 跟 INFRA-3/4 / REFACTOR-1/2 / NAMING-1 / RT-3 / DL-2/3 / HB-2 v0(D) / AP-2 系列承袭): PR diff 仅 (a) `internal/api/admin_audit_query.go` 新 query helper (b) `internal/api/admin_audit_query_test.go` ~10 unit (4 source × 2 case + filter + UNION) (c) `MultiSourceAuditView.tsx` client (d) i18n 4 source label (跟 AP-2 capability 同模式) (e) admin /admin-api/audit/multi-source endpoint route. 反约束: 0 schema column 改 + 0 migration v 号 + 0 user-rail endpoint 加 (仅 admin /admin-api/* 加).
 
----
+## 1. 拆段实施 (3 段, 一 milestone 一 PR)
 
-## 1. 文件清单 (≤6 文件, 拆 3 段)
+| 段 | 范围 |
+|---|---|
+| **ADM3.1 server query helper + admin endpoint** | `internal/api/admin_audit_query.go` 新 ~120 行 (MultiSourceAuditQuery + 4 source UNION ALL + ResponseShape SSOT) + admin /admin-api/audit/multi-source 新 endpoint + admin ACL gate (走 ADM-2 既有 admin auth middleware byte-identical) + ~10 unit test |
+| **ADM3.2 client admin UI** | `packages/client/src/components/admin/MultiSourceAuditView.tsx` 新 ~80 行 + source enum 4 类 i18n key (admin/audit-sources.ts SSOT 跟 AP-2 capability i18n 模式承袭) + vitest ~6 case (4 source render + filter + admin path 独立 + 反 user-rail 漂) |
+| **ADM3.3 closure** | REG-ADM3-001..008 (8 反向 grep + 4 source enum SSOT + 4 既有 audit 表 schema 不动 + admin god-mode 独立 + UNION 查询单源 + 0 user-rail endpoint + haystack 三轨过 + 既有 test 全 PASS) + acceptance + content-lock §1+§2 (4 source enum 字面 + i18n 4 key 锁) + 4 件套 |
 
-| 段 | 文件 | 范围 |
-|---|---|---|
-| 1 schema migration | `internal/migrations/00XX_adm_3_audit_events_rename.go` (v=43) | `ALTER TABLE admin_actions RENAME TO audit_events` + `CREATE VIEW admin_actions AS SELECT * FROM audit_events` |
-| 1 schema test | `..._test.go` | RENAME 后 view 可读 + audit_events 可写 + idempotent migration |
-| 2 store query 改名 | `internal/store/admin_actions.go` | 函数名留 `InsertAdminAction` / `GetAdminActionsByTarget` (backward compat) 但 SQL 改查 `audit_events` 直接 |
-| 2 store BPP-8 query | `internal/store/bpp_lifecycle_audit.go` (#532 既有) | 同上, 改查 `audit_events` 直接 |
-| 3 docs/current sync | `docs/current/server/data-model.md` + `migrations.md §8.X v=43` | 表名 `audit_events` + view `admin_actions` (deprecated) |
-| 3 acceptance template | `docs/qa/acceptance-templates/adm-3.md` (烈马) | 5 反约束 grep + REG-ADM3-001..005 占号 |
-
----
-
-## 2. 反约束 (5 grep, count==0)
+## 2. 反向 grep 锚 (8 反约束)
 
 ```bash
-# 1) production 路径继续用 admin_actions 函数名 (alias compat)
-git grep -nE 'InsertAdminAction|GetAdminActionsByTarget' packages/server-go/internal/   # ≥1 hit (compat 期不删函数名)
+# 1) 4 source enum SSOT 单源 (反 inline 字面漂)
+grep -rcE 'AuditSourceServer|AuditSourcePlugin|AuditSourceHostBridge|AuditSourceAgent' packages/server-go/internal/api/admin_audit_query.go  # ==4 hit
 
-# 2) DELETE/UPDATE on audit_events (forward-only 锁)
-git grep -nE 'DELETE FROM audit_events|UPDATE audit_events' packages/server-go/internal/   # 0 hit
+# 2) 既有 4 audit 表 schema byte-identical 不破
+git diff origin/main -- packages/server-go/internal/migrations/ | grep -cE '^\+\s*Version:|^\+.*ALTER TABLE.*audit'  # 0 hit
 
-# 3) audit_events 不直接挂 admin god-mode endpoint
-git grep -nE '/admin-api.*audit_events|admin.*god.*audit_events' packages/server-go/internal/api/   # 0 hit
+# 3) admin god-mode 独立 (ADM-0 §1.3 红线)
+grep -rE '/api/v1/audit/multi-source|user-rail.*multi-source' packages/server-go/internal/api/  # 0 hit (仅 /admin-api/audit/multi-source)
+grep -rE '/admin-api/audit/multi-source' packages/server-go/internal/server/server.go  # ==1 hit (admin route 单源)
 
-# 4) view admin_actions 不写 (read-only alias)
-git grep -nE 'INSERT INTO admin_actions' packages/server-go/internal/   # 0 hit (RENAME 后写都走 audit_events table)
+# 4) UNION ALL 跨 4 表查询单源
+grep -rcE 'UNION ALL' packages/server-go/internal/api/admin_audit_query.go  # ≥3 hit (4 表 UNION 至少 3 个 UNION ALL)
+grep -rE 'audit_events|channel_events|global_events|install_butler_audit' packages/server-go/internal/api/admin_audit_query.go  | wc -l  # ≥4 hit (4 source 表名)
 
-# 5) actor_kind 字段值字面散落 (走 const)
-git grep -nE '"admin"|"plugin_system"|"system"' packages/server-go/internal/store/audit_events.go   # 0 hit (走 const)
+# 5) admin auth middleware 复用 (ADM-2 既有)
+grep -rE 'AdminFromContext|adminAuth' packages/server-go/internal/api/admin_audit_query.go  # ≥1 hit (admin gate 真守)
+
+# 6) DL-2 #615 mustPersistKinds 不破 (agent source 走 DL-2 cold consumer)
+git diff origin/main -- packages/server-go/internal/datalayer/must_persist_kinds.go | grep -cE '^[-+]'  # 0 hit
+
+# 7) i18n 4 source key SSOT (跟 AP-2 capability i18n 模式)
+grep -cE 'audit\.source\.server|audit\.source\.plugin|audit\.source\.host_bridge|audit\.source\.agent' packages/client/src/i18n/  # ≥4 hit per 语言
+
+# 8) haystack gate 三轨 + 既有 test
+THRESHOLD_FUNC=50 THRESHOLD_PACKAGE=70 THRESHOLD_TOTAL=85 BUILD_TAGS="sqlite_fts5" go run ./scripts/lib/coverage/  # ALL ≥阈值
+go test -tags 'sqlite_fts5' -timeout=300s ./... && pnpm vitest run --testTimeout=10000  # ALL PASS
 ```
-
----
 
 ## 3. 不在范围 (留账)
 
-- `audit_events` 字段重设计 (e.g., 加 `severity` / `event_version` / 拆 metadata JSON) — v3+
-- 旧 `InsertAdminAction` / `GetAdminActionsByTarget` 函数名重命名为 `InsertAuditEvent` 等 — Phase 5+ 渐进迁移 (本 PR 仅 SQL 切表名)
-- view `admin_actions` 删除时机 — 留 Phase 5+ deprecation announcement
-- BPP-8 5 plugin lifecycle 事件继续用既有路径不动
-
----
+- ❌ **新 schema audit 表合并** — 0 schema 立场, 走 UNION ALL query 层合并
+- ❌ **跨 source 反向追溯链** (e.g. agent action → host_bridge syscall trace) — 留 v3+
+- ❌ **audit FTS 搜索** — 留 v3+ (本 v1 走 LIKE 简单 filter)
+- ❌ **audit retention 跨 source 统一** — 走 DL-2 #615 既有 retention sweeper per-source 既有阈值, 不强制统一
+- ❌ **user-rail audit feed (per-user 隐私视图)** — 永久不挂 (ADM-0 §1.3 红线 + 蓝图 §3.4 必落 kind 跟 user feed 不同 concern)
+- ❌ **audit_events external export** (Splunk/Datadog) — 留 v2+ (跟 DL-3 #618 Prometheus 留账同精神)
 
 ## 4. 跨 milestone byte-identical 锁
 
-- 复用 audit-forward-only 链 (ADM-2.1 #484 + AP-2 + BPP-4 #499 + BPP-7 + BPP-8 #532 + HB-3 v2 + AL-7 + AL-8 + HB-5 + CHN-5) — 全部 audit 表共享 forward-only 立场
-- `LifecycleSystemActor` const (BPP-8 #532 引入) 跟 `AdminActor` const (ADM-2 #484) 同精神, 都进 `audit_events.actor_kind`
-- ADM-0 §1.3 红线扩展: admin path 不变 (/admin-api/*), 业务 audit query 走 audit_events table 直接
+- 复用 ADM-2 #484 + ADM-3 rename #586 audit_events 表 schema (字面不动)
+- 复用 BPP-8 #532 plugin lifecycle audit (source='plugin')
+- 复用 HB-1 #491 install-butler audit log 5-field SSOT (source='host_bridge')
+- 复用 DL-2 #615 channel_events / global_events + mustPersistKinds (source='agent')
+- 复用 ADM-2 既有 admin auth middleware (admin god-mode 路径独立)
+- 复用 NAMING-1 #614 命名规范 + AP-4-enum #591 enum SSOT 模式
+- 复用 AP-2 (并行) capability i18n SSOT 模式 (audit source 4 类 i18n 同精神)
+- 0-schema-改 wrapper 决策树**变体**: 跟 RT-3 / DL-2/3 / HB-2 v0(D) / AP-2 同源
 
----
+## 5. 派活 + 双签 + 飞马自审
 
-## 5. 验收挂钩
+派 **zhanma-c** (DL-2 #615 / DL-3 主战熟手, audit / events 域续作). 飞马 review.
 
-- REG-ADM3-001..005 (5 反约束 grep + view backward compat 单测)
-- 既有 ADM-2 / BPP-8 unit tests 全 PASS (alias view 不破现有 read 路径)
-- Phase 4 batch1 audit §2.2 drift 闭
+✅ **APPROVED with 3 必修条件**:
+🟡 必修-1: scope 推断 (multi-source audit 合并), PR body 必明示"等用户拍板再调"
+🟡 必修-2: 4 既有 audit 表 schema byte-identical 不破 (反约束 grep #2 真守)
+🟡 必修-3: admin god-mode 独立 (反约束 grep #3 真守, 仅 /admin-api/audit/multi-source 暴露, user-rail 0 hit)
 
----
+担忧 (1 项, 中度): UNION ALL 跨 4 表性能 — v1 阈值哨 (DL-3 #618 events_row_count) 触发后人工决策切 (留 v2+ index hint 调优), 本 v1 简单 LIMIT 100 + ORDER BY ts DESC 即够.
 
-## 6. 更新日志
+**ROI 拍**: ADM-3 ⭐⭐ — multi-source audit 合并 + admin 视图统一, 跨 4 audit 链 (ADM-2/BPP-8/HB-1/DL-2) 真接, 后续 admin 操作 trace 解锁基座.
+
+## 7. 更新日志
 
 | 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 飞马 | v0 spec brief — admin_actions → audit_events RENAME (元数据 0 数据迁移) + alias view backward compat. 3 立场 + 5 反约束 grep + ≤6 文件 (拆 schema/store/docs 3 段). v=43 sequencing (紧 BPP-8 #532 v=42 后). 跟 Phase 4 batch1 audit §2.2 drift 闭. zhanma 待派主战, 飞马 spec 协作. |
+|---|---|---|
+| 2026-05-01 | 飞马 | v1 spec brief 重写 — ADM-3 multi-source audit 合并查询 + source enum 4 类 (推断 scope, 用户拍板待 PR review). 替前 91 行 admin_actions→audit_events rename stale spec (#586 已 merged). 3 立场 + 3 段拆 + 8 反向 grep + 3 必修. 留账: schema 合并 / 跨 source 追溯 / FTS / retention 统一 / user-rail feed / external export. zhanma-c 主战 + 飞马 ✅ APPROVED. teamlead 唯一开 PR. 跟 AP-2 并行不撞. |

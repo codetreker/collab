@@ -28,7 +28,7 @@
 
 ## In-flight 当前状态 (≤10 行)
 
-- (none — DL-3 ✅ 落 phase-4.md, 等下一 milestone)
+- (none — ADM-3 v1 multi-source ✅ 落 phase-4.md, 等下一 milestone)
 
 ---
 
