@@ -17,7 +17,7 @@ import (
 func TestDeleteSession_AndForAdmin(t *testing.T) {
 	t.Parallel()
 	db := openMigratedDB(t)
-	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10)); err != nil {
+	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10), ""); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	a, err := admin.FindByLogin(db, "root")
@@ -57,7 +57,7 @@ func TestDeleteSession_AndForAdmin(t *testing.T) {
 func TestHandleLogout(t *testing.T) {
 	t.Parallel()
 	db := openMigratedDB(t)
-	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10)); err != nil {
+	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10), ""); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	mux := http.NewServeMux()
@@ -93,7 +93,7 @@ func TestHandleLogout(t *testing.T) {
 func TestHandleMe(t *testing.T) {
 	t.Parallel()
 	db := openMigratedDB(t)
-	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10)); err != nil {
+	if err := admin.BootstrapWith(db, "root", hashAt(t, "pw", 10), ""); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	mux := http.NewServeMux()

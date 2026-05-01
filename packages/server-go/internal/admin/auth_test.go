@@ -18,7 +18,7 @@ func newLoginServer(t *testing.T) (*httptest.Server, string) {
 	t.Helper()
 	db := openMigratedDB(t)
 	plain := "correct-horse"
-	if err := admin.BootstrapWith(db, "root", hashAt(t, plain, 10)); err != nil {
+	if err := admin.BootstrapWith(db, "root", hashAt(t, plain, 10), ""); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	mux := http.NewServeMux()
