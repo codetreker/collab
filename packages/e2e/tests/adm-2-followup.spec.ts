@@ -46,7 +46,7 @@ async function adminLoginCookie(serverURL: string): Promise<string> {
   });
   expect(res.ok(), `admin login: ${res.status()}`).toBe(true);
   const state = await ctx.storageState();
-  const adminCookie = state.cookies.find((c) => c.name === 'borgee_admin_token');
+  const adminCookie = state.cookies.find((c) => c.name === 'borgee_admin_session');
   expect(adminCookie, 'admin cookie missing after login').toBeTruthy();
   return adminCookie!.value;
 }
@@ -55,7 +55,7 @@ async function attachAdminCookie(ctx: BrowserContext, token: string): Promise<vo
   const url = new URL(clientURL());
   await ctx.addCookies([
     {
-      name: 'borgee_admin_token',
+      name: 'borgee_admin_session',
       value: token,
       domain: url.hostname,
       path: '/',
