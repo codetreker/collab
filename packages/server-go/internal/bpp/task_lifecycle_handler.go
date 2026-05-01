@@ -60,6 +60,23 @@ type AgentTaskPusher interface {
 	) (cursor int64, sent bool)
 }
 
+// ChannelMemberFetcher returns user_ids of members for a channel.
+// WIRE-1 wire-3 — fan-out target for AgentTaskNotifier push (DL-4 ws +
+// service worker push 双轨 fanout, Hub.PushAgentTaskStateChanged 已走 ws,
+// notifier 补 mobile background push).
+type ChannelMemberFetcher interface {
+	ListChannelMemberUserIDs(channelID string) ([]string, error)
+}
+
+// AgentTaskPushNotifier is the test seam for push.AgentTaskNotifier.
+// Wraps NotifyAgentTask call (returns attempts count, observability only).
+//
+// 立场 ② thinking subject 必带非空 (busy 态), reason 透传 (idle+failed
+// 时 AL-1a 6-dict, 反字典污染).
+type AgentTaskPushNotifier interface {
+	NotifyAgentTask(targetUserID, agentID, state, subject, reason string, changedAt int64) int
+}
+
 // TaskLifecycleHandler routes plugin-upstream task_started /
 // task_finished frames through ValidateTask* SSOT and then fans out
 // AgentTaskStateChangedFrame via the AgentTaskPusher seam.
@@ -67,9 +84,14 @@ type AgentTaskPusher interface {
 // Construction is pure — no boot-time side effects. server.go wires
 // instances + registers Started/FinishedAdapter() returns onto the
 // PluginFrameDispatcher boundary (BPP-3 #489).
+//
+// WIRE-1 wire-3: members + notifier 可 nil (production 真注入 ListChannelMembers
+// + push.NewAgentTaskNotifier; test path 仅传 pusher 不破). Nil-safe fanout.
 type TaskLifecycleHandler struct {
-	pusher AgentTaskPusher
-	logger *slog.Logger
+	pusher   AgentTaskPusher
+	members  ChannelMemberFetcher  // nil-safe: 跳 push fanout
+	notifier AgentTaskPushNotifier // nil-safe: 跳 push 调用
+	logger   *slog.Logger
 }
 
 // NewTaskLifecycleHandler constructs the RT-3 server-side derived
@@ -79,6 +101,16 @@ func NewTaskLifecycleHandler(pusher AgentTaskPusher, logger *slog.Logger) *TaskL
 		panic("bpp: NewTaskLifecycleHandler pusher must not be nil")
 	}
 	return &TaskLifecycleHandler{pusher: pusher, logger: logger}
+}
+
+// SetPushFanout wires WIRE-1 wire-3 push fanout (RT-3 AgentTaskNotifier 真接
+// DL-4 push gateway). members + notifier 任一 nil → 跳 fanout (反 leak).
+//
+// 反约束: 不在 NewTaskLifecycleHandler 加 4 参数 — 保持 BPP-3 既有 wire 模式
+// byte-identical (战马 review 友好); 走 setter 加 wire-up 步骤透明.
+func (h *TaskLifecycleHandler) SetPushFanout(members ChannelMemberFetcher, notifier AgentTaskPushNotifier) {
+	h.members = members
+	h.notifier = notifier
 }
 
 // StartedAdapter returns the BPP-3 FrameDispatcher for task_started.
@@ -111,6 +143,9 @@ func (h *TaskLifecycleHandler) HandleStarted(frame TaskStartedFrame) error {
 		"",
 		frame.StartedAt,
 	)
+	// WIRE-1 wire-3 — DL-4 push gateway fanout 真接 (mobile background).
+	// nil-safe: members 或 notifier 任一 nil 跳 fanout (test path).
+	h.fanoutPush(frame.AgentID, frame.ChannelID, "busy", frame.Subject, "", frame.StartedAt)
 	return nil
 }
 
@@ -132,7 +167,35 @@ func (h *TaskLifecycleHandler) HandleFinished(frame TaskFinishedFrame) error {
 		frame.Reason,
 		frame.FinishedAt,
 	)
+	h.fanoutPush(frame.AgentID, frame.ChannelID, "idle", "", frame.Reason, frame.FinishedAt)
 	return nil
+}
+
+// fanoutPush invokes AgentTaskNotifier per channel member for mobile
+// background push (DL-4 #485 push gateway). nil-safe: members 或 notifier
+// 任一 nil → 跳 (反 leak / 反 boot panic).
+//
+// 立场: hub.PushAgentTaskStateChanged 走 ws live conn (前台 client),
+// notifier 走 service worker push (后台 mobile / closed tab). 双轨 fanout
+// 跟 DL-4.6 mention 同模式承袭.
+func (h *TaskLifecycleHandler) fanoutPush(agentID, channelID, state, subject, reason string, ts int64) {
+	if h.members == nil || h.notifier == nil {
+		return
+	}
+	userIDs, err := h.members.ListChannelMemberUserIDs(channelID)
+	if err != nil {
+		if h.logger != nil {
+			h.logger.Warn("rt3.task_push_fanout_members_err",
+				"channel_id", channelID, "error", err)
+		}
+		return
+	}
+	for _, uid := range userIDs {
+		if uid == "" || uid == agentID {
+			continue // 跳 agent 自己 (反 self-push) + 空字符串
+		}
+		_ = h.notifier.NotifyAgentTask(uid, agentID, state, subject, reason, ts)
+	}
 }
 
 // taskStartedAdapter implements FrameDispatcher for task_started.

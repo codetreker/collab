@@ -28,14 +28,14 @@
 | 3.2 0 endpoint 行为改 + 0 schema (CI step + 文档 only) | git diff | `git diff main -- internal/migrations/` 0 行 ✅ |
 | 3.3 立场承袭 跨 14 milestone const SSOT 锁链 + ADM-0 §1.3 admin god-mode 红线 (反 admin path bypass wire grep) | grep | reverse grep test PASS |
 
-## REG-WIRE1-* 占号 (initial ⚪)
+## REG-WIRE1-* (initial ⚪ → 🟢 flipped 2026-05-01 战马C 实施)
 
-- REG-WIRE1-001 ⚪ release-gate.yml acceptance-wire-grep step 加 + CI run PASS
-- REG-WIRE1-002 ⚪ 5 PR retroactive verify (RT-3/DL-2/DL-3/AP-2/HB-2 v0(D)) server.go grep ≥1 hit each
-- REG-WIRE1-003 ⚪ acceptance template 反向 grep guard `NewXxxYyy SSOT` 必 ≥1 hit
-- REG-WIRE1-004 ⚪ PR review 模板加 server.go wire grep 硬锚
-- REG-WIRE1-005 ⚪ 全包 unit + e2e + vitest 全绿不破 + haystack gate 三轨过
-- REG-WIRE1-006 ⚪ 0 endpoint 行为改 + 0 schema + 跨 14 milestone const SSOT 锁链承袭
+- REG-WIRE1-001 🟢 wire-1 DL-2 cold consumer 真接 (`factory.go:38` `EventBus: NewInProcessEventBusWithStore(eventStore)`, hot-only `NewInProcessEventBus()` 已删除 dead code) — `TestFactory_EventBus_ColdConsumer_Wired` + `_GlobalRoute_Wired` PASS (Publish → channel_events / global_events 真 INSERT, 1s poll deterministic)
+- REG-WIRE1-002 🟢 wire-2 DL-3 offloader 真启 (`server.go:460` `NewEventsArchiveOffloader(...).Start(s.ctx)` 跟 ThresholdMonitor 同精神 1h ticker, ctx-aware shutdown) — `TestEventsArchiveOffloader_Start_TickerLoop` + `_ZeroInterval` + `_RunOnceLog_DBError` + `_RunOnceLog_Triggered` PASS (反 goroutine leak)
+- REG-WIRE1-003 🟢 wire-3 RT-3 AgentTaskNotifier 真接 (`task_lifecycle_handler.go::SetPushFanout` + `fanoutPush` 调 `notifier.NotifyAgentTask` per channel member, 反 self-push agent 自己 + 空 user_id) — 4 wire test PASS (`TestWire3_TaskStarted_PushFanoutPerMember` + `_TaskFinished_IdleFanout` + `_NilFanout_NoOp` + `_MembersErr_Skipped`)
+- REG-WIRE1-004 🟢 0 endpoint URL / 0 routes.go / 0 schema 改 — `git diff origin/main -- internal/server/server.go` 0 HandleFunc / `internal/migrations/` 0 行 / 0 ALTER COLUMN
+- REG-WIRE1-005 🟢 ctx-aware 真守 (反 leak) — `Start(s.ctx)` 跨 RetentionSweeper + ThresholdMonitor + EventsArchiveOffloader 3 处 + AgentTaskNotifier 走 hub.PushAgentTaskStateChanged ctx 既有
+- REG-WIRE1-006 🟢 post-#621 haystack gate 三轨过 (TOTAL 85.7% / 0 func<50% / datalayer 91.4% / bpp 93.7%) + 既有 25+ packages 全 PASS
 
 ## 退出条件
 

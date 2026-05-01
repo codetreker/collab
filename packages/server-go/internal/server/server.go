@@ -82,7 +82,7 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger, s *store.
 
 	// DL-1.2: wire the SSOT 4-interface bundle (Storage / Presence / EventBus
 	// / 3 Repository). v1 wraps existing store + presence byte-identical.
-	dl := datalayer.NewDataLayer(s, presenceTracker)
+	dl := datalayer.NewDataLayer(s, presenceTracker, logger)
 
 	srv := &Server{
 		cfg:          cfg,
@@ -142,6 +142,19 @@ func New(ctx context.Context, cfg *config.Config, logger *slog.Logger, s *store.
 	// 全 ValidateTask* SSOT 守门 (BPP-2.2 #485 task_lifecycle.go 同源).
 	taskLifecycleHandler := bpp.NewTaskLifecycleHandler(
 		&hubAgentTaskPusherAdapter{hub: hub}, logger)
+	// WIRE-1 wire-3 — DL-4 push gateway fanout (mobile background) via
+	// AgentTaskNotifier. members fetch 走 store.ListChannelMembers, notifier
+	// 走 push.NewAgentTaskNotifier wrap pushGW. nil-safe (pushGW noop 时
+	// notifier nil → fanout 跳).
+	pushGWForTask, errPush := push.NewGateway(s, logger)
+	if errPush != nil {
+		pushGWForTask = push.NewNoopGateway(logger)
+	}
+	agentTaskNotifier := push.NewAgentTaskNotifier(pushGWForTask)
+	taskLifecycleHandler.SetPushFanout(
+		&channelMemberFetcherAdapter{store: s},
+		agentTaskNotifier,
+	)
 	pfd.Register(bpp.FrameTypeBPPTaskStarted, taskLifecycleHandler.StartedAdapter())
 	pfd.Register(bpp.FrameTypeBPPTaskFinished, taskLifecycleHandler.FinishedAdapter())
 
@@ -458,6 +471,11 @@ func (s *Server) SetupRoutes() {
 	// shutdown (蓝图 data-layer.md §5). 反 admin god-mode endpoint
 	// (ADM-0 §1.3 红线): 仅 slog stdout, 不挂 /admin-api/threshold.
 	datalayer.NewThresholdMonitor(s.store.DB(), s.logger, time.Hour).Start(s.ctx)
+	// WIRE-1 §1 wire-2 — DL-3 cold archive offloader 真启 (跟 ThresholdMonitor
+	// 同精神 ctx-aware Start). 1h ticker, threshold/cutoffAge/archiveDir 走
+	// default (1M rows / 30d / ./data). audit "events.archive_offload" 走
+	// dl.EventBus (DL-2 cold consumer 必落 kind).
+	datalayer.NewEventsArchiveOffloader(s.store.DB(), s.dl.EventBus, s.logger, "", 0, 0, time.Hour).Start(s.ctx)
 	// Note: AdminHandler.RegisterAppRoutes (the legacy /api/v1/admin/* user-rail
 	// god-mode mount) is intentionally NOT wired — review checklist §ADM-0.2 §1
 	// 反向断言 2.B (user cookie 调 admin endpoints 必须 401).
@@ -845,4 +863,23 @@ func (a *hubAgentTaskPusherAdapter) PushAgentTaskStateChanged(
 	agentID, channelID, state, subject, reason string, changedAt int64,
 ) (int64, bool) {
 	return a.hub.PushAgentTaskStateChanged(agentID, channelID, state, subject, reason, changedAt)
+}
+
+// channelMemberFetcherAdapter wires *store.Store.ListChannelMembers into
+// the bpp.ChannelMemberFetcher interface (WIRE-1 wire-3 — RT-3 push fanout
+// 跨 bpp ↛ store 包边界). Returns user_ids slice for the given channel.
+type channelMemberFetcherAdapter struct {
+	store *store.Store
+}
+
+func (a *channelMemberFetcherAdapter) ListChannelMemberUserIDs(channelID string) ([]string, error) {
+	members, err := a.store.ListChannelMembers(channelID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(members))
+	for _, m := range members {
+		out = append(out, m.UserID)
+	}
+	return out, nil
 }

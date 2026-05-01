@@ -11,6 +11,8 @@
 package datalayer
 
 import (
+	"log/slog"
+
 	"borgee-server/internal/presence"
 	"borgee-server/internal/store"
 )
@@ -28,11 +30,17 @@ type DataLayer struct {
 
 // NewDataLayer assembles the v1 (SQLite + in-memory) bundle. Caller owns
 // store.Store + presence.PresenceTracker lifecycles (close on shutdown).
-func NewDataLayer(s *store.Store, pt presence.PresenceTracker) *DataLayer {
+//
+// WIRE-1 (post-Phase 4 closure follow-up): EventBus 真接 DL-2 cold consumer
+// 通过 NewInProcessEventBusWithStore — production Publish 真落 channel_events
+// / global_events 表 (反 hot-only stale, 跟 spec wire-1 立场 ① 字面). logger
+// 可 nil (NewSQLiteEventStore nil-safe).
+func NewDataLayer(s *store.Store, pt presence.PresenceTracker, logger *slog.Logger) *DataLayer {
+	eventStore := NewSQLiteEventStore(s.DB(), logger)
 	return &DataLayer{
 		Storage:     NewLocalDBStorage(s),
 		Presence:    NewInMemoryPresence(pt),
-		EventBus:    NewInProcessEventBus(),
+		EventBus:    NewInProcessEventBusWithStore(eventStore),
 		UserRepo:    NewSQLiteUserRepository(s),
 		ChannelRepo: NewSQLiteChannelRepository(s),
 		MessageRepo: NewSQLiteMessageRepository(s),

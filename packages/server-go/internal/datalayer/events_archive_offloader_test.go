@@ -50,7 +50,7 @@ func TestEventsArchiveOffloader_BelowThreshold_NoOp(t *testing.T) {
 	db := openTestDB(t)
 	bus := &captureBus{}
 	dir := t.TempDir()
-	o := NewEventsArchiveOffloader(db, bus, nil, dir, 1000, 30*24*time.Hour)
+	o := NewEventsArchiveOffloader(db, bus, nil, dir, 1000, 30*24*time.Hour, 0)
 
 	res, err := o.RunOnce(context.Background())
 	if err != nil {
@@ -87,7 +87,7 @@ func TestEventsArchiveOffloader_OffloadsExpired(t *testing.T) {
 			"l-"+string(rune('a'+i)), "ch-1", "channel.archived", "{}", nowMs-ageDays*day, 30)
 	}
 
-	o := NewEventsArchiveOffloader(db, bus, nil, dir, 3, 30*24*time.Hour)
+	o := NewEventsArchiveOffloader(db, bus, nil, dir, 3, 30*24*time.Hour, 0)
 	o.now = func() time.Time { return now }
 
 	res, err := o.RunOnce(context.Background())
@@ -156,7 +156,7 @@ func TestEventsArchiveOffloader_NoBus_OK(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	o := NewEventsArchiveOffloader(db, nil, nil, dir, 2, 30*24*time.Hour)
+	o := NewEventsArchiveOffloader(db, nil, nil, dir, 2, 30*24*time.Hour, 0)
 	o.now = func() time.Time { return now }
 	res, err := o.RunOnce(context.Background())
 	if err != nil {
@@ -171,7 +171,7 @@ func TestEventsArchiveOffloader_NoBus_OK(t *testing.T) {
 func TestEventsArchiveOffloader_DefaultsApplied(t *testing.T) {
 	t.Parallel()
 	db := openTestDB(t)
-	o := NewEventsArchiveOffloader(db, nil, nil, "", 0, 0)
+	o := NewEventsArchiveOffloader(db, nil, nil, "", 0, 0, 0)
 	if o.threshold != 1_000_000 {
 		t.Errorf("threshold default = %d, want 1_000_000", o.threshold)
 	}
