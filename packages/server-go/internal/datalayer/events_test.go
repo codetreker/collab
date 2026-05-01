@@ -12,6 +12,8 @@ package datalayer
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -291,5 +293,69 @@ func TestEventsRetentionSweeper_StartZeroInterval(t *testing.T) {
 	case <-sw.Done():
 	case <-time.After(time.Second):
 		t.Fatal("interval=0 should close Done() immediately")
+	}
+}
+
+// TestEventsRetentionSweeper_RunOnce_DBError covers the error log branch
+// — closing DB makes RunOnce return error, runOnceLog logs it.
+func TestEventsRetentionSweeper_RunOnce_DBError(t *testing.T) {
+	t.Parallel()
+	db := openTestDB(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	sw := NewEventsRetentionSweeper(db, logger, 0)
+
+	// Close underlying SQL DB so DELETE fails.
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = sqlDB.Close()
+
+	if _, _, err := sw.RunOnce(context.Background()); err == nil {
+		t.Error("expected RunOnce err on closed DB")
+	}
+	// Drive runOnceLog via Start with short interval to hit error log path
+	// — but DB already closed, so the goroutine just logs error each tick.
+	// Direct invocation via exported wrapper is simpler; we exercise the
+	// branch by calling the private runOnceLog through Start.
+	sw2 := NewEventsRetentionSweeper(db, logger, 5*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
+	sw2.Start(ctx)
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	<-sw2.Done()
+}
+
+// TestEventsRetentionSweeper_RunOnce_LogsReaped covers the info log branch
+// (cReaped>0 || gReaped>0 + logger != nil).
+func TestEventsRetentionSweeper_RunOnce_LogsReaped(t *testing.T) {
+	t.Parallel()
+	db := openTestDB(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	sw := NewEventsRetentionSweeper(db, logger, 5*time.Millisecond)
+	now := int64(2_000_000_000_000)
+	sw.now = func() time.Time { return time.UnixMilli(now) }
+
+	// Seed 1 expired global_events row to ensure reap > 0.
+	const day = int64(86400000)
+	if err := db.Exec(
+		`INSERT INTO global_events (lex_id, kind, payload, created_at, retention_days) VALUES (?, ?, ?, ?, ?)`,
+		"g-old-log", "random.kind", "", now-100*day, 90,
+	).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	sw.Start(ctx)
+	// First tick fires immediately within Start; let it finish.
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	<-sw.Done()
+
+	// Verify row was reaped.
+	var n int64
+	db.Raw(`SELECT COUNT(*) FROM global_events WHERE lex_id = ?`, "g-old-log").Row().Scan(&n)
+	if n != 0 {
+		t.Errorf("row not reaped, got count=%d", n)
 	}
 }
