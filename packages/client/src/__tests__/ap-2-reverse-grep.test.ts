@@ -22,7 +22,9 @@ const SRC_ROOT = nodePath.resolve(HERE, '..');
 
 const AP2_FILES = [
   nodePath.join(SRC_ROOT, 'lib', 'capabilities.ts'),
+  nodePath.join(SRC_ROOT, 'lib', 'capability-bundles.ts'),
   nodePath.join(SRC_ROOT, 'components', 'PermissionsView.tsx'),
+  nodePath.join(SRC_ROOT, 'components', 'BundleSelector.tsx'),
 ];
 
 function read(p: string): string {
@@ -121,5 +123,62 @@ describe('AP-2 ⭐ reverse-grep — content-lock §1+§3 anti-constraints', () =
     const hits = productionFiles.filter((f) => re.test(read(f)));
     expect(hits.length).toBe(1);
     expect(hits[0]).toMatch(/lib\/capabilities\.ts$/);
+  });
+
+  it('§8 反 hardcode bundle 漂 — `Workspace|Reader|Mention` Capitalized 在 AP-2 paths body 0 hit (走 const 单源)', () => {
+    // BUNDLE_IDS 走 lowercase + BUNDLE_LABELS 走中文 — 反 PascalCase 英文
+    // bundle 名字面散落 in AP-2 own files (acceptance §2.2). 既有 components/
+    // 内其他 milestone 文件 (e.g. WorkspacePanel.tsx) 有 'Workspace' 字面属
+    // 不同语义 (CHN-4 collab skeleton), 不在本 reverse-grep 范围.
+    const re = /\b(Workspace|Reader|Mention)\b/;
+    const hits: string[] = [];
+    for (const f of AP2_FILES) {
+      const body = read(f);
+      const m = body.match(re);
+      if (m) hits.push(`${f}: ${m[0]}`);
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it('§9 反 role name in CAPABILITY_BUNDLES — `admin|editor|moderator|role` 在 capability-bundles.ts CAPABILITY_BUNDLES 区域 0 hit', () => {
+    // acceptance §2.2 — bundle 内 token 走 capability 字面 (read/write/...),
+    // 反 RBAC role ladder 字面.
+    const body = read(nodePath.join(SRC_ROOT, 'lib', 'capability-bundles.ts'));
+    // Restrict to CAPABILITY_BUNDLES const literal block (between `=` and matching `}`).
+    const m = body.match(/CAPABILITY_BUNDLES[^=]*=\s*\{[\s\S]*?\n\};/);
+    expect(m).not.toBeNull();
+    const constBlock = m![0];
+    // 反向断言 — 'admin' / 'editor' / 'moderator' / 'role' 在此 const 块内
+    // 0 hit (走 capability 字面 read_channel / write_artifact / etc 不带 role 名).
+    for (const bad of ['admin', 'editor', 'moderator']) {
+      expect(constBlock.toLowerCase().includes(bad)).toBe(false);
+    }
+    // `role` substring 反约束 — token `change_role` 含 'role' 是 AP-1 14 const
+    // 字面, 不算 RBAC role ladder; 但裸 `'role'` quoted literal 0 hit.
+    expect(/['"]role['"]/.test(constBlock)).toBe(false);
+  });
+
+  it('§10 反 bundle endpoint 漂 — `POST /api/v1/bundles` 在 client/src/ 0 hit (复用 AP-1 PUT)', () => {
+    const all = listFiles(SRC_ROOT, ['.ts', '.tsx']);
+    const re = /POST\s+\/api\/v1\/bundles\b/;
+    const hits: string[] = [];
+    for (const f of all) {
+      if (/__tests__/.test(f)) continue;
+      const body = read(f);
+      if (re.test(body)) hits.push(f);
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it('§11 反 BundleHasCapability 平行 — `BundleHasCapability|HasBundle` 在 client/src/ 0 hit (复用 AP-1 HasCapability)', () => {
+    const all = listFiles(SRC_ROOT, ['.ts', '.tsx']);
+    const re = /\b(BundleHasCapability|HasBundle)\b/;
+    const hits: string[] = [];
+    for (const f of all) {
+      if (/__tests__/.test(f)) continue;
+      const body = read(f);
+      if (re.test(body)) hits.push(f);
+    }
+    expect(hits).toEqual([]);
   });
 });

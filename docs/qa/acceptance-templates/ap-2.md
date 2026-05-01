@@ -40,9 +40,9 @@
 
 - REG-AP2-001..006 🟢 (v0 PR #525 merged) — expires_at sweeper goroutine + admin_actions audit + cron interval
 
-**v1 新增** (待本 milestone PR 翻):
-- REG-AP2-007 ⚪ CAPABILITY_BUNDLES const SSOT byte-identical 跟 AP-1 capabilities.go 14 项跨层锁 + 反 hardcode bundle 漂 + 反 role name in bundle
-- REG-AP2-008 ⚪ 一次 grant 多 capability 复用 AP-1 PUT endpoint (不开新) + 复用 HasCapability gate (反 BundleHasCapability 平行) + admin god-mode 不挂 (ADM-0 §1.3) + BundleSelector 4 vitest + Playwright e2e + post-#614 haystack gate 三轨过
+**v1 新增** (本 milestone PR 翻):
+- REG-AP2-UI-007 🟢 CAPABILITY_BUNDLES const SSOT byte-identical 跟 AP-1 capabilities.go 14 项跨层锁 + 反 hardcode bundle 漂 + 反 role name in bundle + BundleSelector 主权 UI (default-all-checked but uncheck-able + 必显式 confirm + DOM `data-bundle-name` 锚)
+- REG-AP2-UI-008 🟢 一次 grant 多 capability 复用 AP-1 PUT endpoint (反 POST /api/v1/bundles 旁路 + 反 BundleHasCapability/HasBundle 平行) + admin god-mode 不挂 bundle UI (ADM-0 §1.3 红线) + Playwright e2e 4 case PASS + ap-2-bundle-ui.png 截屏
 
 ## 退出条件
 
@@ -61,4 +61,5 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-04-29 | 战马C | v0 — sweeper acceptance (REG-AP2-001..006 全 🟢, PR #525 merged). |
-| 2026-05-01 | 烈马 | v1 — 扩 4 段验收覆盖 AP-2.UI capability bundle 抽象 (蓝图 §1.1 C 混合 + §1.3 A'). REG-AP2-007..008 ⚪ 占号. 立场承袭 AP-1 #493 14-capability 白名单跨层锁 + DM-9 EmojiPreset / AP-4-enum / DL-2 mustPersistKinds const SSOT 同精神 + ADM-0 §1.3 admin god-mode 红线 + post-#614 haystack gate. **0 server prod 候选** (跟 CV-9..14 / DM-5/6/9..12 / CHN-11..15 / CS-1..4 / RT-4 / CM-5 / DM-3 同模式). |
+| 2026-05-01 | 烈马 | v1 — 扩 4 段验收覆盖 AP-2.UI capability bundle 抽象 (蓝图 §1.1 C 混合 + §1.3 A'). REG-AP2-007..008 ⚪ 占号. |
+| 2026-05-01 | 战马D | v1 实施 — REG-AP2-UI-007/008 ⚪→🟢 翻牌. `lib/capability-bundles.ts` 3 bundle SSOT (workspace=write_channel/write_artifact/commit_artifact, reader=read_channel/read_artifact/read_dm, mention=mention_user/send_dm) byte-identical 跟 AP-1 14 const + BUNDLE_LABELS 中文 (`工作能力/阅读能力/提及能力`) + assertBundlesValid 反 forward-compat leak. `components/BundleSelector.tsx` 主权 UI (default-all-checked but user can uncheck + 必显式 confirm + DOM `data-bundle-name` + `data-ap2-bundle-*` 锚). `BundleSelector.test.tsx` 4 vitest + `capability-bundles.test.ts` 5 vitest + `ap-2-reverse-grep.test.ts` 扩 §8/§9/§10/§11 (PascalCase bundle name + role name in bundle const + POST /api/v1/bundles + BundleHasCapability/HasBundle 全 0 hit). `packages/e2e/tests/ap-2-bundle.spec.ts` Playwright 4 case (capability response shape + 反 POST /api/v1/bundles 旁路 + UI 真渲染反 RBAC 8 词 0 hit body + admin god-mode UI 独立路径) PASS 4.4s. UI 截屏 `docs/qa/screenshots/ap-2-bundle-ui.png` 6109 bytes. 反借口承袭 (RT-3 audit 反转同精神): acceptance §3.2 真要求 e2e Playwright 同 PR 做完, 不另开 milestone. |

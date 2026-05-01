@@ -1,6 +1,6 @@
-# AP-2 client — capability 透明 UI 无角色名 (≤40 行)
+# AP-2 client — capability 透明 UI 无角色名 (≤60 行)
 
-> 落地: feat/ap-2 AP2.2 (`lib/capabilities.ts` + `components/PermissionsView.tsx` + 15 vitest)
+> 落地: feat/ap-2 AP2.2 (`lib/capabilities.ts` + `lib/capability-bundles.ts` + `components/PermissionsView.tsx` + `components/BundleSelector.tsx` + 22 vitest + 4 Playwright e2e)
 > 关联: server `docs/current/server/ap-2.md` /api/v1/me/permissions response shape
 
 ## 1. capability label SSOT — `lib/capabilities.ts`
@@ -34,8 +34,22 @@ DOM data-attr SSOT (跟 content-lock §2 byte-identical):
 - ❌ admin god-mode UI 永久独立 (capabilityLabel 不挂 components/admin/* 路径)
 - ❌ thought-process 5-pattern + typing-indicator 漂入 (跟 RT-3 #616 承袭)
 
-## 4. tests
+## 4. bundle SSOT — `lib/capability-bundles.ts` + `components/BundleSelector.tsx`
 
-- `__tests__/ap-2-capabilities.test.ts` 5 vitest (14 token 顺序 + 14 中文 label + unknown forward-compat + isKnownCapability + 反 RBAC 7 词)
-- `__tests__/PermissionsView.test.tsx` 5 vitest (5 态 DOM + multi-row 反 RBAC)
-- `__tests__/ap-2-reverse-grep.test.ts` 5 vitest (14 const 字面 + 反 RBAC 英 4 词 + 反 RBAC 中 3 词 + admin god-mode 独立 + capabilityLabel SSOT 单源)
+3 bundle (蓝图 §1.3 A' 快速 bundle 无角色名, byte-identical):
+- `workspace` (工作能力) → write_channel + write_artifact + commit_artifact (3)
+- `reader` (阅读能力) → read_channel + read_artifact + read_dm (3)
+- `mention` (提及能力) → mention_user + send_dm (2)
+
+BundleSelector 主权 UI: bundle click → 展开 capability checkbox (default-all-checked but uncheckable) → 用户必显式 confirm → caller 派 N 次 AP-1 PUT /api/v1/permissions (复用既有 endpoint, 反 POST /api/v1/bundles 旁路).
+
+DOM 锚: `data-ap2-bundle-selector` / `data-ap2-bundle-row` / `data-bundle-name` / `data-ap2-bundle-checkbox` / `data-ap2-bundle-confirm`.
+
+## 5. tests
+
+- `__tests__/ap-2-capabilities.test.ts` 5 vitest
+- `__tests__/PermissionsView.test.tsx` 5 vitest
+- `__tests__/capability-bundles.test.ts` 5 vitest (跨层锁 + assertBundlesValid + helpers)
+- `__tests__/BundleSelector.test.tsx` 4 vitest (expand + 主权 uncheck + 必显式 confirm + DOM 锚)
+- `__tests__/ap-2-reverse-grep.test.ts` 11 vitest (14 const + 反 RBAC 英 4 / 中 3 + admin 独立 + SSOT 单源 + PascalCase bundle 名 + role in bundle const + POST /api/v1/bundles + BundleHasCapability/HasBundle 0 hit)
+- `packages/e2e/tests/ap-2-bundle.spec.ts` Playwright 4 case (capability response shape + 反 bundle endpoint 漂 + UI 真渲染反 RBAC 8 词 0 hit body + admin god-mode UI 独立路径) + screenshot `docs/qa/screenshots/ap-2-bundle-ui.png`
