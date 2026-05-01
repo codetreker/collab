@@ -35,12 +35,9 @@ func al7TestStore(t *testing.T) *store.Store {
 	if err := s.DB().AutoMigrate(&store.AdminAction{}); err != nil {
 		t.Fatal(err)
 	}
-	// AutoMigrate from the AdminAction model does not include archived_at
-	// (struct is shared with ADM-2.1 era). Add the column manually to mirror
-	// post-AL-7.1 migration shape.
-	if err := s.DB().Exec(`ALTER TABLE admin_actions ADD COLUMN archived_at INTEGER`).Error; err != nil {
-		t.Fatal(err)
-	}
+	// ADMIN-SPA-SHAPE-FIX D4: store.AdminAction now has ArchivedAt field, so
+	// AutoMigrate creates the archived_at column directly — no manual ALTER
+	// needed (历史 patch reverted post-D4 struct surface).
 	return s
 }
 

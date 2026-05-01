@@ -333,7 +333,7 @@ func TestAdminPermissions(t *testing.T) {
 
 	t.Run("GrantPermission", func(t *testing.T) {
 		resp, _ := testutil.JSON(t, "POST", ts.URL+"/admin-api/v1/users/"+memberID+"/permissions", adminToken, map[string]string{
-			"permission": "custom.test", "scope": "test:1",
+			"permission": "channel.manage_members", "scope": "test:1",
 		})
 		if resp.StatusCode != http.StatusCreated {
 			t.Fatalf("expected 201, got %d", resp.StatusCode)
@@ -342,7 +342,7 @@ func TestAdminPermissions(t *testing.T) {
 
 	t.Run("DuplicatePermission", func(t *testing.T) {
 		resp, _ := testutil.JSON(t, "POST", ts.URL+"/admin-api/v1/users/"+memberID+"/permissions", adminToken, map[string]string{
-			"permission": "custom.test", "scope": "test:1",
+			"permission": "channel.manage_members", "scope": "test:1",
 		})
 		if resp.StatusCode != http.StatusConflict {
 			t.Fatalf("expected 409, got %d", resp.StatusCode)
@@ -351,7 +351,7 @@ func TestAdminPermissions(t *testing.T) {
 
 	t.Run("RevokePermission", func(t *testing.T) {
 		resp, _ := testutil.JSON(t, "DELETE", ts.URL+"/admin-api/v1/users/"+memberID+"/permissions", adminToken, map[string]string{
-			"permission": "custom.test", "scope": "test:1",
+			"permission": "channel.manage_members", "scope": "test:1",
 		})
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("expected 200, got %d", resp.StatusCode)
@@ -360,7 +360,7 @@ func TestAdminPermissions(t *testing.T) {
 
 	t.Run("RevokeNotFound", func(t *testing.T) {
 		resp, _ := testutil.JSON(t, "DELETE", ts.URL+"/admin-api/v1/users/"+memberID+"/permissions", adminToken, map[string]string{
-			"permission": "nonexistent.perm",
+			"permission": "channel.delete",
 		})
 		if resp.StatusCode != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", resp.StatusCode)
