@@ -102,7 +102,11 @@ test.describe('CV-5.3 artifact comments REST e2e (acceptance §3)', () => {
     };
     expect(created.sender_role).toBe('human');
     expect(created.body).toBe('looks great, ship it');
-    expect(created.channel_id).toMatch(/^[0-9a-f-]{36}$/i); // UUID, NOT raw `artifact:` literal in id
+    // Opaque ID assertion (UUID-36 legacy or ULID-26 post-ULID-MIGRATION) —
+    // intent: NOT raw `artifact:` literal in id.
+    expect(created.channel_id).toMatch(
+      /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9A-HJKMNP-TV-Z]{26})$/i,
+    );
 
     // GET list returns it (立场 ① comment 落 messages 表 → list 拉得到).
     const list = await owner.ctx.get(`/api/v1/artifacts/${artId}/comments`);
