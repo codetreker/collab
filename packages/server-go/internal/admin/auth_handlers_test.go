@@ -145,3 +145,16 @@ func TestAdminFromContext(t *testing.T) {
 	// goes through RequireAdmin → ctx.WithValue → handleMe → AdminFromContext
 	// with a non-nil admin value — covering the (a, ok)=true branch.
 }
+
+func TestWithAdminContext(t *testing.T) {
+	t.Parallel()
+	// WithAdminContext is the test-only seam exported for ADM-2-FOLLOWUP
+	// helper unit tests (api.RequireImpersonationGrant). Round-trip:
+	// WithAdminContext → AdminFromContext returns the same *Admin.
+	a := &admin.Admin{ID: "a1", Login: "root"}
+	ctx := admin.WithAdminContext(context.Background(), a)
+	got := admin.AdminFromContext(ctx)
+	if got == nil || got.ID != "a1" || got.Login != "root" {
+		t.Fatalf("WithAdminContext round-trip failed; got=%+v", got)
+	}
+}

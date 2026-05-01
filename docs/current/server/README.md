@@ -332,3 +332,10 @@ Hub 维护 `onlineUsers map[userId]map[*Client]bool` 支持多端在线。Heartb
 - 真实 HTTP / 真实存储，**没有 mock 层**。
 - 覆盖了并发写、级联删除、channel 隔离、分页、SSE、e2e 等场景。
 - 跑测试：`cd packages/server-go && go test ./...`。
+
+### ADM-2-FOLLOWUP (#626) — admin_grant_check helper
+
+- 新文件 `internal/api/admin_grant_check.go` 加 `RequireImpersonationGrant(w, r, *store.Store, targetUserID) (bool, *admin.Admin)` — 三段守门 (admin ctx / target / active grant) + 字面 byte-identical 4 reason `impersonate.no_admin|no_target|no_grant`. 4 unit branch PASS.
+- `internal/api/admin_endpoints.go::handleCreateMyImpersonateGrant` 在 `s.GrantImpersonation` 成功后 fire `s.InsertAdminAction(actorID=user, targetID=user, action="start_impersonation", metadata=JSON{grant_id,expires_at})` (REG-ADM2-003 4/5 → 5/5 收口). audit failure logging-only 不阻塞 grant 创建.
+- `internal/admin/middleware.go` 加 `WithAdminContext(ctx, *Admin)` test-only seam (production 唯一路径仍是 RequireAdmin → ResolveSession; adminCtxKey 私用)
+- DL-1 baseline bump: `dl1-no-direct-store` baseline 114 → 115 (admin_grant_check.go imports internal/store; helper 跨 5 admin handler wire 后渐进迁 datalayer.* interface)

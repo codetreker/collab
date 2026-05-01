@@ -171,3 +171,10 @@ Schema 不挂 `updated_at` 列, server 不开 UPDATE/DELETE 路径. 反向 grep 
 - DM body 不渲染 raw UUID actor_id (走 `actorLogin` = `admins.Login`)
 - DM body `{ts}` 走 `time.Format("2006-01-02 15:04")` 不是 epoch ms
 - `admin_actions.metadata` 不挂 body/content/text/artifact 字段 (god-mode 仅元数据)
+
+### ADM-2-FOLLOWUP (#626 PR feat/adm-2-followup)
+
+- REG-ADM2-010 wire: `handleCreateMyImpersonateGrant` 在 `s.GrantImpersonation` 成功后 fire `InsertAdminAction(actor=user, target=user, action="start_impersonation", metadata={grant_id, expires_at})` audit hook → REG-ADM2-003 4/5 → 5/5 收口.
+- REG-ADM2-010 helper: `api.RequireImpersonationGrant(w, r, s, targetUserID)` 返 `(true, *admin.Admin)` 或 (false, _) 已写 4 字面错码: `impersonate.no_admin` (401) / `impersonate.no_target` (400) / `impersonate.no_grant` (403). 5 admin write handler 集成留 v1 follow-up; helper 已落 + 4 unit branch 全覆.
+- REG-ADM2-011: 新 admin SPA audit-log 页 `[data-page="admin-audit-log"]` + `[data-adm2-audit-list="true"]` + `[data-adm2-red-banner="active"]` + 中文 title "审计日志" + 中文 empty "暂无审计记录" + 红 banner 字面 byte-identical "当前以业主身份操作 — 该会话受 24h 时限".
+- 测试 seam: `admin.WithAdminContext(ctx, *Admin)` 导出 (test-only 注入 adminCtxKey, production 仍走 RequireAdmin → ResolveSession 唯一路径).

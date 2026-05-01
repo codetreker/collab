@@ -21,6 +21,16 @@ func AdminFromContext(ctx context.Context) *Admin {
 	return nil
 }
 
+// WithAdminContext attaches an Admin to ctx — exported for tests that need
+// to drive code reading AdminFromContext without setting up cookie + DB
+// session machinery. Production path (RequireAdmin → ResolveSession) remains
+// the only way admin ctx is set in real requests; this preserves the privacy
+// of adminCtxKey while enabling unit tests of helpers like
+// api.RequireImpersonationGrant.
+func WithAdminContext(ctx context.Context, a *Admin) context.Context {
+	return context.WithValue(ctx, adminCtxKey{}, a)
+}
+
 // RequireAdmin wraps a handler so it only runs when the request carries a
 // valid `borgee_admin_session` cookie resolving to an unexpired admin_sessions
 // row. Otherwise it writes 401 and short-circuits.

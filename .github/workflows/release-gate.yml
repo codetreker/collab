@@ -243,7 +243,7 @@ jobs:
       # 锁链第 6 处 (跟 BPP-4 / HB-3 / AP-4 / HB-4 / INFRA-3 同模式).
       - name: dl1-no-direct-store
         run: |
-          baseline=114
+          baseline=115
           actual=$(grep -rl "borgee-server/internal/store" packages/server-go/internal/api/ --include="*.go" | wc -l | tr -d ' ')
           echo "::notice::dl1-no-direct-store: $actual files import internal/store directly under internal/api/ (baseline=$baseline)"
           if [ "$actual" -gt "$baseline" ]; then

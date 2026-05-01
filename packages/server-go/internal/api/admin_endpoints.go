@@ -189,6 +189,11 @@ func (h *AdminEndpointsHandler) handleGetMyImpersonateGrant(w http.ResponseWrite
 //
 // 蓝图 §3 字面 "由 user 创建" — 业主自己 grant. 24h 固定期限 (server 端,
 // 立场 ⑦ 反约束: 不接受 client 传 expires_at). 重复 grant in-cooldown → 409.
+//
+// REG-ADM2-010 (ADM-2-FOLLOWUP wire) — grant 创建后 emit audit row 进
+// admin_actions 表 (跟 ADM-2.2 既有 5/5 admin write handler 同精神).
+// actor=user.ID + action="impersonate.start" + target=user.ID (业主自签
+// 给自己; 跟 GrantImpersonation store SSOT 立场承袭).
 func (h *AdminEndpointsHandler) handleCreateMyImpersonateGrant(w http.ResponseWriter, r *http.Request) {
 	user, ok := mustUser(w, r)
 	if !ok {
@@ -204,6 +209,17 @@ func (h *AdminEndpointsHandler) handleCreateMyImpersonateGrant(w http.ResponseWr
 		h.Logger.Error("grant impersonate", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
+	}
+	// REG-ADM2-010 audit hook — fire AFTER successful GrantImpersonation
+	// commit. actor + target = user.ID (业主自签). 跟 5/5 既有 admin write
+	// handler audit 同精神 byte-identical (delete_channel / suspend_user /
+	// change_role / reset_password / patch_disabled 同模式).
+	if _, auditErr := h.Store.InsertAdminAction(user.ID, user.ID,
+		"start_impersonation",
+		`{"grant_id":"`+g.ID+`","expires_at":`+strconv.FormatInt(g.ExpiresAt, 10)+`}`,
+	); auditErr != nil {
+		// Best-effort — don't fail the grant on audit error; log only.
+		h.Logger.Error("audit impersonate.start", "error", auditErr, "grant_id", g.ID)
 	}
 	writeJSONResponse(w, http.StatusCreated, map[string]any{
 		"grant": sanitizeImpersonateGrant(g),
