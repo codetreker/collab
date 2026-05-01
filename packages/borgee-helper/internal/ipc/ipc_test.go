@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -61,9 +63,15 @@ func startServe(t *testing.T, h *Handler, in []byte) []byte {
 func TestHB25_HandshakeAndReadFileHappyPath(t *testing.T) {
 	t.Parallel()
 	h, _, mc := newTestHandler(t)
-	mc.Put(grants.Grant{AgentID: "a1", Scope: "fs:/x", TTLUntil: 9999})
+	// v0(D) 真 IO — seed real file under t.TempDir, scope=fs:<dir>.
+	tmp := t.TempDir()
+	filePath := filepath.Join(tmp, "hello.txt")
+	if err := os.WriteFile(filePath, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	mc.Put(grants.Grant{AgentID: "a1", Scope: "fs:" + filePath, TTLUntil: 9999})
 	in := []byte(`{"agent_id":"a1"}` + "\n" +
-		`{"request_id":"r1","action":"read_file","agent_id":"a1","params":{"path":"/x"}}` + "\n")
+		`{"request_id":"r1","action":"read_file","agent_id":"a1","params":{"path":"` + filePath + `"}}` + "\n")
 	out := startServe(t, h, in)
 	if !strings.Contains(string(out), `"status":"ok"`) {
 		t.Errorf("expected ok response, got: %s", out)

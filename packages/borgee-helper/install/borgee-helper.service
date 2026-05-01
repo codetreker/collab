@@ -1,0 +1,39 @@
+[Unit]
+Description=Borgee host-bridge daemon (HB-2 v0(D))
+Documentation=https://github.com/codetreker/borgee
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=borgee-helper
+Group=borgee-helper
+ExecStart=/usr/local/bin/borgee-helper \
+    --socket=/run/borgee-helper/borgee-helper.sock \
+    --audit-log=/var/log/borgee-helper/audit.log.jsonl \
+    --grants-db=file:/var/lib/borgee/server.db?mode=ro&_busy_timeout=5000
+
+# v0(D) sandbox layers (defense in depth — landlock 在 daemon 内 + systemd OS-level):
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+
+# Writable paths (audit log + IPC socket dir).
+ReadWritePaths=/var/log/borgee-helper /run/borgee-helper
+
+# Read-only DB (HB-3 host_grants).
+ReadOnlyPaths=/var/lib/borgee
+
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target
