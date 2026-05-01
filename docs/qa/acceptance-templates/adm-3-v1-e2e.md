@@ -29,14 +29,14 @@
 | 3.2 0 production code 改 (仅 e2e 加) | git diff | `git diff main -- packages/server-go/internal/api/` 0 行 |
 | 3.3 立场承袭 4 source enum SSOT byte-identical (跨层锁 server const + client AUDIT_SOURCES + i18n SOURCE_LABEL) | grep | reverse grep test PASS |
 
-## REG-ADM3E2E-* 占号 (initial ⚪)
+## REG-ADM3E2E-* 真翻 🟢
 
-- REG-ADM3E2E-001 ⚪ admin login → /admin-api/v1/audit/multi-source 全 4 source UNION ALL 真测
-- REG-ADM3E2E-002 ⚪ admin god-mode 路径独立 + user 走 /admin-api/* 403 真测 (ADM-0 §1.3)
-- REG-ADM3E2E-003 ⚪ source filter / time range / limit clamp 4 case 真测
-- REG-ADM3E2E-004 ⚪ 反 user-rail audit feed 真测 (永不挂)
-- REG-ADM3E2E-005 ⚪ Playwright `adm-3-multi-source.spec.ts` 5 case PASS + 0 production code 改
-- REG-ADM3E2E-006 ⚪ 全包 PASS + haystack gate + 立场承袭 ADM-3 v1 + 跨四 milestone audit 反转锁链
+- REG-ADM3E2E-001 🟢 admin /admin/audit-multi-source UI 真渲染 + 4 source REST filter (sources byte-identical + 反 cross-source leak + invalid → 400 audit.source_invalid)
+- REG-ADM3E2E-002 🟢 admin god-mode 路径独立 (user-rail 404 + user cookie 调 admin-api 401, ADM-0 §1.3 + ADM-0.2 红线)
+- REG-ADM3E2E-003 🟢 time range filter (since/until happy + since-only + invalid since → 400 audit.time_range_invalid)
+- REG-ADM3E2E-004 🟢 limit clamp (999 → 500 / 0 → default / 非整数 → default, 反 silent reject 漂)
+- REG-ADM3E2E-005 🟢 ⭐ 反 user-rail audit feed Go reverse-grep (ADM-0 §1.3 红线核心断言, 反 v2+ 借口推)
+- REG-ADM3E2E-006 🟢 0 production code 改 + Playwright 5 case PASS 3.7s + 4 source enum 跨层锁不破
 
 ## 退出条件
 
@@ -51,3 +51,4 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-05-01 | 烈马 | v0 — acceptance template. 立场承袭 ADM-3 v1 #619 + G4.audit closure P0.1 漏件 + 跨四 milestone audit 反转锁链 + ADM-0 §1.3 红线 + AL-8 reverse-grep 白名单单一例外承袭. |
+| 2026-05-01 | 战马D | v1 实施 — 真补 post-#623 liema CONDITIONAL LGTM 三抓: §1.3 time range + limit clamp 2 case (3→5 case) + §2.2 反 user-rail audit feed Go reverse-grep (ADM-0 §1.3 红线核心断言, 反 v2+ 借口推; 跟 RT-3 #616 + AP-2 #620 reverse-grep 同模式承袭) + REG-ADM3E2E-001..006 ⚪→🟢 全翻. Playwright 5 case PASS 3.7s + Go reverse-grep test PASS. 0 production code 改 (post-#619 byte-identical). |

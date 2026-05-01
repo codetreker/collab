@@ -175,4 +175,62 @@ test.describe('ADM-3 v1 multi-source audit — acceptance §3.3 e2e', () => {
     await user.ctx.dispose();
     await admin.ctx.dispose();
   });
+
+  test('case-4 time range filter — since/until 真测 + invalid → 400 audit.time_range_invalid', async () => {
+    const admin = await adminLogin();
+
+    // Happy path — since/until 真接 (no rows seeded fine, 反 query syntax err).
+    const now = Date.now();
+    const oneHrAgo = now - 60 * 60 * 1000;
+    const happy = await admin.ctx.get(
+      `/admin-api/v1/audit/multi-source?since=${oneHrAgo}&until=${now}`,
+    );
+    expect(happy.ok(), `since+until happy: ${happy.status()}`).toBe(true);
+    const happyBody = (await happy.json()) as { sources: string[]; rows: unknown[] };
+    expect(happyBody.sources, 'sources 4 元素 byte-identical').toEqual([
+      'server',
+      'plugin',
+      'host_bridge',
+      'agent',
+    ]);
+    expect(Array.isArray(happyBody.rows), 'rows 数组').toBe(true);
+
+    // since alone 真过.
+    const sinceOnly = await admin.ctx.get(`/admin-api/v1/audit/multi-source?since=${oneHrAgo}`);
+    expect(sinceOnly.ok(), `since-only: ${sinceOnly.status()}`).toBe(true);
+
+    // since negative → 400 audit.time_range_invalid 字面.
+    const bad = await admin.ctx.get('/admin-api/v1/audit/multi-source?since=-100');
+    expect(bad.status(), `since=-100: ${bad.status()}`).toBe(400);
+    const badBody = await bad.text();
+    expect(badBody, 'audit.time_range_invalid 错码字面').toContain('audit.time_range_invalid');
+
+    // since=非整数 → 400.
+    const malformed = await admin.ctx.get('/admin-api/v1/audit/multi-source?since=not_a_number');
+    expect(malformed.status(), `since=non-int: ${malformed.status()}`).toBe(400);
+
+    await admin.ctx.dispose();
+  });
+
+  test('case-5 limit clamp — limit=999 → clamp 到 max 500 + limit=0 → default 100', async () => {
+    const admin = await adminLogin();
+
+    // limit=999 → server-side parseLimit clamp 到 500 (跟 ADM-2.2 同模式).
+    // 由于 e2e fixture 一定空, rows.length ≤ 500 byte-identical;
+    // 不 fail-on-error 是 contract: limit > max 不 reject, 走 clamp.
+    const big = await admin.ctx.get('/admin-api/v1/audit/multi-source?limit=999');
+    expect(big.ok(), `limit=999 clamp: ${big.status()}`).toBe(true);
+    const bigBody = (await big.json()) as { rows: unknown[] };
+    expect(bigBody.rows.length, 'rows ≤ 500 (clamped)').toBeLessThanOrEqual(500);
+
+    // limit=0 → default 100; 同样 contract 不 reject.
+    const zero = await admin.ctx.get('/admin-api/v1/audit/multi-source?limit=0');
+    expect(zero.ok(), `limit=0 default: ${zero.status()}`).toBe(true);
+
+    // limit=非整数 → server-side parseLimit 容错 fallback default (反 reject).
+    const garbage = await admin.ctx.get('/admin-api/v1/audit/multi-source?limit=garbage');
+    expect(garbage.ok(), `limit=garbage default: ${garbage.status()}`).toBe(true);
+
+    await admin.ctx.dispose();
+  });
 });
