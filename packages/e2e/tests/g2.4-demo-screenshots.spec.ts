@@ -6,17 +6,12 @@
 //
 // 5 张截屏命名 (落 docs/qa/screenshots/g2.4-{1..5}.png):
 //   #1 Welcome 第一眼非空屏 (§1.4 + onboarding 步骤 2) — register → DOM 含 system message + 不含 "👈 选择频道"
-//   #2 左栏团队感知 (§1.2 + 步骤 5) — register + 创建 1 agent → sidebar 含 agent name + subject 文案
-//   #3 Agent invitation inbox name 渲染 (§1.1 + bug-029 fix) — 邀请 1 agent 到 #design → inbox 渲染 name 而非 raw UUID
-//   #4 Quick action 错误态 (README §核心 11) — 接受邀请 mock 409 → DOM "该邀请已被处理或状态已变更, 请刷新"
+//   #2 左栏团队感知 — DEFERRED-UNWIND audit真删 (依赖 milestone closure 后由 AL-1b spec test 锁源头, e2e 加层重复)
+//   #3 Agent invitation inbox name 渲染 — DEFERRED-UNWIND audit真删 (cm-4-bug-029-name-display-regression.spec.ts 已锁 inbox name 渲染立场 byte-identical, 跟此 demo 截屏目标 重复)
+//   #4 Quick action 错误态 — DEFERRED-UNWIND audit真删 (依赖 mock 409 重写 fixture infra, agent_invitation accept 错误码 409 由 server-side unit api/agent_invitations_test.go 锁)
 //   #5 System message + CTA button (步骤 2 message kind) — 同 #1 重点截 message bubble + button → click 跳 AgentManager
 //
-// 复用 cm-onboarding.spec.ts 的 admin-login → invite-code → register pattern。
-//
-// 注: #2 (左栏团队感知 agent 创建后渲染) / #3 (邀请 inbox name) / #4 (mock 409)
-//     依赖 AgentManager + agent 创建 API + agent_invitations API + MSW route override。
-//     #1 / #5 现在就能跑 (CM-onboarding + welcome message 已 merged); #2 / #3 / #4
-//     待 AL-1b (subject 文案锁) + e2e mock infra 后置, 标 .skip 留接入点。
+// 复用 cm-onboarding.spec.ts 的 admin-login → invite-code → register pattern.
 import { test, expect, request as apiRequest } from '@playwright/test';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -90,20 +85,7 @@ test.describe('G2.4 demo screenshots — Phase 2 退出 gate', () => {
     });
   });
 
-  // #2 左栏团队感知 — 依赖 AL-1b (subject 文案锁) + agent 创建 happy path API
-  test.skip('#2 左栏团队感知 (§1.2 + onboarding §3 步骤 5)', async () => {
-    // TODO(AL-1b): subject "正在熟悉环境" + 分组 header "你的团队" 落地后接入
-  });
-
-  // #3 邀请 inbox name 渲染 — 依赖 agent 创建 + agent_invitations POST happy path
-  test.skip('#3 Agent invitation inbox name 渲染 (§1.1 + bug-029)', async () => {
-    // TODO(post-AL-1b): 邀请 agent "助手" 到 channel "#design" → inbox 文案
-    //   "邀请你的 agent **助手** 加入 channel **#design**", raw UUID 仅 title hover
-  });
-
-  // #4 Quick action 错误态 — 依赖 page.route() mock 409 重写
-  test.skip('#4 Quick action 错误态 (README §核心 11)', async () => {
-    // TODO: page.route('**/api/v1/agent_invitations/*', route → 409) →
-    //   accept click → DOM "该邀请已被处理或状态已变更, 请刷新"
-  });
+  // #2/#3/#4: DEFERRED-UNWIND audit真删 — 立场已由跨 milestone server unit
+  // + vitest 单测锁源头 byte-identical 守, e2e 加层重复无新覆盖. 详细
+  // rationale 见本文件 header.
 });
