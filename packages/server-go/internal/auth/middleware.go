@@ -15,6 +15,16 @@ type contextKey string
 
 const userContextKey contextKey = "auth_user"
 
+// CookieName is the user-rail session cookie literal SSOT (ADM-0.1 +
+// COOKIE-NAME-CLEANUP). Mirror of admin-rail `internal/admin/auth.go::
+// CookieName="borgee_admin_session"`. Keep the literal value here; refactor
+// callsites to use this const so any future rename touches one line.
+//
+// 立场: 改 cookie 字面值 = 全用户 session 失效 — 0 字面值改 (本 milestone
+// 仅引用 SSOT, 不改值). 反向 grep `"borgee_token"` in production .go (除本
+// const) ==0 hit (post-cleanup).
+const CookieName = "borgee_token"
+
 func UserFromContext(ctx context.Context) *store.User {
 	if u, ok := ctx.Value(userContextKey).(*store.User); ok {
 		return u
@@ -43,7 +53,7 @@ func AuthMiddleware(s *store.Store, cfg *config.Config) func(http.Handler) http.
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// 1. Check cookie
-			if cookie, err := r.Cookie("borgee_token"); err == nil {
+			if cookie, err := r.Cookie(CookieName); err == nil {
 				if user := ValidateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
 					next.ServeHTTP(w, setUserContext(r, user))
 					return
@@ -115,7 +125,7 @@ func AuthenticateFlexible(s *store.Store, cfg *config.Config, r *http.Request) *
 		}
 	}
 
-	if cookie, err := r.Cookie("borgee_token"); err == nil {
+	if cookie, err := r.Cookie(CookieName); err == nil {
 		if user := ValidateJWT(s, cfg.JWTSecret, cookie.Value); user != nil {
 			return user
 		}

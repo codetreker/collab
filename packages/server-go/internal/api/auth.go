@@ -189,7 +189,7 @@ func (h *AuthHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "borgee_token",
+		Name:     auth.CookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
@@ -246,7 +246,7 @@ func (h *AuthHandler) signAndSetCookie(w http.ResponseWriter, r *http.Request, u
 	}
 
 	cookie := &http.Cookie{
-		Name:     "borgee_token",
+		Name:     auth.CookieName,
 		Value:    signed,
 		Path:     "/",
 		HttpOnly: true,

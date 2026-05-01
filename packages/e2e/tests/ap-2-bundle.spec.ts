@@ -159,13 +159,17 @@ test.describe('AP-2 ⭐ capability bundle UI 无角色名 e2e', () => {
   test('§3.2 admin god-mode UI 独立路径 — admin login 不含 bundle UI 字面 (ADM-0 §1.3)', async ({ browser }) => {
     const adminCtx = await adminLogin();
     // admin /admin-api/* 路径不挂 bundle UI — 反向断言.
+    // COOKIE-NAME-CLEANUP D1: server SSOT `borgee_admin_session`
+    // (admin/auth.go::CookieName). 旧 OR fallback (`borgee_admin_token` /
+    // `admin_token`) 都 0 server 命中, 后面 if (!adminTok) return 永真 →
+    // 此 §3.2 真守门 case 从未真跑 (silent-skip). 改 fail-loud throw —
+    // 让 case 真跑, 反 silent-skip 漂.
     const cookies = await adminCtx.storageState();
-    const adminTok = cookies.cookies.find((c) => c.name === 'borgee_admin_token' || c.name === 'admin_token');
+    const adminTok = cookies.cookies.find((c) => c.name === 'borgee_admin_session');
     if (!adminTok) {
-      // admin token cookie name 因 server 实现差异; 此 case 仅 anchor.
-      // 真守门 unit test (REG-AP2-UI-004 admin god-mode 独立) 已锁.
-      await adminCtx.dispose();
-      return;
+      throw new Error(
+        'admin login did not set borgee_admin_session cookie — ADM-0.1 SSOT broken (反 silent-skip)',
+      );
     }
 
     const ctx = await browser.newContext({ baseURL: SERVER_URL });

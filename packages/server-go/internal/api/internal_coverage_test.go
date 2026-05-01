@@ -115,7 +115,7 @@ func loginAs(t *testing.T, url, email, password string) string {
 	resp, _ := http.Post(url+"/api/v1/auth/login", "application/json", bytes.NewReader(body))
 	defer resp.Body.Close()
 	for _, c := range resp.Cookies() {
-		if c.Name == "borgee_token" {
+		if c.Name == auth.CookieName {
 			return c.Value
 		}
 	}
@@ -133,8 +133,12 @@ func jsonReq(t *testing.T, method, url, token string, body any) (*http.Response,
 	req, _ := http.NewRequest(method, url, r)
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
-		req.AddCookie(&http.Cookie{Name: "borgee_admin_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
+		// COOKIE-NAME-CLEANUP D2: legacy `borgee_admin_token` cookie
+		// removed — admin-rail uses `borgee_admin_session` (admin/auth.go::
+		// CookieName), this jsonReq helper is user-rail only (callers all
+		// hit /api/v1/* with borgee_token). Multi-cookie attach was dead
+		// since admin-rail never reads borgee_admin_token. 真删 0 行为改.
 	}
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := client.Do(req)

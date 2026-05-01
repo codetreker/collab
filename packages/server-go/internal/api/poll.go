@@ -65,7 +65,7 @@ func (h *PollHandler) authenticatePoll(r *http.Request, body *struct {
 		}
 	}
 
-	if cookie, err := r.Cookie("borgee_token"); err == nil {
+	if cookie, err := r.Cookie(auth.CookieName); err == nil {
 		if user := auth.ValidateJWT(h.Store, h.Config.JWTSecret, cookie.Value); user != nil {
 			return user
 		}
@@ -88,7 +88,7 @@ func (h *PollHandler) authenticateSSE(r *http.Request) *store.User {
 		}
 	}
 
-	if cookie, err := r.Cookie("borgee_token"); err == nil {
+	if cookie, err := r.Cookie(auth.CookieName); err == nil {
 		if user := auth.ValidateJWT(h.Store, h.Config.JWTSecret, cookie.Value); user != nil {
 			return user
 		}

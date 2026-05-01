@@ -183,7 +183,7 @@ func bearerJSON(t *testing.T, method, url, token string, body any) (*http.Respon
 	}
 	req, _ := http.NewRequest(method, url, rd)
 	req.Header.Set("Content-Type", "application/json")
-	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+	req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
 	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
