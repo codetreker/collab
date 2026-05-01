@@ -1,71 +1,80 @@
-# HB-2 host-bridge daemon — PM stance checklist v1
+# HB-2 stance checklist — host-bridge daemon v0(D) Go 重写 + landlock + 真 IO + sqlite consumer
 
-> Owner: 野马 PM (yema) prep / 飞马 review 安全 / 烈马 acceptance hook
-> Anchor: `docs/implementation/modules/hb-2-spec.md` v1 §1-§9
-> Mode: docs-only milestone (4 件套 spec/stance/acceptance + 反约束锁) —
-> Rust crate 实施待 HB-1 #589 ship 后单独 PR.
+> 7 立场 byte-identical 跟 hb-2-spec.md §0+§2 (飞马 v0 待 commit). **真有 prod code (v0(C) #606 Go 框架延伸 + landlock 真 sandbox + 真 IO + SQLite consumer 真接 HB-3 grants) + client UI 字面 (content-lock 5 支柱)** 但 0 server schema 改 (daemon 是 client side, 跟 hb-2-spec §1.1 内部双 daemon 拆分立场承袭). 跟 #599 HB stack Go + #605 HB-2.0 + #606 HB-2 v0(C) + HB-3 host_grants + HB-4 release-gate 4 步路径 + 5 支柱锁链承袭. content-lock 必备 (daemon UI / status 5 支柱字面真锁). **取代 v1 docs-only Rust era stance (Rust crate 路径已 DROPPED #599 后)**.
 
-## 1. 立场 (PM 视角 7 项)
+## 1. Go 重写 (非 Rust, HB-1 重审决策)
+- [ ] **#599 HB stack Go 单栈决策真兑现** — 反向 grep `Cargo|cargo|.rs|crate|workspace` 在 packages/borgee-helper/ 0 hit (跟 #606 v0(C) Cargo workspace 注释残留 nit 一并清, 真守 0 Rust 痕迹)
+- [ ] 独立 Go module `packages/borgee-helper/` 持独立 `go.mod` (跟 #606 hb-2-spec §5.5 拆死锚承袭, 反 server-go binary bloat)
+- [ ] PM 必修 #1 Borgee Helper 命名拆死真兑现 (daemon=Go binary OS-level vs PWA UI=browser, 跨 #599+CS-1/2/3 字面承袭一致)
 
-1. **常驻 borgee-helper 独立 user** (蓝图 §1.2 ② 进程沙箱) — daemon 跑在
-   `borgee-helper` OS user/group, **不是 root, 不是 login user**. systemd
-   unit + launchd unit 启动配置自动校验. 反向: `User=root | sudo` 启动
-   配置 0 hit.
-2. **零写命令 / shell exec** (蓝图 §1.4 第 3 行) — 反向 grep
-   `exec\.Cmd | process::Command | Command::new | sh -c` 在
-   `packages/host-bridge/host-bridge/src` 0 hit (除 daemon 自身的
-   systemd/launchd 启动 unit 文件).
-3. **路径越界 100% reject** (HB-4 §1.5 release gate) — 任何 path 不在
-   HB-3 grants scope 内一律 reject; `../` 路径分量 + 符号链接遍历 +
-   Unicode normalization bypass **全部** reject (合约测试枚举 ≥10 case).
-4. **grants 不缓存** (HB-3 SSOT 单源) — 每次 IPC call 重新查 host_grants
-   表, 撤销 grant → 下次 IPC call < 100ms 内拒绝 (HB-4 §1.5 第 5 行).
-   反向 grep `grantsCache | cachedGrants | grant_cache` 0 hit.
-5. **HB-2 8-dict + HB-1 7-dict + AL-1a 6-dict 三字典分立** — reason 字典
-   不混; HB-2 host IPC 路径 8 reason / HB-1 install 路径 7 reason / AL-1a
-   runtime 路径 6 reason. 跨字典反向 grep: HB-2 8 reason 字面在
-   HB-1 + AL-1a 模块 0 hit (字典分立锁).
-6. **沙箱 cgroups + sandbox-exec** (蓝图 §1.2 ②) — Linux cgroups 限
-   daemon CPU/memory/IO + macOS sandbox-exec profile 限文件系统写白名单
-   仅 `audit log + tmp 缓存` 两路径; 反向断言 daemon 写 `~/Documents` /
-   `~/Library/Application Support/` 等 user 路径 → IO failed.
-7. **写类 IPC 100% reject** (HB-4 §1.5 第 6 行) — 任何写类 action 一律
-   reject (v1 仅读). 反向枚举单测覆盖 ≥8 写法尝试: `write_file /
-   delete_file / chmod / chown / mkdir / rmdir / mv / cp` 全 reject 字面
-   `unsupported_write_action` 或 cross-checked dict reason byte-identical.
+## 2. landlock 真 sandbox (Linux only v0, mac/win 留 v1)
+- [ ] **Linux landlock LSM 真启** — `internal/sandbox/sandbox_linux.go` v0(D) 真接 go-landlock dep (反 #606 v0(C) no-op stub)
+- [ ] **mac/win 留 v1** — `sandbox_darwin.go` + `sandbox_windows.go` 显式 stub + 注释明示 v1 真启 (sandbox-exec / Windows AppContainer)
+- [ ] sandbox build tag 拆死锚 (跟 #606 三文件 stub 同模式) byte-identical 不破
+- [ ] 反向 grep `exec\.Cmd|os\.Exec` 在 sandbox/ 0 hit (sandbox 不漏权)
+- [ ] 反 stub 阶段假启 sandbox 给用户错觉 (跟 PM 必修立场承袭)
 
-## 2. 黑名单 grep (反向断言, 0 hit)
+## 3. 真 IO (本地文件读, 跟 HB-1 manifest endpoint 对接)
+- [ ] **read_file / list_files 真 IO** — 替 #606 v0(C) ACL 决策仅判定的 stub, 真启文件 read (反向断 readPaths 仅在 grants 白名单内)
+- [ ] 跟 HB-1 #589 manifest endpoint 对接 — daemon 启动期 fetch manifest (ed25519 校验) byte-identical
+- [ ] 反向 grep `os\.WriteFile|os\.Create|ioutil\.WriteFile` 在 helper 路径 0 hit (反写, host-bridge 永久 read-only)
+- [ ] HB-1 7-dict reason 字面承袭一致 (反 daemon 引入新错码漂)
 
-| Pattern | 模块 | 立场来源 |
-|---|---|---|
-| `User=root\|sudo\|setuid` 在 systemd/launchd unit | `packages/host-bridge/host-bridge/` | §1 ① 沙箱 user |
-| `exec\.Cmd\|process::Command\|Command::new\|sh -c` | `packages/host-bridge/host-bridge/src` | §1 ② 零写命令 |
-| `grantsCache\|cachedGrants\|grant_cache` | `packages/host-bridge/host-bridge/src` | §1 ④ grants 不缓存 |
-| `write_file\|delete_file\|chmod\|chown\|mkdir\|rmdir` action 字面 (除 reject 列表) | `packages/host-bridge/host-bridge/src` | §1 ⑦ 写类 reject |
-| HB-2 8-dict reason 字面在 HB-1 / AL-1a 模块 | `packages/install-butler/` + `packages/server-go/internal/...runtime` | §1 ⑤ 字典分立 |
+## 4. sqlite consumer 真接 (跟 DL-2 events_archive 单源)
+- [ ] **HB-3 host_grants SQLite consumer 真接** — 替 #606 v0(C) `MemoryConsumer` mock, 真接 SQLite (Consumer interface byte-identical 不改 daemon 一行)
+- [ ] **嵌入 SQLite read-only mode** (PM HB-3 prep 倾向 A 真兑现) — 单源 + 撤销 < 100ms (HB-4 第 5 行真兑现)
+- [ ] **跟 DL-2 events_archive 单源协同** — daemon read-only consumer 不污染 cold archive 写路径
+- [ ] 反向 grep `grantsCache|cachedGrants|memoryGrants` 0 hit (反缓存, 跟 #606 立场 ③ 承袭)
+- [ ] HB-2 8-dict reason 字面 byte-identical (跨 hb-2-spec §3.3 + reasons.go + REG-HB2-001 三处对锁)
 
-## 3. 不在范围 (留 v2+)
+## 5. 复用 HB-3 host_grants ACL (不另起授权)
+- [ ] **HB-3 grants 真兑现 ACL** — daemon 不另起授权 schema, 反 grants_v2 / per_device_grants 漂
+- [ ] cross-agent ACL 闸不漏 (Lookup 按 (agent_id, scope) 双键, 跟 #606 立场承袭)
+- [ ] 反向 grep `grants_v2|host_grants_v2|daemon_grants` 0 hit (单源 SSOT)
+- [ ] 蓝图 §1.3 4 类授权 (装机 install/exec + 触发 filesystem/network) 字面承袭一致
 
-- 写命令 / shell exec (蓝图 §1.4 v2 路径单独立项)
-- 进程查看 (蓝图 §1.4 v2 表第 4 行)
-- 屏幕/键盘 (不在路线图)
-- Windows 支持 (v2 重新设计 sandbox-exec equivalent)
-- HB-3 授权弹窗 (HB-3 范围)
-- BPP 协议本身 (BPP 模块负责)
-- v2 命令通道 (蓝图 §1.4 v2 单独立项)
+## 6. 0 server schema 改 (daemon 是 client side)
+- [ ] 反向 grep `migrations/hb_2_` 在 packages/server-go/ 0 hit (daemon 不动 server schema)
+- [ ] `currentSchemaVersion` 不动 (反向断 0 行改)
+- [ ] 反 ALTER server-go 既有 schema 漂入
+- [ ] daemon 真 IO 仅本地, 反 server-side 持久化路径
 
-## 4. 验收挂钩
+## 7. admin god-mode 不挂 daemon (ADM-0 §1.3 红线)
+- [ ] 反向 grep `admin.*helper|admin.*host-bridge|admin.*daemon` 在 packages/borgee-helper/ 0 hit
+- [ ] 反向 grep `/admin-api.*helper` 0 hit
+- [ ] daemon 走用户机本地 OS user/group, 反 admin override (anchor #360 owner-only ACL 锁链 22+ PRs 立场延伸)
+- [ ] HB-2 spec §1.3 红线 byte-identical 承袭
 
-- §1 ②③④⑦ 反约束 → REG-HB2-001..004 (acceptance template 占号)
-- §1 ⑤ 字典分立 → REG-HB2-005
-- §1 ① 沙箱 user → REG-HB2-006 (HB-1 ship 后真启 unit 测)
-- §1 ⑥ cgroups + sandbox-exec → REG-HB2-007 (HB-1 ship 后)
+## 反约束 — 真不在范围
+- ❌ mac sandbox-exec / Windows AppContainer 真启 (留 v1)
+- ❌ 网络出站 outbound proxy 真接 (留 v1)
+- ❌ 文件 write 真启 (host-bridge 永久 read-only, ADM-0 §1.3 红线)
+- ❌ 0 server schema 改 / 0 endpoint / 0 既有 ACL 改
+- ❌ 加新 CI step (跟 DL-1/2 + REFACTOR-1/2 + INFRA-3 + TEST-FIX-* 同精神)
+- ❌ admin god-mode 加挂 daemon (永久不挂)
 
-## 5. v0 → v1 transition criteria
+## 跨 milestone byte-identical 锁链 (5 链)
+- **#599 HB stack Go + #605 HB-2.0 + #606 HB-2 v0(C)** — HB stack 4 步路径第 4 步真闭 (Go binary + UDS + ACL + audit + sandbox stub → v0(D) 真 sandbox + 真 IO + SQLite consumer)
+- **HB-1 #589 manifest endpoint** — daemon 启动 fetch manifest (ed25519 校验) byte-identical 承袭
+- **HB-3 host_grants SQLite consumer** — Consumer interface byte-identical (#606 锚守不改 daemon 一行真兑现)
+- **HB-4 release gate 5 支柱** — daemon 真兑现启动 < 800ms / 崩溃率 < 0.1% / 签名 0% fail / audit schema lock / 撤销 < 100ms / 写类 IPC 100% reject
+- **anchor #360 owner-only ACL 锁链 22+ PRs** + REG-INV-002 fail-closed + ADM-0 §1.3 红线
 
-- HB-1 #589 merged (install-butler crate + audit log schema 锁定)
-- HB-2 spec brief v0 → v1 (本 PR 升级)
-- 烈马 acceptance template v0 占号 (本 PR)
-- 实施拆 follow-up PR: HB-2.1 daemon skeleton → HB-2.2 IPC server →
-  HB-2.3 路径 + grants → HB-2.4 网络出站 → HB-2.5 沙箱 → HB-2.6 acceptance
-- HB-3 grants schema 待 HB-3 spec brief 落 (并行起, 不 block HB-2 docs)
+## PM 拆死决策 (3 段)
+- **Go 重写 vs Rust 拆死** — Go 选 (#599 4 角色拍板, 反 Rust crate 路径 DROPPED), 命名拆死跟 PWA UI 真兑现
+- **landlock 真 sandbox vs no-op stub 拆死** — Linux 真启 (本 PR 选), mac/win 显式 stub + 注释明示 v1 (反假启给用户错觉)
+- **嵌入 SQLite consumer vs 缓存模式拆死** — A 嵌入 read-only (PM HB-3 prep 倾向真兑现), 反 in-memory cache / TTL / write-through / daemon 副本 / HTTP loopback 6 模式漂
+
+## 用户主权红线 (5 项)
+- ✅ host-bridge 永久 read-only (反向 grep os.WriteFile 0 hit, 反写真守)
+- ✅ 既有 ACL gate 字面 + 行为 byte-identical (anchor #360 + REG-INV-002 + HB-3 grants)
+- ✅ landlock 真启 (反 stub 阶段假启给用户错觉)
+- ✅ 0 server schema 改 / 0 endpoint shape / 0 既有 ACL 改 (daemon client side)
+- ✅ admin god-mode 不挂 daemon (ADM-0 §1.3 红线 + HB-2 spec §1.3 承袭)
+
+## PR 出来 5 核对疑点
+1. 反向 grep `Cargo|cargo|.rs|crate|grants_v2|memoryGrants|os.WriteFile` 在 packages/borgee-helper/ count==0
+2. landlock Linux 真启 + mac/win stub 注释明示 v1 (build tag 三文件锚)
+3. HB-2 8-dict reason byte-identical 跨 hb-2-spec/reasons.go/REG 三处对锁
+4. 5 支柱字面 byte-identical 跨 content-lock + HB-4 release-gate + UI 三处对锁
+5. cov ≥85% (#613 gate) + 0 race-flake + admin god-mode grep 0 hit
