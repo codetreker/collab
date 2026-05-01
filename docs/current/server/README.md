@@ -339,3 +339,24 @@ Hub 维护 `onlineUsers map[userId]map[*Client]bool` 支持多端在线。Heartb
 - `internal/api/admin_endpoints.go::handleCreateMyImpersonateGrant` 在 `s.GrantImpersonation` 成功后 fire `s.InsertAdminAction(actorID=user, targetID=user, action="start_impersonation", metadata=JSON{grant_id,expires_at})` (REG-ADM2-003 4/5 → 5/5 收口). audit failure logging-only 不阻塞 grant 创建.
 - `internal/admin/middleware.go` 加 `WithAdminContext(ctx, *Admin)` test-only seam (production 唯一路径仍是 RequireAdmin → ResolveSession; adminCtxKey 私用)
 - DL-1 baseline bump: `dl1-no-direct-store` baseline 114 → 115 (admin_grant_check.go imports internal/store; helper 跨 5 admin handler wire 后渐进迁 datalayer.* interface)
+
+### ADMIN-SPA-SHAPE-FIX (#633) — server diff ≤13 行
+
+**D4 sanitizer surface (AL-8 archived 三态)**:
+- `internal/store/admin_actions.go::AdminAction` 加 `ArchivedAt *int64 \`gorm:"column:archived_at" json:"-"\`` 字段 (DB 列存在已久 — AL-7.1 sparse idx WHERE archived_at IS NOT NULL — 但 Go struct 之前 0 surfaced).
+- `internal/api/admin_endpoints.go::sanitizeAdminAction` 加 nil-safe surface: `if row.ArchivedAt != nil { out["archived_at"] = *row.ArchivedAt }`. null/缺 = active row 不写字段, non-null = archived row 写 archived_at int64 ms.
+
+**D6 admin-rail handleGrantPermission IsValidCapability gate (admin-rail 入口守门, SSOT 第 5 处链)**:
+- `internal/api/admin.go::handleGrantPermission` 加 `if !auth.IsValidCapability(body.Permission) { 400 "invalid_capability" }` 紧挨既有 `permission is required` 检查后.
+- 反 admin cURL 塞任意 snake_case / 自创字面 → user_permissions 蔓延 (CAPABILITY-DOT #628 backfill 守存量, 此 gate 守入口).
+- user-rail 4 处全验 (me_grants:123 / capability_grant:139 / users:117 / ap_2_capabilities:67), admin-rail 是第 5 处链 SSOT 守.
+
+**字面 byte-identical 不动 (反向断言)**:
+- `internal/admin/auth.go::CookieName` const = `"borgee_admin_session"` 字面不动
+- `loginRequest{Login, Password}` 字段名不动
+- `handleMe` + `handleLogin` writeJSON shape `{id, login}` 不动
+- 0 endpoint URL / 0 routes.go / 0 migration v 号 / 0 admin_actions.action CHECK enum drift
+
+**测试**:
+- `internal/api/admin_grant_permission_gate_test.go` 4 case PASS (valid dot 200 / legacy snake 400 / typo 400 / empty 400)
+- 既有 ADM-2 + ADM-2-FOLLOWUP + ADM-3 全包 unit 不破

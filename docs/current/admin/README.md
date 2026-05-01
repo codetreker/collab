@@ -178,3 +178,19 @@ Schema 不挂 `updated_at` 列, server 不开 UPDATE/DELETE 路径. 反向 grep 
 - REG-ADM2-010 helper: `api.RequireImpersonationGrant(w, r, s, targetUserID)` 返 `(true, *admin.Admin)` 或 (false, _) 已写 4 字面错码: `impersonate.no_admin` (401) / `impersonate.no_target` (400) / `impersonate.no_grant` (403). 5 admin write handler 集成留 v1 follow-up; helper 已落 + 4 unit branch 全覆.
 - REG-ADM2-011: 新 admin SPA audit-log 页 `[data-page="admin-audit-log"]` + `[data-adm2-audit-list="true"]` + `[data-adm2-red-banner="active"]` + 中文 title "审计日志" + 中文 empty "暂无审计记录" + 红 banner 字面 byte-identical "当前以业主身份操作 — 该会话受 24h 时限".
 - 测试 seam: `admin.WithAdminContext(ctx, *Admin)` 导出 (test-only 注入 adminCtxKey, production 仍走 RequireAdmin → ResolveSession 唯一路径).
+
+### ADMIN-SPA-SHAPE-FIX (#633 PR feat/admin-spa-shape-fix) — 6 drift 真修
+
+**D1 login**: client `adminLogin(login, password)` body `{login, password}` byte-identical 跟 server `loginRequest{Login,Password}` (auth.go). LoginPage 表单 state username → login, label "Login".
+
+**D2 AdminSession**: client interface 重写 `{id: string, login: string}` byte-identical 跟 server handleMe writeJSON (auth.go:281,314). 反假字段: 0 role / 0 username / 0 admin_id / 0 expires_at. AdminApp.tsx + SettingsPage.tsx 跟随用 `session?.login` 替 `session?.username`.
+
+**D3 AdminChannel.member_count 死字段删**: server `Channel` gorm json (`store/models.go::Channel`) 不返 member_count 字段. 客户端 interface + ChannelsPage 表格列同删.
+
+**D4 AL-8 archived 三态 (走 A)**: server `store.AdminAction` 加 `ArchivedAt *int64 \`gorm:"column:archived_at" json:"-"\``; `sanitizeAdminAction` 加 nil-safe surface (null/缺 = active 不写, non-null = `archived_at: int64 ms`). AdminAuditLogPage row 加 `data-archived-state="active|archived"` + `admin-audit-row-{active,archived}` className. AL-8 §0 立场③ 真兑现.
+
+**D5 InviteCode.note**: 收紧 `string` non-null (server `store.InviteCode.Note string \`json:"note"\`` 默认 "").
+
+**D6 admin-rail handleGrantPermission gate**: `internal/api/admin.go::handleGrantPermission` 加 `auth.IsValidCapability(body.Permission)` 守门, invalid → 400 `invalid_capability` (CAPABILITY-DOT #628 backfill 守存量, 此 gate 守入口 SSOT 第 5 处链 — user-rail 4 处 + admin-rail 1 处 = 5).
+
+**反约束**: server diff ≤13 行 production (D4 sanitizer +5 + D6 gate +5 + struct field +3); 0 endpoint URL / 0 schema migration / 0 routes.go 改; admin-rail SSOT (CookieName `borgee_admin_session` / loginRequest / handleMe writeJSON) 字面 byte-identical 不动. ADM-0 §1.3 admin/user 路径分叉红线守.

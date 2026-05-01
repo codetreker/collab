@@ -431,6 +431,15 @@ func (h *AdminHandler) handleGrantPermission(w http.ResponseWriter, r *http.Requ
 		writeJSONError(w, http.StatusBadRequest, "permission is required")
 		return
 	}
+	// ADMIN-SPA-SHAPE-FIX D6 (admin-rail capability gate hardening):
+	// 反 admin cURL 塞任意字面 → user_permissions 蔓延 (CAPABILITY-DOT
+	// #628 backfill 守存量, 此 gate 守入口). user-rail 4 处全验
+	// (me_grants:123 / capability_grant:139 / users:117 / ap_2_capabilities:67),
+	// admin-rail 是第 5 处链 SSOT 守.
+	if !auth.IsValidCapability(body.Permission) {
+		writeJSONError(w, http.StatusBadRequest, "invalid_capability")
+		return
+	}
 	if body.Scope == "" {
 		body.Scope = "*"
 	}

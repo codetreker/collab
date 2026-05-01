@@ -35,7 +35,7 @@ export default function ChannelsPage() {
       <div className="admin-table-wrapper">
         <table className="admin-table">
           <thead>
-            <tr><th>Name</th><th>Type</th><th>Visibility</th><th>Members</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+            <tr><th>Name</th><th>Type</th><th>Visibility</th><th>Status</th><th>Created</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {channels.map(channel => (
@@ -43,7 +43,7 @@ export default function ChannelsPage() {
                 <td>{channel.type === 'dm' ? channel.name : `#${channel.name}`}</td>
                 <td>{channel.type}</td>
                 <td>{channel.visibility ?? '-'}</td>
-                <td>{channel.member_count ?? '-'}</td>
+                {/* ADMIN-SPA-SHAPE-FIX D3: 删 member_count 死字段 (server 不返). */}
                 <td>{channel.deleted_at ? 'Deleted' : 'Active'}</td>
                 <td>{formatDate(channel.created_at)}</td>
                 <td>

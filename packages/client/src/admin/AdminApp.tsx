@@ -70,7 +70,7 @@ function AdminLayout() {
           </NavLink>
         ))}
         <div className="admin-sidebar-footer">
-          <div className="admin-user-label">{session?.username}</div>
+          <div className="admin-user-label">{session?.login}</div>
           <button className="btn btn-sm" onClick={handleLogout}>Logout</button>
         </div>
       </aside>

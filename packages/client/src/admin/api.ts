@@ -28,8 +28,12 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 
 export interface AdminSession {
-  role: 'admin';
-  username: string;
+  // ADMIN-SPA-SHAPE-FIX D2: server `internal/admin/auth.go::handleMe`
+  // (auth.go:281,314) byte-identical 真返 `{id, login}` 2 字段, 不返 role /
+  // username / admin_id / expires_at. 之前 `{role, username}` 是 client 自创
+  // 假字段 (UI render undefined). 改 client interface 跟 server SSOT 锁.
+  id: string;
+  login: string;
 }
 
 export interface OrgStatsRow {
@@ -66,7 +70,9 @@ export interface AdminChannel {
   visibility: string;
   created_at: number;
   deleted_at?: number | null;
-  member_count?: number;
+  // ADMIN-SPA-SHAPE-FIX D3: `member_count` 死字段删 — server `Channel`
+  // gorm json (`store/models.go::Channel`) 不返 member_count, 客户端永显
+  // undefined. 反向 grep `member_count` in client/admin/ 0 hit (post-fix).
 }
 
 export interface InviteCode {
@@ -76,13 +82,18 @@ export interface InviteCode {
   expires_at?: number | null;
   used_by?: string | null;
   used_at?: number | null;
-  note?: string | null;
+  // ADMIN-SPA-SHAPE-FIX D5: server `store.InviteCode.Note string \`json:"note"\``
+  // 真返 non-null (默认 ""). client 类型 narrowing 守.
+  note: string;
 }
 
-export async function adminLogin(username: string, password: string): Promise<{ token: string }> {
-  return request<{ token: string }>('/auth/login', {
+export async function adminLogin(login: string, password: string): Promise<AdminSession> {
+  // ADMIN-SPA-SHAPE-FIX D1+D2: server `loginRequest{Login,Password}` (auth.go)
+  // — body 字段 `login` 不是 `username`. response (auth.go:281) 返
+  // `{id, login}` 不是 `{token}` (token 走 Set-Cookie cookie 不在 body).
+  return request<AdminSession>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ login, password }),
   });
 }
 
@@ -169,6 +180,9 @@ export interface AdminActionRow {
   action: string;   // 英文 enum (跟 server CHECK constraint byte-identical)
   metadata: string; // JSON 字符串 (server 不挂 body/content/text/artifact 字段, god-mode 仅元数据)
   created_at: number; // Unix ms
+  // ADMIN-SPA-SHAPE-FIX D4: AL-8 §0 立场 ③ archived 三态. server `sanitizeAdminAction`
+  // (admin_endpoints.go) nil-safe surface — null/缺 = active, non-null = archived.
+  archived_at?: number | null;
 }
 
 export interface AuditLogFilters {

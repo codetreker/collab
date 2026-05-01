@@ -163,6 +163,11 @@ export default function AdminAuditLogPage() {
                 data-action-row
                 data-action={row.action}
                 data-adm2-actor-kind="admin"
+                /* ADMIN-SPA-SHAPE-FIX D4: AL-8 §0 立场③ archived 三态 row class.
+                   server sanitizeAdminAction nil-safe surface archived_at —
+                   null/缺 = active, non-null = archived. */
+                data-archived-state={row.archived_at != null ? 'archived' : 'active'}
+                className={row.archived_at != null ? 'admin-audit-row-archived' : 'admin-audit-row-active'}
               >
                 <td>{formatTs(row.created_at)}</td>
                 <td className="admin-audit-actor">
