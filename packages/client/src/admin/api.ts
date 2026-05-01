@@ -82,7 +82,7 @@ export interface InviteCode {
 export async function adminLogin(username: string, password: string): Promise<{ token: string }> {
   return request<{ token: string }>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ login: username, password }),
+    body: JSON.stringify({ username, password }),
   });
 }
 
