@@ -1,78 +1,60 @@
-# Acceptance Template — CS-3: PWA install + Web Push UI
+# Acceptance Template — CS-3 (PWA install + Web Push UI + Playwright e2e v1)
 
-> Spec: `docs/implementation/modules/cs-3-spec.md` (飞马 + 战马D v0)
-> 蓝图: `docs/blueprint/client-shape.md` §1.1 (PWA 主战场) + §1.4 (Web Push 数据通路)
-> Stance: `docs/qa/cs-3-stance-checklist.md` (野马 / 飞马 v0)
-> 前置: DL-4 #485 pushSubscribe.ts ✅ + manifest.json + sw.js 既有 ✅
-> Owner: 战马D (主战) + 飞马 (spec) + 烈马 (acceptance) + 野马 (文案)
+> Spec brief `cs-3-spec.md` (飞马 v0). Owner: 战马D 实施 / 飞马 review / 烈马 验收. v0 wrapper PR #598 已 merge (REG-CS3-001..006 全 🟢, 17 vitest), 本 v1 batch 接 Playwright e2e 真测 + screenshot demo.
+>
+> **CS-3 v1 范围**: v0 client wrapper 落地 (PWA install user-gesture only + Web Push 三态 + DL-4 lib byte-identical + 0 server prod) 后, 接 Playwright e2e 真测 install prompt + Web Push subscription 三态 + ⭐ 2 screenshot demo. 立场承袭 CS-1/2/4 client-only Wrapper + DL-4 #485 pushSubscribe.ts byte-identical + post-#618 haystack gate. **0 server prod + 0 schema 改**.
 
 ## 验收清单
 
-### 立场 ① — PWA install user-gesture only (Chrome/Edge 防滥用红线)
+### §1 行为不变量 (PWA install user-gesture + Web Push 三态 + DL-4 byte-identical)
 
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 1.1 `lib/cs3-install-prompt.ts` 拦截 `beforeinstallprompt` event + cache deferredPrompt + `useInstallPrompt()` hook 返 `{state, prompt}` | unit | 战马D | `cs3-install-prompt.test.ts::TestCS31_InstallPromptHookCachesEvent` |
-| 1.2 三态 enum `InstallState = 'installable' | 'installed' | 'unavailable'` byte-identical | unit | 战马D | `TestCS31_InstallStateEnum` |
-| 1.3 `prompt()` 必由 user click handler 触发 — 反向断 mount/effect 内调 (`prompt\(\)\.then` 在 useEffect 0 hit) | unit | 战马D | `TestCS31_AutoPromptForbidden` (filepath.Walk + regex) |
-| 1.4 `installed` 检测: `appinstalled` event OR `display-mode: standalone` matchMedia 任一 true | unit | 战马D | `TestCS31_InstalledStateDetection` |
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 1.1 PWA install user-gesture only (Chrome/Edge 防滥用红线) — `useInstallPrompt` 拦 `beforeinstallprompt` event + cache deferredPrompt + `prompt()` 必由 click handler 触发 (反 auto-prompt) | unit + grep | `useInstallPrompt.test.tsx` 三态 (installable/installed/unavailable) PASS + 反向 grep `auto.*prompt\(\)\|onMount.*requestPermission\|useEffect.*requestPermission` 0 hit (v0 已 🟢) |
+| 1.2 Web Push 三态文案 byte-identical (granted `已开启通知` / denied `通知已被浏览器拒绝, 请到浏览器设置开启` / default `开启通知`) + unsupported→null + 反同义词漂 5 词 | vitest + grep | `cs3-permission-labels.test.ts::_PermissionLabels_LiteralByteIdentical` + `_NoSynonymDrift` PASS (v0 已 🟢) |
+| 1.3 DL-4 #485 pushSubscribe.ts byte-identical 不改 + delegate `subscribeToPush()/unsubscribeFromPush()` (反 cs3 平行 PushHelper) | grep + vitest | `git diff main -- packages/client/src/lib/pushSubscribe.ts` = **0 行** + `_DelegatesToDL4` vi.spyOn PASS (v0 已 🟢) |
 
-### 立场 ② — Web Push 三态权限 byte-identical 跟 DL-4 + click-only 触发
+### §2 E2E (Playwright PWA install + Web Push subscription 真测)
 
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 2.1 `lib/cs3-permission-labels.ts::PUSH_PERMISSION_LABELS` 4-enum byte-identical (granted/denied/default/unsupported) — 文案 byte-identical 跟蓝图字面 | unit | 战马D | `cs3-permission-labels.test.ts::TestCS31_PermissionLabels_4DictByteIdentical` |
-| 2.2 `components/PushSubscribeToggle.tsx` 走 DL-4 `pushSubscribe.subscribeToPush()` + `unsubscribeFromPush()` byte-identical (CS-3 不改 lib) | vitest | 战马D | `PushSubscribeToggle.test.tsx::TestCS32_DelegatesToDL4` (mock pushSubscribe + 验 call) |
-| 2.3 三态文案渲染 — granted `已开启通知` (toggle on) / denied `通知已被浏览器拒绝, 请到浏览器设置开启` / default `开启通知` (toggle off) | vitest | 战马D | `PushSubscribeToggle.test.tsx::TestCS32_GrantedDeniedDefault_LabelsByteIdentical` |
-| 2.4 unsupported 时不渲染 (return null) | vitest | 战马D | `PushSubscribeToggle.test.tsx::TestCS32_UnsupportedReturnsNull` |
-| 2.5 反向断 mount-time auto requestPermission (`Notification\.requestPermission\(\)` 在 PushSubscribeToggle.tsx count==0, 必走 DL-4 入口) | unit | 战马D | `TestCS32_NoMountTimeAutoPermission` |
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 2.1 Playwright e2e 真测 PWA install — `cs-3-pwa-install.spec.ts` 4 case (installable click 真触发 prompt() + installed return null + appinstalled event 真接 + reject 用户 deferredPrompt 真清) | E2E | `packages/e2e/tests/cs-3-pwa-install.spec.ts` 4 case PASS |
+| 2.2 Playwright e2e 真测 Web Push — `cs-3-web-push.spec.ts` 4 case (default click 真触发 Notification.requestPermission() + granted 渲染 + denied disabled + unsupported return null) | E2E | `cs-3-web-push.spec.ts` 4 case PASS |
 
-### 立场 ③ — 0 server prod + 0 schema + 文案 byte-identical + admin god-mode 不挂
+### §3 closure (REG + cov gate + 2 screenshot)
 
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 3.1 0 server diff (`git diff origin/main -- packages/server-go/` count==0 production lines) | unit | 战马D | `cs3_no_server_diff_test.ts` (filepath.Walk server-go/) |
-| 3.2 0 schema 改 (反向 grep `migrations/cs_3\|cs3.*api\|cs3.*server` 在 server-go/internal/ count==0) | unit | 战马D | `TestCS31_NoSchemaChange` |
-| 3.3 同义词反向 (`下载客户端 / 装个 app / 接收推送 / 订阅通知` 在 cs3-permission-labels.ts count==0) | unit | 战马D | `TestCS31_NoSynonymDrift` |
-| 3.4 admin god-mode 不挂 (反向 grep `admin.*pwa-install\|admin.*PushSubscribeToggle` count==0) | unit | 战马D | `TestCS32_NoAdminPWAManagement` |
-| 3.5 InstallPromptButton 字面 `安装 Borgee 桌面应用` byte-identical 跟蓝图 §1.1 | vitest | 战马D | `InstallPromptButton.test.tsx::TestCS32_LabelByteIdentical` |
-| 3.6 `installed` / `unavailable` 时 InstallPromptButton 不渲染 (return null) | vitest | 战马D | `InstallPromptButton.test.tsx::TestCS32_HiddenWhenInstalled + WhenUnavailable` |
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 3.1 既有全包 unit + e2e + vitest 全绿不破 + post-#618 haystack gate 三轨过 (Func=50/Pkg=70/Total=85) | full test + CI | 17 vitest (v0) + 8 e2e (v1) PASS + go-test-cov SUCCESS |
+| 3.2 0 server prod + 0 schema 改 (Wrapper 第 15 处) — `git diff main -- packages/server-go/` 0 行 | git diff | 0 行 ✅ (v0 已 🟢) |
+| 3.3 ⭐ 2 Screenshot 真生成 (`docs/qa/screenshots/cs-3-install-prompt.png` + `cs-3-push-toggle-three-states.png`) — Playwright `await page.screenshot()` 真截图 ≥3000 bytes 各 | yema sign | 2 文件存在 + size verify |
 
-### 既有 DL-4 pushSubscribe.ts / manifest.json / sw.js 不破
+### §4 反向断言 (反 admin god-mode + 反 mount auto requestPermission + 反平行)
 
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 4.1 DL-4 pushSubscribe.ts 字面 byte-identical 不动 (本 PR 仅 import 不改) | unit | 战马D | git diff `packages/client/src/lib/pushSubscribe.ts` 0 行 |
-| 4.2 manifest.json + sw.js 字面 byte-identical 不动 | unit | 战马D | git diff `packages/client/public/{manifest.json,sw.js}` 0 行 |
+| 验收项 | 实施方式 | 实施证据 |
+|---|---|---|
+| 4.1 反 mount-time auto `Notification.requestPermission()` (反 user-gesture only 红线漂) — body 0 hit in PushSubscribeToggle.tsx | grep | reverse grep test PASS (v0 已 🟢) |
+| 4.2 反 admin god-mode 不挂 (ADM-0 §1.3 红线; 反向 grep `admin.*install\|admin.*push\|/admin-api.*push` 0 hit) + 反平行 cs3 PushHelper / cs3 newCursor (DL-4 单源) | grep | reverse grep tests PASS (v0 已 🟢) |
 
-### e2e (cs-3-pwa-install.spec.ts 4 case)
+## REG-CS3-* (v0 #598 已 🟢 / v1 e2e + 2 screenshot 待翻)
 
-| 验收项 | 实施方式 | Owner | 实施证据 |
-|---|---|---|---|
-| 5.1 installable 状态 → InstallPromptButton 渲染 + `安装 Borgee 桌面应用` DOM | playwright | 战马D / 烈马 | `cs-3-pwa-install.spec.ts::TestCS3E2E_InstallButtonRenders` |
-| 5.2 installed 状态 → InstallPromptButton 隐藏 (display-mode: standalone) | playwright | 战马D / 烈马 | `TestCS3E2E_InstallButtonHiddenWhenInstalled` |
-| 5.3 push toggle granted → `已开启通知` 文案 + toggle on DOM | playwright | 战马D / 烈马 | `TestCS3E2E_PushToggleGrantedLabel` |
-| 5.4 push toggle denied → `通知已被浏览器拒绝, 请到浏览器设置开启` 文案 | playwright | 战马D / 烈马 | `TestCS3E2E_PushToggleDeniedLabel` |
-
-## 不在本轮范围 (spec §3 字面承袭)
-
-- ❌ Tauri 桌面壳 (放弃, HB stack Go 重审决策已对齐)
-- ❌ IndexedDB 乐观缓存 (留 CS-4)
-- ❌ Web Notifications API 自定义渲染 (sw.js push handler 已落 DL-4)
-- ❌ background sync (蓝图 §1.1 字面承袭)
-- ❌ admin god-mode PWA install / push 管理 (永久不挂 ADM-0 §1.3)
-- ❌ iOS Safari `beforeinstallprompt` 真支持 (留 v2)
-- ❌ per-device 多端管理 UI (留 v1)
+- REG-CS3-001..006 🟢 (v0 PR #598 merged) — PWA install user-gesture + Web Push 三态 + DL-4 lib byte-identical + 0 server prod + 反 7 锚
+- REG-CS3-007 ⚪ Playwright e2e 8 case (PWA install 4 + Web Push subscription 4) 真测 user-gesture 真触发 + 真注册 service worker (反 mock-only)
+- REG-CS3-008 ⚪ ⭐ 2 screenshot 真生成 (install-prompt + push-toggle-three-states ≥3000 bytes 各) + post-#618 haystack gate
 
 ## 退出条件
 
-- 立场 ① 1.1-1.4 (install hook + 三态 + auto-prompt 反向 + installed 检测) ✅
-- 立场 ② 2.1-2.5 (push labels + toggle delegate DL-4 + 三态文案 + unsupported null + auto requestPermission 反向) ✅
-- 立场 ③ 3.1-3.6 (0 server / 0 schema / 同义词反向 / admin god-mode 不挂 / install button label / 隐藏条件) ✅
-- 既有 4.1-4.2 (DL-4 pushSubscribe / manifest / sw.js 不动) ✅
-- e2e 5.1-5.4 全 PASS ✅
-- REG-CS3-001..006 = **6 行 🟢**
+- §1 (3) + §2 (2) + §3 (3) + §4 (2) 全绿 — 一票否决
+- PWA install user-gesture only + Web Push 三态 byte-identical + DL-4 lib byte-identical
+- Playwright e2e 8 case PASS (PWA 4 + Web Push 4) + 真触发 prompt + 真注册 service worker
+- ⭐ 2 screenshot ≥3000 bytes 各 真生成
+- 0 server prod + post-#618 haystack gate 三轨过
+- 反 admin god-mode bypass + 反 mount auto requestPermission + 反平行 PushHelper
+- 登记 REG-CS3-007..008
 
 ## 更新日志
 
-- 2026-04-30 — 战马D / 飞马 / 烈马 / 野马 v0: CS-3 4 件套 acceptance template, 跟 spec 3 立场 + stance §2 黑名单 grep + 跨 milestone byte-identical (DL-4 pushSubscribe.ts byte-identical + manifest.json + sw.js + ADM-0 §1.3 红线) 三段对齐. 0 server prod + 0 schema 改 — wrapper milestone 选项 C 同 CS-1 / CS-2 / CV-9..14 / DM-5..6 / DM-9 模式承袭.
+| 日期 | 作者 | 变化 |
+|---|---|---|
+| 2026-04-30 | 战马D / 飞马 / 烈马 / 野马 | v0 — wrapper acceptance (REG-CS3-001..006 全 🟢, PR #598 merged). |
+| 2026-05-01 | 烈马 | v1 — 扩 4 段验收覆盖 Playwright e2e + 2 screenshot demo. REG-CS3-007..008 ⚪ 占号. 立场承袭 CS-1 #601 + CS-2 #595 + CS-4 #604 client-only Wrapper + DL-4 #485 pushSubscribe.ts byte-identical + 跨四 milestone audit 反转锁链 (RT-3 + REFACTOR-2 + DL-3 + AP-2 v1) e2e 真补 + post-#612 haystack gate + post-#614 NAMING-1 + ADM-0 §1.3 红线. **0 server prod 候选** (Wrapper 第 15 处). |
