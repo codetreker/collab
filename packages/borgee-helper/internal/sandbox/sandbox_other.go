@@ -1,20 +1,19 @@
-//go:build !linux && !darwin
+//go:build !linux && !darwin && !windows
 
-// Package sandbox — fallback (Windows / 其他). hb-2-spec.md §5.5 v1 不挂,
-// no-op + 警告日志 (production 真 daemon 启动时 main 检查 Platform 字面
-// 决定是否 abort).
+// Package sandbox — fallback (其他 OS, 极少). v0(D) no-op + 警告.
 package sandbox
 
-// Apply 返回 nil (no-op); main.go 检 Platform!="linux"&&Platform!="darwin"
-// 时打 warn 日志.
+// Apply v0(D) fallback — 其他非主流 OS, no-op + 警告.
 func Apply(_ Profile) error {
 	return nil
 }
 
+// Profile 描述 sandbox 配置 (跨平台 byte-identical struct).
 type Profile struct {
 	ReadPaths    []string
 	AuditLogPath string
 	TmpCachePath string
 }
 
+// Platform 锚 — 单测断 build tag 选对.
 const Platform = "other"

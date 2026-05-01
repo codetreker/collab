@@ -15,6 +15,7 @@ import (
 
 	"borgee-helper/internal/acl"
 	"borgee-helper/internal/audit"
+	"borgee-helper/internal/fileio"
 	"borgee-helper/internal/reasons"
 )
 
@@ -116,12 +117,41 @@ func (h *Handler) writeResp(w *bufio.Writer, resp Response) error {
 }
 
 // handle 走 ACL gate + audit (含 reject); 返回 Response.
+//
+// v0(D) 真 IO: ACL pass 后, read_file / list_files action 真走 fileio
+// 包 (os.ReadFile / os.ReadDir, landlock 守门已限路径白名单).
 func (h *Handler) handle(ctx context.Context, handshakeAgentID string, req Request) Response {
 	target := extractTarget(req)
 	d := h.Gate.Decide(ctx, handshakeAgentID, req.AgentID, acl.Action(req.Action), target)
 	resp := Response{RequestID: req.RequestID, Reason: string(d.Reason)}
 	if d.Allow {
-		resp.Status = "ok"
+		// v0(D) 真 IO 解锁 (替 v0(C) 仅 ACL 决策).
+		switch acl.Action(req.Action) {
+		case acl.ActionReadFile:
+			maxBytes, _ := req.Params["max_bytes"].(float64)
+			data, ioErr := fileio.ReadFile(target, int64(maxBytes))
+			if ioErr != nil {
+				resp.Status = "rejected"
+				resp.Reason = string(reasons.IOFailed)
+			} else {
+				resp.Status = "ok"
+				resp.Data = data
+			}
+		case acl.ActionListFiles:
+			data, ioErr := fileio.ListFiles(target)
+			if ioErr != nil {
+				resp.Status = "rejected"
+				resp.Reason = string(reasons.IOFailed)
+			} else {
+				resp.Status = "ok"
+				resp.Data = data
+			}
+		case acl.ActionNetworkEgress:
+			// v0(D) 仅 ACL gate, 真出站 proxy 留 v1.5+ (spec §3 不在范围).
+			resp.Status = "ok"
+		default:
+			resp.Status = "ok"
+		}
 	} else {
 		resp.Status = "rejected"
 	}
