@@ -103,7 +103,7 @@ CREATE TABLE admins (
 
 | 文件 | 路由 | 端点 |
 |------|------|------|
-| `LoginPage.tsx` | `/admin` | `POST /admin-api/auth/login` (or v1 alias) |
+| `LoginPage.tsx` | `/admin` | `POST /admin-api/auth/login` (or v1 alias); body `{login, password}` |
 | `DashboardPage.tsx` | `/admin/dashboard` | `GET /admin-api/v1/stats` (含 `by_org[]`) |
 | `UsersPage.tsx` | `/admin/users` | `GET/POST/PATCH/DELETE /admin-api/v1/users[/:id]` |
 | `UserDetailPage.tsx` | `/admin/users/:id` | 只读, `GET /admin-api/v1/users` + `/:id/agents` |
