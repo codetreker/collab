@@ -259,6 +259,12 @@ func sanitizeAdminAction(row store.AdminAction, adminView bool) map[string]any {
 	if adminView {
 		out["actor_id"] = row.ActorID
 	}
+	// ADMIN-SPA-SHAPE-FIX D4 (走 A): AL-8 §0 立场③ archived 三态 surface.
+	// nil-safe — null/缺 = active row (不写字段); non-null = archived row
+	// (写 archived_at: int64 ms epoch). client UI 走 row class 三态渲染.
+	if row.ArchivedAt != nil {
+		out["archived_at"] = *row.ArchivedAt
+	}
 	// user-rail 不返 actor_id raw — client 渲染时调 admin lookup endpoint
 	// 把 UUID 翻成 admin_username (跟 system DM body 同源避免 UUID 漏出).
 	return out

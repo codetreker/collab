@@ -42,6 +42,10 @@ type AdminAction struct {
 	Action       string `gorm:"column:action"`
 	Metadata     string `gorm:"column:metadata"`
 	CreatedAt    int64  `gorm:"column:created_at"`
+	// ADMIN-SPA-SHAPE-FIX D4 (走 A): AL-7.1 schema 加了 archived_at 列 + sparse idx
+	// (WHERE archived_at IS NOT NULL), 但 Go struct 之前 0 surfaced. 加 nullable
+	// pointer 字段 + json:"-" (不直 marshal — 走 sanitizeAdminAction nil-safe surface).
+	ArchivedAt *int64 `gorm:"column:archived_at" json:"-"`
 }
 
 // TableName is required because gorm pluralizes by default — table name is

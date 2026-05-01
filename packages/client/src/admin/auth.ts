@@ -5,7 +5,7 @@ import type { AdminSession } from './api';
 interface AdminAuthContextValue {
   session: AdminSession | null;
   checked: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (login: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -35,8 +35,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [refresh]);
 
-  const login = useCallback(async (username: string, password: string) => {
-    await adminLogin(username, password);
+  const login = useCallback(async (login: string, password: string) => {
+    await adminLogin(login, password);
     const me = await fetchAdminMe();
     setSession(me);
     setChecked(true);

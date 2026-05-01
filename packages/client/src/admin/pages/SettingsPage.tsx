@@ -16,12 +16,12 @@ export default function SettingsPage() {
       <div className="admin-section-header"><h2>Settings</h2></div>
       <div className="admin-card admin-detail-grid">
         <div>
-          <div className="admin-detail-label">Username</div>
-          <div className="admin-detail-value">{session?.username}</div>
+          <div className="admin-detail-label">Login</div>
+          <div className="admin-detail-value">{session?.login}</div>
         </div>
         <div>
-          <div className="admin-detail-label">Role</div>
-          <div className="admin-detail-value">{session?.role}</div>
+          <div className="admin-detail-label">ID</div>
+          <div className="admin-detail-value admin-detail-mono">{session?.id}</div>
         </div>
         <div>
           <div className="admin-detail-label">API Prefix</div>
