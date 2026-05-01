@@ -215,3 +215,22 @@ ADM-0.1 bootstrap env 加二选一支持: 推荐 prod 用 hash, dev/testing 用 
 - 0 endpoint URL / 0 schema / 0 cookie / 0 admin login/logout/me 行为改 (字面 byte-identical)
 - bcrypt cost ≥ MinBcryptCost (10) 守 (review checklist 红线)
 - env 中明文 plain 永不写盘 (只内存哈希后写 admins 表 hash 字段)
+
+### ADMIN-SPA-ARCHIVED-UI-FOLLOWUP (PR feat/admin-spa-archived-ui-followup) — #633 D4-A client filter UI 闭环
+
+#633 加了 server `sanitizeAdminAction` archived_at surface + row `data-archived-state` attr + `admin-audit-row-{active,archived}` className 三态, 但 client filter UI 当时未跟改 (REG-ADM-05 e2e 凿实). 此 milestone 闭环 — admin SPA AdminAuditLogPage 真加 `<select data-filter="archived">` 三态 toggle.
+
+**client diff** (~20 行 production):
+
+- `packages/client/src/admin/api.ts` — `AuditLogFilters` 加 `archived?: 'active' | 'archived' | 'all'` union; `fetchAdminAuditLog` 加 `if (filters.archived) qs.set('archived', filters.archived)` URL param 透传 server `?archived=` enum
+- `packages/client/src/admin/pages/AdminAuditLogPage.tsx` — Target User ID label 之后 / Filter button 之前加 `<label>View<select data-filter="archived">` 3 option byte-identical (Active/Archived/All), `value={filters.archived ?? 'active'}` 默认 active 跟 server byte-identical
+
+**反约束**:
+- 0 server / 0 schema / 0 endpoint URL / 0 cookie 改 (`git diff origin/main -- packages/server-go/` = 0 行)
+- #633 D4-A row className/data-archived-state 不破 (此 PR 反向 grep 守, 0 改)
+- 3 option value byte-identical 跟 server `admin_endpoints.go::handleAdminAuditLog ?archived=` enum 字面单源 (drift = 改两处 client + server)
+- `admin-audit-row-archived` className 仅 AdminAuditLogPage 内, 0 漂入 AdminApp 别 page (反 cross-page contamination)
+
+**vitest 5 case** (`admin-spa-archived-ui-followup.test.ts`, file-source content lock createRequire pattern): REG-ASAUI-001 select+3 option / 002 row 三态不破 / 003 AuditLogFilters union / 004 qs.set URL param / 005 反 cross-page contamination. client vitest 107/107 PASS.
+
+**REG-ADM-05 翻牌** ✅ done 同 PR (e2e-scenarios.md §3 总数 + §3 v3 变更日志 + §4.2 闭环 + §5 退出条件 4 处).

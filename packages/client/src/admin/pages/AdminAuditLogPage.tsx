@@ -125,6 +125,26 @@ export default function AdminAuditLogPage() {
             placeholder="UUID"
           />
         </label>
+        {/* ADMIN-SPA-ARCHIVED-UI-FOLLOWUP: AL-8 §0 立场 ③ archived 三态
+            filter toggle. 默认 "active" (空字面 = active 跟 server byte-identical).
+            content-lock §1: 3 label "Active" / "Archived" / "All" 字面单源. */}
+        <label>
+          View
+          <select
+            data-filter="archived"
+            value={filters.archived ?? 'active'}
+            onChange={(e) =>
+              setFilters({
+                ...filters,
+                archived: (e.target.value as 'active' | 'archived' | 'all'),
+              })
+            }
+          >
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+            <option value="all">All</option>
+          </select>
+        </label>
         <button type="submit" className="btn btn-sm" disabled={busy}>
           Filter
         </button>
