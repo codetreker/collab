@@ -53,17 +53,18 @@
 
 ## 6. 反约束 / 不在范围
 
-- ❌ events 接 RT-3 fanout 上游 hook (留 DL-2 cold-stream wire-up)
+- ❌ events 接 RT-3 fanout 上游 hook (留 DL-2 cold-stream wire-up — 真架构边界, 飞马 audit 接受)
 - ❌ typing-indicator 真启 (永久不挂, thought-process 5-pattern 锁链立场)
 - ❌ last-seen UI 跨设备 sync (留 RT-3.2 follow-up)
 - ❌ agent presence (蓝图 §1.4 仅人类 4 态; agent 走 BPP heartbeat HB-1..6)
 - ❌ session_resume_hint (蓝图 §1.3 留 DL-5+)
 - ❌ per-channel presence 视图 (留 v3+)
-- ❌ Playwright e2e 多 tab 5 case + 5 截屏 demo (留 RT-3.5 follow-up wire-up PR — Playwright fixture multi-tab 跨 worktree 复杂度高于本 PR scope)
 
 ## 7. Tests + verify
 
 - `go test -tags sqlite_fts5 -timeout=300s ./...` 全 26 packages PASS ✅
 - `pnpm test (client)` 98 files / 648 passed / 1 skipped ✅
 - `pnpm typecheck (client)` clean ✅
+- `pnpm test rt-3-presence (e2e)` Playwright 5 case PASS (真跑 server-go 4901 + vite 5174) ✅
+- 5 截屏 demo PNG 入 git: `docs/qa/screenshots/rt-3-{multi-device,subject,busy-idle,reject,offline-fallback}.png` ✅
 - post-#614 haystack gate Func=50/Pkg=70/Total=85 (CI 自然 trigger)

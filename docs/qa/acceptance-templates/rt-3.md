@@ -26,9 +26,9 @@
 
 | 验收项 | 实施方式 | 实施证据 |
 |---|---|---|
-| 3.1 RT-3.3 client UI — `wsClient.ts` switch case `agent_task_state_changed` + `AgentActivityDot.tsx` busy/idle/error 三态 DOM (data-attr `data-agent-state` byte-identical content-lock 锁) | vitest | `AgentActivityDot.test.tsx` 三态渲染 PASS + DOM data-attr byte-identical |
-| 3.2 RT-3.5 Playwright e2e 多 tab presence 真测 — 1 user 多 tab fanout + busy-idle + offline-fallback + reject + multi-device (5 case) | E2E | `packages/e2e/tests/rt-3-presence.spec.ts` 5 case PASS (Playwright `--timeout=30000`) |
-| 3.3 反 typing-indicator 同义词漂 — 反向 grep `typing\|isTyping\|onTyping\|typing-indicator\|正在输入\|输入中` 在 client/src/ + e2e/ 全清 0 hit (除 user-typing 域 anchor 合规白名单) | grep | reverse grep test PASS |
+| 3.1 RT-3.3 client UI — `wsClient.ts` switch case `agent_task_state_changed` + `AgentActivityDot.tsx` busy/idle/error 三态 DOM (data-attr `data-agent-state` byte-identical content-lock 锁) | vitest | `RT3PresenceDot.test.tsx` 9 case PASS + `rt3-content-lock-reverse-grep.test.ts` 4 case PASS + DOM data-attr `data-rt3-{presence-dot,last-seen,cursor-user}` byte-identical ✅ |
+| 3.2 RT-3.5 Playwright e2e 多 tab presence 真测 — 1 user 多 tab fanout + busy-idle + offline-fallback + reject + multi-device (5 case) | E2E | `packages/e2e/tests/rt-3-presence.spec.ts` 5 case PASS (Playwright `--max-failures=2 --workers=1` 真跑通 server-go 4901 + vite 5174) ✅ |
+| 3.3 反 typing-indicator 同义词漂 — 反向 grep `typing\|isTyping\|onTyping\|typing-indicator\|正在输入\|输入中` 在 client/src/ + e2e/ 全清 0 hit (除 user-typing 域 anchor 合规白名单) | grep | `rt3-content-lock-reverse-grep.test.ts::§3` 9 同义词 (英 5 + 中 4) 0 hit + `rt3_presence_reverse_grep_test.go::TestRT3_NoTypingIndicator_InRT3Paths` PASS ✅ |
 
 ### §4 closure 验收 (REG + cov gate + 5 截屏 demo)
 
@@ -36,7 +36,7 @@
 |---|---|---|
 | 4.1 既有全包 unit + e2e + vitest 全绿不破 + post-#614 haystack gate 三轨过 (Func=50/Pkg=70/Total=85) | full test + CI | `go test -tags sqlite_fts5 -timeout=300s ./...` + Playwright + vitest 全 PASS + go-test-cov SUCCESS |
 | 4.2 RT-3.4 DL-4 Web Push fallback 接 (DL-4 #490 已 merge) — offline recipient 走 Web Push 不靠 ws | unit + e2e | `dl_4_push_test.go::TestDL4_RT3OfflineFallback` + e2e offline-fallback case PASS |
-| 4.3 ⭐ 5 截屏 demo (yema G4.x) — multi-device / subject / busy-idle / reject / offline-fallback 各 1 PNG | yema sign | `docs/qa/screenshots/rt-3-*.png` × 5 + yema G4.x signoff 入 |
+| 4.3 ⭐ 5 截屏 demo (yema G4.x) — multi-device / subject / busy-idle / reject / offline-fallback 各 1 PNG | yema sign | `docs/qa/screenshots/rt-3-{multi-device,subject,busy-idle,reject,offline-fallback}.png` × 5 ✅ (Playwright e2e 真跑生成, 入 git 反 PS 修改; yema G4.x signoff 待补) |
 | 4.4 thinking 5-pattern 锁链 RT-3 = 第 11 处源头落地 — 反向 grep 5 字面 (`subject\s*=\s*""` / `defaultSubject` / `fallbackSubject` / `"thinking"` / `"AI is thinking"`) 在 internal/ws + internal/bpp + client/src/ 0 hit | CI grep | `TestRT3_ReverseGrep_NoSubjectFallback` + git grep CI 守门 0 hit ✅ (v0 已 🟢) |
 
 ## REG-RT3-* (v0 server hook 已 🟢 / v1 client+e2e 待翻)
