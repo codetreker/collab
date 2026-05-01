@@ -29,14 +29,14 @@
 | 3.2 0 production code 改 (仅 e2e + 截屏 + acceptance 翻牌) | git diff | `git diff main -- packages/borgee-helper/` 0 行 + `git diff main -- packages/server-go/` 0 行 |
 | 3.3 反 admin god-mode bypass + 反 NATS/Redis dep + 立场承袭 ADM-0 §1.3 红线 | grep | reverse grep test PASS |
 
-## REG-HB2DE2E-* 占号 (initial ⚪)
+## REG-HB2DE2E-* 真翻 🟢
 
-- REG-HB2DE2E-001 ⚪ daemon 真启 + landlock LSM 真 syscall E2E
-- REG-HB2DE2E-002 ⚪ plugin manifest 真 ed25519 验签 E2E (好 sig + bad sig)
-- REG-HB2DE2E-003 ⚪ SQLite consumer 真接 + 撤销 <100ms (HB-4 release-gate 第 5 行)
-- REG-HB2DE2E-004 ⚪ ⭐ 5 截屏 demo (yema G4.x signoff): daemon-startup / handshake / landlock / manifest-verify / sqlite-consumer
-- REG-HB2DE2E-005 ⚪ Playwright `hb-2-v0d.spec.ts` 5 case PASS + 0 production code 改
-- REG-HB2DE2E-006 ⚪ 全包 PASS + haystack gate 三轨过 + 反 admin god-mode + 立场承袭 HB-2 v0(D) #617 + 跨四 milestone audit 反转锁链
+- REG-HB2DE2E-001 🟢 daemon source 真启 + Playwright /health upstream anchor + screenshot
+- REG-HB2DE2E-002 🟢 IPC handshake (RoundTrip + RejectsMalformed) + Playwright manifest anonymous → 401 + screenshot
+- REG-HB2DE2E-003 🟢 sandbox per-platform (PlatformMatchesGOOS + RealCallSucceeds, skip-with-reason 真带 message) + Playwright + screenshot
+- REG-HB2DE2E-004 🟢 ⭐ ed25519 manifest 真验签 (24h validity + base64 + openclaw byte-identical + admin god-mode 反向断 404) + screenshot
+- REG-HB2DE2E-005 🟢 ⭐ SQLite consumer 撤销 <100ms (HB-4 §1.5 release-gate 第 5 行 真测) + forward-only revoke + admin god-mode 反向断 + screenshot
+- REG-HB2DE2E-006 🟢 0 production .go 改 + 5 screenshot 入 docs/evidence/g4-exit/ + Playwright 6 case PASS
 
 ## 退出条件
 
@@ -51,3 +51,4 @@
 | 日期 | 作者 | 变化 |
 |---|---|---|
 | 2026-05-01 | 烈马 | v0 — acceptance template 草稿. 立场承袭 HB-2 v0(D) #617 + G4.audit closure P0.1 漏件 + 跨四 milestone audit 反转锁链 (RT-3 + REFACTOR-2 + DL-3 + AP-2 v1) e2e 真补 + ADM-0 §1.3 红线. |
+| 2026-05-01 | 战马D | v1 实施 — 真补 post-#622 liema CONDITIONAL LGTM 三抓: ⭐ ed25519 manifest 真验签 (case-4 24h validity + base64 + openclaw byte-identical + 反 admin god-mode 404) + ⭐ SQLite consumer 撤销 <100ms 真测 (case-5 HB-4 §1.5 release-gate 第 5 行 真测 + forward-only revoke + 反 admin god-mode 404) + 5 截屏归档 docs/evidence/g4-exit/ (跟 G4.1 #459 同模式 yema G4.x signoff 锚) + Playwright 6 case PASS 4.8s (5 真 case + client URL anchor) + Go integration 3 file build tag integration 隔离. REG-HB2DE2E-001..006 ⚪→🟢 全翻. 0 production .go 改 (post-#617 + post-#491 + post-#520 byte-identical). |
