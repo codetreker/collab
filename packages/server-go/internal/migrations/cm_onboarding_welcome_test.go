@@ -138,10 +138,13 @@ func TestCMOnboardingWelcome_IsIdempotent(t *testing.T) {
 }
 
 // TestShortPrefixUnit covers shortPrefix 2 branches (≥8 chars + <8 chars).
+//
+// ULID-MIGRATION: returns LAST 8 chars (entropy tail for ULID, last hex
+// segment for UUID) — collision-resistant for both ID formats.
 func TestShortPrefixUnit(t *testing.T) {
 	t.Parallel()
-	if got := shortPrefix("abcdef1234567890"); got != "abcdef12" {
-		t.Errorf("shortPrefix long: got %q, want %q", got, "abcdef12")
+	if got := shortPrefix("abcdef1234567890"); got != "34567890" {
+		t.Errorf("shortPrefix long: got %q, want %q", got, "34567890")
 	}
 	if got := shortPrefix("short"); got != "short" {
 		t.Errorf("shortPrefix short: got %q, want %q", got, "short")

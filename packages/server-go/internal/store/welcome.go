@@ -115,10 +115,17 @@ func (s *Store) CreateWelcomeChannelForUser(userID, displayName string) (channel
 	return ch, systemMessageOK, nil
 }
 
-// shortPrefix returns up to the first 8 chars of the given uuid.
+// shortPrefix returns up to the first 8 chars of the given id.
+//
+// ULID-MIGRATION caveat: ULID first 10 chars encode timestamp millis; users
+// registered in the same millisecond/second window share identical prefix
+// and collide on channels (org_id, name) UNIQUE. UUID-36 first 8 chars
+// are random hex (collision-resistant). To preserve uniqueness regardless
+// of ID format, we use the LAST 8 chars (entropy tail in ULID, last hex
+// segment in UUID), giving ≥40 bits of randomness either way.
 func shortPrefix(id string) string {
 	if len(id) >= 8 {
-		return id[:8]
+		return id[len(id)-8:]
 	}
 	return id
 }

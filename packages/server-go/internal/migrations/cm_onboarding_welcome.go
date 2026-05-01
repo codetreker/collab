@@ -139,11 +139,18 @@ func nowMillis(tx *gorm.DB) int64 {
 	return n
 }
 
-// shortPrefix returns up to the first 8 chars of the given uuid for use as a
+// shortPrefix returns up to the last 8 chars of the given id for use as a
 // human-readable channel name discriminator.
+//
+// ULID-MIGRATION caveat: ULID first 10 chars encode timestamp millis →
+// users registered in the same millisecond window share identical prefix
+// and collide on channels (org_id, name) UNIQUE. UUID-36 first 8 chars
+// are random hex (collision-resistant). To preserve uniqueness regardless
+// of ID format, we use the LAST 8 chars (entropy tail in ULID, last hex
+// segment in UUID), giving ≥40 bits of randomness either way.
 func shortPrefix(id string) string {
 	if len(id) >= 8 {
-		return id[:8]
+		return id[len(id)-8:]
 	}
 	return id
 }
