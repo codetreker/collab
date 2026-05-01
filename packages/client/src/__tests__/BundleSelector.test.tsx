@@ -106,7 +106,7 @@ describe('AP-2 ⭐ BundleSelector — bundle 展开 + 用户主权 + content-loc
       await Promise.resolve();
     });
     expect(captured).not.toBeNull();
-    expect((captured as unknown as string[]).sort()).toEqual(['mention_user', 'send_dm']);
+    expect((captured as unknown as string[]).sort()).toEqual(['dm.send', 'user.mention']);
   });
 
   it('§3.1.4 content-lock — DOM body 反 RBAC role name (英 4 + 中 3) 0 hit', async () => {

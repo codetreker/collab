@@ -24,10 +24,10 @@ import (
 func TestAP_ALL_OrderedByteIdentical(t *testing.T) {
 	t.Parallel()
 	want := []string{
-		"read_channel", "write_channel", "delete_channel",
-		"read_artifact", "write_artifact", "commit_artifact", "iterate_artifact", "rollback_artifact",
-		"mention_user", "read_dm", "send_dm",
-		"manage_members", "invite_user", "change_role",
+		"channel.read", "channel.write", "channel.delete",
+		"artifact.read", "artifact.write", "artifact.commit", "artifact.iterate", "artifact.rollback",
+		"user.mention", "dm.read", "dm.send",
+		"channel.manage_members", "channel.invite", "channel.change_role",
 	}
 	if len(ALL) != len(want) {
 		t.Fatalf("ALL len = %d, want %d", len(ALL), len(want))
@@ -147,7 +147,7 @@ func TestAP_IsValidCapability_TruthTable(t *testing.T) {
 			t.Errorf("IsValidCapability(%q) = false, want true", c)
 		}
 	}
-	bogus := []string{"", "admin_god", "read_channel ", "READ_CHANNEL", "no_such_perm"}
+	bogus := []string{"", "admin_god", "channel.read ", "CHANNEL.READ", "no.such.perm"}
 	for _, b := range bogus {
 		if IsValidCapability(b) {
 			t.Errorf("IsValidCapability(%q) = true, want false", b)

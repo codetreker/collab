@@ -28,7 +28,7 @@
 
 ## In-flight 当前状态 (≤10 行)
 
-- (none — Phase 4+ ✅ closure, ULID-MIGRATION + WIRE-1 post-closure follow-up wave merged, 等用户拍板下一 phase)
+- (none — Phase 4+ ✅ closure, ULID-MIGRATION + WIRE-1 + CAPABILITY-DOT post-closure follow-up wave merged, 等用户拍板下一 phase)
 
 ---
 

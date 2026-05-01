@@ -53,7 +53,7 @@ func TestAP_CrossOrg_FullFlow(t *testing.T) {
 	// rejects via abac.HasCapability org check.
 	if err := s.GrantPermission(&store.UserPermission{
 		UserID:     foreign.ID,
-		Permission: "commit_artifact",
+		Permission: "artifact.commit",
 		Scope:      "artifact:" + artifactID,
 		GrantedAt:  1700000000000,
 	}); err != nil {

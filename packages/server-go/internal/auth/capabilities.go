@@ -20,26 +20,26 @@ package auth
 // `docs/qa/acceptance-templates/ap-1.md` §字面锁 + 此 const.
 const (
 	// channel scope (`*` / `channel:<id>`)
-	ReadChannel   = "read_channel"
-	WriteChannel  = "write_channel"
-	DeleteChannel = "delete_channel"
+	ReadChannel   = "channel.read"
+	WriteChannel  = "channel.write"
+	DeleteChannel = "channel.delete"
 
 	// artifact scope (`*` / `channel:<id>` / `artifact:<id>`)
-	ReadArtifact     = "read_artifact"
-	WriteArtifact    = "write_artifact"
-	CommitArtifact   = "commit_artifact"
-	IterateArtifact  = "iterate_artifact"
-	RollbackArtifact = "rollback_artifact"
+	ReadArtifact     = "artifact.read"
+	WriteArtifact    = "artifact.write"
+	CommitArtifact   = "artifact.commit"
+	IterateArtifact  = "artifact.iterate"
+	RollbackArtifact = "artifact.rollback"
 
 	// messaging
-	MentionUser = "mention_user"
-	ReadDM      = "read_dm"
-	SendDM      = "send_dm"
+	MentionUser = "user.mention"
+	ReadDM      = "dm.read"
+	SendDM      = "dm.send"
 
 	// channel admin (channel-scoped)
-	ManageMembers = "manage_members"
-	InviteUser    = "invite_user"
-	ChangeRole    = "change_role"
+	ManageMembers = "channel.manage_members"
+	InviteUser    = "channel.invite"
+	ChangeRole    = "channel.change_role"
 )
 
 // ALL is the canonical ordered slice of capability literals — single

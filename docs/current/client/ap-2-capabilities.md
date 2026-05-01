@@ -12,12 +12,12 @@ export function capabilityLabel(token: string): string;        // 14 中文字�
 export function isKnownCapability(token: string): boolean;     // 反向断言 helper
 ```
 
-LABEL_MAP 14 字面 byte-identical (跟 content-lock §1):
-- read_channel → 查看频道 / write_channel → 在频道发消息 / delete_channel → 删除频道
-- read_artifact → 查看产物 / write_artifact → 编辑产物 / commit_artifact → 提交产物
-- iterate_artifact → 迭代产物 / rollback_artifact → 回滚产物
-- mention_user → 提及用户 / read_dm → 查看私信 / send_dm → 发送私信
-- manage_members → 管理频道成员 / invite_user → 邀请用户 / change_role → 调整成员能力
+LABEL_MAP 14 字面 byte-identical (跟 content-lock §1; CAPABILITY-DOT 后 dot-notation):
+- channel.read → 查看频道 / channel.write → 在频道发消息 / channel.delete → 删除频道
+- artifact.read → 查看产物 / artifact.write → 编辑产物 / artifact.commit → 提交产物
+- artifact.iterate → 迭代产物 / artifact.rollback → 回滚产物
+- user.mention → 提及用户 / dm.read → 查看私信 / dm.send → 发送私信
+- channel.manage_members → 管理频道成员 / channel.invite → 邀请用户 / channel.change_role → 调整成员能力
 
 ## 2. component — `components/PermissionsView.tsx`
 
@@ -36,10 +36,10 @@ DOM data-attr SSOT (跟 content-lock §2 byte-identical):
 
 ## 4. bundle SSOT — `lib/capability-bundles.ts` + `components/BundleSelector.tsx`
 
-3 bundle (蓝图 §1.3 A' 快速 bundle 无角色名, byte-identical):
-- `workspace` (工作能力) → write_channel + write_artifact + commit_artifact (3)
-- `reader` (阅读能力) → read_channel + read_artifact + read_dm (3)
-- `mention` (提及能力) → mention_user + send_dm (2)
+3 bundle (蓝图 §1.3 A' 快速 bundle 无角色名, byte-identical; CAPABILITY-DOT 后 dot-notation):
+- `workspace` (工作能力) → channel.write + artifact.write + artifact.commit (3)
+- `reader` (阅读能力) → channel.read + artifact.read + dm.read (3)
+- `mention` (提及能力) → user.mention + dm.send (2)
 
 BundleSelector 主权 UI: bundle click → 展开 capability checkbox (default-all-checked but uncheckable) → 用户必显式 confirm → caller 派 N 次 AP-1 PUT /api/v1/permissions (复用既有 endpoint, 反 POST /api/v1/bundles 旁路).
 

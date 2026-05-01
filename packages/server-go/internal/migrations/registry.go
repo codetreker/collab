@@ -70,6 +70,7 @@ var All = []Migration{
 	messagesPinnedAt,
 	channelEvents,
 	globalEvents,
+	capabilitiesDotNotationBackfill,
 }
 
 // Default returns an Engine wired to db with All registered.

@@ -11,15 +11,19 @@
   "role": "member",          // legacy caller 兼容 — UI 不显此字段
   "permissions": ["*"],
   "details": [...],
-  "capabilities": [           // AP-2 SSOT (新加, 走 14 const byte-identical 跟 auth.ALL)
-    "read_channel", "write_channel", "delete_channel",
-    "read_artifact", "write_artifact", "commit_artifact",
-    "iterate_artifact", "rollback_artifact",
-    "mention_user", "read_dm", "send_dm",
-    "manage_members", "invite_user", "change_role"
+  "capabilities": [           // AP-2 SSOT (走 14 const byte-identical 跟 auth.ALL; CAPABILITY-DOT 后 dot-notation)
+    "channel.read", "channel.write", "channel.delete",
+    "artifact.read", "artifact.write", "artifact.commit",
+    "artifact.iterate", "artifact.rollback",
+    "user.mention", "dm.read", "dm.send",
+    "channel.manage_members", "channel.invite", "channel.change_role"
   ]
 }
 ```
+
+## 1.bis CAPABILITY-DOT (post-rename)
+
+CAPABILITY-DOT (migration v=48) — 14 capability const 字符串值改 snake_case → dot-notation 兑现蓝图 auth-permissions.md `<domain>.<verb>` 字面. Go const 名保留 (`auth.ReadChannel` / `auth.CommitArtifact` / etc Go 命名规范不漂); 仅字符串值改. DB backfill 14 行 per-token UPDATE (反 REPLACE 机械, verb_noun 顺序对调) + idempotent (hasColumns guard 反复跑不破). 0 schema column rename / 0 endpoint URL 改 / 0 routes.go 改 — `user_permissions.capability` TEXT 字段名不动, 仅值改.
 
 ## 2. helper — `deriveAP2Capabilities(role, permissions)`
 

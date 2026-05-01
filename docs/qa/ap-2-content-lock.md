@@ -3,14 +3,33 @@
 > AP-2 UI bundle client 字面 SSOT, 跟 stance §1+§3 byte-identical. **蓝图 §1.3 角色无名化红线** — 反 role.name 字面暴露 UI; 反 typing/loading 类禁词 (跟 RT-3 ⭐ + HB-2 v0(D) + thinking 5-pattern 锁链承袭).
 
 ## §1 capability bundle 命名字面 (byte-identical)
-> 待飞马 spec brief 确认真定字面 (示意, content-lock 一拍真值)
+> CAPABILITY-DOT 字面承袭 — 14 capability token byte-identical 跟蓝图
+> auth-permissions.md §1 `<domain>.<verb>` 字面.
+
+### §1.1 14 capability token 字面 (byte-identical 跟 server `auth.ALL` + client `CAPABILITY_TOKENS`)
+| token | 中文 label |
+|---|---|
+| `channel.read` | `查看频道` |
+| `channel.write` | `在频道发消息` |
+| `channel.delete` | `删除频道` |
+| `artifact.read` | `查看产物` |
+| `artifact.write` | `编辑产物` |
+| `artifact.commit` | `提交产物` |
+| `artifact.iterate` | `迭代产物` |
+| `artifact.rollback` | `回滚产物` |
+| `user.mention` | `提及用户` |
+| `dm.read` | `查看私信` |
+| `dm.send` | `发送私信` |
+| `channel.manage_members` | `管理频道成员` |
+| `channel.invite` | `邀请用户` |
+| `channel.change_role` | `调整成员能力` |
+
+### §1.2 3 bundle 命名字面 (byte-identical 跟 client `BUNDLE_LABELS`)
 | bundle key | 字面 |
 |---|---|
-| `bundle.read_channel` | `读取频道` |
-| `bundle.manage_messages` | `管理消息` |
-| `bundle.manage_members` | `管理成员` |
-| `bundle.manage_settings` | `管理设置` |
-| `bundle.read_audit` | `查看审计日志` |
+| `workspace` | `工作能力` |
+| `reader` | `阅读能力` |
+| `mention` | `提及能力` |
 
 ## §2 反约束 — role name 字面 user-visible 0 hit (蓝图 §1.3 红线)
 反向 grep 真测在 packages/client/src/components/AP2*:

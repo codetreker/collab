@@ -36,23 +36,23 @@ describe('AP-2 ⭐ capability-bundles SSOT — 跨 AP-1 层锁 + 反 RBAC', () =
 
   it('§2 CAPABILITY_BUNDLES bundle membership byte-identical', () => {
     expect(CAPABILITY_BUNDLES.workspace).toEqual([
-      'write_channel',
-      'write_artifact',
-      'commit_artifact',
+      'channel.write',
+      'artifact.write',
+      'artifact.commit',
     ]);
     expect(CAPABILITY_BUNDLES.reader).toEqual([
-      'read_channel',
-      'read_artifact',
-      'read_dm',
+      'channel.read',
+      'artifact.read',
+      'dm.read',
     ]);
-    expect(CAPABILITY_BUNDLES.mention).toEqual(['mention_user', 'send_dm']);
+    expect(CAPABILITY_BUNDLES.mention).toEqual(['user.mention', 'dm.send']);
   });
 
   it('§2.2 bundleCapabilities + bundlesContaining helpers correct', () => {
     expect(bundleCapabilities('workspace')).toEqual(CAPABILITY_BUNDLES.workspace);
-    expect(bundlesContaining('write_channel')).toEqual(['workspace']);
-    expect(bundlesContaining('read_dm')).toEqual(['reader']);
+    expect(bundlesContaining('channel.write')).toEqual(['workspace']);
+    expect(bundlesContaining('dm.read')).toEqual(['reader']);
     // unrelated capability — empty.
-    expect(bundlesContaining('manage_members')).toEqual([]);
+    expect(bundlesContaining('channel.manage_members')).toEqual([]);
   });
 });

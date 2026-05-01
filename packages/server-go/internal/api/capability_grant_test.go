@@ -59,7 +59,7 @@ func TestBPP_RequestGrant_WritesSystemDM(t *testing.T) {
 	h := &api.CapabilityGrantHandler{Store: s}
 	payload, _ := json.Marshal(api.CapabilityGrantPayload{
 		AgentID:            agent.ID,
-		AttemptedAction:    "commit_artifact",
+		AttemptedAction:    "artifact.commit",
 		RequiredCapability: auth.CommitArtifact,
 		CurrentScope:       "artifact:art-1",
 		RequestID:          "req-trace-1",
@@ -97,7 +97,7 @@ func TestBPP_RequestGrant_WritesSystemDM(t *testing.T) {
 	}
 
 	// §1.2 — DM body byte-identical 跟 content-lock §1.
-	wantBody := agent.DisplayName + " 想 commit_artifact 但缺权限 commit_artifact"
+	wantBody := agent.DisplayName + " 想 artifact.commit 但缺权限 artifact.commit"
 	if rows[0].Content != wantBody {
 		t.Errorf("DM body literal:\n got: %q\nwant: %q", rows[0].Content, wantBody)
 	}

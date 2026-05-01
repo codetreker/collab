@@ -84,7 +84,7 @@ func IsCapabilityDisallowed(err error) bool {
 // Field semantics:
 //   - AgentID: 触发 frame 的 agent UUID
 //   - AttemptedAction: AP-1 abac.go 403 body 字段 byte-identical (e.g.
-//     "commit_artifact"); 跨 PR drift 守 (改 = 改五处, content-lock §5)
+//     "artifact.commit"); 跨 PR drift 守 (改 = 改五处, content-lock §5)
 //   - RequiredCapability: ∈ auth.Capabilities 14 项 const (反约束: 字面
 //     hardcode 0 hit, 跟 AP-1 反约束 #1 同源)
 //   - CurrentScope: ∈ {*, channel:<id>, artifact:<id>} v1 三层

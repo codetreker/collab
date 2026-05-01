@@ -160,7 +160,7 @@ func TestAP_RevokeWritesAuditEntry(t *testing.T) {
 	clk := func() time.Time { return now }
 
 	expiredAt := ms(now.Add(-1 * time.Hour))
-	mustGrant(t, s, "u-audit", "write_channel", "channel:c-1", expiredAt)
+	mustGrant(t, s, "u-audit", "channel.write", "channel:c-1", expiredAt)
 
 	sw := &ExpiresSweeper{Store: s, Now: clk}
 	if _, err := sw.RunOnce(context.Background()); err != nil {
@@ -193,7 +193,7 @@ func TestAP_AuditPayloadShape(t *testing.T) {
 	clk := func() time.Time { return now }
 
 	expiredAt := ms(now.Add(-30 * time.Minute))
-	mustGrant(t, s, "u-shape", "commit_artifact", "artifact:art-7", expiredAt)
+	mustGrant(t, s, "u-shape", "artifact.commit", "artifact:art-7", expiredAt)
 
 	sw := &ExpiresSweeper{Store: s, Now: clk}
 	if _, err := sw.RunOnce(context.Background()); err != nil {
@@ -206,7 +206,7 @@ func TestAP_AuditPayloadShape(t *testing.T) {
 	if err := json.Unmarshal([]byte(row.Metadata), &meta); err != nil {
 		t.Fatalf("metadata not valid JSON: %v (raw: %s)", err, row.Metadata)
 	}
-	if meta["permission"] != "commit_artifact" {
+	if meta["permission"] != "artifact.commit" {
 		t.Errorf("metadata.permission: got %v", meta["permission"])
 	}
 	if meta["scope"] != "artifact:art-7" {
@@ -231,12 +231,12 @@ func TestAP_FullFlow_GrantExpired_ThenRevokedThenHasCapabilityFalse(t *testing.T
 
 	// Grant expired.
 	expiredAt := ms(now.Add(-1 * time.Hour))
-	mustGrant(t, s, "u-full", "write_channel", "channel:c-A", expiredAt)
+	mustGrant(t, s, "u-full", "channel.write", "channel:c-A", expiredAt)
 
 	// Pre-sweep: HasCapability is true (legacy AP-1 path — expires_at not
 	// yet consumed by HasCapability per AP-1.1 立场 "schema 保留 UI 不做").
 	ctx := context.WithValue(context.Background(), userContextKey, user)
-	if !HasCapability(ctx, s, "write_channel", "channel:c-A") {
+	if !HasCapability(ctx, s, "channel.write", "channel:c-A") {
 		t.Fatal("pre-sweep HasCapability should be true (AP-1 path active)")
 	}
 
@@ -248,7 +248,7 @@ func TestAP_FullFlow_GrantExpired_ThenRevokedThenHasCapabilityFalse(t *testing.T
 
 	// Post-sweep: revoked_at set + HasCapability false (ListUserPermissions
 	// excludes revoked rows, AP-1 SSOT 同精神 改 = 改 queries.go 一处).
-	if HasCapability(ctx, s, "write_channel", "channel:c-A") {
+	if HasCapability(ctx, s, "channel.write", "channel:c-A") {
 		t.Error("post-sweep HasCapability should be false (revoked row excluded)")
 	}
 
