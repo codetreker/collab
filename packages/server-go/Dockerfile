@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev s
 COPY packages/server-go/go.mod packages/server-go/go.sum ./
 RUN go mod download
 COPY packages/server-go ./
-RUN CGO_ENABLED=1 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/collab ./cmd/collab
+RUN CGO_ENABLED=1 GOOS=linux go build -tags sqlite_fts5 -trimpath -ldflags="-s -w" -o /out/collab ./cmd/collab
 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates sqlite3 libsqlite3-0 \
