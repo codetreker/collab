@@ -2,6 +2,8 @@
 
 日期：2026-04-26 | 状态：Draft
 
+> **历史标记** (COOKIE-NAME-CLEANUP 2026-05-01): 本设计文 v0.1 写期 cookie 名为 `borgee_admin_token`, ADM-0.1 实施 (#479) 时改 SSOT 为 `borgee_admin_session` byte-identical. 本文 §3+§5+§9+§13 内 `borgee_admin_token` 字面是 v0.1 历史草稿残留, 真值 SSOT 见 `internal/admin/auth.go::CookieName="borgee_admin_session"`. 改 cookie 名 = 全 admin session 失效, **本 milestone 0 cookie 字面值改**, 仅设计文加历史标记.
+
 ## 1. 概述
 
 Admin 与 User 身份体系彻底分离：Admin 不再是 `users` 表中 `role=admin` 的一行记录，而是由环境变量定义的独立身份。Admin 拥有独立的登录接口、JWT 签发、API 路径前缀（`/admin-api/v1/*`）和前端 SPA 入口（`/admin/*`）。普通用户侧完全感知不到 Admin 的存在。

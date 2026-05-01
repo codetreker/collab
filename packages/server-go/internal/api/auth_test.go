@@ -83,7 +83,7 @@ func TestLoginSuccess(t *testing.T) {
 	cookies := resp.Cookies()
 	found := false
 	for _, c := range cookies {
-		if c.Name == "borgee_token" {
+		if c.Name == auth.CookieName {
 			found = true
 		}
 	}
@@ -266,7 +266,7 @@ func TestLogout(t *testing.T) {
 	}
 
 	for _, c := range resp.Cookies() {
-		if c.Name == "borgee_token" && c.MaxAge < 0 {
+		if c.Name == auth.CookieName && c.MaxAge < 0 {
 			return
 		}
 	}
@@ -290,7 +290,7 @@ func TestGetMeAuthenticated(t *testing.T) {
 
 	var cookie *http.Cookie
 	for _, c := range loginResp.Cookies() {
-		if c.Name == "borgee_token" {
+		if c.Name == auth.CookieName {
 			cookie = c
 		}
 	}

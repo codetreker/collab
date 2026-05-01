@@ -273,7 +273,7 @@ func authenticateWS(hub *Hub, r *http.Request) *store.User {
 		}
 	}
 
-	if cookie, err := r.Cookie("borgee_token"); err == nil {
+	if cookie, err := r.Cookie(auth.CookieName); err == nil {
 		if user := auth.ValidateJWT(hub.store, hub.config.JWTSecret, cookie.Value); user != nil {
 			return user
 		}

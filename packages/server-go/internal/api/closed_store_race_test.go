@@ -129,7 +129,7 @@ func TestClosedStoreInternalErrorBranches(t *testing.T) {
 	mux := http.NewServeMux()
 	(&CommandHandler{Store: s, Logger: testLogger(), Hub: commandSourceStub{}}).RegisterRoutes(mux, auth.AuthMiddleware(s, cfg))
 	req := httptest.NewRequest("GET", "/api/v1/commands", nil)
-	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+	req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

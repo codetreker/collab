@@ -280,7 +280,7 @@ func LoginAs(t *testing.T, serverURL, email, password string) string {
 	}
 
 	for _, c := range resp.Cookies() {
-		if c.Name == "borgee_token" {
+		if c.Name == auth.CookieName {
 			return c.Value
 		}
 	}
@@ -310,7 +310,7 @@ func JSON(t *testing.T, method, url, token string, body any) (*http.Response, ma
 		if strings.Contains(url, "/admin-api/") {
 			req.AddCookie(&http.Cookie{Name: "borgee_admin_session", Value: token})
 		} else {
-			req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+			req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
 			req.Header.Set("Authorization", "Bearer "+token)
 		}
 	}
@@ -416,7 +416,7 @@ func DialWS(t *testing.T, serverURL, path, token string) *websocket.Conn {
 	wsURL := "ws" + strings.TrimPrefix(serverURL, "http") + path
 	header := http.Header{}
 	if token != "" {
-		header.Set("Cookie", "borgee_token="+url.QueryEscape(token))
+		header.Set("Cookie", auth.CookieName+"="+url.QueryEscape(token))
 		header.Set("Authorization", "Bearer "+token)
 	}
 
@@ -487,7 +487,7 @@ func DialSSEWithLastEventID(t *testing.T, serverURL, token, lastID string) *SSEC
 		req.Header.Set("Last-Event-ID", lastID)
 	}
 	if token != "" {
-		req.AddCookie(&http.Cookie{Name: "borgee_token", Value: token})
+		req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 

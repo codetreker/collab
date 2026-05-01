@@ -121,7 +121,7 @@ func TestAuthMiddleware_Cookie(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest("GET", "/", nil)
-	req.AddCookie(&http.Cookie{Name: "borgee_token", Value: signed})
+	req.AddCookie(&http.Cookie{Name: CookieName, Value: signed})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
