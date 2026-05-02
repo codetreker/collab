@@ -4,16 +4,16 @@
 >
 > **G4.audit 范围**: Phase 4 全 44 milestone acceptance 兑现 audit + REG-* 翻牌 audit + 反 spam 锁审查 + post-#620 haystack gate 持续真过. 立场承袭"一次做干净不留尾"用户铁律 + post-#612/#613/#614/#615/#618/#619/#620 立场链 + ADM-0 §1.3 admin god-mode 红线.
 
-## 1. Phase 4 milestone 兑现 audit (44/44 ✅)
+## 1. Phase 4 milestone 兑现 audit (44/44 G4.audit + 10 follow-up wave (54 累计))
 
-Phase 4+ 进度 phase-4.md 实测 `[x]` = **44 项**, `[ ]` = **0 项**. 全 milestone closure 真闭.
+Phase 4+ 进度 phase-4.md 实测 G4.audit 时点 `[x]` = **44 项**, `[ ]` = **0 项**. 全 milestone closure 真闭. G4.audit 后 10 follow-up wave 真补 (见末尾 Follow-up wave 段).
 
 涵盖 milestone 分组 (按 PR 时间序):
-- **AL 段 8 项**: AL-1 / AL-1a / AL-1b / AL-2a / AL-2b / AL-3 / AL-7 / AL-8 ✅
+- **AL 段 8 项**: AL-1 / AL-1a / AL-1b / AL-2 (#482/#512 wrapper) / AL-2a / AL-2b / AL-3 / AL-7 / AL-8 ✅
 - **BPP 段 5 项**: BPP-2 / BPP-3 / BPP-3.1 / BPP-3.2 / BPP-4 ✅
 - **HB 段 6 项**: HB-1 / HB-2.0 / HB-2 v0(C) / HB-2 v0(D) / HB-3 v2 / HB-4 / HB-5 / HB-6 ✅
 - **RT 段 4 项**: RT-1 / RT-3 / RT-4 ✅
-- **AP 段 3 项**: AP-2 / AP-3 / AP-4-enum / AP-5 ✅
+- **AP 段 3 项**: AP-1 (#493 14 const) / AP-2 / AP-3 / AP-4-enum / AP-5 ✅
 - **CHN 段 7 项**: CHN-2..15 (大部分) ✅
 - **CV 段 6 项**: CV-1..15 (大部分) ✅
 - **DM 段 7 项**: DM-1..12 (大部分) ✅
@@ -26,11 +26,15 @@ Phase 4+ 进度 phase-4.md 实测 `[x]` = **44 项**, `[ ]` = **0 项**. 全 mil
 - **NAMING-1** ✅ (codebase-wide milestone-prefix 全清)
 - **TEST-FIX 段 4 项**: TEST-FIX-1 / TEST-FIX-2 / TEST-FIX-3 / TEST-FIX-3-COV ✅
 
+**Follow-up wave 10 项** (G4.audit 后真补): WIRE-1 #624 / HB-2-V0D-E2E #622 / ADM-3-V1-E2E #623 / ULID-MIGRATION #625 / HB-1B-INSTALLER #627 / CAPABILITY-DOT #628 / ADM-2-FOLLOWUP #626 / DEFERRED-UNWIND #629 / Dockerfile-FTS5 #630 / ADMIN-SPA-SHAPE-FIX #633 ✅
+
+**P1/P2 wave-2** (post-#633): cookie-name-cleanup #634 ✅ / admin-password-plain-env #635 ✅ / e2e-scenarios-establishment #637 ✅ / admin-spa-archived-ui-followup #638 ✅ / admin-spa-ui-coverage 第一波 #639 ✅
+
 ## 2. REG-* 翻牌 audit (post-Phase 4)
 
-| 总数 | 🟢 active | ⚪ pending | 备注 |
-|---|---|---|---|
-| 763 | 923 hits (含 changelog narrative) | 16 hits in REG rows | 16 ⚪ 全 pre-Phase 4 historical (ADM-0 / AL-3 / CM-O / DL-4 / RT-0 placeholder) |
+| 总数 | 🟢 active | ⚪ pending | ⏸️ deferred | 备注 |
+|---|---|---|---|---|
+| 815 | 990 🟢 hits / 52 ⚪ hits / 32 ⏸️ hits (含 changelog narrative) | 24 ⚪ pending in REG rows | 32 ⏸️ deferred 留账 | 24 ⚪ 含 16 pre-Phase 4 historical (ADM0/AL3/CMO/DL4/RT0 placeholder) + 8 post-Phase 4+ wave 占号待 v1 follow-up |
 
 **Phase 4 milestone 区 REG 全 🟢 active** ✅ — 0 ⚪ pending in Phase 4 milestone REG rows.
 
@@ -78,7 +82,7 @@ admin god-mode 永不挂 user-rail / DM-only / pin / search / mention / reaction
 ## 8. 三联签 closure
 
 - ✅ **acceptance 兑现**: 44 milestone acceptance template 全 落 main 或 historical (5 milestone v1 follow-up 占号 ⚪ 透明留账: RT-3 v1 client + AP-2 v1 e2e + ADM-3 v1 multi-source + CS-2/3 v1 e2e)
-- ✅ **REG-* audit**: 763 REG 行 / 923 🟢 hits / 16 ⚪ pre-Phase 4 historical (Phase 4 区全 🟢)
+- ✅ **REG-* audit**: 815 REG 行 / 990 🟢 hits / 24 ⚪ pending in REG rows (16 pre-Phase 4 historical + 8 post-Phase 4+ wave 占号) / 32 ⏸️ deferred
 - ✅ **cov gate 持续真过**: post-#620 TOTAL 85.6% Func=50 Pkg=70 三轨守门跨九 milestone
 
 ## 9. Phase 4 → Phase 5 移交透明
@@ -96,8 +100,8 @@ admin god-mode 永不挂 user-rail / DM-only / pin / search / mention / reaction
 
 ## 10. G4.audit 三立场结论
 
-1. ✅ **Phase 4 真完** — 44/44 milestone closure, 0 [ ] 未完
-2. ✅ **REG-* audit 干净** — Phase 4 milestone 区全 🟢, 16 ⚪ 全 pre-Phase 4 historical 透明留 G5+
+1. ✅ **Phase 4 真完** — 44/44 G4.audit + 10 follow-up wave (54 累计) milestone closure, 0 [ ] 未完
+2. ✅ **REG-* audit 干净** — Phase 4 milestone 区全 🟢, 24 ⚪ (16 pre-Phase 4 historical + 8 post-Phase 4+ wave 占号) + 32 ⏸️ deferred 透明留 G5+
 3. ✅ **反 spam + cov gate + audit 反转 + ADM-0 §1.3 红线 + const SSOT 锁链跨 14 milestone** — Phase 4 closure pattern 固化作 Phase 5+ baseline
 
 — 烈马 QA 2026-05-01 G4.audit closure 三联签 ✅
