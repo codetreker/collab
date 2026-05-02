@@ -122,12 +122,79 @@ export async function createUser(data: { id?: string; email: string; password: s
   return res.user;
 }
 
-export async function patchUser(id: string, data: { display_name?: string; password?: string; disabled?: boolean }): Promise<AdminUser> {
+export async function patchUser(
+  id: string,
+  data: {
+    display_name?: string;
+    password?: string;
+    disabled?: boolean;
+    role?: 'member' | 'agent';
+    require_mention?: boolean;
+  },
+): Promise<AdminUser> {
+  // ADMIN-SPA-UI-COVERAGE: extend body to mirror server `handleUpdateUser`
+  // accept set (admin.go:205-211: DisplayName/Password/Role/RequireMention/
+  // Disabled). Same single PATCH endpoint, no separate /reset_password
+  // route — admin sets `password: "<new>"` to reset.
   const res = await request<{ user: AdminUser }>(`/users/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
   return res.user;
+}
+
+// ADMIN-SPA-UI-COVERAGE: D6 真兑现 — admin user permissions UI.
+// server endpoints already wired (admin.go:39-41 GET/POST/DELETE
+// /admin-api/v1/users/{id}/permissions). post-#633 D6 IsValidCapability
+// gate enforces dot-notation字面 (CAPABILITY-DOT #628 14 const SSOT).
+
+/**
+ * UserPermissionDetail — server `handleGetPermissions` row shape
+ * (admin.go:393-403). One row per (capability, scope) tuple.
+ */
+export interface UserPermissionDetail {
+  permission: string; // dot-notation 14 const ∈ CAPABILITY_TOKENS post-#628
+  scope: string; // '*' / 'channel:<id>' / 'artifact:<id>'
+  granted_at: number;
+  granted_by?: string | null;
+}
+
+export interface UserPermissionsResponse {
+  user_id: string;
+  role: string;
+  permissions: string[]; // 字面 list (跟 details[].permission 同源)
+  details: UserPermissionDetail[];
+}
+
+export async function fetchUserPermissions(id: string): Promise<UserPermissionsResponse> {
+  return request<UserPermissionsResponse>(`/users/${encodeURIComponent(id)}/permissions`);
+}
+
+export async function grantUserPermission(
+  id: string,
+  permission: string,
+  scope: string = '*',
+): Promise<{ ok: boolean; permission: string; scope: string }> {
+  // server gate: post-#633 D6 — invalid capability (not ∈ auth.ALL 14
+  // dot-notation) → 400 invalid_capability. Empty scope → server defaults '*'.
+  return request<{ ok: boolean; permission: string; scope: string }>(
+    `/users/${encodeURIComponent(id)}/permissions`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ permission, scope }),
+    },
+  );
+}
+
+export async function revokeUserPermission(
+  id: string,
+  permission: string,
+  scope: string = '*',
+): Promise<void> {
+  await request<{ ok: boolean }>(`/users/${encodeURIComponent(id)}/permissions`, {
+    method: 'DELETE',
+    body: JSON.stringify({ permission, scope }),
+  });
 }
 
 export async function deleteUser(id: string): Promise<void> {

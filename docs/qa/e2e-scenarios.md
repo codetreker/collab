@@ -34,7 +34,7 @@
 | SMK-05 | RT presence (RT-1 #290 / RT-3 #616 4 态) | presence dot | user A 登录 + user B 登录 → A 看 user list | B 头像旁 presence dot active (绿) | smoke | todo |
 | SMK-06 | CV 创建 artifact (CV-1 #226 / CV-2 #228 / CV-3 #233) | artifact.write | channel → click "+ artifact" → 输入 markdown → click 提交 | artifact 在频道呈现 + version=1 | smoke | todo |
 | SMK-07 | ADM channels 列表 | admin god-mode read | admin → click sidebar Channels | 6 列 table 头 (Name/Type/Visibility/Status/Created/Actions) + 0 NaN | smoke | done (#633) |
-| SMK-08 | ADM audit log 渲染 (ADM-3 #619 multi-source + ADM-2-FOLLOWUP #626) | admin SPA | admin → click Audit Log | data-page=admin-audit-log + 红 banner 字面 byte-identical 跟 client `BannerImpersonate.tsx` 真值 (`开启了对你账号的 24h impersonate` / `24h 时窗, 顶部红色横幅常驻, 可随时撤销` per BannerImpersonate / AdminActionsList:32 / PrivacyPromise:27) + **4 source enum filter UI** (ADM-3 multi-source 4 source: agent_state / admin_actions / impersonate_actions / user_actions; 反 5-action enum 旧锚) | smoke | done (#633 partial — D4-A archived UI client 漏待 admin-spa-archived-ui-followup) |
+| SMK-08 | ADM audit log 渲染 (ADM-3 #619 multi-source + ADM-2-FOLLOWUP #626) | admin SPA | admin → click Audit Log | data-page=admin-audit-log + 红 banner 字面 byte-identical 跟 client `BannerImpersonate.tsx` (ADM-2 #484) admin SPA 真值 `当前以业主身份操作 — 该会话受 24h 时限` (Phase 3 smoke 真验; **PrivacyPromise.tsx `开启了对你账号的 24h impersonate` 是 user-side 不同源, 不锚此处**) + 5 action enum filter UI (delete_channel/suspend_user/change_role/reset_password/start_impersonation; ADM-2-FOLLOWUP #626) | smoke | done (#633 + admin-spa-archived-ui-followup) |
 | SMK-09 | CM-onboarding welcome (CM-onboarding) | new user signup | 注册新 user → 首次登录 | Welcome channel 自动出现 + system DM 引导 + welcome channel id 真 ULID (regex `^[0-9A-HJKMNP-TV-Z]{26}$`, ULID-MIGRATION #625 真生效锚) | smoke | todo |
 | SMK-10 | LOGOUT | session 收尾 | admin → click Logout | URL=/admin/login + cookie 清 | smoke | todo |
 | SMK-11 | mention 真用 path | dm.mention / cv.comment.mention | 在 channel/comment 输入 `@` → mention picker 出现 → 选 user → 提交 | 消息含 `@<user>` token + mention badge 真显 (DL-4) + 被 mention user 真收通知 | smoke | todo |
@@ -42,8 +42,8 @@
 | SMK-13 | notification (Web Push 三态) | dl.push.subscribe (CS-3) | 设置 → 开启通知 → 浏览器原生 prompt 真出 → 点 Allow → 字面真渲 `已开启通知`; 反向: 点 Block → 字面 `通知已被浏览器拒绝, 请到浏览器设置开启`; 默认: `开启通知` | 三态字面 byte-identical (CS-3 content-lock) + service worker 真注册 | smoke | todo |
 | SMK-14 | settings 持久 path | user 偏好 / 通知 / DM 隐私 | 点 user avatar → settings → 改一项 (e.g. require_mention toggle) → 保存 → 刷新 → 仍生效 | 设置真持久 + 跨 device sync (RT-3 multi-device 应用) | smoke | todo |
 | SMK-15 | user cookie SSOT (cookie-name-cleanup #634) | auth cookie SSOT | user 登录后 → DevTools / Playwright cookies API 看 Set-Cookie 字面 | cookie name 字面 = `borgee_token` (跟 client/server SSOT byte-identical, 反 silent drift `borgee_session`/`token`/etc), `borgee_admin_session` 仅 admin 路径 (拆死) | smoke | todo |
-| SMK-16 | capability dot SSOT 真 UI grant (CAPABILITY-DOT #628 + admin-spa-shape-fix #633 D6) | admin SPA grant UI | admin → user 详情页 → click "授予 capability" 按钮 → 输入/选 `channel.read` → 提交 ✅; 重做输 `read_channel` → 提交 ❌ | dot-notation accept 200 + 真渲成功 toast; snake_case reject 400 字面 `invalid_capability` 真渲红 toast | smoke | blocked-by-UI-coverage (admin SPA grant UI 缺, P3 admin-spa-ui-coverage backlog; **不允许 fetch 顶替**) |
-| SMK-17 | ULID 字面 (ULID-MIGRATION #625) | ULID generator prod 生效 | user 登录后 → 看任意新 channel/artifact/comment id 字面 (DOM 内 data-id / href anchor / URL slug) | id 字面 regex 命中 `^[0-9A-HJKMNP-TV-Z]{26}$` (Crockford Base32 ULID 26 char), 反向: 0 hit `^[0-9a-f-]{36}$` (UUID-36 旧字面, 仅历史行允许) | smoke | todo |
+| SMK-16 | capability dot SSOT 真 UI grant (CAPABILITY-DOT #628 + admin-spa-shape-fix #633 D6 + admin-spa-ui-coverage #639) | admin SPA grant UI | admin → user 详情页 → click "授予 capability" 按钮 → 输入/选 `channel.read` → 提交 ✅; 重做输 `read_channel` → 提交 ❌ | dot-notation accept 200 + 真渲成功 toast; snake_case reject 400 字面 `invalid_capability` 真渲红 toast | smoke | ✅ done (#639 admin-spa-ui-coverage 真兑现 UI) |
+| SMK-17 | ULID 字面 (ULID-MIGRATION #625) | ULID generator prod 生效 | user 登录后 → 真路径触发 channel/artifact/comment 创建 → 看 **HTTP request URL path** (`/api/v1/channels/<id>/...` 等; 不锚 DOM innerHTML 因 React state 不渲染 id 到 HTML) | HTTP timeline regex `[0-9A-HJKMNP-TV-Z]{26}` ≥1 hit (Crockford Base32 ULID-26) + 反向 `\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b` UUID-36 = 0 hit (仅历史 row 允许). Phase 3 smoke 2026-05-02 真验: 24 ULID-26 hit + 0 UUID-36 hit ✅ | smoke | done (Phase 3 smoke) |
 
 ---
 
@@ -201,8 +201,8 @@
 
 | 类别 | 总数 | 状态分布 |
 |---|---|---|
-| **Smoke** | **17** (v3 +3: SMK-15 cookie SSOT / SMK-16 capability dot UI grant / SMK-17 ULID 字面) | done: 4 / todo: 12 / blocked-by-UI-coverage: 1 (SMK-16) |
-| **Regression** | **86** (v2 不变 — AL 8 + BPP 6 + CHN 10 + CV 12 + DM 8 + HB 6 + RT 8 + AP 7 + ADM 10 + CM 4 + DL 4 + INFRA 3) | done: ~4 (REG-ADM-05 ✅ admin-spa-archived-ui-followup 兑现) / todo: ~50 / blocked-by-UI-coverage: ~14 / **deferred-to-host-deploy-verify**: 3 (REG-HB-01/04 + REG-DL-03) / CI-守: ~16 |
+| **Smoke** | **17** (v3 +3: SMK-15 cookie SSOT / SMK-16 capability dot UI grant / SMK-17 ULID 字面) | done: 9 (post Phase 3 smoke 2026-05-02 + #639 admin-spa-ui-coverage — SMK-01/02/07/08/09/10/15/16/17) / todo: 8 / blocked: 0 |
+| **Regression** | **86** (v2 不变 — AL 8 + BPP 6 + CHN 10 + CV 12 + DM 8 + HB 6 + RT 8 + AP 7 + ADM 10 + CM 4 + DL 4 + INFRA 3) | done: ~4 (REG-ADM-05 ✅ admin-spa-archived-ui-followup #638 兑现) / todo: ~50 / blocked-by-UI-coverage: ~14 / **deferred-to-host-deploy-verify**: 3 (REG-HB-01/04 + REG-DL-03) / CI-守: ~16 |
 | **总计** | **103** (93 → 100 v2 → 103 v3) | |
 
 ### v3 变更日志 (post 飞马 architect ① ② ③ ④ + 野马 PM review)
@@ -216,12 +216,12 @@
 
 **飞马 ② smoke 跨 milestone 锁链断言 +3**:
 - SMK-15 user cookie SSOT (`borgee_token` 字面, cookie-name-cleanup #634 反 silent drift)
-- SMK-16 capability dot SSOT 真 UI grant (CAPABILITY-DOT #628 + admin-spa-shape-fix #633 D6) — 标 **blocked-by-UI-coverage** (admin SPA grant UI 缺, **不允许 fetch 顶替**, 等 P3 admin-spa-ui-coverage 真补)
+- SMK-16 capability dot SSOT 真 UI grant (CAPABILITY-DOT #628 + admin-spa-shape-fix #633 D6 + admin-spa-ui-coverage #639) — v4 ✅ done (#639 真兑现 admin SPA grant UI, blocked-by-UI-coverage 解锁)
 - SMK-17 ULID 字面 regex 真锚 (ULID-MIGRATION #625 真生效)
 
 **飞马 ③ DOM 字面 stale 修 (2 处)**:
-- 🔴 SMK-08 banner 字面修: 旧 stale "当前以业主身份操作 — 该会话受 24h 时限" → 改 client 真值 byte-identical 跟 BannerImpersonate.tsx / AdminActionsList:32 / PrivacyPromise:27 (`开启了对你账号的 24h impersonate` / `24h 时窗, 顶部红色横幅常驻, 可随时撤销`)
-- ✅ REG-ADM-05 admin-spa-archived-ui-followup PR 真兑现 — client AdminAuditLogPage.tsx 加 `data-filter="archived"` select 3 option (active/archived/all) byte-identical 跟 server enum + AuditLogFilters.archived 字段 + URL param 透传, 5 vitest 守 (REG-ASAUI-001..005); #633 D4-A row class 已加, 此 PR 补 filter UI 闭环.
+- 🔴 SMK-08 banner 字面 v4 revert: v3 飞马 ③ 走错锚 (PrivacyPromise.tsx 是 user-side 不同源), v4 revert 回 v1 真值 `当前以业主身份操作 — 该会话受 24h 时限` (admin SPA BannerImpersonate.tsx, Phase 3 smoke 2026-05-02 真验)
+- ✅ REG-ADM-05 admin-spa-archived-ui-followup #638 真兑现 — client AdminAuditLogPage.tsx 加 `data-filter="archived"` select 3 option (active/archived/all) byte-identical 跟 server enum + AuditLogFilters.archived 字段 + URL param 透传, 5 vitest 守 (REG-ASAUI-001..005); #633 D4-A row class 已加, #638 补 filter UI 闭环.
 
 **飞马 ④ Budget 重分类 (3 处)**:
 - REG-HB-01 daemon connect → **deferred-to-host-deploy-verify** (不进 Playwright budget)
@@ -255,17 +255,18 @@
 
 ### 4.1 blocked-by-UI-coverage (P3 admin-spa-ui-coverage backlog 真补 UI 后才能跑)
 
-1. SMK-16 capability dot SSOT 真 UI grant (admin SPA grant UI 缺; **不允许 fetch 顶替**)
-2. REG-AL-06 grant capability bundle
-3. REG-AL-07 revoke capability
-4. REG-BPP-01 plugin install manifest viewer
-5. REG-CHN-07 admin role change UI
-6. REG-HB-05 plugin manifest viewer (admin SPA)
-7. REG-AP-01 bundle 一键授予 UI
-8. REG-AP-02 user capability transparency UI
-9. REG-AP-03 dot-notation grant UI
-10. REG-ADM-03 impersonate grant CRUD UI
-11. REG-ADM-06 audit hook 5/5 UI (部分 handler 缺 UI)
+> SMK-16 已由 #639 admin-spa-ui-coverage 第一波真兑现, blocked-by-UI-coverage 解锁; 余 10 项留 wave-2 / v1 GA backlog.
+
+1. REG-AL-06 grant capability bundle
+2. REG-AL-07 revoke capability
+3. REG-BPP-01 plugin install manifest viewer
+4. REG-CHN-07 admin role change UI
+5. REG-HB-05 plugin manifest viewer (admin SPA)
+6. REG-AP-01 bundle 一键授予 UI
+7. REG-AP-02 user capability transparency UI
+8. REG-AP-03 dot-notation grant UI
+9. REG-ADM-03 impersonate grant CRUD UI
+10. REG-ADM-06 audit hook 5/5 UI (部分 handler 缺 UI)
 
 ### 4.2 ✅ admin-spa-archived-ui-followup 已兑现 (#633 D4-A client followup 闭环)
 
@@ -301,4 +302,5 @@
 - 用户 2026-05-01 铁律: 完整 e2e 验证, 浏览器真模拟用户操作, 不允许偷懒
 - 跟 `docs/evidence/liema-633-browser-verify/README.md` §0 立场 byte-identical
 - blocked-by-UI-coverage 不删, 留账透明 (跟 P3 admin-spa-ui-coverage backlog task #11 关联)
+- Phase 3 smoke 真跑证据 (`docs/evidence/liema-e2e-smoke-2026-05-02/`) — post #639 9/17 真 UI pass / 0 真 bug / 4 cross-milestone 锁链 prod 真生效
 - testing 环境部署铁律配套
