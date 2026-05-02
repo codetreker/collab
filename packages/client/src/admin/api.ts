@@ -307,3 +307,94 @@ export async function fetchMultiSourceAudit(filters: MultiSourceAuditFilters = {
   const data = await request<{ sources: AuditSource[]; rows: MultiSourceAuditRow[] }>(path);
   return data.rows;
 }
+
+// ADMIN-SPA-UI-COVERAGE-WAVE2 — 4 endpoint UI surface (runtimes / heartbeat-lag /
+// archived channels / description-history). server endpoints already wired:
+//   - GET /admin-api/v1/runtimes                         (runtimes.go:538)
+//   - GET /admin-api/v1/heartbeat-lag                    (host_lag.go:52)
+//   - GET /admin-api/v1/channels/archived                (channel_archived.go:44)
+//   - GET /admin-api/v1/channels/{id}/description/history (channel_history.go:48)
+// 0 server / 0 endpoint / 0 schema 改; admin god-mode readonly (ADM-0 §1.3).
+
+/**
+ * AdminRuntime — server `runtimes.go::handleListRuntimes` row shape.
+ * White-list (ADM-0 §1.3 隐私): id / agent_id / endpoint_url / process_kind /
+ * status / last_heartbeat_at / created_at / updated_at. **last_error_reason
+ * OMITTED** (server-side per acceptance §2.6 反向断言).
+ */
+export interface AdminRuntime {
+  id: string;
+  agent_id: string;
+  endpoint_url: string;
+  process_kind: string;
+  status: string;
+  last_heartbeat_at?: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export async function fetchAdminRuntimes(): Promise<AdminRuntime[]> {
+  const data = await request<{ runtimes: AdminRuntime[] }>('/runtimes');
+  return data.runtimes ?? [];
+}
+
+/**
+ * LagSnapshot — server `host_lag.go::LagSnapshot` shape (HB-5 #408).
+ * 9 字段 byte-identical 跟 server JSON struct tag (改 = 改两处).
+ */
+export interface LagSnapshot {
+  count: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  threshold_ms: number;
+  at_risk: boolean;
+  sampled_at: number;
+  window_seconds: number;
+  reason_if_at_risk?: string;
+}
+
+export async function fetchAdminHeartbeatLag(): Promise<LagSnapshot> {
+  return request<LagSnapshot>('/heartbeat-lag');
+}
+
+/**
+ * AdminArchivedChannel — server `store.ChannelWithCounts` filtered to
+ * archived rows (channel_archived.go::handleAdminListArchivedChannels).
+ * archived_at non-null 真锚 (ChannelWithCounts.ArchivedAt *int64).
+ */
+export interface AdminArchivedChannel {
+  id: string;
+  name: string;
+  topic: string;
+  visibility: string;
+  type: string;
+  created_at: number;
+  archived_at?: number | null;
+  member_count: number;
+}
+
+export async function fetchAdminArchivedChannels(): Promise<AdminArchivedChannel[]> {
+  const data = await request<{ channels: AdminArchivedChannel[] }>('/channels/archived');
+  return data.channels ?? [];
+}
+
+/**
+ * ChannelDescriptionHistoryEntry — server `store.GetChannelDescriptionHistory`
+ * row shape (CHN-14 #429): description_edit_history JSON `[{old_content, ts, reason}]`.
+ * 3 字段 byte-identical 跟 server queries.go:1238-1244.
+ */
+export interface ChannelDescriptionHistoryEntry {
+  old_content: string;
+  ts: number;
+  reason: string;
+}
+
+export async function fetchAdminChannelDescriptionHistory(
+  channelId: string,
+): Promise<ChannelDescriptionHistoryEntry[]> {
+  const data = await request<{ history: ChannelDescriptionHistoryEntry[] }>(
+    `/channels/${encodeURIComponent(channelId)}/description/history`,
+  );
+  return data.history ?? [];
+}

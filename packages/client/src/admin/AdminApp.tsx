@@ -10,11 +10,18 @@ import InvitesPage from './pages/InvitesPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminAuditLogPage from './pages/AdminAuditLogPage';
 import MultiSourceAuditPage from './pages/MultiSourceAuditPage';
+import RuntimesPage from './pages/RuntimesPage';
+import HeartbeatLagPage from './pages/HeartbeatLagPage';
+import ArchivedChannelsPage from './pages/ArchivedChannelsPage';
+import ChannelDescriptionHistoryPage from './pages/ChannelDescriptionHistoryPage';
 
 const nav = [
   { to: '/admin/dashboard', label: 'Dashboard' },
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/channels', label: 'Channels' },
+  { to: '/admin/channels-archived', label: 'Archived Channels' },
+  { to: '/admin/runtimes', label: 'Runtimes' },
+  { to: '/admin/heartbeat-lag', label: 'Heartbeat Lag' },
   { to: '/admin/invites', label: 'Invites' },
   { to: '/admin/audit-log', label: 'Audit Log' },
   { to: '/admin/audit-multi-source', label: 'Multi-source Audit' },
@@ -80,6 +87,10 @@ function AdminLayout() {
           <Route path="users" element={<UsersPage />} />
           <Route path="users/:id" element={<UserDetailPage />} />
           <Route path="channels" element={<ChannelsPage />} />
+          <Route path="channels-archived" element={<ArchivedChannelsPage />} />
+          <Route path="channels/:id/description-history" element={<ChannelDescriptionHistoryPage />} />
+          <Route path="runtimes" element={<RuntimesPage />} />
+          <Route path="heartbeat-lag" element={<HeartbeatLagPage />} />
           <Route path="invites" element={<InvitesPage />} />
           <Route path="audit-log" element={<AdminAuditLogPage />} />
           <Route path="audit-multi-source" element={<MultiSourceAuditPage />} />
