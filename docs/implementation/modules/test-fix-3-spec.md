@@ -81,9 +81,3 @@ grep -cE 't\.Cleanup\(cancel\)' packages/server-go/internal/api/testfixture_test
 - 🟡 build tag race_heavy 是新 idiom (项目内首处), 可读性需在 `_race_test.go` 文件头加 ~5 行注释 "为何走 build tag (race-heavy serialize 长隔离, 不污染主 race job timeout 阈值)"
 
 留账接受度全 ✅: 全局 bump / 包拆 / 重写 sub-test / sqlmock / 全局 parallelism 全留账.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-30 | 飞马 | v0 spec brief — TEST-FIX-3 internal/api race time 系统性解. 3 立场 (race_heavy build tag 隔离 + fixture 单源 + race timeout 180s 仅 sub-job) + 3 段拆 + 5 反向 grep. 反路径: 全局 bump / 包拆 / 重写 / sqlmock / 全局 parallelism 全留账. zhanma-c 主战续作 (TEST-FIX-2 熟手) + 飞马自审 ✅ APPROVED 0 必修. 双签流程 (用户解冻拍板). |

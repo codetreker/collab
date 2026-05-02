@@ -69,9 +69,3 @@ git grep -nE "blob.*['\"](api_key|temperature|token_limit|retry_policy)['\"]" pa
 - 行为: server PATCH /config 后 ≤1s plugin 收 frame (clock fixture 真路径 ws fixture 跟 RT-0 #239 stopwatch 同模式) + 同 idempotency_key 重发 N=5 → reload count==1 + schema_version stale → ack 'stale' + 反向断言 cross-owner 拒
 - 反约束: 反向 grep 5 锚 0 hit (轮询路径下线 + cursor timestamp 漂 + admin god-mode + 广播 plugin / fanout config + blob runtime field)
 - 跟 BPP-3 同 PR 合 — BPP-3 plugin 启停 frame 测试 + AL-2b config 下发 frame 测试共 hub.cursors sequence smoke (跟 BPP-1 #304 lint reflect 自动闸位)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 烈马 | v0 — AL-2b 实施 spec lock (跟 #452 acceptance v1 同源, ≤200 行); 3 立场 (envelope 7 字段 byte-identical 跟 5-frame 共序 + 幂等 reload + schema_version stale 不缓存 + ack direction 锁 + 反人工伪造) + 拆段 (3 文件 + 2 测试, 跟 BPP-3 同 PR 合 drift 跨 PR review 抓出) + 10 grep 反查 (含 5 反约束: 轮询路径下线 + cursor timestamp 漂 + admin god-mode + 广播/fanout + blob runtime field) + 8 反约束 (ack/retry / admin / cross-owner / runtime-only field / in-flight 打断 / 双轨 / 第 6+ frame / batch); 跟 AL-2a #264/#447 + BPP-1 ✅ #304 + BPP-2 #460 §1.3+§1.6 + BPP-3 待 + RT-1 + ADM-0 + AL-1b #453/#457 + REG-INV-002 留账边界字面对齐. 立场 ① cursor 共序 type/cursor 头位锁 + 立场 ② idempotency_key 幂等 reload + 立场 ③ direction + status CHECK + cross-owner reject 三立场承袭 acceptance §1+§2+§3 byte-identical. |

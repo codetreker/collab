@@ -82,9 +82,3 @@ git grep -nE 'admin.*datalayer|/admin-api.*datalayer' packages/server-go/interna
 - DL-2 events 双流 + retention: 中度优先, 真依赖 DL-1 EventBus interface
 - DL-3 阈值哨: 中度, 真依赖 DL-1 + DL-2 (监控 EventBus 吞吐 + DB 大小)
 - CS-4 IndexedDB 乐观缓存: 留账, 跟 RT-1 cursor 协议同期 (CS-1 spec §3 留账)
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-30 | 飞马 | v0 spec brief — DL-1 接口抽象 (Storage/Presence/EventBus/Repository 4 interface, 蓝图 §4 B). 3 立场 + 3 段拆 + 5 反向 grep + CI 守门链第 6 处 `dl1-no-direct-store` step. **0 schema + 0 endpoint** wrapper milestone (真有 prod code 跟 0-server-prod 决策树变体). 不在范围: DL-2/DL-3/SQLite 切 PG/EventBus 切 NATS/全 handler 一次切/generic ORM abstraction. 优先序拍 DL-1 ⭐ (锁未来换实现路径). zhanma-c 主战续作 (INFRA-3/INFRA-4 wrapper 模式同源) 或 zhanma-d (CS 段闭后转 server). |

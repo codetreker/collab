@@ -63,9 +63,3 @@ git grep -nE 'admin.*\/agents\/.*\/recover|admin-api.*\/recover' \
 - 跟 REFACTOR-REASONS #496 reasons SSOT 6 字面 (改 = 改一处, AL-5 仅消费)
 - 跟 BPP-3.2.1 #498 SendSystemDM + quick_action JSON shape 同模式 (action enum 4-enum 扩 grant/reject/snooze/recover, 跨 PR drift 守)
 - 跟 ADM-0 §1.3 红线 admin 不入业务路径同源 (admin recover 走 ADM-3+)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 战马C | v0 spec brief — Phase 5 候选 wrapper milestone (跟 BPP-3.2 同期, AL-1 + REFACTOR-REASONS + BPP-3.2 三 milestone 留账闭环). 3 立场 (owner DM / single helper SSOT / reason 不另起字典) + 5 反约束 grep + 3 段拆 (server DM / client UI / e2e+closure) + 4 件套 spec 第一件 (acceptance + stance + content-lock 后续). 命名 AL-5 避 AL-3 presence Phase 3 既闭 milestone 碰撞. |

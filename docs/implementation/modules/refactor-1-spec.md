@@ -90,9 +90,3 @@ grep -cE 'writeRetentionOverride\(' packages/server-go/internal/api/al_7_audit_r
 留账接受度全 ✅: REFACTOR-2/3 candidates (user-nil / JSON-decode / DM-gate 错误码 / ACL drift) 全留账, 不强塞本 PR.
 
 **ROI 拍**: REFACTOR-1 ⭐ 高 ROI — 净减 ~250 LoC + 跨 5 milestone drift 收口 + helper SSOT 立 (后续 CHN-16+ / DL-* / DM-1x 复用), 一 PR 闭不留 follow-up.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-30 | 飞马 | v0 spec brief — REFACTOR-1 internal/api 重复收口 (top 4 of 13 audit). 3 立场 (行为不变量 + 4 helper SSOT + 0 endpoint) + 3 段拆 + 6 反向 grep + 1 必修条件 (字面 content-lock). 留账: REFACTOR-2 (user-nil / JSON-decode / DM-gate 错误码) / REFACTOR-3 (ACL drift). 净减 ~250 LoC. zhanma-c (TEST-FIX-3 续作) 或 zhanma-d 主战 + 飞马 ✅ APPROVED 1 必修. 双签流程. |

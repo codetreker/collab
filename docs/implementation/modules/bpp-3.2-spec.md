@@ -85,9 +85,3 @@ git grep -nE 'FrameTypeBPPCapabilityGranted|"capability_granted"' packages/serve
 - 跟 ADM-0.1 §1.3 红线: admin god-mode 不入此路径 (admin grant 走 /admin-api 单独 mw, 不走 owner DM)
 
 ---
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 战马C | v0 spec brief — Phase 5 plugin-protocol 第三段 (BPP-3.1 #494 真后续 + 蓝图 §1.3 主入口闭环). 3 立场 (DM-2 既有路径 / AP-1 const 白名单 / 30s 退避 ≤3 次) + 5 反约束 grep + 3 段拆 (server DM dispatch / owner UI / plugin retry+e2e+closure) + 4 件套 spec 第一件 (acceptance + stance + content-lock 后续). |

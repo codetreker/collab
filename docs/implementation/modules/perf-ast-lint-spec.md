@@ -119,9 +119,3 @@ func TestBPP4_NoRetryQueueInBPPPackage(t *testing.T) {
 - 跟 BPP-1 envelope-lint #237 同精神 (lint package 只 test build, 不入 production)
 
 ---
-
-## 8. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 飞马 | v0 spec brief — AST scan reusable lint package (G4.audit row 升级位). 3 立场 (单源 / 比 grep 狠 / production 0 import) + 5 反约束 grep + ≤6 文件清单 + helper API + REG-AL-001..005. 跟 BPP-4 #499 / BPP-5 #503 / CM-5.1 #473 现有 inline AST scan 重构, ROI 越来越明显 G4 收尾前必落. zhanma-d 主战, 飞马 spec 协作 (不抢主战). |

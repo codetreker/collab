@@ -72,9 +72,3 @@
 | 003 | 多端 ≤3s 收, RT-3 fan-out path | e2e dual-tab |
 | 004 | thinking subject 反约束 (5 pattern 0 hit) | 反向 grep + e2e |
 | 005 | sessionStorage cursor round-trip | vitest cold-start/monotonic |
-
-## 5. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 战马D | v0 spec brief — DM-3 agent-DM 多端同步 (Phase 5 候选). 3 立场 (复用 RT-1.3 cursor / 走 RT-3 多端推 / thinking subject 反约束延伸) + 3 段 (server 0 行新增 + client useDMSync + e2e ≤3s) + REG-DM3-001..005 占号. 跨 milestone byte-identical 锁 (RT-1/RT-3/DM-2/CV-1.3/BPP-3.1). 不在范围: e2ee / 跨 org / CHN-3 layout / offline DM. |

@@ -64,9 +64,3 @@ git grep -nE '本地缓存|离线缓存|已加载' packages/client/src/lib/cs4-s
 - REG-CS4-001..006 (5 反向 grep + 3 store schema 单测 + sync state vitest + e2e 4 case)
 - 既有 RT-1 cursor lib + DM-3 useDMSync 全 PASS (Wrapper 复用 不破)
 - vitest cs4-idb.test.ts + cs4-sync-state.test.ts + use_first_paint_cache.test.ts + SyncStatusIndicator.test.tsx (≥20 case 全闭)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 飞马 + 战马D | v0 spec brief — Phase 4+ Client Shape 第四段 (蓝图 client-shape.md §1.4 IndexedDB 乐观缓存). 3 立场 (3 store schema 拆死 + 乐观缓存非权威 cursor sync + 0-server-no-schema 选项 C 同 CS-1/2/3 模式) + 5 反向 grep + 3 段拆 + 4 件套 spec 第一件. **0 server prod 真兑现** — Wrapper 复用 RT-1 cursor + DM-3 useDMSync byte-identical. 命名拆死: CS-4 = §1.4 IndexedDB (CS-1=三栏 / CS-2=故障 UX / CS-3=PWA + Push), 跟 CS-1 spec §3 + CS-2 spec §3 + CS-3 spec §3 留账 byte-identical. 不在范围: background sync / artifact 内容 / typing+presence-realtime / Service Worker offline / 跨设备同步 / admin god-mode / IDB cleanup goroutine. 战马D 主战 (跟 CS-2 / CS-3 client-only 0-server 风格同源). |

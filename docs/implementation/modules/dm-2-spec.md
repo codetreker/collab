@@ -55,9 +55,3 @@ git grep -rnE '@channel\b'                     packages/server-go/ packages/clie
 - DM-2.1: migration v=13 → v=14 双向 + UNIQUE(message_id, target_user_id) 反向 (重复 mention 同 target reject) + 反约束 owner_id 列不存在
 - DM-2.2: parser table-driven (人/agent/混合/无 mention/重复 dedup) + IsOnline true → WS push only (owner sniff 0) + IsOnline false → fallback DM + 5min 节流 (clock fixture) + 反约束 system DM body 不含 raw message body 字符串
 - DM-2.3: e2e textarea `@` 候选 + 渲染 display_name + 反向 DOM raw UUID grep + 离线 agent 发送方 UI 无提示 (#293 §3.3 反向断言)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-28 | 飞马 | v0 — spec lock Phase 4 第二波 spec, 3 立场 + 3 拆段 + 6 grep 反查 (含 4 反约束) + 6 反约束 + RT-1/CHN-1/AL-3/CV-1 留账边界字面对齐, 锚烈马 #293 acceptance + 野马 #211 反查表 |

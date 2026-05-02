@@ -65,9 +65,3 @@
 ## 4. 不在范围
 
 - 协作场新 entity / 新表 / 新 endpoint (烈马 v0 立场守) / E2E 套件外其他 flake (留 PERF-* 后续 PR)
-
-## 5. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 战马D | v1 — CHN-4 e2e flake wrapper. 烈马 v0 立场不动 + e2e 重写 fixture-based + 删 timing 死等 + 复用 PERF-AST-LINT astscan. REG-CHN4-001..005 占号. |

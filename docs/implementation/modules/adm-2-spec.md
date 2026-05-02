@@ -137,9 +137,3 @@ admin 写动作时若需 impersonate (例如重置密码影响业主活跃数据
 - ADM-2 closure (野马 R2 取消 ⭐ 不进 G4 签字流): 烈马代签 acceptance + ADM-1 #464 deferred 2 行翻 🟢
 
 ---
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 战马D (PM 客串) | v0 实施 spec — ADM-2.1 schema (已 #470) + ADM-2.2 server (5 action audit + 双 GET + system DM + impersonate 24h) + ADM-2.3 client + e2e + 7 反向断言. ADM-1 deferred 2 行 (admin 写动作 system DM `admin_name` 非 UUID) 在此真实施. |

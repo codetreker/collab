@@ -62,3 +62,16 @@ pnpm vitest run --testTimeout=10000
 - **绝不无 timeout 跑 test**, 卡住 = 整个 agent 浪费
 
 如 test 真需要 >10min, 用 `run_in_background: true` 提交后做别的, 不阻塞主线.
+
+## changelog-slim 立场 (反 docs 重复)
+
+血账: spec brief §5+/§6/§7 派活+自审+更新日志段, phase-N.md narrative 段, closure 各段 narrative — 都是 PR body / git log / git blame 单源真值复制, 没新信息, 还撞 docs 冲突主因 (blueprintflow PR #22 同立场).
+
+**硬规**:
+
+- **spec brief 仅 §0-§4** (关键约束 / 拆段 / 留账 / 反查 grep / 不在范围), 不写 §5+ 派活/自审/更新日志段 — 信息走 SendMessage / Task / PR review / git log
+- **phase-N.md 不写 narrative changelog** (PR# + 一行 milestone 翻牌行已够; 详情走 PR body + git log + git blame)
+- **closure doc 不重述 PR narrative** (单源走 PR body / git log; closure 仅留真值表 + 反向 grep + 三联签结论)
+- **regression-registry 行只锚 spec / 验证 / Owner / PR / 状态** (反 narrative 字面塞)
+
+立场承袭"一次做干净不留尾"用户铁律 + blueprintflow PR #22 changelog 反模式禁.

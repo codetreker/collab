@@ -66,9 +66,3 @@ git grep -nE 'cascade.*delete.*user_channel_layout|FOREIGN KEY.*group_id.*ON DEL
 - CHN-3.1: migration v=18 → v=19 双向 + PRIMARY KEY (user_id, channel_id) 反向 (重复对 reject) + idx hit + 反约束 column list 反向断言 (无 hidden/muted/pinned/group_id) + 跟既有 CV-1.1/AL-3.1 同模式 idempotent
 - CHN-3.2: GET 本人 layout 返业务数据 + PUT batch upsert 200 (DM channel_id 含 → 400 `layout.dm_not_grouped` 字面锁) + 非成员 channel 含 → 403 + admin god-mode 白名单反向断言 (admin token GET /admin/users/:id 不返 layout) + 作者删 group 路径不阻塞 (CHN-1 既有 endpoint 行为不破)
 - CHN-3.3: e2e 拖拽 channel reorder PUT 命中 + group ▼/▶ 折叠状态 PUT + 右键置顶 → position MIN-1.0 PUT + DM 行 e2e DOM `[data-kind="dm"] [data-sortable-handle]` count==0 (野马 #366 立场 ④ + #364 同源) + 失败 toast 文案锁 byte-identical
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 飞马 | v0 — CHN-3 spec lock Phase 3 章程严守续作 (跟 CV-4 并行); 3 立场 (作者vs个人物理拆死 + collapsed/position 两维 / pin=position 单调小数 + DM 永不参与 / GET-PUT 拉取不进 push + admin 白名单不含 + 作者删 group lazy 清理) 承袭野马 #366 stance 7 立场; 3 拆段 (schema v=19 / server GET/PUT /me/layout / client 拖拽 reorder + 折叠 + pin 入口) + 11 grep 反查 (含 7 反约束跟 #366 黑名单 byte-identical) + 8 反约束 (#366 不在范围 7 项 + 个人偏好不挂 WS frame); CHN-1/CHN-2/ADM-0/RT-1/CM-4 + AL-4/CV-3/CV-4 留账边界字面对齐; v=14-19 sequencing 字面延续 (CV-2.1 ✅ / DM-2.1 ✅ / AL-4.1 待 v=16 / CV-3.1 待 v=17 / CV-4.1 待 v=18 / CHN-3.1 待 v=19) |

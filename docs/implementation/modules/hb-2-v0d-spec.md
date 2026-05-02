@@ -109,9 +109,3 @@ cd packages/borgee-helper && go test -tags 'integration' -timeout=300s ./...  # 
 留账接受度全 ✅: outbound proxy / cgroupsv2 / plugin signing rotation / admin 视图 / notarization+code-sign 全留账.
 
 **ROI 拍**: HB-2 v0(D) ⭐⭐⭐ — host-bridge stack 真启 (4 步路径终点), 阻塞 BPP-2 plugin 真接 host (file IO + agent task host action) 解锁; 跟 DL-2 (storage 端) / RT-3 (fanout 端) 并行不撞.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-05-01 | 飞马 | v0 spec brief — HB-2 v0(D) host-bridge daemon 真启 (HB stack 第 4 步, post-#606 v0(C) stub 真启). 3 立场 (HB-1/HB-3/HB-4 byte-identical + 真 sandbox 三平台 + 真 SQLite consumer + DL-1 interface 不破) + 3 段拆 (sandbox 三平台 + 真 IO + Windows IPC + install-butler 拉起 + closure REG-HB2D-001..010) + 10 反向 grep + 3 必修 (跨 milestone 三锁 + 真实现替 stub + DL-1 不破). 留账: outbound proxy / cgroupsv2 / plugin signing / admin 视图 / notarization. zhanma-e 主战续作 + 飞马 ✅ APPROVED 3 必修. teamlead 唯一开 PR. 跟 DL-2 / RT-3 并行不撞. |

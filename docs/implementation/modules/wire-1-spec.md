@@ -76,9 +76,3 @@ go test -tags 'sqlite_fts5' -timeout=300s ./...  # ALL PASS
 🟡 必修: production callsite 真测 (反"spec 字面合格但 0 callsite 死代码" 教训承袭) — wire_test.go 必 mockGateway counter ≥1 / channel_events INSERT count ≥1 真值 verify.
 
 担忧 (1 项): factory.go 改 1 行影响整 server boot 路径 — 战马实施跑 full server 启动 e2e 1 次 verify wire 真接通不 panic.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-05-01 | 飞马 | v0 spec brief — WIRE-1 post-closure follow-up wave 3 处 wire-up 死代码兑现. 3 立场 + 3 段拆 + 6 反向 grep + 1 必修 (production callsite 真测). 留账: events RT-3 fanout / HB-2 v1 / ADM-3 host_bridge follow-up. 飞马 audit 漏抓教训承袭. zhanma-c 主战续作 + 飞马 ✅ APPROVED 1 必修. teamlead 唯一开 PR. |

@@ -96,9 +96,3 @@ go test -tags 'sqlite_fts5' -timeout=300s ./...  # ALL PASS
 留账接受度全 ✅: DL-3 / EventBus 切 NATS / HB-2 v0(D) / session_resume_hint / events fanout 接 RT-3 / per-user feed / FTS 全留账, 不强塞本 PR.
 
 **ROI 拍**: DL-2 ⭐⭐ — 蓝图 §3.4 必落清单兑现 + EventBus persistence v1 立, 阻塞 admin/impersonation 隐私契约 (Q9.3+Q9.4) 解锁; 跟 DL-3 / HB-2 v0(D) 串行依赖, DL-2 是前置.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-05-01 | 飞马 | v0 spec brief — DL-2 events 双流 + retention. 3 立场 (DL-1 byte-identical + 双流必落 enum SSOT + 0 user-facing 改) + 3 段拆 (schema v=46/47 + EventBus cold consumer + sweeper + closure REG-DL2-001..008) + 8 反向 grep + 1 必修 (interface signature 不破). 留账: DL-3 / EventBus 切 NATS / HB-2 v0(D) / session_resume_hint / events 接 RT-3 / per-user feed / FTS. zhanma-c 主战续作 + 飞马 ✅ APPROVED 1 必修. teamlead 唯一开 PR. |

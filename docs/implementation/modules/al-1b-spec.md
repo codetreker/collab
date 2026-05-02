@@ -46,9 +46,3 @@ git grep -nE 'is_online|last_error_reason|cursor|endpoint_url'  packages/server-
 - registry.go 加 `al1b1AgentStatus` Migration v=21 + 注册 `All` 列表 (跟 al31 / al41 同模式)
 - acceptance al-1b.md §1.* schema 段 5 项 ⚪→✅ 翻 (本 PR); 行为 §2.* / 文案 §3.* / e2e §4.* 留 AL-1b.2/1.3 + BPP-2 后填
 - ≤300 行 (spec 80 + migration 90 + test 130 ≈ 300)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 战马C | v0 — Phase 4 入口起手 spec brief: 3 立场 (拆三路径 / BPP 单源 / 文案三态) + 3 拆段 (schema v=21 / server endpoint + state machine / client dot UI 5-state 合并) + 4 grep 反查 + 4 反约束 (不动 AL-1a/AL-3/AL-4 既有, 不挂 cursor / CASCADE, 不开 PATCH god-mode); v=14-20 sequencing 字面承袭 + AL-1b.1 v=21 起号. |

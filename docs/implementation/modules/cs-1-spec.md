@@ -67,9 +67,3 @@ git grep -nE 'sidebar|channels-toggle|menu-icon' packages/client/src/__tests__/A
 - REG-CS1-001..006 (5 反向 grep + 4 态 state machine 单测 + e2e 3 viewport)
 - 既有 ChannelList / MessageTimeline / ArtifactPanel unit tests 全 PASS (Wrapper 不破)
 - vitest AppShell.test.tsx (5 case: 三栏渲染 / drawer 触发 / split 升级 / mobile 降级 / closed → split 反向 reject)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 飞马 | v0 spec brief — Phase 4+ Client Shape 主体框架 (蓝图 client-shape.md §1.2 三栏 + Artifact 分级展开). 3 立场 (三栏 byte-identical + Artifact 4 态 state machine + 0-server-no-schema 选项 C 模式) + 5 反向 grep + 3 段拆 (AppShell layout / ArtifactDrawer + 分级 / closure) + 4 件套 spec 第一件. **0 server prod 真兑现** — Wrapper 复用 ChannelList/MessageTimeline/ArtifactPanel byte-identical. 不在范围: CS-2 顶部团队栏故障 UX / CS-3 PWA install + Web Push / HB-2 Tauri / CS-4 IndexedDB. zhanma-c 主战 (跟 chn-13 / cv-14 client-only 风格同源), 飞马 spec 协作. |

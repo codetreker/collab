@@ -63,9 +63,3 @@ git grep -nE '下载客户端|装个 app|接收推送' packages/client/src/lib/c
 - REG-CS3-001..006 (5 反向 grep + install state SSOT 单测 + push toggle 三态 vitest + e2e 4 case)
 - 既有 DL-4 pushSubscribe.ts unit tests 全 PASS (Wrapper 复用 不破)
 - vitest cs3-install-prompt.test.ts + cs3-permission-labels.test.ts + InstallPromptButton.test.tsx + PushSubscribeToggle.test.tsx (≥20 case 全闭)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 飞马 + 战马D | v0 spec brief — Phase 4+ Client Shape 第三段 (蓝图 client-shape.md §1.1+§1.4 PWA install + Web Push). 3 立场 (PWA install user-gesture only + Push 三态 byte-identical 跟 DL-4 + 0-server-no-schema 选项 C 同 CS-1/CS-2 模式) + 5 反向 grep + 3 段拆 + 4 件套 spec 第一件. **0 server prod 真兑现** — Wrapper 复用 DL-4 #485 pushSubscribe.ts byte-identical. 命名拆死: CS-3 = §1.1 PWA install + §1.4 Web Push UI (CS-1=三栏 / CS-2=故障 UX / CS-4=IndexedDB), 跟 CS-1 spec §3 留账 byte-identical. 不在范围: Tauri (HB stack Go 重审决策已弃) / IndexedDB (CS-4) / 自定义 Notifications 渲染 / background sync / admin god-mode / iOS Safari install. 战马D 主战 (跟 cv-14 / dm-9 / CS-2 client-only 0-server 风格同源). |

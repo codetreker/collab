@@ -102,9 +102,3 @@ pnpm vitest run --testTimeout=10000  # ALL PASS
 留账接受度全 ✅: typing-indicator / events 接 fanout / agent presence / session_resume_hint / per-channel presence / HB-2 v0(D) 全留账, 不强塞本 PR.
 
 **ROI 拍**: RT-3 ⭐⭐⭐ — 蓝图 §1.1 ⭐ 关键纪律兑现 (thinking subject 真守) + §1.4 活物感 4 态 + 多端 fanout SSOT 立, 后续 DM-* / CV-* / BPP-2 复用基座. 跟 DL-2 (storage 端) 并行不撞.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-05-01 | 飞马 | v0 spec brief 重写 (前 39 行 战马E placeholder 替) — RT-3 ⭐ multi-device fanout + 活物感 4 态 + thinking subject 反约束. 3 立场 (DL-1+RT-1 byte-identical + 4 态 enum SSOT + 0 schema/endpoint 改) + 3 段拆 (server fanout + client UI + closure REG-RT3-001..008) + 8 反向 grep + 2 必修 (DL-1+RT-1 双锁 + thinking subject 真守). 留账: typing-indicator / events 接 fanout / agent presence / session_resume_hint / per-channel presence / HB-2 v0(D). zhanma-d 主战 + 飞马 ✅ APPROVED 2 必修. teamlead 唯一开 PR. 跟 DL-2 storage 端并行不撞. |

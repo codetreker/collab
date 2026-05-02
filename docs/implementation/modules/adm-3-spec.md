@@ -96,9 +96,3 @@ go test -tags 'sqlite_fts5' -timeout=300s ./... && pnpm vitest run --testTimeout
 担忧 (1 项, 中度): UNION ALL 跨 4 表性能 — v1 阈值哨 (DL-3 #618 events_row_count) 触发后人工决策切 (留 v2+ index hint 调优), 本 v1 简单 LIMIT 100 + ORDER BY ts DESC 即够.
 
 **ROI 拍**: ADM-3 ⭐⭐ — multi-source audit 合并 + admin 视图统一, 跨 4 audit 链 (ADM-2/BPP-8/HB-1/DL-2) 真接, 后续 admin 操作 trace 解锁基座.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-05-01 | 飞马 | v1 spec brief 重写 — ADM-3 multi-source audit 合并查询 + source enum 4 类 (推断 scope, 用户拍板待 PR review). 替前 91 行 admin_actions→audit_events rename stale spec (#586 已 merged). 3 立场 + 3 段拆 + 8 反向 grep + 3 必修. 留账: schema 合并 / 跨 source 追溯 / FTS / retention 统一 / user-rail feed / external export. zhanma-c 主战 + 飞马 ✅ APPROVED. teamlead 唯一开 PR. 跟 AP-2 并行不撞. |

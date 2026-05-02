@@ -108,9 +108,3 @@ pnpm vitest run --testTimeout=10000  # ALL PASS
 留账接受度: REFACTOR-3 / DOM data-attr / CSS class 全留账, 跟用户铁律 "本 milestone milestone-prefix 全清" 不冲突 (那些是新 audit 范畴).
 
 **ROI 拍**: NAMING-1 ⭐⭐⭐ — 一次性收 milestone-prefix tech debt 169+ 文件, Go 社区命名规范 + git history 保, 不留 v2.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-05-01 | 飞马 | v0 spec brief — NAMING-1 milestone-prefix 5 类全清 (A 文件 + B struct/handler + C Go test func + D TSX test + E modules/ 迁 architecture/). 3 立场 (0 行为改 + 5 类 rename + 0 schema/endpoint/v 号) + 3 段拆 + 10 反向 grep + 2 必修 (git mv 真走 + Version 字面不动). 留账: REFACTOR-3 / DOM data-attr / CSS class. 估 ~210 文件 touched 净 0 LoC. zhanma-c (REFACTOR-2 续作) 主战 + 飞马 ✅ APPROVED 2 必修. teamlead 唯一开 PR. |

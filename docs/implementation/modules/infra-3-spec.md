@@ -80,10 +80,3 @@ git grep -cE '^- \[ \]|^- \[x\]' docs/implementation/progress/phase-*.md  # ≥5
 2. PS.1+PS.2+PS.3 三段同 PR 整闭 (跟 CV-15 #592 / HB-1 #589 一 milestone 一 PR 同模式)
 3. PR title 双义: `feat(<milestone>): ... + chore(progress-split)` — 元 milestone 不占 PR# 序列, 嵌入合法
 4. 翻牌: PROGRESS-split 自身 [x] 进 `progress/phase-4.md` (本 spec 是 Phase 4+ 元 milestone)
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-30 | 飞马 | v0 spec brief — PROGRESS.md 拆分 (元 milestone). 复杂版 (3 立场含 changelog 外迁). |
-| 2026-04-30 | 飞马 | v1 简化版 — 用户拍板"每 Phase 一文件不分 changelog/modules". 3 立场缩到 (主 ≤100 + 5 子文件 + 翻牌不变), 删 PS.2 长行外迁. 5 反向 grep + 3 段 + CI 守门链第 5 处. **0 server / 0 schema / 0 endpoint** wrapper docs refactor 第 15 处. zhanma-c 主战, 嵌入下一 milestone PR (反铁律). 不在范围: changelog / 翻牌机制改 / regression-registry 拆 / 模块组目录. |

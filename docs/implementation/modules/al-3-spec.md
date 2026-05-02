@@ -52,9 +52,3 @@ git grep -n 'presence\.changed\|presence_changed' packages/server-go/internal/ws
 - AL-3.1: migration v=11 → v=12 双向 + UNIQUE(session_id) 反向 (重复 session reject)
 - AL-3.2: hub onConnect/onClose unit (mock WS) + heartbeat 周期 unit (clock fixture, 跟 G2.3 节流模式同) + 多 session per user `IsOnline=true if COUNT≥1` (table-driven)
 - AL-3.3: e2e dot 渲染 + WS `presence.changed` frame 触发 dot 翻态 (跟 RT-1.2 #292 的 reconnect→backfill 同 e2e 模式, 但走 presence 独立 frame)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-28 | 飞马 | v0 — spec lock 配套 G2.5 留账 #277 stub 接力, 3 立场 + 3 拆段 + 6 grep 反查 (含 1 反约束) + 5 反约束 + DM-2 / RT-1 / CHN-1 边界点字面对齐 |

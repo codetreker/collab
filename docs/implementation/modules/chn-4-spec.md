@@ -65,9 +65,3 @@ git grep -nE 'messages.*iterate_progress|messages.*iteration_state' packages/cli
 - CHN-4.1: GET /channels/:id/scene 200 拼装 4 源数据 byte-identical 跟单端点结果一致 + DM channel → 仅返 channel 元数据无 artifacts (CHN-2 拆死) + 非 channel member → 403 (CHN-1 ACL 同源)
 - CHN-4.2: vitest WorkspaceTab kind 三态渲染 (跟 #370 文案锁字面) + iterate 按钮 owner-only DOM 反断 (非 owner DOM omit, CV-4 立场 ② 同源) + AnchorSidebar 仅 markdown artifact 显 (CV-2 §4 反约束) + DM 视图 DOM `[data-tab="workspace"]` count==0 (CHN-2 拆死)
 - CHN-4.3: e2e 全流路径 30s 闭环 + G3.4 demo 5 张截屏 Playwright `page.screenshot()` 入 `docs/qa/screenshots/g3.4-collab-*.png` (撑章程退出公告)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 烈马 | v0 — Phase 3 章程 9 milestone 收口锚 (G3.4 demo 路径全闭); 3 立场 (协作场=channel+workspace 双支柱整合不开新 entity / mention×artifact×anchor 三路径互不污染 / 个人偏好仅 sidebar 不渗透 workspace) + 3 拆段 (server 拼装端点 v=20 占位 / client Channel+WorkspaceTab+AnchorSidebar 三组件 wiring / e2e 全流 30s 闭环 + G3.4 demo 5 张截屏); 8 grep 反查 (含 5 反约束) + 8 反约束 (新 entity / cross-channel artifact / multi-channel view 等留 v3+/Phase 5+); CHN-1/2/3 + CV-1/2/3/4 + DM-2 + RT-1 + AL-4 留账边界字面对齐; v=14-20 sequencing 字面延续 (CV-2.1 ✅ / DM-2.1 ✅ / AL-4.1 v=16 / CV-3.1 v=17 / CV-4.1 v=18 / CHN-3.1 v=19 / CHN-4.1 v=20 占位无 schema 改) |
