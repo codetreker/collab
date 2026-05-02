@@ -236,9 +236,18 @@ func TestCV_Overwrite(t *testing.T) {
 	ts, _, _ := testutil.NewTestServer(t)
 	tok := testutil.LoginAs(t, ts.URL, "owner@test.com", "password123")
 	chID := cv12General(t, ts.URL, tok)
-	_, art := testutil.JSON(t, "POST", ts.URL+"/api/v1/channels/"+chID+"/artifacts", tok, map[string]any{
+	resp, art := testutil.JSON(t, "POST", ts.URL+"/api/v1/channels/"+chID+"/artifacts", tok, map[string]any{
 		"title": "Doc", "body": "# h",
 	})
+	// flaky-fix (REG-CV3V2-006-GUARD): when CI happens to schedule POST
+	// artifact under load and the response body is non-2xx (no `id`
+	// field), the bare `art["id"].(string)` type assertion panics
+	// (`interface conversion: interface {} is nil, not string`),
+	// hiding the real status code. Same guard pattern used by every
+	// other TestCV_* sibling in this file (lines 31-34 / 63-66 / etc).
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create artifact: got %d (%v)", resp.StatusCode, art)
+	}
 	id := art["id"].(string)
 
 	for _, u := range []string{
