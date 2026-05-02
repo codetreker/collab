@@ -162,7 +162,7 @@
 | REG-ADM-02 | admin god-mode banner (ADM-2 #484) | impersonate active | 红 banner 字面 | done (SMK-08) |
 | REG-ADM-03 | impersonate grant CRUD (ADM-2.2) | user 创/撤销/重 grant | 409 cooldown + re-grant | blocked-by-UI-coverage |
 | REG-ADM-04 | multi-source audit (ADM-3 #619) | admin → multi-source | 4 source enum 合并查询 | todo |
-| REG-ADM-05 | audit-log archived 三态 (admin-spa-shape-fix #633 D4-A) | active vs archived row 视觉 | className 三态 + `archived` 真挂 row | **blocked-by-#633-client-followup** (#633 仅 server sanitizer 改, client AdminAuditLogPage.tsx archived class 真未挂 — `grep archived AdminAuditLogPage.tsx` = 0 hit; 留 admin-spa-archived-ui-followup milestone, P2 跟 P3 admin-spa-ui-coverage 同 wave) |
+| REG-ADM-05 | audit-log archived 三态 (admin-spa-shape-fix #633 D4-A + admin-spa-archived-ui-followup) | active vs archived row 视觉 + filter toggle | className 三态 + `archived` 真挂 row + `data-filter="archived"` select 3 option (active/archived/all) | ✅ done — admin-spa-archived-ui-followup PR 兑现: client filter UI + AuditLogFilters.archived 字段 + URL param 透传 server `?archived=` enum 三态 byte-identical (admin_endpoints.go) + 5 vitest 守 (REG-ASAUI-001..005). |
 | REG-ADM-06 | audit hook 5/5 handler (ADM-2 + ADM-2-FOLLOWUP #626) | trigger 5 admin write | 5 audit 行 | blocked-by-UI-coverage (handler 部分 UI 缺) |
 | REG-ADM-07 | system DM body 5 模板字面 (ADM-2 system DM) | trigger admin action | system DM body byte-identical | todo |
 | REG-ADM-08 | privacy promise (ADM-1 #464) | user 看自己 audit | 立场 ④ 只见自己 + ?target_user_id 反 inject | todo |
@@ -202,7 +202,7 @@
 | 类别 | 总数 | 状态分布 |
 |---|---|---|
 | **Smoke** | **17** (v3 +3: SMK-15 cookie SSOT / SMK-16 capability dot UI grant / SMK-17 ULID 字面) | done: 4 / todo: 12 / blocked-by-UI-coverage: 1 (SMK-16) |
-| **Regression** | **86** (v2 不变 — AL 8 + BPP 6 + CHN 10 + CV 12 + DM 8 + HB 6 + RT 8 + AP 7 + ADM 10 + CM 4 + DL 4 + INFRA 3) | done: ~3 / todo: ~50 / blocked-by-UI-coverage: ~14 / blocked-by-#633-client-followup: 1 (REG-ADM-05) / **deferred-to-host-deploy-verify**: 3 (REG-HB-01/04 + REG-DL-03) / CI-守: ~16 |
+| **Regression** | **86** (v2 不变 — AL 8 + BPP 6 + CHN 10 + CV 12 + DM 8 + HB 6 + RT 8 + AP 7 + ADM 10 + CM 4 + DL 4 + INFRA 3) | done: ~4 (REG-ADM-05 ✅ admin-spa-archived-ui-followup 兑现) / todo: ~50 / blocked-by-UI-coverage: ~14 / **deferred-to-host-deploy-verify**: 3 (REG-HB-01/04 + REG-DL-03) / CI-守: ~16 |
 | **总计** | **103** (93 → 100 v2 → 103 v3) | |
 
 ### v3 变更日志 (post 飞马 architect ① ② ③ ④ + 野马 PM review)
@@ -221,7 +221,7 @@
 
 **飞马 ③ DOM 字面 stale 修 (2 处)**:
 - 🔴 SMK-08 banner 字面修: 旧 stale "当前以业主身份操作 — 该会话受 24h 时限" → 改 client 真值 byte-identical 跟 BannerImpersonate.tsx / AdminActionsList:32 / PrivacyPromise:27 (`开启了对你账号的 24h impersonate` / `24h 时窗, 顶部红色横幅常驻, 可随时撤销`)
-- 🔴 REG-ADM-05 改 **blocked-by-#633-client-followup** — `grep archived AdminAuditLogPage.tsx` = 0 hit 真凿实, #633 D4-A 仅 server sanitizer 改, client UI row class 真未跟改, 留 **admin-spa-archived-ui-followup milestone** (P2 跟 P3 admin-spa-ui-coverage 同 wave; 跟 task #15 关联)
+- ✅ REG-ADM-05 admin-spa-archived-ui-followup PR 真兑现 — client AdminAuditLogPage.tsx 加 `data-filter="archived"` select 3 option (active/archived/all) byte-identical 跟 server enum + AuditLogFilters.archived 字段 + URL param 透传, 5 vitest 守 (REG-ASAUI-001..005); #633 D4-A row class 已加, 此 PR 补 filter UI 闭环.
 
 **飞马 ④ Budget 重分类 (3 处)**:
 - REG-HB-01 daemon connect → **deferred-to-host-deploy-verify** (不进 Playwright budget)
@@ -267,9 +267,9 @@
 10. REG-ADM-03 impersonate grant CRUD UI
 11. REG-ADM-06 audit hook 5/5 UI (部分 handler 缺 UI)
 
-### 4.2 blocked-by-#633-client-followup (admin-spa-archived-ui-followup milestone)
+### 4.2 ✅ admin-spa-archived-ui-followup 已兑现 (#633 D4-A client followup 闭环)
 
-1. REG-ADM-05 audit-log archived 三态 — #633 D4-A 仅 server sanitizer 改, client AdminAuditLogPage.tsx archived class 真未挂 (`grep archived AdminAuditLogPage.tsx` = 0 hit). 跟 task #15 关联.
+1. REG-ADM-05 audit-log archived 三态 — ✅ done: client AdminAuditLogPage filter UI + AuditLogFilters.archived 字段 + URL param 透传 server `?archived=` enum 三态 byte-identical (admin_endpoints.go) + 5 vitest 守 (REG-ASAUI-001..005).
 
 ### 4.3 deferred-to-host-deploy-verify (不进 Playwright budget, 走 native install / prod deploy verify)
 
@@ -285,7 +285,6 @@
 - ✅ done — 真 UI e2e 跑过, screenshot + DOM dump 存证据目录
 - 🟡 partial — 真 UI 跑过部分, 缺 X 步骤
 - ⏸ blocked-by-UI-coverage — UI 0 surface 真不可点, P3 backlog 真账
-- ⏸ blocked-by-#633-client-followup — 等 admin-spa-archived-ui-followup milestone 真补
 - ⏸ deferred-to-host-deploy-verify — 不进 Playwright budget, 走 native install / prod deploy verify
 - ⚠️ todo — 此次 wave 没跑 (排期下次)
 - ❌ failed — 真 UI 跑过, 真路径不通 → 真 bug 立刻报

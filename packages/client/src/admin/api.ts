@@ -189,6 +189,10 @@ export interface AuditLogFilters {
   actor_id?: string;
   action?: string;
   target_user_id?: string;
+  // ADMIN-SPA-ARCHIVED-UI-FOLLOWUP: AL-8 §0 立场 ③ archived 三态 filter.
+  // server `?archived=active|archived|all`; 空 = "active" 默认 (跟 server
+  // admin_endpoints.go::handleAdminAuditLog 字面 byte-identical, drift = 改两处).
+  archived?: 'active' | 'archived' | 'all';
 }
 
 export async function fetchAdminAuditLog(filters: AuditLogFilters = {}): Promise<AdminActionRow[]> {
@@ -196,6 +200,7 @@ export async function fetchAdminAuditLog(filters: AuditLogFilters = {}): Promise
   if (filters.actor_id) qs.set('actor_id', filters.actor_id);
   if (filters.action) qs.set('action', filters.action);
   if (filters.target_user_id) qs.set('target_user_id', filters.target_user_id);
+  if (filters.archived) qs.set('archived', filters.archived);
   const path = qs.toString() ? `/audit-log?${qs.toString()}` : '/audit-log';
   const data = await request<{ actions: AdminActionRow[] }>(path);
   return data.actions;
