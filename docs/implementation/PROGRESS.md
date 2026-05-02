@@ -28,7 +28,7 @@
 
 ## In-flight 当前状态 (≤10 行)
 
-- ADMIN-SPA-UI-COVERAGE (第一波 users 详情页 capability grant UI + 3 PATCH endpoint UI, **0 server / 0 endpoint / 0 schema** 仅 client ≤300 行, REG-ASUC-001..007 🟢, D6 真兑现) feat/admin-spa-ui-coverage 战马C
+- ADMIN-SPA-UI-COVERAGE-WAVE2 (第二波 4 endpoint UI: runtimes/heartbeat-lag/archived/description-history, **0 server** ≤350 LOC, REG-ASUC2-001..007 🟢) feat/admin-spa-ui-coverage-wave2 战马C
 - (history — Phase 4+ ✅ closure, post-closure follow-up wave merged; detail → phase-4.md)
 
 ---
