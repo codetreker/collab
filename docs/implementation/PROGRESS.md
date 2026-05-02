@@ -29,7 +29,7 @@
 ## In-flight 当前状态 (≤10 行)
 
 - ADMIN-SPA-UI-COVERAGE (第一波 users 详情页 capability grant UI + 3 PATCH endpoint UI, **0 server / 0 endpoint / 0 schema** 仅 client ≤300 行, REG-ASUC-001..007 🟢, D6 真兑现) feat/admin-spa-ui-coverage 战马C
-- (history — Phase 4+ ✅ closure, ULID-MIGRATION + WIRE-1 + CAPABILITY-DOT + DEFERRED-UNWIND + ADMIN-SPA-SHAPE-FIX + COOKIE-NAME-CLEANUP + ADMIN-PASSWORD-PLAIN-ENV + E2E-SCENARIOS-ESTABLISHMENT post-closure follow-up wave merged)
+- (history — Phase 4+ ✅ closure, post-closure follow-up wave merged; detail → phase-4.md)
 
 ---
 
