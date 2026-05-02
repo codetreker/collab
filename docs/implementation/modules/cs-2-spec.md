@@ -64,9 +64,3 @@ git grep -nE 'navigate.*\/settings|history\.push.*settings' packages/client/src/
 - REG-CS2-001..006 (5 反向 grep + 三态 SSOT 单测 + 4 层 UX vitest + e2e 4 case)
 - 既有 PresenceDot / AL-1b / AL-4 unit tests 全 PASS (Wrapper variant 不破)
 - vitest cs2-failure-state.test.ts + cs2-failure-labels.test.ts + 4 组件 .test.tsx + use_failure_repair.test.ts (≥20 case 全闭)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 飞马 + 战马D | v0 spec brief — Phase 4+ Client Shape 第二段 (蓝图 client-shape.md §1.3 故障 UX 分层呈现). 3 立场 (三态 byte-identical 跟蓝图野马 push back + 4 层 UX byte-identical 跟蓝图表 + 0-server-no-schema 选项 C 同 CS-1 模式) + 5 反向 grep + 3 段拆 + 4 件套 spec 第一件. **0 server prod 真兑现** — Wrapper 复用 AL-1b PresenceDot + reasons.IsValid #496 SSOT byte-identical. 命名拆死: CS-2 = §1.3 故障 UX (CS-1 spec §3 留账承袭, CS-3 = PWA install + Web Push, CS-4 = IndexedDB 乐观缓存). 不在范围: busy/idle 第 4 态 / inline 修复真路径 / IndexedDB / Tauri / PWA / admin god-mode / 桌面通知. 战马D 主战 (跟 cv-14 / dm-9 client-only 0-server 风格同源). |

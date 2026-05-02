@@ -58,9 +58,3 @@ git grep -nE '"thumbnail\.(not_owner|url_must_be_https|url_invalid|kind_not_thum
 - 跟 AP-1.1 #493 expires_at + AP-3 #521 org_id + AP-2 #525 revoked_at + CV-2 v2 #517 preview_url **五连 ALTER ADD COLUMN NULL** 模式 (artifacts 表第二次 ALTER ADD COLUMN, 跟 user_permissions 三 ALTER 同精神)
 - 跟 CV-1.2 #342 rollback owner-only ACL 同 path (channel.created_by gate)
 - 跟 CV-2 v2 #517 立场 ② HTML5 native 不引入 client-side render lib 同精神 (反向 grep package.json client renderer 0 hit)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 战马C | v0 spec brief — Phase 5+ wrapper milestone (跟 CV-2 v2 #517 / AL-5 / AP-2 / AP-3 同期, CV-3 #408 v1 续作 — code/markdown text kind thumbnail 给 list/sidebar 首屏快读). 3 立场 (server CDN thumbnail 不 inline / https only 复用 ValidateImageLinkURL / thumbnail_url 跟 preview_url 字段拆开 markdown+code vs image+video+pdf 二闸互斥) + 5 反约束 grep + 3 段拆 (schema v=N + server endpoint / client ArtifactThumbnail.tsx 256x256 lazy / e2e+closure) + 4 件套 spec 第一件 (acceptance + stance + content-lock 后续, content-lock 不需要 server-only + minimal client DOM). 一 milestone 一 PR 协议默认 1 PR (跟 CV-2 v2 #517 / AP-3 #521 / AP-2 #525 同模式). |

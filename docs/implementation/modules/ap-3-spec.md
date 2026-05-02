@@ -63,9 +63,3 @@ git grep -nE '"abac\.cross_org_denied"' packages/server-go/internal/  # ≥1 hit
 - 跟 CM-3 #208 cross-org 资源归属 + CHN-1 #286 channel-org membership 同源 (改 = 改 channel-org gate 一处, AP-3 复用)
 - 跟 ADM-0 §1.3 红线 admin god-mode 不入业务路径同源 (cross-org admin recover 走 ADM-3+ `/admin-api/*`)
 - 跟 BPP-1 #304 agent runtime org sandbox 同源 (agent.org_id gate, 反向 grep `agent.*cross.*org` 0 hit)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 战马C | v0 spec brief — Phase 5 候选 wrapper milestone (跟 AL-5 #cv-2-v2 同期, AP-1 #493 留账之一). 3 立场 (cross-org owner-only 强制 / user_permissions 加 org_id scope NULL 兼容 / 反约束 cross-org bypass 0 hit) + 5 反约束 grep + 3 段拆 (schema v=N + abac.go 加 org gate / endpoint enforce 全走 SSOT 不改 endpoint / e2e+closure) + 4 件套 spec 第一件 (acceptance + stance + content-lock 后续). 命名 AP-3 — AP-2 名占给 AP-1.bis expires_at 业务化 sweeper v2+, AP-3 接 AP-1 留账 cross-org 边界. 一 milestone 一 PR 协议默认 1 PR (跟 CV-2 v2 #517 同模式). |

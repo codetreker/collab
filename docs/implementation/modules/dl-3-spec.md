@@ -101,9 +101,3 @@ go test -tags 'sqlite_fts5' -timeout=300s ./...  # ALL PASS
 留账接受度全 ✅: EventBus 切 NATS / SQLite 切 PG / Storage 切对象存储 / Prometheus / events_archive 查询 / HB-2 v0(D) 阈值哨 全留账, 不强塞本 PR.
 
 **ROI 拍**: DL-3 ⭐⭐ — 蓝图 §5 阈值哨兑现 + cold archive offload 解锁 events 长期增长路径; 跟 HB-2 v0(D) / RT-3 follow-up 不撞 (DL-3 是 data-layer 域 observability).
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-05-01 | 飞马 | v0 spec brief — DL-3 阈值哨 + cold archive offload. 3 立场 (DL-1+DL-2 byte-identical + 4 阈值 enum SSOT + 0 schema/endpoint 改) + 3 段拆 (ThresholdMonitor + EventsArchiveOffloader + closure REG-DL3-001..008) + 8 反向 grep + 2 必修 (interface 双锁 + 0 schema). 留账: EventBus 切 NATS / SQLite 切 PG / Storage 对象存储 / Prometheus / events_archive 查询 / HB-2 v0(D) 阈值哨. zhanma-c 主战续作 + 飞马 ✅ APPROVED 2 必修. teamlead 唯一开 PR. |

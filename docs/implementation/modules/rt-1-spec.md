@@ -48,9 +48,3 @@ grep -rnE "replay_mode.*=.*\"full\"|defaultReplayMode" packages/server-go/intern
 
 - ❌ BPP-1 CI lint (战马B) / §1.4 (B) 智能推 / §1.4 (C) per-device / artifact 表 (CV-1) / presence (AL-3)
 - 三 PR merge + §3 grep 0 + #237 envelope byte-identical → REG-RT1-001..009 → Phase 3 G3.1 闸接 RT-1.2 e2e 三用例
-
-## 5. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-28 | 飞马 | v0 — RT-1 拆 3 PR + envelope 人工 lint 闸位 + grep 反查锚 |

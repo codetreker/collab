@@ -65,9 +65,3 @@ git grep -nE 'api_key|temperature.*config|model.*api_key'     packages/server-go
 - BPP-2.1: SemanticActionFrame 8 字段 byte-identical (golden JSON) + dispatch 层 7 op 白名单 hit + 'list_users' 枚举外值 reject + 权限走 AP-0 RequirePermission 复用 + plugin 不下穿 REST 反向断言 (TestBPP21NoRawRESTBypass)
 - BPP-2.2: TaskStartedFrame + TaskFinishedFrame 7 字段 byte-identical 各 + subject 空 reject (TestBPP22SubjectEmptyRejected) + outcome 3 态 enum 全过 + outcome 字典外 reject + AgentTaskStateChangedFrame 8 字段 (server→client owner busy/idle UI 推) + AL-1b busy/idle 状态机驱动 (clock fixture 跟 AL-3 同模式)
 - BPP-2.3: AgentConfigUpdateFrame 6 字段 byte-identical + fields 6 项白名单全过 + 'api_key' / 'temperature' 反向 reject (TestBPP23ConfigFieldsWhitelist) + 幂等 reload (同 payload 重复推送无副作用) + plugin 不上行 config 反向断言 (TestBPP23ConfigSingleSource)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 战马E (PM 客串) | v0 — BPP-2 spec lock Phase 4 plugin-protocol 主线起步第一段; 3 立场 (semantic action 帧化不直调 REST / task lifecycle 上行帧是 busy/idle 唯一 source / 配置热更新单源 server→plugin) + 3 拆段 (BPP-2.1 dispatch 层 / BPP-2.2 task lifecycle / BPP-2.3 agent_config_update) + 11 grep 反查 (含 5 反约束 0 hit) + 8 反约束 + BPP-1/AL-1b/AL-2b/BPP-3/AP-0/AL-3/CV-4.2 留账边界字面对齐; 三 frame 跟 BPP-1 envelope 共序 type/cursor 头位 (反约束: 不裂 namespace, 加入 BPP-1 #304 envelope CI lint reflect 自动覆盖); reason 字典字面承袭 AL-1a #249 6 reason 同源 (改 = 改三处) — 跟 AL-3 #305 + AL-4 #321 同模式 |

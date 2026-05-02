@@ -52,11 +52,3 @@ git diff origin/main -- packages/server-go/internal/migrations/  # 0 行
 ## 4. 跨 milestone byte-identical 锁
 
 AL-8 §0 立场 ③ archived 三态 + ADMIN-SPA-SHAPE-FIX #633 D4-A server sanitizer 真接 (此 PR client 闭环) + ADM-2 #484 admin god-mode + ADM-2-FOLLOWUP #626 AdminAuditLogPage data-attr 不破 + ADM-0 §1.3 红线 (admin/user 路径分叉 — 此 PR 仅 admin SPA)
-
-## 5+6+7 派活 + 飞马自审 + 更新日志
-
-派 **zhanma-e** (admin SPA / #633 主战熟手).
-
-✅ **APPROVED**: client ≤10 行真补; 5 vitest file-source 守门; REG-ADM-05 翻牌 ✅ done (e2e-scenarios.md §3+§4.2+§5).
-
-| 2026-05-01 | 飞马 | v1 — #633 D4-A client filter UI 闭环. zhanma-e 主战 ✅. |

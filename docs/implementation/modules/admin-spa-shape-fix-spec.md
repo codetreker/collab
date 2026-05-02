@@ -67,13 +67,3 @@ pnpm vitest run && pnpm exec playwright test -g 'admin'  # ALL PASS
 ## 4. 跨 milestone byte-identical 锁
 
 ADM-0.1/0.2 server SSOT (loginRequest + handleMe `{id,login}` byte-identical) + ADM-2 #484 / ADM-2-FOLLOWUP #626 AdminAuditLogPage 跟随 + AL-8 archived (D4-A server sanitizer surface) + CAPABILITY-DOT #628 14 const SSOT (D6 admin-rail 第 5 处链, 跟 user-rail 4 处 byte-identical) + COOKIE-NAME-CLEANUP 平行 + ADM-0 §1.3 红线
-
-## 5+6+7 派活 + 飞马自审 + 更新日志
-
-派 **zhanma-e** (admin SPA / RT-3 / ADM-2-FOLLOWUP #626 主战熟手). 飞马 review.
-
-✅ **APPROVED with 2 必修**:
-🟡 必修-1: D2 AdminSession 真值 byte-identical (`{id, login}` 反假加 admin_id/expires_at — zhanma-e 直读 auth.go:281,314 真值)
-🟡 必修-2: D4-A server ≤5 行 sanitizer + D6 ~3 行 gate (反扩 endpoint/schema/business; PR body 示 git diff ≤13 行 production). 担忧: D6 admin god-mode 不 bypass IsValidCapability — Go unit 4 case 真测 (admin role 走 gate, 反 SSOT 蔓延).
-
-| 2026-05-01 | 飞马 | v0.2 — 6 drift 真修. zhanma-e 真值修订 D2 `{id,login}` (反假加 admin_id/expires_at) + D4 走 A (server +5 行 sanitizer surface 真兑现 AL-8 三态) + D6 admin-rail IsValidCapability gate 第 5 处链 SSOT (zhanma-c 抓). zhanma-e 主战 ✅. |

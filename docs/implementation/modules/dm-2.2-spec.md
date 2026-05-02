@@ -64,9 +64,3 @@ git grep -nE 'cross.*channel.*mention.*allow|skipChannelCheck.*mention' packages
 - 5min 节流 (clock fixture: 第 1 次触发 / +1min 不触发 / +5min1ms 第 2 次触发, 跟 G2.3 / AL-1a 节流模式同)
 - MentionPushedFrame 8 字段顺序 byte-identical (跟 ArtifactUpdated/AnchorCommentAdded 同模式 type/cursor 头位)
 - BPP-1 #304 envelope CI lint 自动闸 + body_preview 80 字符截断反向断言
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 飞马 | v0 — DM-2.2 spec lock (DM-2.1 #361 v=15 schema 已 merge 后续作); 3 立场 (parser regex/在线 push 离线 fallback/system DM 文案锁) + 单 PR 3 文件 + 8 grep 反查 (含 4 反约束) + 6 反约束 + RT-1/CHN-1/AL-3/CM-4/ADM-0 留账边界字面对齐; envelope MentionPushedFrame 8 字段跟 ArtifactUpdated/AnchorCommentAdded 同模式; 锚 #312 spec brief + #293 acceptance + #314 文案锁 三源 byte-identical |

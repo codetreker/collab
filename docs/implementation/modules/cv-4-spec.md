@@ -65,9 +65,3 @@ git grep -nE 'serverDiff|computeDiff.*server|\/api\/v1\/diff'  packages/server-g
 - CV-4.1: migration v=17 → v=18 双向 + state CHECK reject 'unknown' + idx 双索引 hit + FK cascade (artifact_version 删 → iterations.created_artifact_version_id 置 NULL)
 - CV-4.2: owner 触发 iterate 200 (非 owner 403) + agent 非 channel member reject 400 + state machine 反向 (completed → running reject) + commit `?iteration_id` 命中 atomic UPDATE + WS IterationStateChangedFrame 9 字段顺序 byte-identical (跟 ArtifactUpdated/AnchorCommentAdded/MentionPushed 同模式) + AL-4 stub fail-closed reason='runtime_not_registered'
 - CV-4.3: e2e 触发 iterate + state inline 进度 (pending spinner → completed 自动跳新版本) + diff tab 蓝绿高亮 + deep-link `?diff=v3..v2` 进对比 + image_link kind 走前后缩略图并排 (jsdiff fallback)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 飞马 | v0 — CV-4 spec lock Phase 3 章程严守续作 (CV 主线收口, 跟 CV-3 demo 双栈 G3.4); 3 立场 (iteration 独立 entity / iterate 触发 + commit 走 CV-1 单源 / client jsdiff 不裂 server diff) + 3 拆段 + 10 grep 反查 (含 5 反约束) + 8 反约束 + CV-1/CV-2/CV-3/RT-1/AL-4/DM-2 留账边界字面对齐; v=18 字面延续 (CV-2.1/DM-2.1/AL-4.1/CV-3.1/CV-4.1 = 14/15/16/17/18); IterationStateChangedFrame 9 字段跟 ArtifactUpdated/AnchorCommentAdded/MentionPushed 同模式 |

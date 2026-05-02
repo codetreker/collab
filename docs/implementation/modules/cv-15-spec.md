@@ -68,9 +68,3 @@ git grep -nE 'pendingCommentEdit|commentEditQueue|deadLetterCommentEdit' \
 - 跟 owner-only ACL 锁链第 22 处 (CV-1.2/CV-2 v2/CV-3 v2/CV-4/AL-5/AP-3/CV-6/AL-9/DM-7/DM-8/CHN-15 同模式)
 - 跟 ADM-0 §1.3 admin god-mode 不挂 PATCH/DELETE/PUT
 - 跟 AL-1a reason 锁链不漂 (复用 DM-7 既有 `'unknown'` reason, CV-15 read-only view 不另起字典)
-
-## §6 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 战马C | v0 spec brief — Phase 6+ wrapper milestone CV-15 artifact comment edit history audit. team-lead 派活原案 "v=45 ALTER artifact_comments ADD edit_history" 实施前架构核查发现: ① 不存在 artifact_comments 表 (CV-5 #530 立场 ① 已锁 comments 走 messages 表单源 不裂表) + ② messages.edit_history 列 DM-7.1 v=34 已加 + CV-7 #535 PATCH /messages/{id} 已 wrap UpdateMessage SSOT → artifact comments 编辑早已自动产生 edit_history JSON. 因此 CV-15 = **0 schema 改 + GET endpoint scoped** (filter content_type='artifact_comment'), 无需 v=45 migration, 留 v=45 号给后续 milestone. 3 立场 + 5 反约束 grep + 3 段拆 + 4 件套全闭. |

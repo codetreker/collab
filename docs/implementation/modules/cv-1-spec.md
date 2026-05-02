@@ -55,9 +55,3 @@ git grep -nE 'rollback.*RequirePermission.*[^o]wner' packages/server-go/internal
 - CV-1.1: migration v=12 → v=13 双向 + UNIQUE(artifact_id, version) 反向 + type CHECK='markdown' reject 反向 (插非 markdown → reject)
 - CV-1.2: 30s TTL 锁 conflict 409 (clock fixture, 跟 G2.3 节流模式同) + rollback owner-only 反断 (非 owner → 403) + ArtifactUpdated envelope byte-identical 跟 RT-1.1 #290 (反向 grep 字段顺序) + agent commit system message 文案锁
 - CV-1.3: e2e markdown 编辑 + 版本列表 + rollback owner-only UI + WS 实时刷新 (跟 RT-1.2 #292 reconnect→backfill 同 e2e 模式) + conflict 409 toast
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-28 | 飞马 | v0 — spec lock Phase 3 v1 解封后第一波, 3 立场 + 3 拆段 + 7 grep 反查 (含 4 反约束) + 6 反约束 + RT-1/CHN-1/AL-3 留账边界字面对齐 |

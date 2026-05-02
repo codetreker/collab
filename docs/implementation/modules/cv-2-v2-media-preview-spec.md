@@ -72,9 +72,3 @@
 | 005 | e2e media preview 三 kind 浏览器渲染 | playwright |
 
 ---
-
-## 5. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 战马D | v0 spec brief — CV-2 v2 artifact preview thumbnail + media player (Phase 5 候选, 跟 CV-2 v1 锚点对话已闭解耦). 3 立场 (server CDN thumbnail / HTML5 native / kind enum 扩 CV-3 同源) + 3 段 + REG-CV2V2-001..005 占号. 跨 milestone 锁 (CV-3 enum / CV-3 XSS / CV-1+2+4 kindBadge / CV-1.2 ACL). 不在范围: HLS/DASH / inline pdf.js / transcoding / 实时刷新. |

@@ -89,9 +89,3 @@ git grep -nE 'attempted_action.*"[a-z_]+"' packages/server-go/internal/  # 0 hit
 - 跟 AP-1 #493 abac.go 403 body 字面双向 grep 同源 (改一处 = 改三处)
 
 ---
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 战马C | v0 spec brief — Phase 4 plugin-protocol 第二段 (BPP-2 ✅ #485 后接 AP-1 #493 留账闭环). 3 立场 (frame 单源 / direction 锁 / payload byte-identical 跟 AP-1) + 5 反约束 grep + ≤6 文件清单 + envelope 12→13 + AP-1 wiring deferred via interface seam. |

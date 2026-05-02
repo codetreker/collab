@@ -63,9 +63,3 @@ git grep -nE 'pendingReadonly|readonlyQueue|deadLetterReadonly' \
 - 跟 CHN-1.2 #267 channel.created_by gate + CV-1.2/CV-2 v2/CV-3 v2/CV-4/AL-5/AP-3/CV-6/AL-9/DM-7/DM-8 owner-only ACL 锁链 (CHN-15 接第 21 处)
 - 跟 CHN-9 visibility 三态 + ADM-0 §1.3 admin god-mode 红线 (admin 不挂)
 - 跟 CHN-7/CHN-13 4 件套 + 错码字面单源 三向锁 (server const + client TOAST + content-lock) 同模式
-
-## §6 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 战马C | v0 spec brief — Phase 6+ wrapper milestone CHN-15 channel readonly toggle (跟 CHN-7 / CHN-13 同期, channel-model.md §3 续作 — owner 把 channel 切只读状态). 3 立场 (0 schema bit 4 channel-wide 走 creator 单行 + owner-only ACL 锁链第 21 处 + 3 文案 byte-identical 同义词反向) + 5 反约束 grep + 3 段拆 (server bit + Store helper / endpoints + send gate / client + closure) + 4 件套 spec 第一件. 一 milestone 一 PR 协议默认 1 PR. |

@@ -88,9 +88,3 @@ git grep -nE 'HasCapability.*admin_' packages/server-go/internal/api/  # 0 hit (
 - 跟 CHN-1 #286 既有 404 路径承袭 (改一处 status code, 反向断言改 e2e)
 
 ---
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-29 | 飞马 | v0 spec brief — Phase 4 第 8 milestone (entry 8/8 收尾位). 3 立场 (严格 403 / ABAC 单源 / capability 白名单 ≤30) + 5 反约束 grep + ≤8 文件清单 + REG-CHN1-007 flip + G4.4 退出 gate 依赖. 跟 g3-audit.md A5 + 蓝图 auth-permissions.md §1 字面对齐. zhanma-c 主战, 飞马 spec 协作. |

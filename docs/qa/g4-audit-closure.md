@@ -63,13 +63,7 @@ Pre-Phase 4 historical ⚪ 16 行 (ADM0/AL3/CMO/DL4/RT0 占位锚, 接手前 pla
 
 ## 5. 跨 milestone audit 反转锁链 (Phase 4 关键 closure pattern)
 
-**audit 反转跨四 milestone 锁链**:
-1. RT-3 #616 audit 反转 — server hook 已 land 但 client + e2e + 5 截屏 demo 漏, audit 抓后真补 v1
-2. REFACTOR-2 #613 audit 反转 — spec v0 错估 3 处 (DM-gate 三错码归一 / 双 ACL 收单源 / admin-list 净减 0) 透明撤
-3. DL-3 #618 audit 反转 — spec v0 范围 (Prometheus + system DM) 撤 v2+, slog stdout 真做
-4. AP-2 #620 v1 audit 反转 — zhanma-d 初版漏 e2e + screenshot, audit 抓 acceptance line 29 后真补
-
-**audit 反转立场固化为 Phase 4 closure pattern** — 一次做干净不留尾 (用户铁律) + 立场撤透明 + 留账透明 (留 v2+ 不强塞本 PR) + audit 抓漏件真补.
+**audit 反转跨四 milestone 锁链**: RT-3 #616 / REFACTOR-2 #613 / DL-3 #618 / AP-2 #620 v1 — narrative 走 PR body / git log (反 docs 重复, changelog-slim 立场).
 
 ## 6. 跨 milestone const SSOT 锁链承袭 (Phase 4 锁链长度 14)
 
@@ -77,26 +71,17 @@ BPP-2 7-op + REFACTOR-REASONS 6-dict + DM-9 EmojiPreset + CHN-15 ReadonlyBit + A
 
 ## 7. ADM-0 §1.3 admin god-mode 红线跨 14 milestone (Phase 4 闭环)
 
-admin god-mode 永不挂 user-rail / DM-only / pin / search / mention / reaction / artifact comment / mention dispatch / event aggregator / threshold alert / capability bundle / outage banner / PWA install / push subscription — Phase 4 全 milestone audit 反向 grep 0 hit 守门 ✅
+admin god-mode 永不挂 user-rail 14 path (user-rail / DM-only / pin / search / mention / reaction / artifact comment / mention dispatch / event aggregator / threshold alert / capability bundle / outage banner / PWA install / push subscription) — 全 milestone audit 反向 grep 0 hit 守门 ✅
 
 ## 8. 三联签 closure
 
-- ✅ **acceptance 兑现**: 44 milestone acceptance template 全 落 main 或 historical (5 milestone v1 follow-up 占号 ⚪ 透明留账: RT-3 v1 client + AP-2 v1 e2e + ADM-3 v1 multi-source + CS-2/3 v1 e2e)
-- ✅ **REG-* audit**: 815 REG 行 / 990 🟢 hits / 24 ⚪ pending in REG rows (16 pre-Phase 4 historical + 8 post-Phase 4+ wave 占号) / 32 ⏸️ deferred
+- ✅ **acceptance 兑现**: 44 milestone acceptance 全闭 (5 v1 follow-up 占号透明留账)
+- ✅ **REG-* audit**: 815 REG 行 / 990 🟢 hits / 24 ⚪ pending (16 pre-Phase 4 historical + 8 post-Phase 4+ wave 占号) / 32 ⏸️ deferred
 - ✅ **cov gate 持续真过**: post-#620 TOTAL 85.6% Func=50 Pkg=70 三轨守门跨九 milestone
 
-## 9. Phase 4 → Phase 5 移交透明
+## 9. Phase 4 → Phase 5 移交透明 (留 G5+ follow-up backlog)
 
-**留 Phase 5+ follow-up** (G5.audit 视角):
-- v0(D) HB-2 outbound network proxy + cgroupsv2 + plugin signing rotation + macOS notarization
-- DL-3 阈值哨 v2+ Prometheus / system DM (撤 v0 留 v2+)
-- DL-2 EventBus 切 NATS/Redis (留 DL-3 阈值哨触发, 现 v1 不切)
-- HB-1 audit 表 v1 真接 (现 ADM-3 v1 multi-source HostBridgePlaceholder 返 0 行留 follow-up)
-- ADM-3 跨 source 反向追溯链 / audit FTS / external export Splunk/Datadog (留 v2+)
-- AP-2 跨 org bundle (AP-3 cross-org) / bundle 自定义 / role 命名扮演 (永不挂)
-- CS-2/3 v1 Playwright e2e + screenshot demo (本 G4.audit 标 ⚪ 占号, 待 v1 PR 落地翻 🟢)
-- 16 pre-Phase 4 historical ⚪ pending (ADM-0 / AL-3 / CM-O / DL-4 / RT-0 placeholder) — 留 G5+ 反扫
-- user-rail audit feed (永不挂 ADM-0 §1.3 红线) — 立场承袭
+HB-2 outbound network proxy / cgroupsv2 / plugin signing rotation / macOS notarization · DL-3 v2+ Prometheus + system DM · DL-2 EventBus 切 NATS/Redis · HB-1 audit 表 v1 真接 · ADM-3 跨 source 反向追溯 / audit FTS / external export · AP-2 跨 org bundle · CS-2/3 v1 Playwright e2e · 16 pre-Phase 4 historical ⚪ (ADM-0/AL-3/CM-O/DL-4/RT-0) · user-rail audit feed (永不挂 ADM-0 §1.3 红线).
 
 ## 10. G4.audit 三立场结论
 

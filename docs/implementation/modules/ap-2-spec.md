@@ -85,9 +85,3 @@ go test -tags 'sqlite_fts5' -timeout=300s ./... && pnpm vitest run --testTimeout
 担忧 (1 项): role 名双语 SSOT (英 admin/editor/viewer/owner + 中 管理员/编辑者/查看者) 跟 RT-3 #616 typing-indicator 双语反向 grep 同模式承袭, 战马走双语 grep CI 守.
 
 **ROI 拍**: AP-2 ⭐⭐ — capability 透明真兑现 (反 role bleed). PR review 时用户可调 scope.
-
-## 7. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-05-01 | 飞马 | v1 spec brief 重写 — AP-2 capability 透明 UI 无角色名 (推断 scope, 用户拍板待 PR review). 替前 72 行 AP-1 expires_at sweeper stale spec. 3 立场 + 3 段拆 + 8 反向 grep + 2 必修. zhanma-d 主战 + 飞马 ✅ APPROVED. teamlead 唯一开 PR. |

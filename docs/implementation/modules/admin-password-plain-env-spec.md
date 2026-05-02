@@ -64,9 +64,3 @@ go test -tags sqlite_fts5 -timeout=60s ./internal/admin/ ./internal/api/ ./inter
 - cookie-name-cleanup #634 user-rail SSOT 立场承袭 (本 PR 跟 admin-rail 同模式 — env 字面 SSOT 单源 const)
 - ADM-0 §1.3 admin/user 路径分叉红线 (本 PR 仅改 admin bootstrap path, 不动 user-rail)
 - review checklist 1.A bootstrap fail-loud + 1.B idempotent 立场承袭
-
-## 5+6+7 派活 + 飞马自审 + 更新日志
-
-派 **zhanma-e** (admin SPA / RT-3 / ADM-2-FOLLOWUP / admin-spa-shape-fix #633 主战熟手).
-
-| 2026-05-01 | 战马E | v0 spec brief — ADMIN-PASSWORD-PLAIN-ENV B 方案明文 env 启动自 bcrypt 哈希 + HASH fallback (二选一). 4 立场 + 1 段拆 (single PR ~50 行 server) + 6 反向 grep + 4 unit (PlainEnv/Both/HashPriority/Neither). 用户拍 B 方案: 简化 dev/testing 部署 (反 htpasswd 一步), prod 推荐 HASH. |

@@ -68,9 +68,3 @@ git grep -nE '@\\$\\{.*display_name\\}|insert.*\\@\\$\\{.*\\.name' packages/clie
 - vitest MessageList: MentionPushedFrame 命中 mutate 重渲 + display_name 替换走 lib/markdown.ts 既有路径 + DOM `data-mention-id` attr 存在 + 文本节点反向 grep raw UUID 0 hit (5 个隐私红线 byte-identical 跟 #211)
 - vitest wsClient: switch case 'mention_pushed' dispatch handler + frame 8 字段反序列化 (跟 #372 server 端 byte-identical)
 - e2e: textarea `@` 候选 → 选中 agent → 提交 message → 在线 target → MentionPushedFrame ≤3s 实时刷 + 离线 target → 发送方 UI 无任何提示 (反向断言无 toast / 无 banner / 无 status); G3.4 协作场骨架 demo mention 流截屏归档 `g3.4-collab-mention-flow.png` (撑 #374 CHN-4 demo 5 张截屏)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|---|---|---|
-| 2026-04-29 | 飞马 | v0 — DM-2.3 spec lock (DM-2 主线最后一段, DM-2.2 #372 server 实施全闭后续作); 3 立场 (textarea `@` 候选 channel member 人+agent 同列回填 `@<user_id>` token 非 display_name / 消息流渲染 `<span data-mention-id="...">@{display_name}</span>` 蓝色高亮 raw UUID 仅 attr / MentionPushedFrame WS 实时刷 + 离线 agent 发送方 UI 无任何提示) 承袭 #312/#293/#314 byte-identical; 单 PR 3 文件 (MentionPicker.tsx 新 + MessageList.tsx 微调 + wsClient.ts 微调) 无 schema 不抢 v 号; 9 grep 反查 (含 5 反约束) + 8 反约束 (`@channel`/撤回/历史聚合/cross-channel/模糊匹配/workspace mention/admin god-mode/离线发送方提示); 跟 DM-2.1/2.2 + CV-1 + RT-1 + CHN-1/4 + ADM-0 留账边界字面对齐; 复用 `lib/markdown.ts` 既有 `<@user_id>` 渲染路径不裂 (CV-1 已落同源) |

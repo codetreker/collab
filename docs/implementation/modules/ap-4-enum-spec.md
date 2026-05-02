@@ -63,9 +63,3 @@ git grep -nE 'admin_|godmode_|impersonat' packages/server-go/internal/auth/capab
 - REG-AP4E-001..005 (5 反向 grep + reflect-lint 全 PASS)
 - 既有 AP-1 / AP-3 / AP-4 reactions / AP-5 unit tests 全 PASS (ALL slice 不破)
 - CI release-gate.yml 加 step 真触发 (一行 hardcode → CI block)
-
-## 6. 更新日志
-
-| 日期 | 作者 | 变化 |
-|------|------|------|
-| 2026-04-30 | 飞马 | v0 spec brief — Phase 5+ wrapper (跟 AP-2 #525 / AP-3 #521 同模式), AP-1 #493 capabilities.go 14 const 加 ALL slice + reflect-lint + 反向 grep CI 守门 (跟 reasons SSOT #496 / BPP-4 AST scan / HB-3 dict-isolation 同精神). 3 立场 + 5 反约束 + 3 段拆 + 4 件套 spec 第一件. **0 schema 改 + 0 endpoint 加**. 命名澄清: 跟 AP-4 #551 reactions ACL 共用 AP-4 标号双义, 本 spec 用 `ap-4-enum-spec.md` 避漂; PROGRESS 写 `[ ] **AP-4-enum** capability 清单 enum 化`. zhanma 主战, 飞马 spec 协作. |
